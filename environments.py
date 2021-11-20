@@ -30,6 +30,7 @@ class GraphWorld(object):
         return reachable_nodes, reachable_directions
             
     def reset(self, databank_entry=None):
+        # if called with databank_entry, a specific saved initial position is loaded
         if type(databank_entry)==int:
             data_sample=self.databank[databank_entry]
         else:
@@ -68,18 +69,19 @@ configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11
 conf=configs['Manhattan5']
 conf['direction_north']=False
 env=GraphWorld(conf)
-s=env.reset(0)
+s=env.reset()
 print('u paths:',env.u_paths,'\nu positions:')
 for t in range(5):
     print(env._getUpositions(t))
 print('------------')
 done=False
 R=0
+env.render()
 while not done:
     print(s)
-    env.render()
     print(env._availableActionsInCurrentState())
     dir=input('direction?')
     s,r,done,_=env.step(dir)
+    env.render()
     R+=r
 print('done, reward='+str(R),'\n---------------')
