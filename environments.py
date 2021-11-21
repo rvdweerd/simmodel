@@ -12,7 +12,9 @@ class GraphWorld(object):
         if optimization == 'dynamic':
             dirname += '_allE'
         self.register, self.databank, self.iratios = su.LoadDatafile(dirname)
+        self.current_entry=0
         self.u_paths=[]
+        self.iratio=0
         self.state=()
         self.global_t=0
         self.local_t=0
@@ -38,9 +40,11 @@ class GraphWorld(object):
         # if called with databank_entry, a specific saved initial position is loaded
         if initial_state is not None:
             entry = self.register[initial_state]
-            data_sample = self.databank[entry]
         else:
-            data_sample=random.choice(self.databank)
+            entry = random.randint(0,len(self.databank)-1)
+        self.current_entry=entry
+        data_sample = self.databank[entry]
+        self.iratio = self.iratios[entry]
         e_init=data_sample['start_escape_route'] # (x,y)
         u_init=data_sample['start_units'] # [(x0,y0)_1, (x0,y0)_2, ...]
         self.u_paths=data_sample['paths']
@@ -61,7 +65,11 @@ class GraphWorld(object):
         self.local_t += 1
         assert next_node in list(self.sp.G.neighbors(self.state[0]))
         new_Upositions = self._getUpositions(self.local_t) # uses local time: u_paths may have been updated from last state if sim is dynamic
+        testu0=new_Upositions[0]
+        testu1=new_Upositions[1]
         new_Upositions.sort()
+        if new_Upositions[0] is not testu0:
+            k=0
         self.state = tuple([next_node] + new_Upositions)
         reward = +1
         done = False
@@ -69,11 +77,11 @@ class GraphWorld(object):
             done=True
             reward += -10
             info={'Captured':True}
-        if next_node[1] == self.sp.most_northern_y: # northern boundary of manhattan graph reached
-            done = True
-            reward += +10
+        # if next_node[1] == self.sp.most_northern_y: # northern boundary of manhattan graph reached
+        #    done = True
+        #    reward += +10
         
-        if self.optimization == 'dynamic':
+        if self.optimization == 'dynamic' and not done:
             self.u_paths = self.databank[self.register[self.state]]['paths']
             self.local_t = 0
         return self.state, reward, done, info
