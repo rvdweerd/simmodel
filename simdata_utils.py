@@ -21,6 +21,8 @@ class SimParameters(object):
         self.N = None
         self.nodeid2coord = None
         self.coord2nodeid = None
+        self.coord2labels = None
+        self.labels2coord = None
         self.U = None
         self.L = None
         self.R = None
@@ -28,6 +30,7 @@ class SimParameters(object):
         self.T = None
         self.direction_north = None
         self.start_escape_route = None
+        self.most_northern_y = None
     def __str__(self):
         out = self.graph_type
         out += ', ('+str(self.N)+'x'+str(self.N)+') nodes, ...'
@@ -83,6 +86,8 @@ def DefineSimParameters(config):
         sp.N = config['N']
         sp.nodeid2coord = dict( (i, n) for i,n in enumerate(sp.G.nodes()) )
         sp.coord2nodeid = dict( (n, i) for i,n in enumerate(sp.G.nodes()) )
+        sp.coord2labels = sp.labels
+        sp.labels2coord = dict( (v,k) for k,v in sp.coord2labels.items())
         sp.U = config['U']              # number of pursuer units
         sp.L = config['L']              # Time steps
         sp.R = config['R']              # Number of escape routes sampled 
@@ -90,6 +95,7 @@ def DefineSimParameters(config):
         sp.T = sp.L+1                   # Total steps in time taken (L + start node)
         sp.direction_north = config['direction_north']
         sp.start_escape_route = (sp.N//2,0) # bottom center of grid
+        sp.most_northern_y = max([c[1] for c in sp.G.nodes])
     elif sp.graph_type == 'CircGraph':
         sp.G, sp.labels, sp.pos = CircGraph()#manhattan_graph(N)
         sp.U = config['U']        # number of pursuer units
@@ -101,7 +107,10 @@ def DefineSimParameters(config):
         sp.direction_north = False # (NOT VERY INTERESTING IF TRUE)
         sp.nodeid2coord = dict( (i, n) for i,n in enumerate(sp.G.nodes()) )
         sp.coord2nodeid = dict( (n, i) for i,n in enumerate(sp.G.nodes()) )
+        sp.coord2labels = sp.labels
+        sp.labels2coord = dict( (v,k) for k,v in sp.coord2labels.items())
         sp.start_escape_route = sp.nodeid2coord[9]
+        sp.most_northern_y = max([c[1] for c in sp.G.nodes])
     elif sp.graph_type == 'TKGraph':
         sp.G, sp.labels, sp.pos = TKGraph()#manhattan_graph(N)
         sp.U = config['U']        # number of pursuer units
@@ -113,7 +122,10 @@ def DefineSimParameters(config):
         sp.direction_north = False # (NOT VERY INTERESTING IF TRUE)
         sp.nodeid2coord = dict( (i, n) for i,n in enumerate(sp.G.nodes()) )
         sp.coord2nodeid = dict( (n, i) for i,n in enumerate(sp.G.nodes()) )
+        sp.coord2labels = sp.labels
+        sp.labels2coord = dict( (v,k) for k,v in sp.coord2labels.items())
         sp.start_escape_route = sp.nodeid2coord[0]
+        sp.most_northern_y = max([c[1] for c in sp.G.nodes])
     return sp
 
 def make_dirname(sp):
@@ -207,7 +219,7 @@ def PlotAgentsOnGraph(sp, escape_path, pursuers_path, timesteps, fig_show=False,
         #    node_text.append('a') # of connections: '+str(len(adjacencies[1])))
         colorlist = [1 for _ in range(sp.V)]
         sizelist =  [1 for _ in range(sp.V)]
-        node_text = ['' for _ in range(sp.V)]
+        node_text = [str(sp.coord2labels[c]) for c in sp.G.nodes]
         e = escape_path[-1] if t >= len(escape_path) else escape_path[t]
         colorlist[sp.coord2nodeid[e]]='#FF0000'
         sizelist[sp.coord2nodeid[e]]=20
@@ -221,8 +233,8 @@ def PlotAgentsOnGraph(sp, escape_path, pursuers_path, timesteps, fig_show=False,
         node_trace.marker.size = sizelist
         node_trace.text = node_text
         node_trace.textfont = {
-                #"size":[12 for i in range(sp.V)]
-                "color": ['white' for i in range(sp.V)]
+                "size": [6 for i in range(sp.V)],
+                "color": ['black' for i in range(sp.V)]
             }
         fig = go.Figure(data=[edge_trace, node_trace],
                     layout=go.Layout(

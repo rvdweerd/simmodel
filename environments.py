@@ -25,9 +25,10 @@ class GraphWorld(object):
         return upos
 
     def _availableActionsInCurrentState(self):
-        reachable_nodes = list(self.sp.G.neighbors(self.state[0]))
-        reachable_directions = [self.vec2dir[(n[0]-self.state[0][0],n[1]-self.state[0][1])] for n in reachable_nodes]
-        return reachable_nodes, reachable_directions
+        reachable_coords = list(self.sp.G.neighbors(self.state[0]))
+        reachable_nodes = [self.sp.coord2labels[c] for c in reachable_coords]
+        reachable_directions = None#[self.vec2dir[(n[0]-self.state[0][0],n[1]-self.state[0][1])] for n in reachable_coords]
+        return {'coords': reachable_coords, 'node_labels': reachable_nodes, 'directions': reachable_directions}
             
     def reset(self, databank_entry=None):
         # if called with databank_entry, a specific saved initial position is loaded
@@ -43,10 +44,11 @@ class GraphWorld(object):
         return self.state
 
     def step(self, next_node):
-        if type(next_node) == str:
-            dir = self.dir2vec[next_node]
-            next_node = (self.state[0][0]+dir[0],self.state[0][1]+dir[1])
+        #if type(next_node) == str:
+        #    dir = self.dir2vec[next_node]
+        #    next_node = (self.state[0][0]+dir[0],self.state[0][1]+dir[1])
         self.t+=1
+        next_node = self.sp.labels2coord[int(next_node)]
         assert next_node in list(self.sp.G.neighbors(self.state[0]))
         new_Upositions = self._getUpositions(self.t) # list
         self.state = tuple([next_node] + new_Upositions)
@@ -55,7 +57,7 @@ class GraphWorld(object):
         if next_node in new_Upositions: # captured
             done=True
             reward += -10
-        if next_node[1] == self.sp.N-1: # northern boundary of manhattan graph reached
+        if next_node[1] == self.sp.most_northern_y: # northern boundary of manhattan graph reached
             done = True
             reward += +10
         return self.state, reward, done, {}
@@ -67,6 +69,8 @@ class GraphWorld(object):
 
 configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
 conf=configs['Manhattan5']
+#conf=configs['Manhattan11']
+#conf=configs['TKGraph']
 conf['direction_north']=False
 env=GraphWorld(conf)
 s=env.reset()
@@ -78,9 +82,12 @@ done=False
 R=0
 env.render()
 while not done:
+    print('Current state:')
     print(s)
-    print(env._availableActionsInCurrentState())
-    dir=input('direction?')
+    print('Available actions:')
+    for k,v in env._availableActionsInCurrentState().items():
+        print('>',k,v)
+    dir=input('Action (new node)?\n> ')
     s,r,done,_=env.step(dir)
     env.render()
     R+=r

@@ -20,7 +20,7 @@ def graph(N):
     
     G = nx.grid_2d_graph(N,N)
     pos = dict( (n, n) for n in G.nodes() )
-    labels = dict( ((i, j), i * N + j) for i, j in G.nodes() ) # 
+    labels = dict( ((i, j), j* N + i) for i, j in G.nodes() ) # 
     
     return G, labels, pos
 
