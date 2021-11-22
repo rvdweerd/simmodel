@@ -11,7 +11,7 @@ class GraphWorld(object):
         dirname = su.make_result_directory(self.sp)
         if optimization == 'dynamic':
             dirname += '_allE'
-        self.register, self.databank, self.iratios = su.LoadDatafile(dirname)
+        self.register, self.databank, self.iratios = su.LoadDatafile(dirname)#self.LoadAndConvertDataFile(dirname)
         self.current_entry=0
         self.u_paths=[]
         self.iratio=0
@@ -22,6 +22,20 @@ class GraphWorld(object):
         self.vec2dir={(0,1):'N',(1,0):'E',(0,-1):'S',(-1,0):'W'}
         self.dir2vec={d:c for c,d in self.vec2dir.items()}
         self.reachable_nodes = []
+
+    # def LoadAndConvertDataFile(self, dirname):
+    #     register_coords, databank_coords, iratios = su.LoadDatafile(dirname)
+    #     register_labels={}
+    #     register_nodeids={}
+    #     databank_labels={}
+    #     databank_nodeids={}
+    #     for keys,v in register_coords.items():
+    #         state_labels=[]
+    #         state_nodeids=[]
+    #         for coord in keys:
+    #             state_labels.append(self.sp.coord2labels[coord])
+    #             state_nodeids.append(self.sp.coord2nodeid[coord])
+    #         register_labels[tuple]
 
     def _getUpositions(self,t=0):
         upos=[]
@@ -49,7 +63,7 @@ class GraphWorld(object):
         u_init=data_sample['start_units'] # [(x0,y0)_1, (x0,y0)_2, ...]
         self.u_paths=data_sample['paths']
         self.global_t = 0
-        self.local_t = 0
+        self.local_t = 0 # used if optimization is dynamic; lookup time for new paths is set to 0 after each step
         self.state = tuple([e_init]+u_init)
         return self.state
 
@@ -77,9 +91,9 @@ class GraphWorld(object):
             done=True
             reward += -10
             info={'Captured':True}
-        # if next_node[1] == self.sp.most_northern_y: # northern boundary of manhattan graph reached
-        #    done = True
-        #    reward += +10
+        if next_node[1] == self.sp.most_northern_y: # northern boundary of manhattan graph reached
+           done = True
+           reward += +10
         
         if self.optimization == 'dynamic' and not done:
             self.u_paths = self.databank[self.register[self.state]]['paths']
@@ -88,7 +102,7 @@ class GraphWorld(object):
 
     def render(self):
         #escape position
-        e = self.state[0]
+        e = self.state[0] # (.,.) coord
         #escape_path[-1] if t >= len(escape_path) else escape_path[t]
 
         #u positions
