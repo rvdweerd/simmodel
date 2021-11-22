@@ -19,10 +19,12 @@ class SimParameters(object):
         self.labels = None
         self.pos = None
         self.N = None
-        self.nodeid2coord = None
         self.coord2nodeid = None
         self.coord2labels = None
         self.labels2coord = None
+        self.labels2nodeids = {}
+        self.nodeids2labels = {}
+        self.nodeid2coord = None
         self.U = None
         self.L = None
         self.R = None
@@ -90,51 +92,43 @@ def GetConfigs():
 def DefineSimParameters(config):
     sp = SimParameters()
     sp.graph_type = config['graph_type']
+    sp.U = config['U']              # number of pursuer units
+    sp.L = config['L']              # Time steps
+    sp.R = config['R']              # Number of escape routes sampled 
     if sp.graph_type == 'Manhattan':
         sp.G, sp.labels, sp.pos = graph(config['N'])
         sp.N = config['N']
-        sp.nodeid2coord = dict( (i, n) for i,n in enumerate(sp.G.nodes()) )
-        sp.coord2nodeid = dict( (n, i) for i,n in enumerate(sp.G.nodes()) )
-        sp.coord2labels = sp.labels
-        sp.labels2coord = dict( (v,k) for k,v in sp.coord2labels.items())
-        sp.U = config['U']              # number of pursuer units
-        sp.L = config['L']              # Time steps
-        sp.R = config['R']              # Number of escape routes sampled 
-        sp.V = sp.N**2                  # Total number of vertices
-        sp.T = sp.L+1                   # Total steps in time taken (L + start node)
+        sp.V = sp.N**2        # Total number of vertices
+        sp.T = sp.L+1         # Total steps in time taken (L + start node)
         sp.direction_north = config['direction_north']
         sp.start_escape_route = (sp.N//2,0) # bottom center of grid
         sp.most_northern_y = max([c[1] for c in sp.G.nodes])
     elif sp.graph_type == 'CircGraph':
         sp.G, sp.labels, sp.pos = CircGraph()#manhattan_graph(N)
-        sp.U = config['U']        # number of pursuer units
-        sp.L = config['L']        # Time steps
-        sp.N = 10                 # Number of nodes (FIXED)
-        sp.R = config['R']        # Number of escape routes sampled 
-        sp.V = 10            # Total number of vertices (FIXED)
+        sp.N = 10             # Number of nodes (FIXED)
+        sp.V = 10             # Total number of vertices (FIXED)
         sp.T = sp.L+1         # Total steps in time taken (L + start node)
         sp.direction_north = False # (NOT VERY INTERESTING IF TRUE)
-        sp.nodeid2coord = dict( (i, n) for i,n in enumerate(sp.G.nodes()) )
-        sp.coord2nodeid = dict( (n, i) for i,n in enumerate(sp.G.nodes()) )
-        sp.coord2labels = sp.labels
-        sp.labels2coord = dict( (v,k) for k,v in sp.coord2labels.items())
         sp.start_escape_route = sp.nodeid2coord[9]
         sp.most_northern_y = max([c[1] for c in sp.G.nodes])
     elif sp.graph_type == 'TKGraph':
         sp.G, sp.labels, sp.pos = TKGraph()#manhattan_graph(N)
-        sp.U = config['U']        # number of pursuer units
-        sp.L = config['L']        # Time steps
-        sp.N = 7                  # Number of nodes (FIXED)
-        sp.R = config['R']        # Number of escape routes sampled 
+        sp.N = 7              # Number of nodes (FIXED)
         sp.V = 7              # Total number of vertices (FIXED)
         sp.T = sp.L+1         # Total steps in time taken (L + start node)
         sp.direction_north = False # (NOT VERY INTERESTING IF TRUE)
-        sp.nodeid2coord = dict( (i, n) for i,n in enumerate(sp.G.nodes()) )
-        sp.coord2nodeid = dict( (n, i) for i,n in enumerate(sp.G.nodes()) )
-        sp.coord2labels = sp.labels
-        sp.labels2coord = dict( (v,k) for k,v in sp.coord2labels.items())
         sp.start_escape_route = sp.nodeid2coord[0]
         sp.most_northern_y = max([c[1] for c in sp.G.nodes])
+    # Define mappings between node naming conventions
+    sp.nodeid2coord = dict( (i, n) for i,n in enumerate(sp.G.nodes()) )
+    sp.coord2nodeid = dict( (n, i) for i,n in enumerate(sp.G.nodes()) )
+    sp.coord2labels = sp.labels
+    sp.labels2coord = dict( (v,k) for k,v in sp.coord2labels.items())
+    for coord, nodeid in sp.coord2nodeid.items():
+        label = sp.coord2labels[coord]
+        sp.labels2nodeids[label]=nodeid
+        sp.nodeids2labels[nodeid]=label
+
     return sp
 
 def make_dirname(sp):
@@ -229,13 +223,13 @@ def PlotAgentsOnGraph(sp, escape_pos, pursuers_pos, timestep, fig_show=False, fi
     colorlist = [1 for _ in range(sp.V)]
     sizelist =  [1 for _ in range(sp.V)]
     node_text = [str(sp.coord2labels[c]) for c in sp.G.nodes]
-    colorlist[sp.coord2nodeid[escape_pos]]='#FF0000'
-    sizelist[sp.coord2nodeid[escape_pos]]=20
-    node_text[sp.coord2nodeid[escape_pos]]='e'
+    colorlist[sp.labels2nodeids[escape_pos]]='#FF0000'
+    sizelist[sp.labels2nodeids[escape_pos]]=20
+    node_text[sp.labels2nodeids[escape_pos]]='e'
     for i,P_pos in enumerate(pursuers_pos):
-        colorlist[sp.coord2nodeid[P_pos]]='#0000FF'
-        sizelist[sp.coord2nodeid[P_pos]]=20
-        node_text[sp.coord2nodeid[P_pos]]='u'+str(i)
+        colorlist[sp.labels2nodeids[P_pos]]='#0000FF'
+        sizelist[sp.labels2nodeids[P_pos]]=20
+        node_text[sp.labels2nodeids[P_pos]]='u'+str(i)
     node_trace.marker.color = colorlist
     node_trace.marker.size = sizelist
     node_trace.text = node_text

@@ -12,11 +12,11 @@ def SimulatePursuersPathways(conf, dataframe=0):
     unit_paths = databank[dataframe]['paths']
     print('unit_paths',unit_paths,'intercept_rate',iratios[dataframe])
     for t in range(sp.L):
-        e = start_escape_node
+        e = sp.coord2labels[start_escape_node]
         p = []
         for P_path in unit_paths:
             pos = P_path[-1] if t >= len(P_path) else P_path[t]
-            p.append(pos)
+            p.append(sp.coord2labels[pos])
         su.PlotAgentsOnGraph(sp, e, p, t)
 
 def SimulateInteractiveMode(conf, optimization_method = 'static'):
@@ -37,11 +37,11 @@ def SimulateInteractiveMode(conf, optimization_method = 'static'):
         print('------------')
         print('Current state:')
         print(s)
-        print('Available actions:')
-        for k,v in env._availableActionsInCurrentState().items():
-            print('>',k,v)
-        dir=input('Action (new node)?\n> ')
-        s,r,done,_=env.step(dir)
+        print('Available actions:\n> [ ',end='')
+        for n in env.neighbors[s[0]]:
+            print(str(n)+', ',end='')
+        a=input(']\nAction (new node)?\n> ')
+        s,r,done,_=env.step(int(a))
         env.render()
         R+=r
     print('done, reward='+str(R),'\n---------------')
@@ -72,7 +72,7 @@ def SimulateRandomWalker(conf, number_of_runs=1, optimization_method='static', p
             if print_runs:
                 print(str(s[0])+'->',end='')
             #Random policy
-            possible_actions = env._availableActionsInCurrentState()['coords']
+            possible_actions = env._availableActionsInCurrentState()
             action = random.choice(possible_actions)
 
             # Always all the way left, then all the way up
@@ -109,12 +109,12 @@ def SimulateRandomWalker(conf, number_of_runs=1, optimization_method='static', p
 
 configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
 #conf=configs['Manhattan3']
-conf=configs['Manhattan5']
-#conf=configs['Manhattan11']
+#conf=configs['Manhattan5']
+conf=configs['Manhattan11']
 #conf=configs['CircGraph']
 #conf=configs['TKGraph']
 conf['direction_north']=False
 
-#SimulatePursuersPathways(conf)
+SimulatePursuersPathways(conf)
 #SimulateInteractiveMode(conf, optimization_method='static')
-SimulateRandomWalker(conf, number_of_runs=100, optimization_method='static', print_runs=True, save_plots=False)
+#SimulateRandomWalker(conf, number_of_runs=1, optimization_method='static', print_runs=True, save_plots=True)
