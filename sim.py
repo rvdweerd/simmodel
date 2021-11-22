@@ -19,10 +19,14 @@ def SimulatePursuersPathways(conf, dataframe=0):
             p.append(pos)
         su.PlotAgentsOnGraph(sp, e, p, t)
 
-def SimulateInteractiveMode(conf):
-    env=GraphWorld(conf,optimization='static')
-    #s=env.reset(((1,0),(0,2),(2,2)))
-    s=env.reset()#((2,0),(2,3),(3,4),(4,3)))
+def SimulateInteractiveMode(conf, optimization_method = 'static'):
+    env=GraphWorld(conf, optimization_method)
+    s=env.reset()#((1,0),(0,2),(2,2)))
+    # while True:
+    #     s=env.reset()#((1,0),(0,2),(2,2)))
+    #     print(s[0],' ',end='')
+    #     if s[0]==(2,0):
+    #         break
     done=False
     R=0
     env.render()
@@ -47,7 +51,7 @@ def SimulateRandomWalker(conf, number_of_runs=1, optimization_method='static', p
     # Inputs:
     #   optimization_method: if dynamic, new optimal unit position targets are used at every time-step
     #                        if static, only optimal unit position targets calculated at start are used and fixed
-    env=GraphWorld(conf,optimization=optimization_method)
+    env=GraphWorld(conf, optimization=optimization_method)
     #s=env.reset(((1,0),(0,2),(2,2)))
     captured=[]
     iratios_sampled=[]
@@ -105,12 +109,12 @@ def SimulateRandomWalker(conf, number_of_runs=1, optimization_method='static', p
 
 configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
 #conf=configs['Manhattan3']
-#conf=configs['Manhattan5']
-conf=configs['Manhattan11']
+conf=configs['Manhattan5']
+#conf=configs['Manhattan11']
 #conf=configs['CircGraph']
 #conf=configs['TKGraph']
 conf['direction_north']=False
 
 #SimulatePursuersPathways(conf)
-#SimulateInteractiveMode(conf)
-SimulateRandomWalker(conf, number_of_runs=1, print_runs=True, save_plots=True)
+#SimulateInteractiveMode(conf, optimization_method='static')
+SimulateRandomWalker(conf, number_of_runs=100, optimization_method='static', print_runs=True, save_plots=False)
