@@ -105,12 +105,12 @@ def SimulateRandomWalker(conf, number_of_runs=1, optimization_method='static', p
 
 configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
 #conf=configs['Manhattan3']
-conf=configs['Manhattan5']
-#conf=configs['Manhattan11']
+#conf=configs['Manhattan5']
+conf=configs['Manhattan11']
 #conf=configs['CircGraph']
 #conf=configs['TKGraph']
 conf['direction_north']=False
 
 #SimulatePursuersPathways(conf)
 #SimulateInteractiveMode(conf)
-SimulateRandomWalker(conf, number_of_runs=1000, print_runs=True, save_plots=False)
+SimulateRandomWalker(conf, number_of_runs=1, print_runs=True, save_plots=True)
