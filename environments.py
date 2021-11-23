@@ -84,6 +84,8 @@ class GraphWorld(object):
 
     def _getUpositions(self,t=0):
         upos=[]
+        if len(self.u_paths) < 2:
+            assert False
         for i,P_path in enumerate(self.u_paths):
             p = P_path[-1] if t >= len(P_path) else P_path[t]
             upos.append(p)
@@ -117,9 +119,9 @@ class GraphWorld(object):
         # Load pre-saved dataset of pursuers movement
         if initial_state is not None:
             # if called with databank_entry (in coords), a specific saved initial position is loaded
-            entry = self.register[initial_state]
+            entry = self.register['coords'][initial_state]
         else:
-            entry = random.randint(0,len(self.databank)-1)
+            entry = random.randint(0,len(self.iratios)-1)
         self.current_entry=entry
         data_sample = self.databank['labels'][entry]
         self.iratio = self.iratios[entry]
@@ -128,6 +130,8 @@ class GraphWorld(object):
         e_init_labels = data_sample['start_escape_route'] # (e0)
         u_init_labels = data_sample['start_units'] # [(u1),(u2), ...]
         self.u_paths  = data_sample['paths']
+        if len(self.u_paths) < 2:
+            assert False
         self.state    = self._to_state(e_init_labels,u_init_labels)
         return self.state
 
@@ -154,7 +158,9 @@ class GraphWorld(object):
            reward += +10
         
         if self.optimization == 'dynamic' and not done:
-            self.u_paths = self.databank[self.register[self.state]]['paths']
+            self.u_paths = self.databank['labels'][self.register['labels'][self.state]]['paths']
+            if len(self.u_paths) < 2:
+                assert False
             self.local_t = 0
         return self.state, reward, done, info
 
