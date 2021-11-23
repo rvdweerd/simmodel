@@ -1,36 +1,33 @@
 from environments import GraphWorld
 from rl_policy import EpsilonGreedyPolicy
 from rl_algorithms import q_learning, sarsa, expected_sarsa
-from rl_plotting import PlotPerformanceCharts, PlotGridValues
+from rl_plotting import PlotPerformanceCharts, PlotGridValues, PlotNodeValues
 import numpy as np
 import simdata_utils as su
 
-num_seeds   = 5
-eps_0       = .1
-eps_decay   = 0.
-num_iter    = 500
+num_seeds   = 500
+eps_0       = 1.0
+eps_min     = 0.
+cutoff      = 500
+num_iter    = 1500
 gamma       = 1.
 alpha_0     = .1
 alpha_decay = 0.
+initial_Q_values = 10.0
 
 configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
-conf=configs['Manhattan3']
+conf=configs['Manhattan5']
 conf['direction_north']=False
 
-env = GraphWorld(conf)
-env.sp.G = env.sp.G.to_directed()
-policy = EpsilonGreedyPolicy(env, eps_0, eps_decay)
-
-#env = SimpGraph()
-#policy = EpsilonGreedyPolicy_graph(env, eps_0, eps_decay, 1)
-
+env = GraphWorld(conf, optimization='static')
+policy = EpsilonGreedyPolicy(env, eps_0, eps_min, cutoff, initial_Q_values)
 
 metrics_episode_returns = {}
 metrics_episode_lengths = {}
 metrics_avgperstep = {}
 Q_tables = {}
 
-algos  = [q_learning,sarsa,expected_sarsa]
+algos  = [q_learning]#,sarsa,expected_sarsa]
 for algo in algos:
     metrics_all = np.zeros((num_seeds,2,num_iter))
     for s in range(num_seeds):
@@ -46,5 +43,6 @@ for algo in algos:
         metrics_episode_returns[algo.__name__], axis=0)/np.sum(metrics_episode_lengths[algo.__name__], axis=0)
 performance_metrics = { 'e_returns': metrics_episode_returns, 'e_lengths':metrics_episode_lengths, 'rps':metrics_avgperstep}
 
-PlotPerformanceCharts(algos,performance_metrics)
-PlotGridValues(algos,env,Q_tables)
+PlotPerformanceCharts(algos, performance_metrics)
+PlotNodeValues(algos,env,Q_tables)
+#PlotGridValues(algos,env,Q_tables)

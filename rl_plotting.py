@@ -2,6 +2,8 @@ import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
+import matplotlib.image as mpimg
+import plotly.graph_objects as go
 
 def PlotPerformanceCharts(algos,performance_metrics):
     num_iter = performance_metrics['e_returns'][algos[0].__name__].shape[1]
@@ -23,8 +25,117 @@ def PlotPerformanceCharts(algos,performance_metrics):
         plt.legend()
     plt.xlabel("Episode")
     plt.title("Episode returns")
-    plt.ylim((-8,6))
+    #plt.ylim((-8,6))
     plt.show()
+    plt.savefig('test.png')
+
+
+from addEdge import addEdge
+
+def PlotNodeValues(algos,env,Q_tables):
+    for algo in algos:
+        G=env.sp.G#.to_directed()
+        
+        Q_table = Q_tables[algo.__name__]
+        V_table={}
+        node_values=[0]*env.sp.V
+        node_text=['']*env.sp.V
+        for s, qvals in Q_table.items():
+            V_table[s[0]] = np.max(Q_table[s])
+            index = env.sp.labels2nodeids[s[0]]
+            node_values[index]=V_table[s[0]]
+            node_text[index]='{:.1f}'.format(V_table[s[0]])
+
+        edge_x = []
+        edge_y = []
+        # Plot all edges
+        for edge in G.edges():
+            x0, y0 = edge[0]
+            x1, y1 = edge[1]
+            edge_x.append(x0)
+            edge_x.append(x1)
+            edge_x.append(None)
+            edge_y.append(y0)
+            edge_y.append(y1)
+            edge_y.append(None)
+        # for edge in G.edges():
+        #     start=edge[0]
+        #     end=edge[1]
+        #     edge_x, edge_y = addEdge(start, end, edge_x, edge_y, .8, 'end', .4, 30, 25)
+        for s,v in Q_table.items():
+            edgeStart = env.sp.labels2coord[s[0]]
+            max_actions = np.max(v)
+            max_action_indices = np.where(v==max_actions)
+            for idx in max_action_indices[0]:
+                edgeEnd = env.sp.labels2coord[env.neighbors[s[0]][idx]]
+                edge_x, edge_y = addEdge(edgeStart, edgeEnd, edge_x, edge_y, .6, 'end', 0.2, 30, 15)
+        #edge_x, edge_y = addEdge((0,0), (1,0), edge_x, edge_y, .6, 'end', 0.2, 30, 15)
+
+        edge_trace = go.Scatter(
+            x=edge_x, y=edge_y,
+            line=dict(width=0.5, color='black'),#'#888'),
+            hoverinfo='none',
+            mode='lines')
+
+        node_x = []
+        node_y = []
+        for node in G.nodes():
+            x, y = node
+            node_x.append(x)
+            node_y.append(y)
+
+        node_trace = go.Scatter(
+            x=node_x, y=node_y,
+            mode='markers+text',
+            #hoverinfo='text',
+            marker=dict(
+                showscale=True,
+                # colorscale options
+                #'Greys' | 'YlGnBu' | 'Greens' | 'YlOrRd' | 'Bluered' | 'RdBu' |
+                #'Reds' | 'Blues' | 'Picnic' | 'Rainbow' | 'Portland' | 'Jet' |
+                #'Hot' | 'Blackbody' | 'Earth' | 'Electric' | 'Viridis' |
+                colorscale='Greys',#'RdBu',#'Bluered',#'YlGnBu',
+                reversescale=True,
+                color=[],#='#5fa023',#[],
+                size=15,
+                colorbar=dict(
+                   thickness=5,
+                   #title='Node values',
+                   xanchor='left',
+                   titleside='right' ),
+                line_width=.5,
+                )
+            )
+
+        node_trace.marker.color=node_values
+        node_trace.text = node_text
+        node_trace.textfont=dict(family='sans serif',size=5,color='orange')
+
+        fig = go.Figure(data=[edge_trace, node_trace],
+                    layout=go.Layout(
+                        title="title",
+                        titlefont_size=12,
+                        showlegend=False,
+                        hovermode='closest',
+                        margin=dict(b=20,l=5,r=5,t=40),
+                        # annotations=[ dict(
+                        #    text="a",#"Python code: <a href='https://plotly.com/ipython-notebooks/network-graphs/'> https://plotly.com/ipython-notebooks/network-graphs/</a>",
+                        #    showarrow=False,
+                        #    xref="paper", yref="paper",
+                        #    x=0.005, y=-0.002 ) ],
+                        # annotations=[ dict(
+                        #     x=positions[adjacencies[0]][0],
+                        #     y=positions[adjacencies[0]][1],
+                        #     text=adjacencies[0], # node name that will be displayed
+                        #     xanchor='left',
+                        #     xshift=10,
+                        #     font=dict(color='black', size=10),
+                        #     showarrow=False, arrowhead=1, ax=-10, ay=-10)],
+                        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
+                        )
+        fig.write_image('test_values.png',width=300, height=300,scale=2)
+
 
 def PlotGridValues(algos,env,Q_table):
     if env.type == 'graph': return

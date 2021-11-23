@@ -21,7 +21,7 @@ def SimulatePursuersPathways(conf, dataframe=0):
 def SimulateInteractiveMode(conf, optimization_method = 'static'):
     env=GraphWorld(conf, optimization_method)
     s=env.reset()
-    #s=env.reset(((2,0),(0,3),(3,4),(4,1))) # Used for testing
+    s=env.reset(((2,0),(0,4),(2,4),(4,4))) # Used for testing
     # while True:
     #     s=env.reset()#((1,0),(0,2),(2,2)))
     #     print(s[0],' ',end='')

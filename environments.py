@@ -141,14 +141,12 @@ class GraphWorld(object):
         self.local_t += 1
         assert next_node in self.neighbors[self.state[0]]
         new_Upositions = self._getUpositions(self.local_t) # uses local time: u_paths may have been updated from last state if sim is dynamic
-        testu0=new_Upositions[0]
-        testu1=new_Upositions[1]
         new_Upositions.sort()
-        if new_Upositions[0] is not testu0:
-            k=0
         self.state = tuple([next_node] + new_Upositions)
-        reward = +1
+        reward = -1.
         done = False
+        if self.global_t >= self.sp.T*2:
+            done=True
         if next_node in new_Upositions: # captured
             done=True
             reward += -10

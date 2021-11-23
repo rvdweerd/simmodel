@@ -33,32 +33,30 @@ def q_learning(env, policy, num_episodes, discount_factor=1.0, alpha_0 = 0.5, al
         i = 0
         R = 0
 
-        if hasattr(env, 'custom_reset'):
-            start_state = env.custom_reset()
-        else:
-            start_state = env.reset()
+        start_state = env.reset(((2,0),(0,4),(2,4),(4,4)))
         done = False
         if print_episodes: print('episode '+str(i_episode)+' - [S'+str(start_state)+' ', end='')
         while not done:
-            start_action = policy.sample_action(start_state)
+            start_action, start_action_idx = policy.sample_action(start_state)
+            #print('state '+str(start_state)+'action '+str(start_action)+',',end='')
             new_state, reward, done, _ = env.step(start_action)
             if print_episodes: 
                 eps=policy.get_epsilon(start_state)
                 print('eps('+'{:.2f}'.format(eps)+'),a('+str(start_action)+'),(r'+str(reward)+')]-> [S'+str(new_state)+' ', end='')
             
             if new_state not in policy.Q:
-                policy.Q[new_state] = np.ones(policy.num_actions[new_state[0]]).astype(np.float32) * policy.initial_Q_values
+                policy.Q[new_state] = np.ones(len(policy.actions_from_node[new_state[0]])).astype(np.float32) * policy.initial_Q_values
             Qnew = np.max(policy.Q[new_state])
             if done:
                 Qnew = 0
             if alpha_decay > 0:
-                alpha = alpha_0 / policy.sa_count[start_state[0], start_action]**(alpha_decay)
+                alpha = alpha_0 / policy.sa_count[start_state][start_action_idx]**(alpha_decay)
             else:
                 alpha = alpha_0
 
-            policy.Q[start_state][start_action] = \
-                policy.Q[start_state][start_action] + \
-                alpha * (reward + discount_factor * Qnew - policy.Q[start_state][start_action])
+            policy.Q[start_state][start_action_idx] = \
+                policy.Q[start_state][start_action_idx] + \
+                alpha * (reward + discount_factor * Qnew - policy.Q[start_state][start_action_idx])
 
             start_state = new_state
             i += 1
