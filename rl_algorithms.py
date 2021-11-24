@@ -33,7 +33,7 @@ def q_learning(env, policy, num_episodes, discount_factor=1.0, alpha_0 = 0.5, al
         i = 0
         R = 0
 
-        start_state = env.reset(((2,0),(0,4),(2,4),(4,4)))
+        start_state = env.reset()
         done = False
         if print_episodes: print('episode '+str(i_episode)+' - [S'+str(start_state)+' ', end='')
         while not done:

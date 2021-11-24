@@ -5,6 +5,112 @@ from matplotlib.patches import Rectangle
 import matplotlib.image as mpimg
 import plotly.graph_objects as go
 
+def PlotAgentsOnGraph(sp, escape_pos, pursuers_pos, timestep, fig_show=False, fig_save=True):
+    # G: nx graph
+    # escape_path:   list of escaper coordinates over time-steps
+    # pursuers_path: list list of pursuer coordinates over time-steps
+    # timesteps:     list of time-steps to plot
+    G=sp.G
+    
+    edge_x = []
+    edge_y = []
+    for edge in G.edges():
+        x0, y0 = edge[0]
+        x1, y1 = edge[1]
+        edge_x.append(x0)
+        edge_x.append(x1)
+        edge_x.append(None)
+        edge_y.append(y0)
+        edge_y.append(y1)
+        edge_y.append(None)
+
+    edge_trace = go.Scatter(
+        x=edge_x, y=edge_y,
+        line=dict(width=0.5, color='#888'),
+        hoverinfo='none',
+        mode='lines')
+
+    node_x = []
+    node_y = []
+    for node in G.nodes():
+        x, y = node
+        node_x.append(x)
+        node_y.append(y)
+
+    node_trace = go.Scatter(
+        x=node_x, y=node_y,
+        mode='markers+text',
+        #hoverinfo='text',
+        marker=dict(
+            #showscale=True,
+            # colorscale options
+            #'Greys' | 'YlGnBu' | 'Greens' | 'YlOrRd' | 'Bluered' | 'RdBu' |
+            #'Reds' | 'Blues' | 'Picnic' | 'Rainbow' | 'Portland' | 'Jet' |
+            #'Hot' | 'Blackbody' | 'Earth' | 'Electric' | 'Viridis' |
+            #colorscale='YlGnBu',
+            #reversescale=True,
+            color='#5fa023',#[],
+            size=10,
+            #colorbar=dict(
+            #    thickness=15,
+            #    title='Node Connections',
+            #    xanchor='left',
+            #    titleside='right'
+            #),
+            line_width=2))
+
+    #node_adjacencies = []
+    #for node, adjacencies in enumerate(G.adjacency()):
+    #    node_adjacencies.append(len(adjacencies[1]))
+    #    node_text.append('a') # of connections: '+str(len(adjacencies[1])))
+    colorlist = [1 for _ in range(sp.V)]
+    sizelist =  [1 for _ in range(sp.V)]
+    node_text = [str(sp.coord2labels[c]) for c in sp.G.nodes]
+    colorlist[sp.labels2nodeids[escape_pos]]='#FF0000'
+    sizelist[sp.labels2nodeids[escape_pos]]=20
+    node_text[sp.labels2nodeids[escape_pos]]='e'
+    for i,P_pos in enumerate(pursuers_pos):
+        colorlist[sp.labels2nodeids[P_pos]]='#0000FF'
+        sizelist[sp.labels2nodeids[P_pos]]=20
+        node_text[sp.labels2nodeids[P_pos]]='u'+str(i)
+    node_trace.marker.color = colorlist
+    node_trace.marker.size = sizelist
+    node_trace.text = node_text
+    node_trace.textfont = {
+            "size": [6 for i in range(sp.V)],
+            "color": ['black' for i in range(sp.V)]
+        }
+    fig = go.Figure(data=[edge_trace, node_trace],
+                layout=go.Layout(
+                    title="t="+str(timestep),#'<br>Network graph made with Python',
+                    titlefont_size=12,
+                    showlegend=False,
+                    hovermode='closest',
+                    margin=dict(b=20,l=5,r=5,t=40),
+                    # annotations=[ dict(
+                    #    text="a",#"Python code: <a href='https://plotly.com/ipython-notebooks/network-graphs/'> https://plotly.com/ipython-notebooks/network-graphs/</a>",
+                    #    showarrow=False,
+                    #    xref="paper", yref="paper",
+                    #    x=0.005, y=-0.002 ) ],
+                    # annotations=[ dict(
+                    #     x=positions[adjacencies[0]][0],
+                    #     y=positions[adjacencies[0]][1],
+                    #     text=adjacencies[0], # node name that will be displayed
+                    #     xanchor='left',
+                    #     xshift=10,
+                    #     font=dict(color='black', size=10),
+                    #     showarrow=False, arrowhead=1, ax=-10, ay=-10)],
+                    xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                    yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
+                    )
+    if fig_show:
+        fig.show()
+    if fig_save:
+        fig.write_image('images_sim/test_t='+str(timestep)+'.png',width=250, height=300,scale=2)
+        img=mpimg.imread('images_sim/test_t='+str(timestep)+'.png')
+        imgplot=plt.imshow(img)
+        plt.show()
+
 def PlotPerformanceCharts(algos,performance_metrics):
     num_iter = performance_metrics['e_returns'][algos[0].__name__].shape[1]
     for algo in algos:
@@ -27,7 +133,7 @@ def PlotPerformanceCharts(algos,performance_metrics):
     plt.title("Episode returns")
     #plt.ylim((-8,6))
     plt.show()
-    plt.savefig('test.png')
+    plt.savefig('images_rl/test_lcurve.png')
 
 
 from addEdge import addEdge
@@ -134,7 +240,7 @@ def PlotNodeValues(algos,env,Q_tables):
                         xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
                         yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
                         )
-        fig.write_image('test_values.png',width=300, height=300,scale=2)
+        fig.write_image('images_rl/test_values.png',width=300, height=300,scale=2)
 
 
 def PlotGridValues(algos,env,Q_table):

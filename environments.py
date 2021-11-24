@@ -1,15 +1,17 @@
 import simdata_utils as su
 import random 
 import time
+from rl_plotting import PlotAgentsOnGraph
 
 class GraphWorld(object):
     """"""
-    def __init__(self, config, optimization='static'):
+    def __init__(self, config, optimization_method='static', fixed_initial_positions=None):
         self.type='GraphWorld'
-        self.optimization=optimization
+        self.optimization=optimization_method
+        self.fixed_initial_positions = fixed_initial_positions
         self.sp = su.DefineSimParameters(config)
         dirname = su.make_result_directory(self.sp)
-        if optimization == 'dynamic':
+        if optimization_method == 'dynamic':
             dirname += '_allE'
         self.register, self.databank, self.iratios = self._LoadAndConvertDataFile(dirname) #su.LoadDatafile(dirname)
         self.current_entry=0
@@ -84,8 +86,8 @@ class GraphWorld(object):
 
     def _getUpositions(self,t=0):
         upos=[]
-        if len(self.u_paths) < 2:
-            assert False
+        #if len(self.u_paths) < 2:
+        #    assert False
         for i,P_path in enumerate(self.u_paths):
             p = P_path[-1] if t >= len(P_path) else P_path[t]
             upos.append(p)
@@ -110,16 +112,15 @@ class GraphWorld(object):
         u_init_labels.sort()
         return tuple([e_init_label] + u_init_labels)
 
-
-    def reset(self, initial_state=None):
+    def reset(self):
         # Reset time
         self.global_t = 0
         self.local_t = 0 # used if optimization is dynamic; lookup time for new paths is set to 0 after each step
         
         # Load pre-saved dataset of pursuers movement
-        if initial_state is not None:
+        if self.fixed_initial_positions is not None:
             # if called with databank_entry (in coords), a specific saved initial position is loaded
-            entry = self.register['coords'][initial_state]
+            entry = self.register['coords'][self.fixed_initial_positions]
         else:
             entry = random.randint(0,len(self.iratios)-1)
         self.current_entry=entry
@@ -130,8 +131,8 @@ class GraphWorld(object):
         e_init_labels = data_sample['start_escape_route'] # (e0)
         u_init_labels = data_sample['start_units'] # [(u1),(u2), ...]
         self.u_paths  = data_sample['paths']
-        if len(self.u_paths) < 2:
-            assert False
+        #if len(self.u_paths) < 2:
+        #    assert False
         self.state    = self._to_state(e_init_labels,u_init_labels)
         return self.state
 
@@ -172,7 +173,7 @@ class GraphWorld(object):
         for P_path in self.u_paths:
             pos = P_path[-1] if self.local_t >= len(P_path) else P_path[self.local_t]
             p.append(pos)
-        su.PlotAgentsOnGraph(self.sp, e, p, self.global_t, fig_show=False, fig_save=True)
+        PlotAgentsOnGraph(self.sp, e, p, self.global_t, fig_show=False, fig_save=True)
         time.sleep(1)
 
 

@@ -2,7 +2,7 @@
 #from dataclasses import dataclass
 #import time
 #import networkx as nx
-#import random
+import random
 from datetime import datetime
 from pathlib import Path
 import os
@@ -10,7 +10,8 @@ import pickle
 from sim_graphs import graph, CircGraph, TKGraph
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
+#import matplotlib.image as mpimg
+from rl_plotting import PlotAgentsOnGraph
 
 class SimParameters(object):
     def __init__(self):
@@ -33,6 +34,7 @@ class SimParameters(object):
         self.direction_north = None
         self.start_escape_route = None
         self.most_northern_y = None
+        self.target_node = None
     def __str__(self):
         out = self.graph_type
         out += ', ('+str(self.N)+'x'+str(self.N)+') nodes, ...'
@@ -101,26 +103,31 @@ def DefineSimParameters(config):
         sp.V = sp.N**2        # Total number of vertices
         sp.T = sp.L+1         # Total steps in time taken (L + start node)
         sp.direction_north = config['direction_north']
+        sp.nodeid2coord = dict( (i, n) for i,n in enumerate(sp.G.nodes()) )
         sp.start_escape_route = (sp.N//2,0) # bottom center of grid
         sp.most_northern_y = max([c[1] for c in sp.G.nodes])
+        sp.target_node = (sp.N//2,sp.N-1)
     elif sp.graph_type == 'CircGraph':
         sp.G, sp.labels, sp.pos = CircGraph()#manhattan_graph(N)
         sp.N = 10             # Number of nodes (FIXED)
         sp.V = 10             # Total number of vertices (FIXED)
         sp.T = sp.L+1         # Total steps in time taken (L + start node)
         sp.direction_north = False # (NOT VERY INTERESTING IF TRUE)
+        sp.nodeid2coord = dict( (i, n) for i,n in enumerate(sp.G.nodes()) )
         sp.start_escape_route = sp.nodeid2coord[9]
         sp.most_northern_y = max([c[1] for c in sp.G.nodes])
+        sp.target_node = (3,6)
     elif sp.graph_type == 'TKGraph':
         sp.G, sp.labels, sp.pos = TKGraph()#manhattan_graph(N)
         sp.N = 7              # Number of nodes (FIXED)
         sp.V = 7              # Total number of vertices (FIXED)
         sp.T = sp.L+1         # Total steps in time taken (L + start node)
         sp.direction_north = False # (NOT VERY INTERESTING IF TRUE)
+        sp.nodeid2coord = dict( (i, n) for i,n in enumerate(sp.G.nodes()) )        
         sp.start_escape_route = sp.nodeid2coord[0]
         sp.most_northern_y = max([c[1] for c in sp.G.nodes])
+        sp.target_node = None
     # Define mappings between node naming conventions
-    sp.nodeid2coord = dict( (i, n) for i,n in enumerate(sp.G.nodes()) )
     sp.coord2nodeid = dict( (n, i) for i,n in enumerate(sp.G.nodes()) )
     sp.coord2labels = sp.labels
     sp.labels2coord = dict( (v,k) for k,v in sp.coord2labels.items())
@@ -162,108 +169,53 @@ def LoadDatafile(dirname):
         print('Database found, contains',len(results['databank']),'entries.',in_file.name)
         return results['register'], results['databank'], results['interception_ratios']
 
-def PlotAgentsOnGraph(sp, escape_pos, pursuers_pos, timestep, fig_show=False, fig_save=True):
-    # G: nx graph
-    # escape_path:   list of escaper coordinates over time-steps
-    # pursuers_path: list list of pursuer coordinates over time-steps
-    # timesteps:     list of time-steps to plot
-    G=sp.G
-    
-    edge_x = []
-    edge_y = []
-    for edge in G.edges():
-        x0, y0 = edge[0]
-        x1, y1 = edge[1]
-        edge_x.append(x0)
-        edge_x.append(x1)
-        edge_x.append(None)
-        edge_y.append(y0)
-        edge_y.append(y1)
-        edge_y.append(None)
+def SimulatePursuersPathways(conf, optimization_method='dynamic', fixed_initial_positions=None):
+    # Escaper position static, plot progression of pursuers motion
+    sp = DefineSimParameters(conf)
+    dirname = make_result_directory(sp)
+    if optimization_method == 'dynamic':
+        dirname += '_allE'
+    register, databank, iratios = LoadDatafile(dirname)
+    if fixed_initial_positions == None:
+        dataframe=random.randint(0,len(iratios)-1)
+    else:
+        dataframe=register[fixed_initial_positions]
+    start_escape_node = databank[dataframe]['start_escape_route']
+    unit_paths = databank[dataframe]['paths']
+    print('unit_paths',unit_paths,'intercept_rate',iratios[dataframe])
+    for t in range(sp.L):
+        e = sp.coord2labels[start_escape_node]
+        p = []
+        for P_path in unit_paths:
+            pos = P_path[-1] if t >= len(P_path) else P_path[t]
+            p.append(sp.coord2labels[pos])
+        PlotAgentsOnGraph(sp, e, p, t)
 
-    edge_trace = go.Scatter(
-        x=edge_x, y=edge_y,
-        line=dict(width=0.5, color='#888'),
-        hoverinfo='none',
-        mode='lines')
-
-    node_x = []
-    node_y = []
-    for node in G.nodes():
-        x, y = node
-        node_x.append(x)
-        node_y.append(y)
-
-    node_trace = go.Scatter(
-        x=node_x, y=node_y,
-        mode='markers+text',
-        #hoverinfo='text',
-        marker=dict(
-            #showscale=True,
-            # colorscale options
-            #'Greys' | 'YlGnBu' | 'Greens' | 'YlOrRd' | 'Bluered' | 'RdBu' |
-            #'Reds' | 'Blues' | 'Picnic' | 'Rainbow' | 'Portland' | 'Jet' |
-            #'Hot' | 'Blackbody' | 'Earth' | 'Electric' | 'Viridis' |
-            #colorscale='YlGnBu',
-            #reversescale=True,
-            color='#5fa023',#[],
-            size=10,
-            #colorbar=dict(
-            #    thickness=15,
-            #    title='Node Connections',
-            #    xanchor='left',
-            #    titleside='right'
-            #),
-            line_width=2))
-
-    #node_adjacencies = []
-    #for node, adjacencies in enumerate(G.adjacency()):
-    #    node_adjacencies.append(len(adjacencies[1]))
-    #    node_text.append('a') # of connections: '+str(len(adjacencies[1])))
-    colorlist = [1 for _ in range(sp.V)]
-    sizelist =  [1 for _ in range(sp.V)]
-    node_text = [str(sp.coord2labels[c]) for c in sp.G.nodes]
-    colorlist[sp.labels2nodeids[escape_pos]]='#FF0000'
-    sizelist[sp.labels2nodeids[escape_pos]]=20
-    node_text[sp.labels2nodeids[escape_pos]]='e'
-    for i,P_pos in enumerate(pursuers_pos):
-        colorlist[sp.labels2nodeids[P_pos]]='#0000FF'
-        sizelist[sp.labels2nodeids[P_pos]]=20
-        node_text[sp.labels2nodeids[P_pos]]='u'+str(i)
-    node_trace.marker.color = colorlist
-    node_trace.marker.size = sizelist
-    node_trace.text = node_text
-    node_trace.textfont = {
-            "size": [6 for i in range(sp.V)],
-            "color": ['black' for i in range(sp.V)]
-        }
-    fig = go.Figure(data=[edge_trace, node_trace],
-                layout=go.Layout(
-                    title="t="+str(timestep),#'<br>Network graph made with Python',
-                    titlefont_size=12,
-                    showlegend=False,
-                    hovermode='closest',
-                    margin=dict(b=20,l=5,r=5,t=40),
-                    # annotations=[ dict(
-                    #    text="a",#"Python code: <a href='https://plotly.com/ipython-notebooks/network-graphs/'> https://plotly.com/ipython-notebooks/network-graphs/</a>",
-                    #    showarrow=False,
-                    #    xref="paper", yref="paper",
-                    #    x=0.005, y=-0.002 ) ],
-                    # annotations=[ dict(
-                    #     x=positions[adjacencies[0]][0],
-                    #     y=positions[adjacencies[0]][1],
-                    #     text=adjacencies[0], # node name that will be displayed
-                    #     xanchor='left',
-                    #     xshift=10,
-                    #     font=dict(color='black', size=10),
-                    #     showarrow=False, arrowhead=1, ax=-10, ay=-10)],
-                    xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                    yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
-                    )
-    if fig_show:
-        fig.show()
-    if fig_save:
-        fig.write_image('images/test_t='+str(timestep)+'.png',width=250, height=300,scale=2)
-        img=mpimg.imread('images/test_t='+str(timestep)+'.png')
-        imgplot=plt.imshow(img)
-        plt.show()
+def SimulateInteractiveMode(env):    
+    s=env.reset()
+    done=False
+    R=0
+    env.render()
+    while not done:
+        print('e position:',s[0],env.sp.labels2coord[s[0]])
+        print('u paths (node labels):',env.u_paths)
+        print('u paths (node coords): ',end='')
+        for p in env.u_paths:
+            print('[',end='')
+            for e in p:
+                print(str(env.sp.labels2coord[e])+',',end='')
+            print('],  ',end='')
+        print('\nu positions per time-step:')
+        for t in range(env.sp.T):
+            print(env._getUpositions(t))
+        print('------------')
+        print('Current state:')
+        print(s)
+        print('Available actions:\n> [ ',end='')
+        for n in env.neighbors[s[0]]:
+            print(str(n)+', ',end='')
+        a=input(']\nAction (new node)?\n> ')
+        s,r,done,_=env.step(int(a))
+        env.render()
+        R+=r
+    print('done, reward='+str(R),'\n---------------')
