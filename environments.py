@@ -1,7 +1,7 @@
 import simdata_utils as su
 import random 
 import time
-from rl_plotting import PlotAgentsOnGraph
+from rl_plotting import PlotAgentsOnGraph, PlotAgentsOnGraph_
 
 class GraphWorld(object):
     """"""
@@ -14,6 +14,8 @@ class GraphWorld(object):
         if optimization_method == 'dynamic':
             dirname += '_allE'
         self.register, self.databank, self.iratios = self._LoadAndConvertDataFile(dirname) #su.LoadDatafile(dirname)
+        self.world_pool = [ind for k,ind in self.register['labels'].items()]
+        assert len(self.world_pool) == len(self.iratios)
         self.current_entry=0
         self.u_paths=[]
         self.iratio=0
@@ -122,7 +124,7 @@ class GraphWorld(object):
             # if called with databank_entry (in coords), a specific saved initial position is loaded
             entry = self.register['coords'][self.fixed_initial_positions]
         else:
-            entry = random.randint(0,len(self.iratios)-1)
+            entry = random.choice(self.world_pool) #random.randint(0,len(self.iratios)-1)
         self.current_entry=entry
         data_sample = self.databank['labels'][entry]
         self.iratio = self.iratios[entry]
@@ -173,8 +175,9 @@ class GraphWorld(object):
         for P_path in self.u_paths:
             pos = P_path[-1] if self.local_t >= len(P_path) else P_path[self.local_t]
             p.append(pos)
-        PlotAgentsOnGraph(self.sp, e, p, self.global_t, fig_show=False, fig_save=True)
-        time.sleep(1)
+        PlotAgentsOnGraph_(self.sp, e, p, self.global_t, fig_show=False, fig_save=True)
+        #PlotAgentsOnGraph(self.sp, e, p, self.global_t, fig_show=False, fig_save=True)
+        #time.sleep(1)
 
 
 

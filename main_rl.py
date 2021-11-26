@@ -10,7 +10,7 @@ num_seeds   = 1
 eps_0       = 1.0
 eps_min     = 0.
 cutoff      = 500
-num_iter    = 1500
+num_iter    = 2500
 gamma       = 1.
 alpha_0     = .1
 alpha_decay = 0.
@@ -20,7 +20,7 @@ configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11
 conf=configs['Manhattan5']
 conf['direction_north']=False
 
-env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=((2,0),(0,4),(2,4),(4,4)))
+env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=((2,0),(3,4),(4,3),(4,4)))
 policy = EpsilonGreedyPolicy(env, eps_0, eps_min, cutoff, initial_Q_values)
 
 metrics_episode_returns = {}
@@ -46,5 +46,7 @@ performance_metrics = { 'e_returns': metrics_episode_returns, 'e_lengths':metric
 
 PlotPerformanceCharts(algos, performance_metrics)
 PlotNodeValues(algos,env,Q_tables)
+import matplotlib.pyplot as plt
+plt.clf()
 EvaluatePolicy(env,policy,number_of_runs=1,save_plots=True)
 #env.fixed_initial_positions=None

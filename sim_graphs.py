@@ -121,8 +121,8 @@ def TKGraph():
     # #             /   /  \ / 
     # #            0 - 1    3  
     # #                 \  / \ 
-    # #                  \/   5
-    # #                   6
+    # #                  \/   6
+    # #                   5
     ##
     G = nx.DiGraph()
     G.add_nodes_from([
