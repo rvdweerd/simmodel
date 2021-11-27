@@ -30,8 +30,8 @@ def EvaluatePolicy(env, policy, number_of_runs=1, print_runs=True, save_plots=Fa
             s,r,done,info = env.step(action)
             count+=1
             R+=r
-            if count >= env.sp.L:
-                break
+            # if count >= env.sp.L:
+            #     break
         if print_runs:
             print(str(s[0])+']. Done after',count,'steps, Captured:',info['Captured'],'Reward:',str(R))
         if save_plots:
@@ -58,7 +58,13 @@ def GetInitialStatesList(env, min_y_coord):
             if valid:
                 #print(k,v)
                 idx.append(v)
-                initpos.append(env._to_state_from_coords(k[0],k[1:]))
+                #initpos.append(env._to_state_from_coords(k[0],k[1:]))
+                ipos=[env.sp.coord2labels[k[0]]]
+                for u in k[1:]:
+                    ipos.append(env.sp.coord2labels[u])
+                ipos.sort()
+                initpos.append(tuple(ipos))
+
     return idx, initpos
 
 def GetSetOfPermutations(path):
@@ -114,19 +120,43 @@ def GetPathsTensor(env,db_indices):
             for P_path in unit_paths:
                 pos = P_path[-1] if t >= len(P_path) else P_path[t]
                 p.append(pos)
-            ipaths.append(p)
+            ipaths.append(tuple(p))
         paths.append(ipaths)
-    paths=np.array(paths)
-    print('Paths found:',paths.shape)
-    return paths
+    paths_np=np.array(paths)
+    print('Paths found:',paths_np.shape)
+    return paths_np, paths
 
 def SelectTrainset(env, min_y_coord, min_num_same_positions, min_num_worlds):
     db_indices, init_pos_list = GetInitialStatesList(env, min_y_coord)
-    paths = GetPathsTensor(env, db_indices)
-    duplicates_indices = GetDuplicatePathsIndices(paths, min_num_same_positions, min_num_worlds)
-    print(duplicates_indices)
-    init_pos_trainset=[init_pos_list[i] for i in duplicates_indices]
-    init_pos_trainset_indices=[db_indices[i] for i in duplicates_indices]
-    for entry in init_pos_trainset:
-        print(entry)
-    return init_pos_trainset_indices
+    paths_np, paths = GetPathsTensor(env, db_indices)
+
+    duplicates_indices0=set()
+    for world_source in range(len(paths)):
+        for i in range(len(paths[world_source])):
+            key1=list(paths[world_source][i])
+            key1.sort()
+            for world_target in range(len(paths)):
+                if world_target==world_source: continue
+                for t in range(env.sp.L-1):
+                    key2_t=list(paths[world_target][t])
+                    key2_t.sort()
+                    key2_tt=list(paths[world_target][t+1])
+                    key2_tt.sort()
+                    #if key2_t[:2] == key1[:2] and key2_tt[:2] != key1[:2]:
+                    if key2_t == key1 and key2_tt != key1:
+                        print('t=',t,'Pair found:',paths[world_source],paths[world_target])
+                        duplicates_indices0.add(world_target)
+                        duplicates_indices0.add(world_source)
+    
+    duplicates_indices0 = list(duplicates_indices0)
+    duplicates_indices1 = GetDuplicatePathsIndices(paths_np, min_num_same_positions, min_num_worlds)    
+    
+    init_pos_trainset0=[init_pos_list[i] for i in duplicates_indices0]
+    init_pos_trainset_indices0=[db_indices[i] for i in duplicates_indices0]
+    init_pos_trainset1=[init_pos_list[i] for i in duplicates_indices1]
+    init_pos_trainset_indices1=[db_indices[i] for i in duplicates_indices1]
+
+    # print('Initial positions in trainset:')
+    # for entry in init_pos_trainset1:
+    #     print(entry)
+    return init_pos_trainset_indices0, init_pos_trainset_indices0

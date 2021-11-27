@@ -1,25 +1,17 @@
-import simdata_utils as su
-from environments import GraphWorld
-import random
-import simdata_utils as su
-from rl_utils import EvaluatePolicy, SelectTrainset
-from rl_policy import LeftUpPolicy, RandomPolicy
+class Animal(object):
+    def __init__(self, yell):
+        self.yell=yell
+    def pet(self):
+        print(self.yell)
+
+class Dog(Animal):
+    def __init__(self):
+        super().__init__("woof")
+    def pet(self):
+        super().pet()
+        print('!')
 
 
-#random.seed(422)
-
-configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
-#conf=configs['Manhattan3']
-#conf=configs['Manhattan5']
-conf=configs['Manhattan11']
-#conf=configs['CircGraph']
-#conf=configs['TKGraph']
-conf['direction_north']=False
-
-
-
-env=GraphWorld(conf, optimization_method='static', fixed_initial_positions=None)
-init_pos_trainset_indices = SelectTrainset(env, min_y_coord=env.sp.N-5, min_num_same_positions=env.sp.U, min_num_worlds=5)
-env.world_pool = init_pos_trainset_indices # limit the training set to the selected entries
-print('-------- sampling initial states')
-su.SimulateInteractiveMode(env)
+#dog = Animal("woof")
+dog = Dog()
+dog.pet()

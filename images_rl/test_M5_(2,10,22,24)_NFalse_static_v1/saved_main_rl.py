@@ -9,7 +9,7 @@ import simdata_utils as su
 num_seeds   = 50
 eps_0       = .2
 eps_min     = 0.
-cutoff      = 100#200
+cutoff      = 100
 num_iter    = 500
 gamma       = 1.
 alpha_0     = .5
@@ -20,7 +20,7 @@ configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11
 conf=configs['Manhattan5']
 conf['direction_north']=False
 
-env = GraphWorld(conf, optimization_method='dynamic', fixed_initial_positions=(2,15,19,22),state_representation='etUte0U0')
+env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=(2,15,19,22))#((2,0),(3,4),(4,3),(4,4)))
 policy = EpsilonGreedyPolicy(env, eps_0, eps_min, cutoff, initial_Q_values)
 
 metrics_episode_returns = {}

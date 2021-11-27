@@ -18,9 +18,9 @@ initial_Q_values = 0.
 
 configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
 conf=configs['Manhattan5']
-conf['direction_north']=False
+conf['direction_north']=True
 
-env = GraphWorld(conf, optimization_method='dynamic', fixed_initial_positions=(2,15,19,22),state_representation='etUte0U0')
+env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=(2,15,19,22))#((2,0),(3,4),(4,3),(4,4)))
 policy = EpsilonGreedyPolicy(env, eps_0, eps_min, cutoff, initial_Q_values)
 
 metrics_episode_returns = {}

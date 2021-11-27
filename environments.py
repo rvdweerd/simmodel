@@ -1,3 +1,4 @@
+from os import stat_result
 import simdata_utils as su
 import random 
 import time
@@ -5,26 +6,36 @@ from rl_plotting import PlotAgentsOnGraph, PlotAgentsOnGraph_
 
 class GraphWorld(object):
     """"""
-    def __init__(self, config, optimization_method='static', fixed_initial_positions=None):
+    def __init__(self, config, optimization_method='static', fixed_initial_positions=None, state_representation='etUt'):
         self.type='GraphWorld'
         self.optimization=optimization_method
         self.fixed_initial_positions = fixed_initial_positions
+        self.state_representation=state_representation
         self.sp = su.DefineSimParameters(config)
         dirname = su.make_result_directory(self.sp)
         if optimization_method == 'dynamic':
             dirname += '_allE'
         self.register, self.databank, self.iratios = self._LoadAndConvertDataFile(dirname) #su.LoadDatafile(dirname)
-        self.world_pool = [ind for k,ind in self.register['labels'].items()]
-        assert len(self.world_pool) == len(self.iratios)
+        # Create a world_pool list of indices of pre-saved initial conditions and their rollout
+        if fixed_initial_positions == None:
+            self.world_pool = [ind for k,ind in self.register['labels'].items()]
+            assert len(self.world_pool) == len(self.iratios)
+        elif type(fixed_initial_positions[0]) == tuple:
+            self.world_pool = [self.register['coords'][fixed_initial_positions]]
+        elif type(fixed_initial_positions[0]) == int:
+            self.world_pool = [self.register['labels'][fixed_initial_positions]]
+        else:
+            assert False
         self.current_entry=0
         self.u_paths=[]
         self.iratio=0
+        self.state0=()
         self.state=()
         self.global_t=0
         self.local_t=0
-        self.vec2dir={(0,1):'N',(1,0):'E',(0,-1):'S',(-1,0):'W'}
-        self.dir2vec={d:c for c,d in self.vec2dir.items()}
-        self.reachable_nodes = []
+        #self.vec2dir={(0,1):'N',(1,0):'E',(0,-1):'S',(-1,0):'W'}
+        #self.dir2vec={d:c for c,d in self.vec2dir.items()}
+        #self.reachable_nodes = []
         self.neighbors, self.in_degree, self.out_degree = self._GetGraphData()
         self.reset()
 
@@ -120,11 +131,11 @@ class GraphWorld(object):
         self.local_t = 0 # used if optimization is dynamic; lookup time for new paths is set to 0 after each step
         
         # Load pre-saved dataset of pursuers movement
-        if self.fixed_initial_positions is not None:
-            # if called with databank_entry (in coords), a specific saved initial position is loaded
-            entry = self.register['coords'][self.fixed_initial_positions]
-        else:
-            entry = random.choice(self.world_pool) #random.randint(0,len(self.iratios)-1)
+        # if self.fixed_initial_positions is not None:
+        #     # if called with databank_entry (in coords), a specific saved initial position is loaded
+        #     entry = self.register['coords'][self.fixed_initial_positions]
+        # else:
+        entry = random.choice(self.world_pool) #random.randint(0,len(self.iratios)-1)
         self.current_entry=entry
         data_sample = self.databank['labels'][entry]
         self.iratio = self.iratios[entry]
@@ -136,10 +147,16 @@ class GraphWorld(object):
         #if len(self.u_paths) < 2:
         #    assert False
         self.state    = self._to_state(e_init_labels,u_init_labels)
-        return self.state
+        self.state0   = self.state
+        if self.state_representation == 'etUt':
+            return self.state
+        elif self.state_representation == 'etUte0U0':
+            return self.state+self.state0
+        elif self.state_representation == 'ete0U0':
+            return tuple([self.state[0]])+self.state0
 
     def step(self, next_node):
-        info={'Captured':False}
+        info={'Captured':False, 'u_positions':self.state[1:]}
         self.global_t += 1
         self.local_t += 1
         assert next_node in self.neighbors[self.state[0]]
@@ -150,20 +167,28 @@ class GraphWorld(object):
         done = False
         if self.global_t >= self.sp.T*2:
             done=True
+            #print('Time ran out')
         if next_node in new_Upositions: # captured
             done=True
             reward += -10
             info={'Captured':True}
+            #print('Captured')
         if self.sp.labels2coord[next_node][1] == self.sp.most_northern_y: # northern boundary of manhattan graph reached
-           done = True
-           reward += +10
-        
+            done = True
+            reward += +10
+            #print('Goal reached')
         if self.optimization == 'dynamic' and not done:
             self.u_paths = self.databank['labels'][self.register['labels'][self.state]]['paths']
             if len(self.u_paths) < 2:
                 assert False
             self.local_t = 0
-        return self.state, reward, done, info
+
+        if self.state_representation == 'etUt':
+            return self.state, reward, done, info
+        elif self.state_representation == 'etUte0U0':
+            return self.state+self.state0, reward, done, info
+        elif self.state_representation == 'ete0U0':
+            return tuple([self.state[0]])+self.state0, reward, done, info
 
     def render(self):
         #escape position
@@ -171,10 +196,11 @@ class GraphWorld(object):
         #escape_path[-1] if t >= len(escape_path) else escape_path[t]
 
         #u positions
-        p = []
-        for P_path in self.u_paths:
-            pos = P_path[-1] if self.local_t >= len(P_path) else P_path[self.local_t]
-            p.append(pos)
+        p=self.state[1:]
+        # p = []
+        # for P_path in self.u_paths:
+        #     pos = P_path[-1] if self.local_t >= len(P_path) else P_path[self.local_t]
+        #     p.append(pos)
         PlotAgentsOnGraph_(self.sp, e, p, self.global_t, fig_show=False, fig_save=True)
         #PlotAgentsOnGraph(self.sp, e, p, self.global_t, fig_show=False, fig_save=True)
         #time.sleep(1)

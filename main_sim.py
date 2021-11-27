@@ -9,10 +9,10 @@ random.seed(911)
 
 configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
 #conf=configs['Manhattan3']
-#conf=configs['Manhattan5']
+conf=configs['Manhattan5']
 #conf=configs['Manhattan11'] # initial condition in register: ((5,0),(3,10),(6,10),(9,10))
 #conf=configs['CircGraph']
-conf=configs['TKGraph']
+#conf=configs['TKGraph']
 conf['direction_north']=False
 
 # DEMO: replay Gurobi optimizations
@@ -22,7 +22,7 @@ conf['direction_north']=False
 #su.SimulatePursuersPathways(conf, optimization_method='static', fixed_initial_positions=((0,1),(2,2)))
 
 # DEMO: interactive mode
-env=GraphWorld(conf, optimization_method='static', fixed_initial_positions=None)#((0,1),(2,2)))#None)#((2,0),(3,4),(4,3),(4,4)))
+env=GraphWorld(conf, optimization_method='static', fixed_initial_positions=(2,15,15,21))#((0,1),(2,2)))#None)#((2,0),(3,4),(4,3),(4,4)))
 su.SimulateInteractiveMode(env)
 
 # DEMO: policy evaluation
