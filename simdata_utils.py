@@ -212,9 +212,10 @@ def SimulateInteractiveMode(env):
         print('Current state:')
         print(s)
         print('Available actions:\n> [ ',end='')
-        for n in env.neighbors[s[0]]:
-            print(str(n)+', ',end='')
+        n = env.neighbors[s[0]]
+        print(n)
         a=input(']\nAction (new node)?\n> ')
+        a=n.index(int(a))
         s,r,done,_=env.step(int(a))
         env.render()
         R+=r

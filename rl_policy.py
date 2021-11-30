@@ -43,13 +43,13 @@ class EpsilonGreedyPolicy(object):
             if obs not in self.state_count:
                self.state_count[obs] = 0 
             if self.state_count[obs] > self.eps_cutoff:
-                epsilon = self.eps_min
+                self.epsilon = self.eps_min
             else:
-                epsilon = self.epsilon0 - self.eps_slope * self.state_count[obs]
+                self.epsilon = self.epsilon0 - self.eps_slope * self.state_count[obs]
             self.state_count[obs]+=1
         else:
-            epsilon = self.epsilon0
-        return epsilon
+            self.epsilon = self.epsilon0
+        return self.epsilon
 
     def sample_action(self, obs):
         """
@@ -73,7 +73,7 @@ class EpsilonGreedyPolicy(object):
             action_idx = np.random.choice(np.arange(len(self.actions_from_node[obs[0]])))
             action = self.actions_from_node[obs[0]][action_idx]
         self.sa_count[obs][action_idx] += 1
-        return action, action_idx
+        return action_idx, action
 
     def sample_greedy_action(self, obs):
         """
@@ -92,7 +92,7 @@ class EpsilonGreedyPolicy(object):
         action = self.actions_from_node[obs[0]][action_idx]
 
         self.sa_count[obs][action_idx] += 1
-        return action, action_idx
+        return action_idx, action
 
 class LeftUpPolicy(object):
     def __init__(self, env):
@@ -100,21 +100,25 @@ class LeftUpPolicy(object):
     def sample_greedy_action(self, s):
         possible_actions = self.env.neighbors[s[0]]
         if s[0]-1 in possible_actions: # can go left
-            action = s[0]-1
+            action = possible_actions.index(int(s[0]-1))
         elif s[0]+self.env.sp.N in possible_actions: # can't go left, go up
-            action = s[0]+self.env.sp.N
+            action = possible_actions.index(int(s[0]+self.env.sp.N))
         elif s[0]+1 in possible_actions: # can't go up, go right
-            action = s[0]+1
+            action = possible_actions.index(int(s[0]+1))
         else: # go down
-            action = s[0]-self.env.sp.N
+            action = possible_actions.index(int(s[0]-self.env.sp.N))
         return action, None
 
 class RandomPolicy(object):
     def __init__(self, env):
-        self.env=env
+        #self.env=env
+        self.out_degree=env.out_degree
     def sample_greedy_action(self, s):
-        possible_actions = self.env.neighbors[s[0]]
-        action = random.choice(possible_actions)
+        num_actions = self.out_degree[s[0]]
+
+        #possible_actions = self.env.neighbors[s[0]]
+        action = random.randint(0,num_actions-1)
+        #action = random.choice(possible_actions)
         return action, None
 
 import networkx as nx
@@ -135,5 +139,6 @@ class MinIndegreePolicy(object):
         source_node_label = s[0]
         source_node_coord = self.env.sp.labels2coord[s[0]]
         best_path = nx.dijkstra_path(self.G, source_node_coord, target_node_coord, weight='weight')
-        action = self.env.sp.coord2labels[best_path[1]]
+        next_node = self.env.sp.coord2labels[best_path[1]]
+        action = self.env.neighbors[s[0]].index(int(next_node))
         return action, None

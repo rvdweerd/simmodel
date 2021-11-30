@@ -187,7 +187,8 @@ class GraphWorld(object):
         elif self.state_representation == 'ete0U0':
             return self.encode_(tuple([self.state[0]])+self.state0)
 
-    def step(self, next_node):
+    def step(self, action_idx):
+        next_node = self.neighbors[self.state[0]][action_idx]
         info={'Captured':False, 'u_positions':self.state[1:]}
         self.global_t += 1
         self.local_t += 1

@@ -79,7 +79,8 @@ def MemTest(env,print_output=True):
     s = env.reset()
     #a = env.action_space.sample()
     for i in range(5):
-        a = random.choice(env._availableActionsInCurrentState())
+        #a = random.choice(env._availableActionsInCurrentState())
+        a = random.randint(0,env.out_degree[env.state[0]]-1)
         s_next, r, done, _ = env.step(a)
 
         # Push a transition

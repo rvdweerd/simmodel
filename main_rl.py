@@ -20,12 +20,12 @@ configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11
 conf=configs['Manhattan5']
 conf['direction_north']=False
 
-env = GraphWorld(conf, optimization_method='dynamic', fixed_initial_positions=(2,15,19,22),state_representation='ete0U0')
-#env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation='etUte0U0')
+#env = GraphWorld(conf, optimization_method='dynamic', fixed_initial_positions=(2,15,19,22),state_representation='ete0U0')
+env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation='etUte0U0')
 
 policy = EpsilonGreedyPolicy(env, eps_0, eps_min, cutoff, initial_Q_values)
-#init_pos_trainset_indices0, init_pos_trainset_indices1 = SelectTrainset(env, min_y_coord=env.sp.N-1, min_num_same_positions=env.sp.U, min_num_worlds=4)
-#env.world_pool = init_pos_trainset_indices1 # limit the training set to the selected entries
+init_pos_trainset_indices0, init_pos_trainset_indices1 = SelectTrainset(env, min_y_coord=env.sp.N-1, min_num_same_positions=env.sp.U, min_num_worlds=4)
+env.world_pool = init_pos_trainset_indices1 # limit the training set to the selected entries
 
 metrics_episode_returns = {}
 metrics_episode_lengths = {}

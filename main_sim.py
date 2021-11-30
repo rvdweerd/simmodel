@@ -9,8 +9,8 @@ random.seed(911)
 
 configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
 #conf=configs['Manhattan3']
-#conf=configs['Manhattan5']
-conf=configs['Manhattan11'] # initial condition in register: ((5,0),(3,10),(6,10),(9,10))
+conf=configs['Manhattan5']
+#conf=configs['Manhattan11'] # initial condition in register: ((5,0),(3,10),(6,10),(9,10))
 #conf=configs['CircGraph']
 #conf=configs['TKGraph']
 conf['direction_north']=False
@@ -22,11 +22,11 @@ conf['direction_north']=False
 #su.SimulatePursuersPathways(conf, optimization_method='static', fixed_initial_positions=((0,1),(2,2)))
 
 # DEMO: interactive mode
-env=GraphWorld(conf, optimization_method='static', fixed_initial_positions=(5,114,115,116))#((0,1),(2,2)))#None)#((2,0),(3,4),(4,3),(4,4)))
-su.SimulateInteractiveMode(env)
+env=GraphWorld(conf, optimization_method='static', fixed_initial_positions=(2,20,21,22))#(5,114,115,116))#((0,1),(2,2)))#None)#((2,0),(3,4),(4,3),(4,4)))
+#su.SimulateInteractiveMode(env)
 
 # DEMO: policy evaluation
 #policy=LeftUpPolicy(env)
-policy=RandomPolicy(env)
-#policy=MinIndegreePolicy(env)
-EvaluatePolicy(env, policy,number_of_runs=1, print_runs=False, save_plots=False)
+#policy=RandomPolicy(env)
+policy=MinIndegreePolicy(env)
+EvaluatePolicy(env, policy,[0], print_runs=False, save_plots=True)
