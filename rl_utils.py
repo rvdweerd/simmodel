@@ -1,27 +1,27 @@
 from itertools import combinations
 import numpy as np
+import matplotlib.pyplot as plt
 
-def EvaluatePolicy(env, policy, number_of_runs=1, print_runs=True, save_plots=False):
+def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False):
     # Escaper chooses random neighboring nodes until temination
     # Inputs:
-    #   optimization_method: if dynamic, new optimal unit position targets are used at every time-step
-    #                        if static, only optimal unit position targets calculated at start are used and fixed
+    #   test_set: list of indices to the databank
     captured=[]
     iratios_sampled=[]
     rewards=[]
-    for i in range(number_of_runs):
-        s=env.reset()
+    for i, entry in enumerate(test_set):
+        s=env.reset(entry)
         iratios_sampled.append(env.iratio)
         done=False
         R=0
         if print_runs:
-            print('Run',i+1,": [",end='')
+            print('Run',i+1,': Initial state:,',env.state0,', Path:[',end='')
         count=0
         #e_history=[]
         while not done:
             #e_history.append(s[0])
             if save_plots:
-                env.render()
+                env.render(file_name='images_rl/Run'+str(i+1)+'_s0='+str(env.state0)+'t='+str(env.global_t))
             if print_runs:
                 print(str(s[0])+'->',end='')
             
@@ -35,9 +35,10 @@ def EvaluatePolicy(env, policy, number_of_runs=1, print_runs=True, save_plots=Fa
         if print_runs:
             print(str(s[0])+']. Done after',count,'steps, Captured:',info['Captured'],'Reward:',str(R))
         if save_plots:
-            env.render()
+            env.render(file_name='images_rl/Run'+str(i+1)+'_s0='+str(env.state0)+'t='+str(env.global_t))
         captured.append(int(info['Captured']))
         rewards.append(R)
+        plt.clf()
     print('------------------')
     print('Observed capture ratio: {:.3f}'.format(sum(captured)/len(captured)),', Average reward: {:.2f}'.format(sum(rewards)/len(rewards)))
     print('Capture ratio at data generation: last {:.3f}'.format(env.iratio),', avg at generation {:.3f}'.format(sum(env.iratios)/len(env.iratios)),\
@@ -159,4 +160,4 @@ def SelectTrainset(env, min_y_coord, min_num_same_positions, min_num_worlds):
     # print('Initial positions in trainset:')
     # for entry in init_pos_trainset1:
     #     print(entry)
-    return init_pos_trainset_indices0, init_pos_trainset_indices0
+    return init_pos_trainset_indices0, init_pos_trainset_indices1

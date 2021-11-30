@@ -7,7 +7,7 @@ import matplotlib
 import plotly.graph_objects as go
 import networkx as nx
 
-def PlotAgentsOnGraph_(sp, escape_pos, pursuers_pos, timestep, fig_show=False, fig_save=True):
+def PlotAgentsOnGraph_(sp, escape_pos, pursuers_pos, timestep, fig_show=False, fig_save=True, filename=None):
     G=sp.G#.to_directed()
     labels=sp.labels
     pos=sp.pos
@@ -53,7 +53,10 @@ def PlotAgentsOnGraph_(sp, escape_pos, pursuers_pos, timestep, fig_show=False, f
     plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, hspace = -0.5, wspace = 0)
     ax = plt.gca()
     ax.set_aspect('equal')
-    plt.savefig('test_t='+str(timestep)+'.png')
+    if filename == None:
+        plt.savefig('test_t='+str(timestep)+'.png')
+    else:
+        plt.savefig(filename+'.png')
     #plt.clf()
     
 
