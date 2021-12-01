@@ -1,3 +1,5 @@
+from environments import GraphWorld
+import simdata_utils as su
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -5,7 +7,7 @@ import numpy as np
 import random
 from torch import optim
 from dqn_utils import QNetwork, EpsilonGreedyPolicyDQN, ReplayMemory, FastReplayMemory, train
-#import sys
+
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def PolicyTest(env):
@@ -16,10 +18,10 @@ def PolicyTest(env):
     qnet=QNetwork(dim_in,dim_out,dim_hidden)
     s = env.reset()
     #print (torch.tensor(s,dtype=torch.float32).to(device))
-    epg = EpsilonGreedyPolicyDQN(qnet, 0.05,env)
+    epg = EpsilonGreedyPolicyDQN(qnet, env, eps_0=1.0, eps_min=0., eps_cutoff=100)
     a = epg.sample_action(s,env._availableActionsInCurrentState())
     assert not torch.is_tensor(a)
-    print('Policy test... passed')
+    print('Policy test... [passed]')
 
 def MemTest(env,capacity=10, num_episodes=3, print_output=True):
     if print_output:
@@ -52,7 +54,7 @@ def MemTest(env,capacity=10, num_episodes=3, print_output=True):
         elif type(s) == np.ndarray:
             print('State shape:',s.shape)
             print('Non-zero entries:',np.where(s!=0))
-        print('Memory sampling... passed')
+        print('Memory sampling... [passed]')
     return memory
 
 def FastMemTest(env,capacity=10, num_episodes=3, print_output=True):
@@ -83,7 +85,7 @@ def FastMemTest(env,capacity=10, num_episodes=3, print_output=True):
     if print_output:
         print('State shape:',s.shape)
         print('Non-zero entries:',torch.where(s!=0)[0])
-        print('Memory sampling... passed')
+        print('Memory sampling... [passed]')
     return memory
 
 
@@ -97,9 +99,9 @@ def TensorTest(env):
     next_state = torch.tensor(next_state, dtype=torch.float)
     reward = torch.tensor(reward, dtype=torch.float)[:, None]
     done = torch.tensor(done, dtype=torch.uint8)[:, None]  # Boolean
-    print('Tensor conversion: passed')
+    print('Tensor conversion: [passed]')
     print('State shape:',state.shape)
-    print('Torch test... passed')
+    print('Torch test... [passed]')
 
 def TorchTest():
     # Let's instantiate and test if it works
@@ -121,10 +123,11 @@ def TorchTest():
     # This saves time and memory, and PyTorch complaints when converting to numpy
     with torch.no_grad():
         assert np.allclose(Q_net(x).numpy(), test_model(x).numpy())
-    print('Torch test... passed')
+    print('Torch test... [passed]')
 
 def TrainTest(env):
-    replay_buffer = MemTest(env,capacity=100, num_episodes=50, print_output=False)
+    print('\n########## TrainTest #################')
+    replay_buffer = FastMemTest(env,capacity=100, num_episodes=50, print_output=False)
 
     # You may want to test your functions individually, but after you do so lets see if the method train works.
     batch_size = 64
@@ -138,4 +141,21 @@ def TrainTest(env):
     # Simple gradient descent may take long, so we will use Adam
     optimizer = optim.Adam(qnet.parameters(), learn_rate)
     loss = train(qnet, replay_buffer, optimizer, batch_size, discount_factor)
-    print (loss)
+    print ('Loss: {:.2f}'.format(loss))
+    print('Train test... [passed]')
+
+def TestAll(env):
+    MemTest(env)
+    FastMemTest(env)
+    TorchTest()
+    TensorTest(env)
+    PolicyTest(env)
+    TrainTest(env)
+    print('\n#######################################\n')
+
+if __name__ == '__main__':
+    configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
+    conf=configs['Manhattan5']
+    conf['direction_north']=False
+    env = GraphWorld(conf, optimization_method='dynamic', fixed_initial_positions=(2,15,19,22),state_representation='etUt', state_encoding='tensor')
+    TestAll(env)

@@ -49,7 +49,8 @@ def GetConfigs():
             'L': 4,    # Time steps
             'R': 100,  # Number of escape routes sampled 
             'direction_north': True,       # Directional preference of escaper
-            'start_escape_route': 'bottom_center' # Initial position of escaper (always bottom center)
+            'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
+            'fixed_initial_positions': (1,6,8)
         },
         "Manhattan5": {
             'graph_type': "Manhattan",
@@ -58,7 +59,8 @@ def GetConfigs():
             'L': 6,    # Time steps
             'R': 200,  # Number of escape routes sampled 
             'direction_north': True,       # Directional preference of escaper
-            'start_escape_route': 'bottom_center' # Initial position of escaper (always bottom center)
+            'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
+            'fixed_initial_positions': (2,15,19,22)
         },
         "Manhattan11": {
             'graph_type': "Manhattan",
@@ -67,7 +69,8 @@ def GetConfigs():
             'L': 16,    # Time steps
             'R': 1000,  # Number of escape routes sampled 
             'direction_north': True,       # Directional preference of escaper
-            'start_escape_route': 'bottom_center' # Initial position of escaper (always bottom center)
+            'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
+            'fixed_initial_positions': (5,107,110,114)
         },
         "CircGraph": {
             'graph_type': "CircGraph",
@@ -76,7 +79,8 @@ def GetConfigs():
             'L': 6,    # Time steps
             'R': 100,  # Number of escape routes sampled 
             'direction_north': False,       # Directional preference of escaper
-            'start_escape_route': 'bottom_center' # Initial position of escaper (always bottom center)
+            'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
+            'fixed_initial_positions': (9,1,2)
         },
         "TKGraph": {
             'graph_type': "TKGraph",

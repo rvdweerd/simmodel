@@ -4,7 +4,27 @@ import torch.nn.functional as F
 from torch import optim
 import numpy as np
 import random
+import os
+from tqdm import tqdm as _tqdm
+import time
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+def tqdm(*args, **kwargs):
+    return _tqdm(*args, **kwargs, mininterval=1)  # Safety, do not overflow buffer
+
+def seed_everything(seed):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    # if you are using multi-GPU.
+    np.random.seed(seed)
+    # Numpy module.
+    random.seed(seed)
+    # Python random module.
+    torch.manual_seed(seed)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
+    os.environ['PYTHONHASHSEED'] = str(seed)
 
 class QNetwork(nn.Module):
     
@@ -22,7 +42,7 @@ class QNetwork(nn.Module):
         for name, p in self.named_parameters():
             total += np.prod(p.shape)
             print("{:24s} {:12s} requires_grad={}".format(name, str(list(p.shape)), p.requires_grad))
-        print("\nTotal number of parameters: {}\n".format(total))
+        print("Total number of parameters: {}".format(total))
         assert total == sum(p.numel() for p in self.parameters() if p.requires_grad)
         return total
 
@@ -228,13 +248,14 @@ def train(Q, memory, optimizer, batch_size, discount_factor):
 
 
 def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discount_factor, learn_rate, noise=False):
-    
+    print_every=10
     optimizer = optim.Adam(Q.parameters(), learn_rate)
     
     global_steps = 0  # Count the steps (do not reset at episode start, to compute epsilon)
     episode_durations = []  
     episode_returns = []
     losses = []
+    start_time=time.time()
     for i in range(num_episodes):
         state = env.reset() 
         if noise:
@@ -257,10 +278,12 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
             # Take a train step
             loss = train(Q, memory, optimizer, batch_size, discount_factor)
             if done:
-                if (i) % 10 == 0:
-                    print("{2} Episode {0} finished after {1} steps"
+                if (i) % print_every == 0:
+                    duration=time.time()-start_time
+                    start_time=time.time()
+                    print("{2} Episode {0} finished after {1} steps. "
                           .format(i, steps, '\033[92m' if steps >= 195 else '\033[99m'), end='')
-                    print("Last episode return:",R, "epsilon", policy.epsilon)
+                    print("Last episode return:",R, "epsilon {:.2f}".format(policy.epsilon), "time per episode(ms) {:.2f}".format(duration/print_every*1000))
                 episode_durations.append(steps)
                 episode_returns.append(R)
                 losses.append(loss)#.detach().item())

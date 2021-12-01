@@ -14,6 +14,10 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False):
         iratios_sampled.append(env.iratio)
         done=False
         R=0
+        if env.sp.coord2labels[env.sp.target_node] == s[0]:
+            done = True
+            R=10
+            info = {'Captured':True}
         if print_runs:
             print('Run',i+1,': Initial state:,',env.state0,', Path:[',end='')
         count=0
@@ -28,6 +32,8 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False):
             action,_ = policy.sample_greedy_action(s)
 
             s,r,done,info = env.step(action)
+            if s[0]==1 and not done:
+                k=0
             count+=1
             R+=r
             # if count >= env.sp.L:
