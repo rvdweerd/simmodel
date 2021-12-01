@@ -38,11 +38,14 @@ class QNetwork(nn.Module):
         return self.l2(nn.ReLU()(self.l1(x)))
     
     def numTrainableParameters(self):
+        print('Qnet size:')
+        print('------------------------------------------')
         total = 0
         for name, p in self.named_parameters():
             total += np.prod(p.shape)
             print("{:24s} {:12s} requires_grad={}".format(name, str(list(p.shape)), p.requires_grad))
         print("Total number of parameters: {}".format(total))
+        print('------------------------------------------')
         assert total == sum(p.numel() for p in self.parameters() if p.requires_grad)
         return total
 
@@ -95,7 +98,8 @@ class FastReplayMemory:
         self.dones[self.insert_index]=transition[4]
         # inventory admin
         self.insert_index = (self.insert_index+1)%self.capacity        
-        self.num_filled+=1
+        if self.num_filled<self.capacity:
+            self.num_filled+=1
 
     def sample(self, batch_size):
         assert batch_size <= self.num_filled
@@ -120,14 +124,16 @@ class EpsilonGreedyPolicyDQN(object):
     """
     A simple epsilon greedy policy.
     """
-    def __init__(self, Q, env, eps_0 = 1., eps_min=0.05, eps_cutoff=1000):
+    def __init__(self, Q, env, eps_0 = 1., eps_min=0.1, eps_cutoff=100):
         self.Q = Q
+        self.rng = np.random.RandomState(1)
+        # Epsilon scheduling
         self.epsilon = eps_0
         self.epsilon0   = eps_0
         self.eps_min    = eps_min
         self.eps_cutoff = eps_cutoff
         self.eps_slope  = (eps_0-eps_min)/eps_cutoff
-        self.rng = np.random.RandomState(1)
+        # Graph attributes
         self.actions_from_node = env.neighbors
         self.out_degree=env.out_degree
         self.V = env.sp.V
@@ -143,9 +149,7 @@ class EpsilonGreedyPolicyDQN(object):
         Returns:
             An action (int).
         """
-        #epos = np.where(obs[:self.V]==1)
         draw = self.rng.uniform(0,1,1)
-        #print(draw)
         if draw <= self.epsilon:
             num_actions = len(available_actions)
             action_idx = random.randint(0,num_actions-1)
@@ -156,13 +160,22 @@ class EpsilonGreedyPolicyDQN(object):
                 num_actions=len(available_actions)
                 action_idx = torch.argmax(y[:num_actions]).item()
             return action_idx, None
-        
-    def set_epsilon(self, global_steps):
+
+    # def sample_greedy_action(self, obs, available_actions):
+    #     """
+    #     """
+    #     with torch.no_grad():
+    #         y = self.Q(torch.tensor(obs,dtype=torch.float32).to(device))
+    #         num_actions=len(available_actions)
+    #         action_idx = torch.argmax(y[:num_actions]).item()
+    #     return action_idx, None
+
+    def set_epsilon(self, episodes_run):
         if self.eps_cutoff > 0:
-            if global_steps > self.eps_cutoff:
+            if episodes_run > self.eps_cutoff:
                 self.epsilon = self.eps_min
             else:
-                self.epsilon = self.epsilon0 - self.eps_slope * global_steps
+                self.epsilon = self.epsilon0 - self.eps_slope * episodes_run
         #else:
         #   self.epsilon = self.epsilon0
 
@@ -214,22 +227,6 @@ def train(Q, memory, optimizer, batch_size, discount_factor):
         return None
 
     state, action, reward, next_state, done = memory.sample(batch_size)
-    # # random transition batch is taken from experience replay memory
-    # transitions = memory.sample(batch_size)
-    # # transition is a list of 4-tuples, instead we want 4 vectors (as torch.Tensor's)
-    # state, action, reward, next_state, done = zip(*transitions)
-    # state=np.array(state)
-    # action=np.array(action)
-    # reward=np.array(reward)
-    # next_state=np.array(next_state)
-    # done=np.array(done)
-    # # convert to PyTorch and define types
-    # state = torch.tensor(state, dtype=torch.float).to(device)
-    # action = torch.tensor(action, dtype=torch.int64)[:, None].to(device)  # Need 64 bit to use them as index
-    # next_state = torch.tensor(next_state, dtype=torch.float).to(device)
-    # reward = torch.tensor(reward, dtype=torch.float)[:, None].to(device)
-    # done = torch.tensor(done, dtype=torch.uint8)[:, None].to(device)  # Boolean
-    
     # compute the q value
     q_val = compute_q_vals(Q, state, action)
     with torch.no_grad():  # Don't compute gradient info for the target (semi-gradient)
@@ -247,8 +244,7 @@ def train(Q, memory, optimizer, batch_size, discount_factor):
     return loss.item()  # Returns a Python scalar, and releases history (similar to .detach())
 
 
-def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discount_factor, learn_rate, noise=False):
-    print_every=10
+def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discount_factor, learn_rate, print_every=100,  noise=False):
     optimizer = optim.Adam(Q.parameters(), learn_rate)
     
     global_steps = 0  # Count the steps (do not reset at episode start, to compute epsilon)
@@ -256,7 +252,7 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
     episode_returns = []
     losses = []
     start_time=time.time()
-    for i in range(num_episodes):
+    for epi in range(num_episodes):
         state = env.reset() 
         if noise:
             state += np.random.rand(100)/200.
@@ -265,7 +261,7 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
         R=0
         while True:
             # Run one episode
-            policy.set_epsilon(global_steps)
+            policy.set_epsilon(epi)
             action_idx, next_node = policy.sample_action(state,env._availableActionsInCurrentState())
             s_next, r, done, _ = env.step(action_idx)
             if noise:
@@ -278,11 +274,11 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
             # Take a train step
             loss = train(Q, memory, optimizer, batch_size, discount_factor)
             if done:
-                if (i) % print_every == 0:
+                if (epi) % print_every == 0:
                     duration=time.time()-start_time
                     start_time=time.time()
                     print("{2} Episode {0} finished after {1} steps. "
-                          .format(i, steps, '\033[92m' if steps >= 195 else '\033[99m'), end='')
+                          .format(epi, steps, '\033[92m' if steps >= 195 else '\033[99m'), end='')
                     print("Last episode return:",R, "epsilon {:.2f}".format(policy.epsilon), "time per episode(ms) {:.2f}".format(duration/print_every*1000))
                 episode_durations.append(steps)
                 episode_returns.append(R)

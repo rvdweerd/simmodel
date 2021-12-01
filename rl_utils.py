@@ -14,7 +14,7 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False):
         iratios_sampled.append(env.iratio)
         done=False
         R=0
-        if env.sp.coord2labels[env.sp.target_node] == s[0]:
+        if env.sp.coord2labels[env.sp.target_node] == env.state[0]:
             done = True
             R=10
             info = {'Captured':True}
@@ -27,13 +27,11 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False):
             if save_plots:
                 env.render(file_name='images_rl/Run'+str(i+1)+'_s0='+str(env.state0)+'t='+str(env.global_t))
             if print_runs:
-                print(str(s[0])+'->',end='')
+                print(str(env.state[0])+'->',end='')
             
-            action,_ = policy.sample_greedy_action(s)
+            action,_ = policy.sample_action(s, env._availableActionsInCurrentState())
 
             s,r,done,info = env.step(action)
-            if s[0]==1 and not done:
-                k=0
             count+=1
             R+=r
             # if count >= env.sp.L:
@@ -46,12 +44,13 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False):
         rewards.append(R)
         plt.clf()
     print('------------------')
-    print('Observed capture ratio: {:.3f}'.format(sum(captured)/len(captured)),', Average reward: {:.2f}'.format(sum(rewards)/len(rewards)))
-    print('Capture ratio at data generation: last {:.3f}'.format(env.iratio),', avg at generation {:.3f}'.format(sum(env.iratios)/len(env.iratios)),\
-        ', avg sampled {:.3f}'.format(sum(iratios_sampled)/len(iratios_sampled)),'\n')
+    print('Observed escape ratio: {:.3f}'.format(1-sum(captured)/len(captured)),', Average reward: {:.2f}'.format(sum(rewards)/len(rewards)))
+    print('Escape ratio at data generation: last {:.3f}'.format(1-env.iratio),', avg at generation {:.3f}'.format(1-sum(env.iratios)/len(env.iratios)),\
+        ', avg sampled {:.3f}'.format(1-sum(iratios_sampled)/len(iratios_sampled)),'\n')
 
 # find u0's in higher rows
 def GetInitialStatesList(env, min_y_coord):
+    # Get pointers to all initial conditions with Units above min_y_coord
     idx=[]
     initpos=[]
     for k,v in env.register['coords'].items():
@@ -85,7 +84,7 @@ def GetSetOfPermutations(path):
         #yield from combinations(iterable, n)
     return out
 
-def GetDuplicatePathsIndices(paths, min_num_same_positions, min_num_worlds):
+def GetDuplicatePathsIndices(paths, min_num_same_positions, min_num_worlds, print_selection=False):
     duplicates_idx=set()
     for row in range(paths.shape[1]):
         map={}
@@ -108,12 +107,13 @@ def GetDuplicatePathsIndices(paths, min_num_same_positions, min_num_worlds):
                     map[p]+=1
         for k,v in map.items():
             if len(k) >= min_num_same_positions and v >= min_num_worlds: # at least 3 units on same position, at least in 2 worlds
-                print('identical U positions',k,'appear in worlds',map2envs[k],'in time-step',row)
+                if print_selection:
+                    print('identical U positions',k,'appear in worlds',map2envs[k],'in time-step',row)
                 for i in map2envs[k]:
                     duplicates_idx.add(i)
     return list(duplicates_idx)
 
-def GetPathsTensor(env,db_indices):
+def GetPathsTensor(env, db_indices, print_selection=False):
     paths = []
     for i in db_indices:
         e = env.databank['labels'][i]
@@ -130,12 +130,13 @@ def GetPathsTensor(env,db_indices):
             ipaths.append(tuple(p))
         paths.append(ipaths)
     paths_np=np.array(paths)
-    print('Paths found:',paths_np.shape)
+    if print_selection:
+        print('Paths found:',paths_np.shape)
     return paths_np, paths
 
-def SelectTrainset(env, min_y_coord, min_num_same_positions, min_num_worlds):
+def SelectTrainset(env, min_y_coord, min_num_same_positions, min_num_worlds, print_selection=False):
     db_indices, init_pos_list = GetInitialStatesList(env, min_y_coord)
-    paths_np, paths = GetPathsTensor(env, db_indices)
+    paths_np, paths = GetPathsTensor(env, db_indices, print_selection=print_selection)
 
     duplicates_indices0=set()
     for world_source in range(len(paths)):
@@ -151,12 +152,13 @@ def SelectTrainset(env, min_y_coord, min_num_same_positions, min_num_worlds):
                     key2_tt.sort()
                     #if key2_t[:2] == key1[:2] and key2_tt[:2] != key1[:2]:
                     if key2_t == key1 and key2_tt != key1:
-                        print('t=',t,'Pair found:',paths[world_source],paths[world_target])
+                        if print_selection:
+                            print('t=',t,'Pair found:',paths[world_source],paths[world_target])
                         duplicates_indices0.add(world_target)
                         duplicates_indices0.add(world_source)
     
     duplicates_indices0 = list(duplicates_indices0)
-    duplicates_indices1 = GetDuplicatePathsIndices(paths_np, min_num_same_positions, min_num_worlds)    
+    duplicates_indices1 = GetDuplicatePathsIndices(paths_np, min_num_same_positions, min_num_worlds, print_selection=print_selection)    
     
     init_pos_trainset0=[init_pos_list[i] for i in duplicates_indices0]
     init_pos_trainset_indices0=[db_indices[i] for i in duplicates_indices0]

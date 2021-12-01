@@ -75,7 +75,7 @@ class EpsilonGreedyPolicy(object):
         self.sa_count[obs][action_idx] += 1
         return action_idx, action
 
-    def sample_greedy_action(self, obs):
+    def sample_greedy_action(self, obs, available_actions=None):
         """
         """
         # If state has never been visited, create Q table entry and initiate counts
@@ -97,7 +97,7 @@ class EpsilonGreedyPolicy(object):
 class LeftUpPolicy(object):
     def __init__(self, env):
         self.env=env
-    def sample_greedy_action(self, s):
+    def sample_greedy_action(self, s, available_actions=None):
         possible_actions = self.env.neighbors[s[0]]
         if s[0]-1 in possible_actions: # can go left
             action = possible_actions.index(int(s[0]-1))
@@ -113,7 +113,7 @@ class RandomPolicy(object):
     def __init__(self, env):
         #self.env=env
         self.out_degree=env.out_degree
-    def sample_greedy_action(self, s):
+    def sample_greedy_action(self, s, available_actions=None):
         num_actions = self.out_degree[s[0]]
 
         #possible_actions = self.env.neighbors[s[0]]
@@ -133,7 +133,7 @@ class MinIndegreePolicy(object):
             v_label = self.env.sp.coord2labels[e[1]]
             self.G[e[0]][e[1]]['weight'] = self.env.in_degree[v_label]**6 # exponential to sufficiently punish larger indegrees
 
-    def sample_greedy_action(self, s):
+    def sample_greedy_action(self, s, available_actions=None):
         target_node_label = self.env.sp.coord2labels[self.env.sp.target_node]
         target_node_coord = self.env.sp.target_node
         source_node_label = s[0]

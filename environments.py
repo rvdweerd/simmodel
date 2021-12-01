@@ -18,9 +18,10 @@ class GraphWorld(object):
             dirname += '_allE'
         self.register, self.databank, self.iratios = self._LoadAndConvertDataFile(dirname) #su.LoadDatafile(dirname)
         # Create a world_pool list of indices of pre-saved initial conditions and their rollout
+        self.all_worlds = [ind for k,ind in self.register['labels'].items()]
+        assert len(self.all_worlds) == len(self.iratios)
         if fixed_initial_positions == None:
-            self.world_pool = [ind for k,ind in self.register['labels'].items()]
-            assert len(self.world_pool) == len(self.iratios)
+            self.world_pool = self.all_worlds
         elif type(fixed_initial_positions[0]) == tuple:
             self.world_pool = [self.register['coords'][fixed_initial_positions]]
         elif type(fixed_initial_positions[0]) == int:
@@ -196,7 +197,7 @@ class GraphWorld(object):
         new_Upositions = self._getUpositions(self.local_t) # uses local time: u_paths may have been updated from last state if sim is dynamic
         new_Upositions.sort()
         self.state = tuple([next_node] + new_Upositions)
-        reward = -1.
+        reward = 0.#-1.
         done = False
         if self.global_t >= self.sp.T*2:
             done=True
