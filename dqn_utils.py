@@ -80,8 +80,11 @@ class FastReplayMemory:
     def sample(self, batch_size):
         assert batch_size <= self.num_filled
         # NOTE: with replacement (check impact!)
-        #indices=torch.randint(self.num_filled,(batch_size,))
-        indices=torch.multinomial(torch.ones(self.num_filled),batch_size,replacement=False)
+        indices=torch.randint(self.num_filled,(batch_size,))
+        ## Without replacement (two options):
+        #indices=torch.multinomial(torch.ones(self.num_filled),batch_size,replacement=False)
+        #indices = torch.from_numpy(np.random.choice(self.num_filled,batch_size,replace=False))#.unsqueeze(dim=1)
+
         return  self.state[indices], \
                 self.actions[indices][:,None],\
                 self.rewards[indices][:,None],\

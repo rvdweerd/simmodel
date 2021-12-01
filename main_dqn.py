@@ -57,7 +57,7 @@ learn_rate = 1e-3#1e-3
 eps_0       = 1.#.5
 eps_min     = 0.05
 cutoff      = 3500
-num_episodes = 1500
+num_episodes = 900
 
 # We will seed the algorithm (before initializing QNetwork!) for reproducibility
 #random.seed(seed)
@@ -98,5 +98,3 @@ while True:
     action_idx, action = policy.sample_action(s,env._availableActionsInCurrentState())
     s_next, r, done, info = env.step(action_idx)
     s=s_next
-
-k=0
