@@ -133,12 +133,18 @@ class MinIndegreePolicy(object):
             v_label = self.env.sp.coord2labels[e[1]]
             self.G[e[0]][e[1]]['weight'] = self.env.in_degree[v_label]**6 # exponential to sufficiently punish larger indegrees
 
+    def sample_action(self, s, available_actions=None):
+        return self.sample_greedy_action(s, available_actions)
+
     def sample_greedy_action(self, s, available_actions=None):
         target_node_label = self.env.sp.coord2labels[self.env.sp.target_node]
         target_node_coord = self.env.sp.target_node
-        source_node_label = s[0]
-        source_node_coord = self.env.sp.labels2coord[s[0]]
+        if type(s) == np.ndarray:
+            source_node_label = int(np.where(s[:self.env.sp.V]>0)[0])
+        elif type(s) == tuple:
+            source_node_label = s[0]
+        source_node_coord = self.env.sp.labels2coord[source_node_label]
         best_path = nx.dijkstra_path(self.G, source_node_coord, target_node_coord, weight='weight')
         next_node = self.env.sp.coord2labels[best_path[1]]
-        action = self.env.neighbors[s[0]].index(int(next_node))
+        action = self.env.neighbors[source_node_label].index(int(next_node))
         return action, None

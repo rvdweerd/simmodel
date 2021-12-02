@@ -17,7 +17,7 @@ conf=configs['Manhattan5']
 conf['direction_north']=False
 
 env=GraphWorld(conf, optimization_method='static', fixed_initial_positions=None)
-init_pos_trainset_indices0, init_pos_trainset_indices1 = SelectTrainset(env, min_y_coord=env.sp.N-2, min_num_same_positions=env.sp.U, min_num_worlds=4, print_selection=True)
+init_pos_trainset_indices0, init_pos_trainset_indices1 = SelectTrainset(env, min_y_coord=env.sp.N-1, min_num_same_positions=env.sp.U, min_num_worlds=4, print_selection=True)
 env.world_pool = init_pos_trainset_indices1 # limit the training set to the selected entries
 print('-------- sampling initial states')
 su.SimulateInteractiveMode(env)

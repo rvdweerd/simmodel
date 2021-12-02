@@ -40,6 +40,18 @@ class SimParameters(object):
         out += ', ('+str(self.N)+'x'+str(self.N)+') nodes, ...'
         return out
 
+def GetStateEncodingDimension(state_representation, V, U):
+    if state_representation == 'etUt':
+        return (1+U)*V
+    elif state_representation == 'et':
+        return V
+    elif state_representation == 'etUte0U0':
+        return 2*(1+U)*V
+    elif state_representation == 'ete0U0':
+        return (2+U)*V
+    else:
+        assert False
+
 def GetConfigs():
     configs = {
         "Manhattan3": {

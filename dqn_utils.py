@@ -224,7 +224,7 @@ def train(Q, memory, optimizer, batch_size, discount_factor):
     
     # don't learn without some decent experience
     if memory.__len__() < batch_size:
-        return None
+        return 0.
 
     state, action, reward, next_state, done = memory.sample(batch_size)
     # compute the q value
@@ -248,9 +248,9 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
     optimizer = optim.Adam(Q.parameters(), learn_rate)
     
     global_steps = 0  # Count the steps (do not reset at episode start, to compute epsilon)
-    episode_durations = []  
+    episode_lengths = []  
     episode_returns = []
-    losses = []
+    episode_losses = []
     start_time=time.time()
     for epi in range(num_episodes):
         state = env.reset() 
@@ -276,17 +276,21 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
             if done:
                 if (epi) % print_every == 0:
                     duration=time.time()-start_time
+                    avg_steps = np.mean(episode_lengths[-print_every:])
+                    avg_returns = np.mean(episode_returns[-print_every:])
+                    avg_loss = np.mean(episode_losses[-print_every:])
                     start_time=time.time()
-                    print("{2} Episode {0} finished after {1} steps. "
-                          .format(epi, steps, '\033[92m' if steps >= 195 else '\033[99m'), end='')
-                    print("Last episode return:",R, "epsilon {:.2f}".format(policy.epsilon), "time per episode(ms) {:.2f}".format(duration/print_every*1000))
-                episode_durations.append(steps)
+                    print("{2} Episode {0}. Last avg episode length {1:0.1f}; "
+                          .format(epi, avg_steps, '\033[92m' if avg_returns >= 0 else '\033[97m'), end='')
+                    print("Avg episode return:",avg_returns, "epsilon {:.1f}".format(policy.epsilon), "time per episode(ms) {:.2f}".format(duration/print_every*1000))
+                episode_lengths.append(steps)
                 episode_returns.append(R)
-                losses.append(loss)#.detach().item())
+                episode_losses.append(loss)#.detach().item())
                 #plot_durations()
                 break
         
-    return episode_durations, episode_returns, losses
+    print('\033[97m')
+    return episode_lengths, episode_returns, episode_losses
 
 if __name__ == '__main__':
     pass

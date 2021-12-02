@@ -1,6 +1,7 @@
 from itertools import combinations
 import numpy as np
 import matplotlib.pyplot as plt
+from torch.cuda import init
 
 def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False):
     # Escaper chooses random neighboring nodes until temination
@@ -9,6 +10,7 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False):
     captured=[]
     iratios_sampled=[]
     rewards=[]
+    lengths=[]
     for i, entry in enumerate(test_set):
         s=env.reset(entry)
         iratios_sampled.append(env.iratio)
@@ -42,9 +44,10 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False):
             env.render(file_name='images_rl/Run'+str(i+1)+'_s0='+str(env.state0)+'t='+str(env.global_t))
         captured.append(int(info['Captured']))
         rewards.append(R)
+        lengths.append(count)
         plt.clf()
     print('------------------')
-    print('Observed escape ratio: {:.3f}'.format(1-sum(captured)/len(captured)),', Average reward: {:.2f}'.format(sum(rewards)/len(rewards)))
+    print('Test set size:',len(test_set),'Observed escape ratio: {:.3f}'.format(1-np.mean(captured)),', Average episode length: {:.2f}'.format(np.mean(lengths)),', Average return: {:.2f}'.format(np.mean(rewards)))
     print('Escape ratio at data generation: last {:.3f}'.format(1-env.iratio),', avg at generation {:.3f}'.format(1-sum(env.iratios)/len(env.iratios)),\
         ', avg sampled {:.3f}'.format(1-sum(iratios_sampled)/len(iratios_sampled)),'\n')
 
@@ -165,7 +168,8 @@ def SelectTrainset(env, min_y_coord, min_num_same_positions, min_num_worlds, pri
     init_pos_trainset1=[init_pos_list[i] for i in duplicates_indices1]
     init_pos_trainset_indices1=[db_indices[i] for i in duplicates_indices1]
 
-    # print('Initial positions in trainset:')
-    # for entry in init_pos_trainset1:
-    #     print(entry)
+    # remove entries in trainset1 from trainset0 to enhance differences
+    for e1 in init_pos_trainset_indices1:
+        if e1 in init_pos_trainset_indices0:
+            init_pos_trainset_indices0.remove(e1)
     return init_pos_trainset_indices0, init_pos_trainset_indices1

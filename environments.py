@@ -8,11 +8,13 @@ import numpy as np
 class GraphWorld(object):
     """"""
     def __init__(self, config, optimization_method='static', fixed_initial_positions=None, state_representation='etUt', state_encoding='nodes'):
-        self.type='GraphWorld'
-        self.optimization=optimization_method
-        self.fixed_initial_positions = fixed_initial_positions
-        self.state_representation=state_representation
-        self.sp = su.DefineSimParameters(config)
+        self.type                   ='GraphWorld'
+        self.sp                     = su.DefineSimParameters(config)
+        self.optimization           = optimization_method
+        self.fixed_initial_positions= fixed_initial_positions
+        self.state_representation   = state_representation
+        self.state_encoding_dim     = su.GetStateEncodingDimension(state_representation, self.sp.V, self.sp.U)
+
         dirname = su.make_result_directory(self.sp)
         if optimization_method == 'dynamic':
             dirname += '_allE'
@@ -43,28 +45,38 @@ class GraphWorld(object):
         #self.vec2dir={(0,1):'N',(1,0):'E',(0,-1):'S',(-1,0):'W'}
         #self.dir2vec={d:c for c,d in self.vec2dir.items()}
         #self.reachable_nodes = []
-        self.neighbors, self.in_degree, self.max_indegree, self.out_degree, self.max_outdegree = self.GetGraphData_()
+        self.neighbors, self.in_degree, self.max_indegree, self.out_degree, self.max_outdegree = self._GetGraphData()
         self.reset()
 
     def encode_nodes_(self, s):
         return s
 
     def encode_tensor_(self, s):
-        return self.state2np(s)
+        return self._state2vec(s)
 
-    def state2np(self,s):
+    def _state2np_mat(self,s):
         if self.state_representation == 'etUt':
             out = np.zeros((self.sp.U+1,self.sp.V))
             out[0,s[0]]=1
             upos=list(s[1:])
-            upos.sort()
+            #upos.sort()
             for i,u in enumerate(upos):
                 out[i+1,u]=1
         else:
-            assert False
+            return NotImplementedError
         return out.flatten()#.to(device)
 
-    def GetGraphData_(self):
+    def _state2vec(self, state, sort_units=False):
+        d=len(state)
+        out=np.zeros(self.sp.V*d) # num_nodes x number of objects to be represented
+        if sort_units:
+            return NotImplementedError
+        else:
+            for i, pos in enumerate(state):
+                out[i*self.sp.V+pos] = 1
+        return out
+
+    def _GetGraphData(self):
         G=self.sp.G.to_directed()
         
         neighbors_labels = {}
@@ -183,10 +195,14 @@ class GraphWorld(object):
         self.state0   = self.state
         if self.state_representation == 'etUt':
             return self.encode_(self.state)
+        elif self.state_representation == 'et':
+            return self.encode_((self.state[0],))
         elif self.state_representation == 'etUte0U0':
             return self.encode_(self.state+self.state0)
         elif self.state_representation == 'ete0U0':
             return self.encode_(tuple([self.state[0]])+self.state0)
+        else:
+            assert False
 
     def step(self, action_idx):
         next_node = self.neighbors[self.state[0]][action_idx]
@@ -197,7 +213,7 @@ class GraphWorld(object):
         new_Upositions = self._getUpositions(self.local_t) # uses local time: u_paths may have been updated from last state if sim is dynamic
         new_Upositions.sort()
         self.state = tuple([next_node] + new_Upositions)
-        reward = 0.#-1.
+        reward = -1.
         done = False
         if self.global_t >= self.sp.T*2:
             done=True
@@ -219,6 +235,8 @@ class GraphWorld(object):
 
         if self.state_representation == 'etUt':
             return self.encode_(self.state), reward, done, info
+        elif self.state_representation == 'et':
+            return self.encode_((self.state[0],)), reward, done, info
         elif self.state_representation == 'etUte0U0':
             return self.encode_(self.state+self.state0), reward, done, info
         elif self.state_representation == 'ete0U0':
