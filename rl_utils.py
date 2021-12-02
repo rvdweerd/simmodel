@@ -53,7 +53,6 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False):
     if len(rewards) <20:
         print('Returns:',rewards)
 
-# find u0's in higher rows
 def GetInitialStatesList(env, min_y_coord):
     # Get pointers to all initial conditions with Units above min_y_coord
     idx=[]
@@ -65,17 +64,13 @@ def GetInitialStatesList(env, min_y_coord):
                 if u[1] < min_y_coord:
                     valid = False
                     break
-            #if k[1][1]>=min_y_coord and k[2][1]>=min_y_coord and k[3][1]>=min_y_coord:
             if valid:
-                #print(k,v)
                 idx.append(v)
-                #initpos.append(env._to_state_from_coords(k[0],k[1:]))
                 ipos=[env.sp.coord2labels[k[0]]]
                 for u in k[1:]:
                     ipos.append(env.sp.coord2labels[u])
                 ipos.sort()
                 initpos.append(tuple(ipos))
-
     return idx, initpos
 
 def GetSetOfPermutations(path):
@@ -86,7 +81,6 @@ def GetSetOfPermutations(path):
             j=list(i)
             j.sort()
             out.add(tuple(j))
-        #yield from combinations(iterable, n)
     return out
 
 def GetDuplicatePathsIndices(paths, min_num_same_positions, min_num_worlds, print_selection=False):
@@ -139,7 +133,7 @@ def GetPathsTensor(env, db_indices, print_selection=False):
         print('Paths found:',paths_np.shape)
     return paths_np, paths
 
-def SelectTrainset(env, min_y_coord, min_num_same_positions, min_num_worlds, print_selection=False):
+def CreateDuplicatesTrainsets(env, min_y_coord, min_num_same_positions, min_num_worlds, print_selection=False):
     db_indices, init_pos_list = GetInitialStatesList(env, min_y_coord)
     paths_np, paths = GetPathsTensor(env, db_indices, print_selection=print_selection)
 

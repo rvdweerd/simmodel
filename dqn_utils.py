@@ -7,6 +7,7 @@ import random
 import os
 from tqdm import tqdm as _tqdm
 import time
+import copy
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def tqdm(*args, **kwargs):
@@ -26,23 +27,19 @@ def seed_everything(seed):
     torch.backends.cudnn.deterministic = True
     os.environ['PYTHONHASHSEED'] = str(seed)
 
-class QNetwork(nn.Module):
-    
+class QNetwork(nn.Module):   
     def __init__(self, num_in, num_out, num_hidden=[128]):
         nn.Module.__init__(self)
-        layers=[]
-        layer_sizes=[num_in]+num_hidden
+        layers      = []
+        layer_sizes = [num_in]+num_hidden
         for layer_idx in range(1,len(layer_sizes)):
             layers += [ nn.Linear(layer_sizes[layer_idx-1], layer_sizes[layer_idx]), nn.ReLU() ]
-        layers += [ nn.Linear(layer_sizes[-1], num_out) ]
+        layers     += [ nn.Linear(layer_sizes[-1], num_out) ]
         self.layers = nn.Sequential(*layers)
-        self.out_dim = num_out
-        #self.l1 = nn.Linear(num_in, num_hidden)
-        #self.l2 = nn.Linear(num_hidden, num_out)
+        self.out_dim= num_out
         self.numTrainableParameters()
 
     def forward(self, x):
-        #return self.l2(nn.ReLU()(self.l1(x)))
         return self.layers(x)
     
     def numTrainableParameters(self):
@@ -63,8 +60,6 @@ class ReplayMemory:
         self.memory = []
 
     def push(self, transition):
-        #s  = self.state2np(transition[0])
-        #s_ = self.state2np(transition[3])
         if len(self.memory) >= self.capacity:
             del self.memory[0]
         self.memory.append(transition)
@@ -111,7 +106,7 @@ class FastReplayMemory:
 
     def sample(self, batch_size):
         assert batch_size <= self.num_filled
-        # NOTE: with replacement (check impact!)
+        # NOTE: with replacement (CHECK impact!)
         indices=torch.randint(self.num_filled,(batch_size,))
         ## Without replacement (two options):
         #indices=torch.multinomial(torch.ones(self.num_filled),batch_size,replacement=False)
@@ -169,15 +164,6 @@ class EpsilonGreedyPolicyDQN(object):
                 action_idx = torch.argmax(y[:num_actions]).item()
             return action_idx, None
 
-    # def sample_greedy_action(self, obs, available_actions):
-    #     """
-    #     """
-    #     with torch.no_grad():
-    #         y = self.Q(torch.tensor(obs,dtype=torch.float32).to(device))
-    #         num_actions=len(available_actions)
-    #         action_idx = torch.argmax(y[:num_actions]).item()
-    #     return action_idx, None
-
     def set_epsilon(self, episodes_run):
         if self.eps_cutoff > 0:
             if episodes_run > self.eps_cutoff:
@@ -228,30 +214,24 @@ def compute_targets(Q, rewards, next_states, dones, discount_factor):
     return res
 
 def train(Q, Q_target, memory, optimizer, batch_size, discount_factor):
-    # DO NOT MODIFY THIS FUNCTION
-    
-    # don't learn without some decent experience
+    # don't learn without enough experience to replay
     if memory.__len__() < batch_size:
         return 0.
 
     state, action, reward, next_state, done = memory.sample(batch_size)
-    # compute the q value
     q_val = compute_q_vals(Q, state, action)
     with torch.no_grad():  # Don't compute gradient info for the target (semi-gradient)
         target = compute_targets(Q_target, reward, next_state, done, discount_factor)
-    
-    # loss is measured from error between current and newly expected Q values
     loss = F.smooth_l1_loss(q_val, target)
     #loss = F.mse_loss(q_val, target)
 
-    # backpropagation of loss to Neural Network (PyTorch magic)
+    # backpropagation of loss to Neural Network
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
     
     return loss.item()  # Returns a Python scalar, and releases history (similar to .detach())
 
-import copy
 def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discount_factor, learn_rate, print_every=100,  noise=False):
     optimizer = optim.Adam(Q.parameters(), learn_rate)
     Q_target=copy.deepcopy(Q)

@@ -4,16 +4,13 @@ import simdata_utils as su
 import matplotlib.pyplot as plt
 import torch
 from dqn_utils import seed_everything, QNetwork, FastReplayMemory, EpsilonGreedyPolicyDQN, train, run_episodes
-from rl_utils import EvaluatePolicy, SelectTrainset
+from rl_utils import EvaluatePolicy, CreateDuplicatesTrainsets
 from rl_policy import MinIndegreePolicy
-
 import time
 import os
 
 #os.environ["CUDA_VISIBLE_DEVICES"]="-1"
-# Select comp device
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
 print('Device = ',device)
 
 # Select graph world
@@ -43,7 +40,7 @@ state_noise     = False
 seed_everything(seed)
 env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=fixed_init, state_representation='etUte0U0', state_encoding='tensor')
 # Select specific trainset, set0 has identical states with different rollouts, set1 has identical states with identical rollouts
-init_pos_trainset_indices0, init_pos_trainset_indices1 = SelectTrainset(env, min_y_coord=env.sp.N-1, min_num_same_positions=env.sp.U, min_num_worlds=4, print_selection=False)
+init_pos_trainset_indices0, init_pos_trainset_indices1 = CreateDuplicatesTrainsets(env, min_y_coord=env.sp.N-1, min_num_same_positions=env.sp.U, min_num_worlds=4, print_selection=False)
 #env.world_pool = init_pos_trainset_indices0 # limit the training set to the selected entries
 # Select full world pool
 env.world_pool = env.all_worlds

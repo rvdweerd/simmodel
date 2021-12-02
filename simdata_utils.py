@@ -2,15 +2,15 @@
 #from dataclasses import dataclass
 #import time
 #import networkx as nx
+#import matplotlib.image as mpimg
+#import matplotlib.pyplot as plt
+#from datetime import datetime
+#import plotly.graph_objects as go
 import random
-from datetime import datetime
 from pathlib import Path
 import os
 import pickle
 from sim_graphs import graph, CircGraph, TKGraph
-import plotly.graph_objects as go
-import matplotlib.pyplot as plt
-#import matplotlib.image as mpimg
 from rl_plotting import PlotAgentsOnGraph
 
 class SimParameters(object):
@@ -61,8 +61,6 @@ def GetWorldPool(all_worlds, fixed_initial_positions, register):
         return [register['labels'][fixed_initial_positions]]
     else:
         assert False
-
-#def GetGraphData():
 
 def GetConfigs():
     configs = {
@@ -163,11 +161,38 @@ def DefineSimParameters(config):
         label = sp.coord2labels[coord]
         sp.labels2nodeids[label]=nodeid
         sp.nodeids2labels[nodeid]=label
-
     return sp
 
+def GetGraphData(sp):
+    G = sp.G.to_directed()
+    neighbors_labels = {}
+    for node_coord in G.nodes:
+        local_neighbors_labels = []
+        node_label = sp.coord2labels[node_coord]
+        for n_coord in G.neighbors(node_coord):
+            n_label = sp.coord2labels[n_coord]
+            local_neighbors_labels.append(n_label)
+        local_neighbors_labels.sort()
+        neighbors_labels[node_label] = local_neighbors_labels
+
+    max_outdegree=0
+    outdegrees_labels={}
+    for coord,deg in G.out_degree:
+        outdegrees_labels[sp.coord2labels[coord]] = deg
+        if deg>max_outdegree:
+            max_outdegree=deg
+    
+    max_indegree=0
+    indegrees_labels={}
+    for coord,deg in G.in_degree:
+        indegrees_labels[sp.coord2labels[coord]] = deg
+        if deg>max_indegree:
+            max_indegree=deg
+    
+    return neighbors_labels, indegrees_labels, max_indegree, outdegrees_labels, max_outdegree
+
 def make_dirname(sp):
-    timestamp = datetime.now()
+    #timestamp = datetime.now()
     dirname = "datasets/" \
         + str(sp.graph_type) + \
         "_N="+ str(sp.N) + \
