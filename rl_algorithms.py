@@ -37,7 +37,7 @@ def q_learning(env, policy, num_episodes, discount_factor=1.0, alpha_0 = 0.5, al
         done = False
         if print_episodes: print('episode '+str(i_episode)+' - [S'+str(start_state)+' ', end='')
         while not done:
-            start_action_idx, start_action = policy.sample_action(start_state)
+            start_action_idx, start_action = policy.sample_action(start_state, None)
             #print('state '+str(start_state)+'action '+str(start_action)+',',end='')
             new_state, reward, done, _ = env.step(start_action_idx)
             if print_episodes: 
@@ -67,6 +67,73 @@ def q_learning(env, policy, num_episodes, discount_factor=1.0, alpha_0 = 0.5, al
     episode_lengths, episode_returns = zip(*stats)
     metrics_vanilla = [episode_returns, episode_lengths]
     return policy.Q, metrics_vanilla, policy, Q_tables
+
+def q_learning_exhaustive(env, policy, num_episodes, discount_factor=1.0, alpha_0 = 0.5, alpha_decay=0., print_episodes=False):
+    """
+    Q-Learning algorithm: Off-policy TD control. Finds the optimal greedy policy
+    while following an epsilon-greedy policy
+
+    Args:
+        env: OpenAI environment.
+        policy: A behavior policy which allows us to sample actions with its sample_action method.
+        Q: Q value function
+        num_episodes: Number of episodes to run for.
+        discount_factor: Gamma discount factor.
+        alpha: TD learning rate.
+
+    Returns:
+        A tuple (Q, stats).
+        Q is a numpy array Q[s,a] -> state-action value.
+        stats is a list of tuples giving the episode lengths and returns.
+    """
+
+    # Keeps track of useful statistics
+    stats = []
+    Q_tables = []
+    runs=250
+    for world in env.world_pool:
+        if (world)%100==0:
+            print('World',world)
+        policy.epsilon=policy.epsilon0
+        for i_episode in range(runs):#tqdm(range(runs)):
+            i = 0
+            R = 0
+            start_state = env.reset(world)
+            done = False
+            if print_episodes: print('episode '+str(i_episode)+' - [S'+str(start_state)+' ', end='')
+            while not done:
+                start_action_idx, start_action = policy.sample_action(start_state, None)
+                #print('state '+str(start_state)+'action '+str(start_action)+',',end='')
+                new_state, reward, done, _ = env.step(start_action_idx)
+                if print_episodes: 
+                    print('eps('+'{:.2f}'.format(policy.epsilon)+'),a('+str(start_action)+'),(r'+str(reward)+')]-> [S'+str(new_state)+' ', end='')
+                
+                if new_state not in policy.Q:
+                    policy.Q[new_state] = np.ones(len(policy.actions_from_node[new_state[0]])).astype(np.float32) * policy.initial_Q_values
+                Qnew = np.max(policy.Q[new_state])
+                if done:
+                    Qnew = 0
+                if alpha_decay > 0:
+                    alpha = alpha_0 / policy.sa_count[start_state][start_action_idx]**(alpha_decay)
+                else:
+                    alpha = alpha_0
+
+                policy.Q[start_state][start_action_idx] = \
+                    policy.Q[start_state][start_action_idx] + \
+                    alpha * (reward + discount_factor * Qnew - policy.Q[start_state][start_action_idx])
+
+                start_state = new_state
+                i += 1
+                R += (discount_factor**i) * reward
+            if print_episodes: print('] - Steps:', i, 'Reward', R)
+            stats.append((i, R))
+            #Q_tables.append(policy.Q.copy())
+            policy.epsilon-=policy.epsilon0/runs
+
+    episode_lengths, episode_returns = zip(*stats)
+    metrics_vanilla = [episode_returns, episode_lengths]
+    return policy.Q, metrics_vanilla, policy, Q_tables
+
 
 def sarsa(env, policy, num_episodes, discount_factor=1.0, alpha_0 = 0.5, alpha_decay=0., print_episodes=False):
     """

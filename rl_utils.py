@@ -24,10 +24,10 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False):
             print('Run',i+1,': Initial state:,',env.state0,', Path:[',end='')
         count=0
         #e_history=[]
+        if save_plots:
+            env.render(file_name='images_rl/Run'+str(i+1)+'_s0='+str(env.state0)+'t='+str(env.global_t))
         while not done:
             #e_history.append(s[0])
-            if save_plots:
-                env.render(file_name='images_rl/Run'+str(i+1)+'_s0='+str(env.state0)+'t='+str(env.global_t))
             if print_runs:
                 print(str(env.state[0])+'->',end='')
             
@@ -50,6 +50,8 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False):
     print('Test set size:',len(test_set),'Observed escape ratio: {:.3f}'.format(1-np.mean(captured)),', Average episode length: {:.2f}'.format(np.mean(lengths)),', Average return: {:.2f}'.format(np.mean(rewards)))
     print('Escape ratio at data generation: last {:.3f}'.format(1-env.iratio),', avg at generation {:.3f}'.format(1-sum(env.iratios)/len(env.iratios)),\
         ', avg sampled {:.3f}'.format(1-sum(iratios_sampled)/len(iratios_sampled)),'\n')
+    if len(rewards) <20:
+        print('Returns:',rewards)
 
 # find u0's in higher rows
 def GetInitialStatesList(env, min_y_coord):

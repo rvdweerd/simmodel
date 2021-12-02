@@ -5,15 +5,13 @@ class EpsilonGreedyPolicy(object):
     """
     A simple epsilon greedy policy.
     """
-    def __init__(self, graph_env, eps_0 = 1., eps_min=0.05, eps_cutoff=1000, initial_Q_values=0.):
+    def __init__(self, graph_env, epsilon0, initial_Q_values=0.):
         # const
         self.nS = graph_env.sp.V
         self.initial_Q_values = initial_Q_values
         self.Q = {}
-        self.epsilon0   = eps_0
-        self.eps_min    = eps_min
-        self.eps_cutoff = eps_cutoff
-        self.eps_slope  = (eps_0-eps_min)/eps_cutoff
+        self.epsilon0 = epsilon0
+        self.epsilon   = epsilon0
         # graph attributes
         self.actions_from_node = graph_env.neighbors
         self.in_degrees = graph_env.in_degree
@@ -38,20 +36,7 @@ class EpsilonGreedyPolicy(object):
         #     self.sa_count[i] = 0
         #     self.Q[(i,self.e_node0)] = np.ones(self.num_actions[i]).astype(np.float32) * self.initial_Q_values
     
-    def get_epsilon(self, obs):
-        if self.eps_cutoff > 0:
-            if obs not in self.state_count:
-               self.state_count[obs] = 0 
-            if self.state_count[obs] > self.eps_cutoff:
-                self.epsilon = self.eps_min
-            else:
-                self.epsilon = self.epsilon0 - self.eps_slope * self.state_count[obs]
-            self.state_count[obs]+=1
-        else:
-            self.epsilon = self.epsilon0
-        return self.epsilon
-
-    def sample_action(self, obs):
+    def sample_action(self, obs, available_actions):
         """
         """
         # If state has never been visited, create Q table entry and initiate counts
@@ -62,7 +47,7 @@ class EpsilonGreedyPolicy(object):
             self.sa_count[obs] = np.zeros(len(self.actions_from_node[obs[0]]))
 
         # Determine action
-        epsilon = self.get_epsilon(obs)
+        epsilon = self.epsilon
         greedy = np.random.choice([False, True], p=[epsilon, 1-epsilon])
         if greedy:
             max_actions = np.max(self.Q[obs])

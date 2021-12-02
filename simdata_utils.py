@@ -41,16 +41,28 @@ class SimParameters(object):
         return out
 
 def GetStateEncodingDimension(state_representation, V, U):
-    if state_representation == 'etUt':
-        return (1+U)*V
-    elif state_representation == 'et':
+    if state_representation == 'et':
         return V
-    elif state_representation == 'etUte0U0':
-        return 2*(1+U)*V
+    elif state_representation == 'etUt':
+        return (1+U)*V
     elif state_representation == 'ete0U0':
         return (2+U)*V
+    elif state_representation == 'etUte0U0':
+        return 2*(1+U)*V
     else:
         assert False
+
+def GetWorldPool(all_worlds, fixed_initial_positions, register):
+    if fixed_initial_positions == None:
+        return all_worlds
+    elif type(fixed_initial_positions[0]) == tuple:
+        return [register['coords'][fixed_initial_positions]]
+    elif type(fixed_initial_positions[0]) == int:
+        return [register['labels'][fixed_initial_positions]]
+    else:
+        assert False
+
+#def GetGraphData():
 
 def GetConfigs():
     configs = {
@@ -165,10 +177,12 @@ def make_dirname(sp):
         "_Ndir="+ str(sp.direction_north)                        
     return dirname
 
-def make_result_directory(sp):
+def make_result_directory(sp, optimization_method):
     ######## Create folder for results ########
     dirname = make_dirname(sp)
     # dirname = "results/" + str(config['name'])
+    if optimization_method == 'dynamic':
+        dirname += '_allE'
     Path(dirname).mkdir(parents=True, exist_ok=True)
     return dirname
 
@@ -188,9 +202,7 @@ def LoadDatafile(dirname):
 def SimulatePursuersPathways(conf, optimization_method='dynamic', fixed_initial_positions=None):
     # Escaper position static, plot progression of pursuers motion
     sp = DefineSimParameters(conf)
-    dirname = make_result_directory(sp)
-    if optimization_method == 'dynamic':
-        dirname += '_allE'
+    dirname = make_result_directory(sp, optimization_method)
     register, databank, iratios = LoadDatafile(dirname)
     if fixed_initial_positions == None:
         dataframe=random.randint(0,len(iratios)-1)

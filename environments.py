@@ -14,44 +14,31 @@ class GraphWorld(object):
         self.fixed_initial_positions= fixed_initial_positions
         self.state_representation   = state_representation
         self.state_encoding_dim     = su.GetStateEncodingDimension(state_representation, self.sp.V, self.sp.U)
-
-        dirname = su.make_result_directory(self.sp)
-        if optimization_method == 'dynamic':
-            dirname += '_allE'
+        # Load relevant pre-saved optimization runs for the U trajectories
+        dirname = su.make_result_directory(self.sp, optimization_method)
         self.register, self.databank, self.iratios = self._LoadAndConvertDataFile(dirname) #su.LoadDatafile(dirname)
-        # Create a world_pool list of indices of pre-saved initial conditions and their rollout
+        # Create a world_pool list of indices of pre-saved initial conditions and their rollouts of U positions
         self.all_worlds = [ind for k,ind in self.register['labels'].items()]
-        assert len(self.all_worlds) == len(self.iratios)
-        if fixed_initial_positions == None:
-            self.world_pool = self.all_worlds
-        elif type(fixed_initial_positions[0]) == tuple:
-            self.world_pool = [self.register['coords'][fixed_initial_positions]]
-        elif type(fixed_initial_positions[0]) == int:
-            self.world_pool = [self.register['labels'][fixed_initial_positions]]
-        else:
-            assert False
+        self.world_pool = su.GetWorldPool(self.all_worlds, fixed_initial_positions, self.register)
         if state_encoding == 'nodes':
-            self.encode_ = self.encode_nodes_
+            self._encode = self._encode_nodes
         elif state_encoding == 'tensor':
-            self.encode_ = self.encode_tensor_
-
-        self.current_entry=0
+            self._encode = self._encode_tensor
+        # Dynamics parameters
+        self.current_entry=0    # which entry in the world pool is active
         self.u_paths=[]
         self.iratio=0
         self.state0=()
-        self.state=()
+        self.state=()           # current internal state in node labels: (e,U1,U2,...)
         self.global_t=0
         self.local_t=0
-        #self.vec2dir={(0,1):'N',(1,0):'E',(0,-1):'S',(-1,0):'W'}
-        #self.dir2vec={d:c for c,d in self.vec2dir.items()}
-        #self.reachable_nodes = []
         self.neighbors, self.in_degree, self.max_indegree, self.out_degree, self.max_outdegree = self._GetGraphData()
         self.reset()
 
-    def encode_nodes_(self, s):
+    def _encode_nodes(self, s):
         return s
 
-    def encode_tensor_(self, s):
+    def _encode_tensor(self, s):
         return self._state2vec(s)
 
     def _state2np_mat(self,s):
@@ -64,7 +51,7 @@ class GraphWorld(object):
                 out[i+1,u]=1
         else:
             return NotImplementedError
-        return out.flatten()#.to(device)
+        return out.flatten()
 
     def _state2vec(self, state, sort_units=False):
         d=len(state)
@@ -78,7 +65,6 @@ class GraphWorld(object):
 
     def _GetGraphData(self):
         G=self.sp.G.to_directed()
-        
         neighbors_labels = {}
         for node_coord in G.nodes:
             local_neighbors_labels = []
@@ -194,13 +180,13 @@ class GraphWorld(object):
         self.state    = self._to_state(e_init_labels,u_init_labels)
         self.state0   = self.state
         if self.state_representation == 'etUt':
-            return self.encode_(self.state)
+            return self._encode(self.state)
         elif self.state_representation == 'et':
-            return self.encode_((self.state[0],))
+            return self._encode((self.state[0],))
         elif self.state_representation == 'etUte0U0':
-            return self.encode_(self.state+self.state0)
+            return self._encode(self.state+self.state0)
         elif self.state_representation == 'ete0U0':
-            return self.encode_(tuple([self.state[0]])+self.state0)
+            return self._encode(tuple([self.state[0]])+self.state0)
         else:
             assert False
 
@@ -234,13 +220,13 @@ class GraphWorld(object):
             self.local_t = 0
 
         if self.state_representation == 'etUt':
-            return self.encode_(self.state), reward, done, info
+            return self._encode(self.state), reward, done, info
         elif self.state_representation == 'et':
-            return self.encode_((self.state[0],)), reward, done, info
+            return self._encode((self.state[0],)), reward, done, info
         elif self.state_representation == 'etUte0U0':
-            return self.encode_(self.state+self.state0), reward, done, info
+            return self._encode(self.state+self.state0), reward, done, info
         elif self.state_representation == 'ete0U0':
-            return self.encode_(tuple([self.state[0]])+self.state0), reward, done, info
+            return self._encode(tuple([self.state[0]])+self.state0), reward, done, info
 
     def render(self, file_name=None):
         #escape position
