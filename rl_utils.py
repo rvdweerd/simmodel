@@ -24,9 +24,9 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False):
             print('Run',i+1,': Initial state:,',env.state0,', Path:[',end='')
         count=0
         #e_history=[]
-        if save_plots:
-            env.render(file_name='images_rl/Run'+str(i+1)+'_s0='+str(env.state0)+'t='+str(env.global_t))
         while not done:
+            if save_plots:
+                env.render(file_name='images_rl/Run'+str(i+1)+'_s0='+str(env.state0)+'t='+str(env.global_t))
             #e_history.append(s[0])
             if print_runs:
                 print(str(env.state[0])+'->',end='')

@@ -98,7 +98,7 @@ class RandomPolicy(object):
     def __init__(self, env):
         #self.env=env
         self.out_degree=env.out_degree
-    def sample_greedy_action(self, s, available_actions=None):
+    def sample_action(self, s, available_actions=None):
         num_actions = self.out_degree[s[0]]
 
         #possible_actions = self.env.neighbors[s[0]]

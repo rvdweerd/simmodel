@@ -32,6 +32,7 @@ class GraphWorld(object):
         self.state                  = ()   # current internal state in node labels: (e,U1,U2,...)
         self.global_t               = 0
         self.local_t                = 0
+        self.max_timesteps          = self.sp.T*2
         self.neighbors, self.in_degree, self.max_indegree, self.out_degree, self.max_outdegree = su.GetGraphData(self.sp)
         self.reset()
 
@@ -159,7 +160,7 @@ class GraphWorld(object):
         self.state = tuple([next_node] + new_Upositions)
         reward = -1.
         done = False
-        if self.global_t >= self.sp.T*2:
+        if self.global_t >= self.max_timesteps:
             done=True
             #print('Time ran out')
         if next_node in new_Upositions: # captured
