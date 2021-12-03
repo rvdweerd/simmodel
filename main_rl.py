@@ -2,15 +2,15 @@ from environments import GraphWorld
 from rl_policy import EpsilonGreedyPolicy
 from rl_algorithms import q_learning, sarsa, expected_sarsa, q_learning_exhaustive
 from rl_plotting import PlotPerformanceCharts, PlotGridValues, PlotNodeValues
-from rl_utils import EvaluatePolicy, SelectTrainset
+from rl_utils import EvaluatePolicy, CreateDuplicatesTrainsets
 import numpy as np
 import simdata_utils as su
 import random 
 
 num_seeds   = 1
 eps_0       = .2
-eps_min     = 0.12
-cutoff      = 0#200
+eps_min     = 0.2
+cutoff      = 1#200
 num_iter    = 2600*250#000
 gamma       = .9
 alpha_0     = .2
@@ -25,7 +25,7 @@ conf['direction_north']=False
 env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation='etUte0U0')
 
 policy = EpsilonGreedyPolicy(env, eps_0, initial_Q_values)
-init_pos_trainset_indices0, init_pos_trainset_indices1 = SelectTrainset(env, min_y_coord=env.sp.N-1, min_num_same_positions=env.sp.U, min_num_worlds=4)
+init_pos_trainset_indices0, init_pos_trainset_indices1 = CreateDuplicatesTrainsets(env, min_y_coord=env.sp.N-1, min_num_same_positions=env.sp.U, min_num_worlds=4)
 #env.world_pool = init_pos_trainset_indices1 # limit the training set to the selected entries
 #env.world_pool = [env.all_worlds[env.register['labels'][(2,4,5,22)]]]#random.sample(env.all_worlds,10)
 #env.world_pool = random.sample(env.all_worlds,260)
@@ -57,5 +57,10 @@ performance_metrics = { 'e_returns': metrics_episode_returns, 'e_lengths':metric
 #PlotNodeValues(algos,env,Q_tables)
 import matplotlib.pyplot as plt
 plt.clf()
+count=0
+for k,v in policy.Q.items():
+    for i in v:
+        count+=1
+print('Total number of q values stored',count)
 EvaluatePolicy(env,policy,env.world_pool,print_runs=False, save_plots=False)
 #env.fixed_initial_positions=None

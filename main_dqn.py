@@ -22,7 +22,7 @@ conf['direction_north']=False
 fixed_init=conf['fixed_initial_positions']
 
 # Define qnet 
-dims_hidden_layers = [256, 128]
+dims_hidden_layers = [128]#[256, 128]
 
 # Select hyperparameters
 seed = 42  # This is not randomly chosen
