@@ -68,6 +68,33 @@ class ReplayMemory:
     def __len__(self):
         return len(self.memory)
 
+class SeqReplayMemory:
+    def __init__(self, capacity):
+        self.capacity = capacity # number of sequences allowed
+        self.memory = [[] for i in range(self.capacity)]
+        self.new_entry=[]
+        self.insert_idx = 0
+        self.num_filled = 0
+
+    def push(self, transition):
+        # transition_sequenceone entry contains: (s,a,r,s',d)
+        # 
+        self.new_entry.append(transition)
+        if transition[-1] == True: # Sequence done?
+            self.memory[self.insert_idx] = self.new_entry 
+            self.new_entry=[]
+            if self.num_filled < self.capacity:
+                self.num_filled+=1
+            self.insert_idx= (self.insert_idx + 1) % self.capacity
+
+    def sample(self, batch_size):
+        assert batch_size <= len(self.memory)
+        return random.sample(self.memory[:self.num_filled], batch_size)
+
+    def __len__(self):
+        return len(self.memory)
+
+
 class FastReplayMemory:
     def __init__(self, capacity, tensor_length):
         # invenstory management
@@ -118,6 +145,8 @@ class FastReplayMemory:
 
     def __len__(self):
         return self.num_filled
+
+
 
 
 class EpsilonGreedyPolicyDQN(object):

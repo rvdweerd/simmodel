@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import numpy as np
 import random
 from torch import optim
-from dqn_utils import QNetwork, EpsilonGreedyPolicyDQN, ReplayMemory, FastReplayMemory, train
+from dqn_utils import QNetwork, EpsilonGreedyPolicyDQN, ReplayMemory, FastReplayMemory, SeqReplayMemory, train
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -88,6 +88,61 @@ def FastMemTest(env,capacity=10, num_episodes=3, print_output=True):
         print('Memory sampling... [passed]')
     return memory
 
+def SeqMemTest_simple():
+    mem = SeqReplayMemory(2)
+    t1=([10,24],1,-1,[11,23],False)
+    mem.push(t1)
+    t2=([11,23],1,-1,[12,18],False)
+    mem.push(t2)
+    t3=([12,18],1,-1,[13,17],True)
+    mem.push(t3)
+
+    t1=([20,24],1,-1,[21,23],False)
+    mem.push(t1)
+    t2=([21,23],1,-1,[22,18],True)
+    mem.push(t2)
+
+    t1=([30,24],1,-1,[31,23],False)
+    mem.push(t1)
+    t2=([31,23],1,-1,[32,18],False)
+    mem.push(t2)
+    t3=([32,18],1,-1,[33,17],True)
+    mem.push(t3)
+
+    a=mem.sample(2)
+    k=0
+
+def SeqMemTest(env, capacity=10, num_episodes=15, print_output=True):
+    if print_output:
+        print('\n########## SeqMemoryTest #################')
+    #capacity = 10
+    memory = SeqReplayMemory(capacity=capacity)
+
+    for episode in range(num_episodes):
+        # Sample a transition
+        s = env.reset()
+        #a = env.action_space.sample()
+        while True:
+            #a = random.choice(env._availableActionsInCurrentState())
+            a = random.randint(0,env.out_degree[env.state[0]]-1)
+            s_next, r, done, _ = env.step(a)
+
+            # Push a transition
+            memory.push((s, a, r, s_next, done))
+            s=s_next
+            if done:
+                break
+
+    # Sample a batch size of 1
+    out=memory.sample(3)
+    #print(out)
+    s=out[0][0]
+    if print_output:
+        #print('State shape:',s.shape)
+        #print('Non-zero entries:',torch.where(s!=0)[0])
+        print('SeqMemory sampling... [passed]')
+    return memory
+
 
 def TensorTest(env):
     print('\n########## TensorTest #################')
@@ -136,7 +191,7 @@ def TrainTest(env):
     dim_in=(1+env.sp.U)*env.sp.V
     dim_out=4 #(max out-degree)
     dim_hidden=128
-    qnet=QNetwork(dim_in,dim_out,dim_hidden)
+    qnet=QNetwork(dim_in,dim_out,dim_hidden).to(device)
 
     # Simple gradient descent may take long, so we will use Adam
     optimizer = optim.Adam(qnet.parameters(), learn_rate)
@@ -147,6 +202,7 @@ def TrainTest(env):
 def TestAll(env):
     MemTest(env)
     FastMemTest(env)
+    SeqMemTest(env)
     TorchTest()
     TensorTest(env)
     PolicyTest(env)
