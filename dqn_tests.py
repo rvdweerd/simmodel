@@ -7,7 +7,9 @@ import numpy as np
 import random
 from torch import optim
 from dqn_utils import QNetwork, EpsilonGreedyPolicyDQN, ReplayMemory, FastReplayMemory, SeqReplayMemory, train
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence, pad_sequence
 
+from torch.nn import LSTM
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def PolicyTest(env):
@@ -88,31 +90,7 @@ def FastMemTest(env,capacity=10, num_episodes=3, print_output=True):
         print('Memory sampling... [passed]')
     return memory
 
-def SeqMemTest_simple():
-    mem = SeqReplayMemory(2)
-    t1=([10,24],1,-1,[11,23],False)
-    mem.push(t1)
-    t2=([11,23],1,-1,[12,18],False)
-    mem.push(t2)
-    t3=([12,18],1,-1,[13,17],True)
-    mem.push(t3)
-
-    t1=([20,24],1,-1,[21,23],False)
-    mem.push(t1)
-    t2=([21,23],1,-1,[22,18],True)
-    mem.push(t2)
-
-    t1=([30,24],1,-1,[31,23],False)
-    mem.push(t1)
-    t2=([31,23],1,-1,[32,18],False)
-    mem.push(t2)
-    t3=([32,18],1,-1,[33,17],True)
-    mem.push(t3)
-
-    a=mem.sample(2)
-    k=0
-
-def SeqMemTest(env, capacity=10, num_episodes=15, print_output=True):
+def SeqMemTest(env, capacity=1000, num_episodes=1100, print_output=True):
     if print_output:
         print('\n########## SeqMemoryTest #################')
     #capacity = 10
@@ -134,11 +112,27 @@ def SeqMemTest(env, capacity=10, num_episodes=15, print_output=True):
                 break
 
     # Sample a batch size of 1
-    out=memory.sample(3)
-    #print(out)
-    s=out[0][0]
+    packed_sequences, seq_tensor, seq_lengths = memory.sample(8)
+    
+    lstm=LSTM(input_size=25,hidden_size=13,batch_first=True).to(device)
+    packed_output, (ht, ct) = lstm(packed_sequences)
+    output, input_sizes = pad_packed_sequence(packed_output, batch_first=True)
+    
     if print_output:
-        #print('State shape:',s.shape)
+        mem_len       = memory.__len__()
+        mem_num_trans = memory.__num_transitions__()
+        print('# episodes in memory    :', mem_len)
+        print('# transitions in memory :',  mem_num_trans)
+        print('Avg #trans. per episode :', mem_num_trans/mem_len)
+        print('Memory usage (kb)       : {:.1f}'.format(memory.__memsize__()))
+        print('Sequences tensor shape  :',seq_tensor.shape)
+        print('Sequence tensor lengts  :',seq_lengths)
+        print('Packed seq.tensor shape :',packed_sequences.data.shape)
+        print('Packed seq. batch sizes :',packed_sequences.batch_sizes)
+        print('lstm packed output shape:', packed_output.data.shape)
+        print('lstm output tensor shape:',output.shape)
+        print('lstm input sizes (check):',input_sizes)
+        print('Last h.states, each seq :',ht[-1].shape)
         #print('Non-zero entries:',torch.where(s!=0)[0])
         print('SeqMemory sampling... [passed]')
     return memory
@@ -213,5 +207,6 @@ if __name__ == '__main__':
     configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
     conf=configs['Manhattan5']
     conf['direction_north']=False
-    env = GraphWorld(conf, optimization_method='dynamic', fixed_initial_positions=(2,15,19,22),state_representation='etUt', state_encoding='tensor')
-    TestAll(env)
+    env = GraphWorld(conf, optimization_method='dynamic', fixed_initial_positions=(2,15,19,22),state_representation='et', state_encoding='tensors')
+    #TestAll(env)
+    SeqMemTest(env)

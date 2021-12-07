@@ -8,6 +8,7 @@ import os
 from tqdm import tqdm as _tqdm
 import time
 import copy
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence, pad_sequence
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def tqdm(*args, **kwargs):
@@ -76,6 +77,11 @@ class SeqReplayMemory:
         self.capacity = capacity # number of sequences allowed
         self.memory = [[] for i in range(self.capacity)]
         self.new_entry=[]
+        self.new_s_tensor       =None
+        self.new_a_tensor       =None
+        self.new_r_tensor       =None
+        self.new_sprime_tensor  =None
+        self.new_d_tensor       =None
         self.insert_idx = 0
         self.num_filled = 0
 
@@ -83,20 +89,70 @@ class SeqReplayMemory:
         # transition_sequenceone entry contains: (s,a,r,s',d)
         # 
         self.new_entry.append(transition)
+        if type(self.new_s_tensor).__name__ == 'NoneType':
+            self.new_s_tensor       =torch.Tensor(transition[0][None,:]).to(device)
+            self.new_a_tensor       =torch.Tensor([transition[1]]).to(device)
+            self.new_r_tensor       =torch.Tensor([transition[2]]).to(device)
+            self.new_sprime_tensor  =torch.Tensor(transition[3][None,:]).to(device)
+            self.new_d_tensor       =torch.Tensor([transition[4]]).to(device)
+        else:
+            self.new_s_tensor       =torch.cat((self.new_s_tensor,torch.Tensor(transition[0][None,:]).to(device)))
+            self.new_a_tensor       =torch.cat((self.new_a_tensor,torch.Tensor([transition[1]]).to(device)))
+            self.new_r_tensor       =torch.cat((self.new_r_tensor,torch.Tensor([transition[2]]).to(device)))
+            self.new_sprime_tensor  =torch.cat((self.new_sprime_tensor,torch.Tensor(transition[3][None,:]).to(device)))
+            self.new_d_tensor       =torch.cat((self.new_d_tensor,torch.Tensor([transition[4]]).to(device)))
+
         if transition[-1] == True: # Sequence done?
-            self.memory[self.insert_idx] = self.new_entry 
-            self.new_entry=[]
+            self.memory[self.insert_idx] = (
+                self.new_s_tensor,
+                self.new_a_tensor,
+                self.new_r_tensor,
+                self.new_sprime_tensor,
+                self.new_d_tensor,
+                [i for i in range(1,len(self.new_a_tensor),1)]
+                )
+            self.new_s_tensor       =None
+            self.new_a_tensor       =None
+            self.new_r_tensor       =None
+            self.new_sprime_tensor  =None
+            self.new_d_tensor       =None
+
             if self.num_filled < self.capacity:
                 self.num_filled+=1
             self.insert_idx= (self.insert_idx + 1) % self.capacity
 
     def sample(self, batch_size):
+        seq_tensors=[]
+        seq_lengths=[]
         assert batch_size <= len(self.memory)
-        return random.sample(self.memory[:self.num_filled], batch_size)
+        episode_samples = random.sample(self.memory[:self.num_filled], batch_size)
+        for ep_sample in episode_samples:
+            seq_end_idx = random.choice(ep_sample[5]) # choose sequence length for this saved episode
+            seq_lengths.append(seq_end_idx+1)
+            seq_tensors.append(ep_sample[0][:seq_end_idx+1,:])
+        seq_lengths=torch.tensor(seq_lengths,dtype=torch.int64,device=device)
+        seq_tensors=pad_sequence(seq_tensors,batch_first=True).to(device)
+        seq_lengths, indices = torch.sort(seq_lengths, descending=True)
+        seq_tensors=seq_tensors[indices]
+        packed_input=pack_padded_sequence(seq_tensors,seq_lengths.cpu().numpy(),batch_first=True)
+        return packed_input, seq_tensors, seq_lengths
 
     def __len__(self):
         return len(self.memory)
 
+    def __num_transitions__(self):
+        count=0
+        for entry in self.memory:
+            count += len(entry)
+        return count
+
+    def __memsize__(self):
+        # returns memory used in kb
+        memsize=0
+        for entry in self.memory:
+            for i in range(4):
+                memsize += entry[i].element_size()*entry[i].nelement()
+        return memsize/1000
 
 class FastReplayMemory:
     def __init__(self, capacity, tensor_length):
