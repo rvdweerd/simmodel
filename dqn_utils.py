@@ -122,6 +122,7 @@ class SeqReplayMemory:
             self.insert_idx= (self.insert_idx + 1) % self.capacity
 
     def sample(self, batch_size):
+        # Insights used from https://github.com/HarshTrivedi/packing-unpacking-pytorch-minimal-tutorial
         seq_tensors=[]
         seq_lengths=[]
         assert batch_size <= len(self.memory)
