@@ -14,7 +14,7 @@ def PolicyTest(env):
     print('\n########## PolicyTest #################')
     dim_in=(1+env.sp.U)*env.sp.V
     dim_out=4 #(max out-degree)
-    dim_hidden=128
+    dim_hidden=[128]
     qnet=QNetwork(dim_in,dim_out,dim_hidden)
     s = env.reset()
     #print (torch.tensor(s,dtype=torch.float32).to(device))
@@ -161,15 +161,15 @@ def TensorTest(env):
 def TorchTest():
     # Let's instantiate and test if it works
     print('\n########## TorchTest #################')
-    num_hidden = 128
+    num_hidden = [128]
     torch.manual_seed(1)
     Q_net = QNetwork(4,2,num_hidden)
 
     torch.manual_seed(1)
     test_model = nn.Sequential(
-        nn.Linear(4, num_hidden), 
+        nn.Linear(4, num_hidden[0]), 
         nn.ReLU(), 
-        nn.Linear(num_hidden, 2)
+        nn.Linear(num_hidden[0], 2)
     )
 
     x = torch.rand(10, 4)
@@ -190,12 +190,12 @@ def TrainTest(env):
     learn_rate = 1e-3
     dim_in=(1+env.sp.U)*env.sp.V
     dim_out=4 #(max out-degree)
-    dim_hidden=128
+    dim_hidden=[128]
     qnet=QNetwork(dim_in,dim_out,dim_hidden).to(device)
 
     # Simple gradient descent may take long, so we will use Adam
     optimizer = optim.Adam(qnet.parameters(), learn_rate)
-    loss = train(qnet, replay_buffer, optimizer, batch_size, discount_factor)
+    loss = train(qnet, qnet, replay_buffer, optimizer, batch_size, discount_factor)
     print ('Loss: {:.2f}'.format(loss))
     print('Train test... [passed]')
 

@@ -2,15 +2,15 @@
 #from dataclasses import dataclass
 #import time
 #import networkx as nx
+#import matplotlib.image as mpimg
+#import matplotlib.pyplot as plt
+#from datetime import datetime
+#import plotly.graph_objects as go
 import random
-from datetime import datetime
 from pathlib import Path
 import os
 import pickle
 from sim_graphs import graph, CircGraph, TKGraph
-import plotly.graph_objects as go
-import matplotlib.pyplot as plt
-#import matplotlib.image as mpimg
 from rl_plotting import PlotAgentsOnGraph
 
 class SimParameters(object):
@@ -41,14 +41,24 @@ class SimParameters(object):
         return out
 
 def GetStateEncodingDimension(state_representation, V, U):
-    if state_representation == 'etUt':
-        return (1+U)*V
-    elif state_representation == 'et':
+    if state_representation == 'et':
         return V
-    elif state_representation == 'etUte0U0':
-        return 2*(1+U)*V
+    elif state_representation == 'etUt':
+        return (1+U)*V
     elif state_representation == 'ete0U0':
         return (2+U)*V
+    elif state_representation == 'etUte0U0':
+        return 2*(1+U)*V
+    else:
+        assert False
+
+def GetWorldPool(all_worlds, fixed_initial_positions, register):
+    if fixed_initial_positions == None:
+        return all_worlds
+    elif type(fixed_initial_positions[0]) == tuple:
+        return [register['coords'][fixed_initial_positions]]
+    elif type(fixed_initial_positions[0]) == int:
+        return [register['labels'][fixed_initial_positions]]
     else:
         assert False
 
@@ -151,11 +161,38 @@ def DefineSimParameters(config):
         label = sp.coord2labels[coord]
         sp.labels2nodeids[label]=nodeid
         sp.nodeids2labels[nodeid]=label
-
     return sp
 
+def GetGraphData(sp):
+    G = sp.G.to_directed()
+    neighbors_labels = {}
+    for node_coord in G.nodes:
+        local_neighbors_labels = []
+        node_label = sp.coord2labels[node_coord]
+        for n_coord in G.neighbors(node_coord):
+            n_label = sp.coord2labels[n_coord]
+            local_neighbors_labels.append(n_label)
+        local_neighbors_labels.sort()
+        neighbors_labels[node_label] = local_neighbors_labels
+
+    max_outdegree=0
+    outdegrees_labels={}
+    for coord,deg in G.out_degree:
+        outdegrees_labels[sp.coord2labels[coord]] = deg
+        if deg>max_outdegree:
+            max_outdegree=deg
+    
+    max_indegree=0
+    indegrees_labels={}
+    for coord,deg in G.in_degree:
+        indegrees_labels[sp.coord2labels[coord]] = deg
+        if deg>max_indegree:
+            max_indegree=deg
+    
+    return neighbors_labels, indegrees_labels, max_indegree, outdegrees_labels, max_outdegree
+
 def make_dirname(sp):
-    timestamp = datetime.now()
+    #timestamp = datetime.now()
     dirname = "datasets/" \
         + str(sp.graph_type) + \
         "_N="+ str(sp.N) + \
@@ -165,10 +202,12 @@ def make_dirname(sp):
         "_Ndir="+ str(sp.direction_north)                        
     return dirname
 
-def make_result_directory(sp):
+def make_result_directory(sp, optimization_method):
     ######## Create folder for results ########
     dirname = make_dirname(sp)
     # dirname = "results/" + str(config['name'])
+    if optimization_method == 'dynamic':
+        dirname += '_allE'
     Path(dirname).mkdir(parents=True, exist_ok=True)
     return dirname
 
@@ -188,9 +227,7 @@ def LoadDatafile(dirname):
 def SimulatePursuersPathways(conf, optimization_method='dynamic', fixed_initial_positions=None):
     # Escaper position static, plot progression of pursuers motion
     sp = DefineSimParameters(conf)
-    dirname = make_result_directory(sp)
-    if optimization_method == 'dynamic':
-        dirname += '_allE'
+    dirname = make_result_directory(sp, optimization_method)
     register, databank, iratios = LoadDatafile(dirname)
     if fixed_initial_positions == None:
         dataframe=random.randint(0,len(iratios)-1)

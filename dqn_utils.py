@@ -7,6 +7,7 @@ import random
 import os
 from tqdm import tqdm as _tqdm
 import time
+import copy
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def tqdm(*args, **kwargs):
@@ -26,16 +27,20 @@ def seed_everything(seed):
     torch.backends.cudnn.deterministic = True
     os.environ['PYTHONHASHSEED'] = str(seed)
 
-class QNetwork(nn.Module):
-    
-    def __init__(self, num_in, num_out, num_hidden=128):
+class QNetwork(nn.Module):   
+    def __init__(self, num_in, num_out, num_hidden=[128]):
         nn.Module.__init__(self)
-        self.l1 = nn.Linear(num_in, num_hidden)
-        self.l2 = nn.Linear(num_hidden, num_out)
+        layers      = []
+        layer_sizes = [num_in]+num_hidden
+        for layer_idx in range(1,len(layer_sizes)):
+            layers += [ nn.Linear(layer_sizes[layer_idx-1], layer_sizes[layer_idx]), nn.ReLU() ]
+        layers     += [ nn.Linear(layer_sizes[-1], num_out) ]
+        self.layers = nn.Sequential(*layers)
+        self.out_dim= num_out
         self.numTrainableParameters()
 
     def forward(self, x):
-        return self.l2(nn.ReLU()(self.l1(x)))
+        return self.layers(x)
     
     def numTrainableParameters(self):
         print('Qnet size:')
@@ -55,8 +60,6 @@ class ReplayMemory:
         self.memory = []
 
     def push(self, transition):
-        #s  = self.state2np(transition[0])
-        #s_ = self.state2np(transition[3])
         if len(self.memory) >= self.capacity:
             del self.memory[0]
         self.memory.append(transition)
@@ -130,7 +133,7 @@ class FastReplayMemory:
 
     def sample(self, batch_size):
         assert batch_size <= self.num_filled
-        # NOTE: with replacement (check impact!)
+        # NOTE: with replacement (CHECK impact!)
         indices=torch.randint(self.num_filled,(batch_size,))
         ## Without replacement (two options):
         #indices=torch.multinomial(torch.ones(self.num_filled),batch_size,replacement=False)
@@ -190,15 +193,6 @@ class EpsilonGreedyPolicyDQN(object):
                 action_idx = torch.argmax(y[:num_actions]).item()
             return action_idx, None
 
-    # def sample_greedy_action(self, obs, available_actions):
-    #     """
-    #     """
-    #     with torch.no_grad():
-    #         y = self.Q(torch.tensor(obs,dtype=torch.float32).to(device))
-    #         num_actions=len(available_actions)
-    #         action_idx = torch.argmax(y[:num_actions]).item()
-    #     return action_idx, None
-
     def set_epsilon(self, episodes_run):
         if self.eps_cutoff > 0:
             if episodes_run > self.eps_cutoff:
@@ -248,40 +242,39 @@ def compute_targets(Q, rewards, next_states, dones, discount_factor):
     res = rewards + discount_factor * next_qvals
     return res
 
-def train(Q, memory, optimizer, batch_size, discount_factor):
-    # DO NOT MODIFY THIS FUNCTION
-    
-    # don't learn without some decent experience
+def train(Q, Q_target, memory, optimizer, batch_size, discount_factor):
+    # don't learn without enough experience to replay
     if memory.__len__() < batch_size:
         return 0.
 
     state, action, reward, next_state, done = memory.sample(batch_size)
-    # compute the q value
     q_val = compute_q_vals(Q, state, action)
     with torch.no_grad():  # Don't compute gradient info for the target (semi-gradient)
-        target = compute_targets(Q, reward, next_state, done, discount_factor)
-    
-    # loss is measured from error between current and newly expected Q values
+        target = compute_targets(Q_target, reward, next_state, done, discount_factor)
     loss = F.smooth_l1_loss(q_val, target)
     #loss = F.mse_loss(q_val, target)
 
-    # backpropagation of loss to Neural Network (PyTorch magic)
+    # backpropagation of loss to Neural Network
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
     
     return loss.item()  # Returns a Python scalar, and releases history (similar to .detach())
 
-
 def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discount_factor, learn_rate, print_every=100,  noise=False):
     optimizer = optim.Adam(Q.parameters(), learn_rate)
+    Q_target=copy.deepcopy(Q)
     
+    max_return = 0.
     global_steps = 0  # Count the steps (do not reset at episode start, to compute epsilon)
     episode_lengths = []  
     episode_returns = []
     episode_losses = []
+    best_model_path = None
     start_time=time.time()
     for epi in range(num_episodes):
+        if (epi+1)%4000 == 0:
+            optimizer.param_groups[0]['lr'] *= 0.9
         state = env.reset() 
         if noise:
             state += np.random.rand(100)/200.
@@ -299,10 +292,12 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
             state = s_next
             steps += 1
             global_steps += 1
-            R+=r # need to apply discounting!!!
+            R+=r # need to apply discounting!!! CHECK
             # Take a train step
-            loss = train(Q, memory, optimizer, batch_size, discount_factor)
+            loss = train(Q, Q_target, memory, optimizer, batch_size, discount_factor)
             if done:
+                Q_target.load_state_dict(Q.state_dict())
+                #policy.Q=Q_target
                 if (epi) % print_every == 0:
                     duration=time.time()-start_time
                     avg_steps = np.mean(episode_lengths[-print_every:])
@@ -311,7 +306,12 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
                     start_time=time.time()
                     print("{2} Episode {0}. Last avg episode length {1:0.1f}; "
                           .format(epi, avg_steps, '\033[92m' if avg_returns >= 0 else '\033[97m'), end='')
-                    print("Avg episode return:",avg_returns, "epsilon {:.1f}".format(policy.epsilon), "time per episode(ms) {:.2f}".format(duration/print_every*1000))
+                    print("Avg episode return:",avg_returns, "epsilon: {:.1f}".format(policy.epsilon), "Avg loss: {:.2f}".format(avg_loss),"time per episode(ms) {:.2f}".format(duration/print_every*1000))
+
+                    if avg_returns > max_return:
+                        max_return=avg_returns
+                        best_model_path='models/dqn_best_model_{:.2f}'.format(max_return)+'.pt'
+                        torch.save(Q.state_dict(), best_model_path)
                 episode_lengths.append(steps)
                 episode_returns.append(R)
                 episode_losses.append(loss)#.detach().item())
@@ -319,7 +319,7 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
                 break
         
     print('\033[97m')
-    return episode_lengths, episode_returns, episode_losses
+    return episode_lengths, episode_returns, episode_losses, best_model_path
 
 if __name__ == '__main__':
     pass
