@@ -6,7 +6,9 @@ import torch.nn.functional as F
 import numpy as np
 import random
 from torch import optim
-from dqn_utils import QNetwork, EpsilonGreedyPolicyDQN, ReplayMemory, FastReplayMemory, SeqReplayMemory, train
+from rl_models import QNetwork, RecurrentQNetwork
+from rl_policy import EpsilonGreedyPolicyDQN, EpsilonGreedyPolicyRDQN
+from dqn_utils import ReplayMemory, FastReplayMemory, SeqReplayMemory, train
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence, pad_sequence
 
 from torch.nn import LSTM
@@ -112,9 +114,10 @@ def SeqMemTest(env, capacity=1000, num_episodes=1100, print_output=True):
                 break
 
     # Sample a batch size of 1
-    packed_sequences, seq_tensor, seq_lengths = memory.sample(8)
-    
-    lstm=LSTM(input_size=25,hidden_size=13,batch_first=True).to(device)
+    packed_sequences, actions, rewards, next_states, dones = memory.sample(8)
+    #state, action, reward, next_state, done = memory.sample(batch_size)
+
+    lstm=LSTM(input_size=100,hidden_size=13,batch_first=True).to(device)
     packed_output, (ht, ct) = lstm(packed_sequences)
     output, input_sizes = pad_packed_sequence(packed_output, batch_first=True)
     
@@ -125,8 +128,8 @@ def SeqMemTest(env, capacity=1000, num_episodes=1100, print_output=True):
         print('# transitions in memory :',  mem_num_trans)
         print('Avg #trans. per episode :', mem_num_trans/mem_len)
         print('Memory usage (kb)       : {:.1f}'.format(memory.__memsize__()))
-        print('Sequences tensor shape  :',seq_tensor.shape)
-        print('Sequence tensor lengts  :',seq_lengths)
+        #print('Sequences tensor shape  :',seq_tensor.shape)
+        #print('Sequence tensor lengts  :',seq_lengths)
         print('Packed seq.tensor shape :',packed_sequences.data.shape)
         print('Packed seq. batch sizes :',packed_sequences.batch_sizes)
         print('lstm packed output shape:', packed_output.data.shape)
@@ -171,7 +174,7 @@ def TorchTest():
     # If you do not need backpropagation, wrap the computation in the torch.no_grad() context
     # This saves time and memory, and PyTorch complaints when converting to numpy
     with torch.no_grad():
-        assert np.allclose(Q_net(x).numpy(), test_model(x).numpy())
+        assert np.allclose(Q_net(x)[0].numpy(), test_model(x).numpy())
     print('Torch test... [passed]')
 
 def TrainTest(env):
@@ -207,6 +210,6 @@ if __name__ == '__main__':
     configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
     conf=configs['Manhattan5']
     conf['direction_north']=False
-    env = GraphWorld(conf, optimization_method='dynamic', fixed_initial_positions=(2,15,19,22),state_representation='et', state_encoding='tensors')
-    #TestAll(env)
-    SeqMemTest(env)
+    env = GraphWorld(conf, optimization_method='dynamic', fixed_initial_positions=(2,15,19,22),state_representation='etUt', state_encoding='tensors')
+    TestAll(env)
+    #SeqMemTest(env)

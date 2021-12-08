@@ -28,33 +28,6 @@ def seed_everything(seed):
     torch.backends.cudnn.deterministic = True
     os.environ['PYTHONHASHSEED'] = str(seed)
 
-class QNetwork(nn.Module):   
-    def __init__(self, num_in, num_out, num_hidden=[128]):
-        nn.Module.__init__(self)
-        layers      = []
-        layer_sizes = [num_in]+num_hidden
-        for layer_idx in range(1,len(layer_sizes)):
-            layers += [ nn.Linear(layer_sizes[layer_idx-1], layer_sizes[layer_idx]), nn.ReLU() ]
-        layers     += [ nn.Linear(layer_sizes[-1], num_out) ]
-        self.layers = nn.Sequential(*layers)
-        self.out_dim= num_out
-        self.numTrainableParameters()
-
-    def forward(self, x):
-        return self.layers(x)
-    
-    def numTrainableParameters(self):
-        print('Qnet size:')
-        print('------------------------------------------')
-        total = 0
-        for name, p in self.named_parameters():
-            total += np.prod(p.shape)
-            print("{:24s} {:12s} requires_grad={}".format(name, str(list(p.shape)), p.requires_grad))
-        print("Total number of parameters: {}".format(total))
-        print('------------------------------------------')
-        assert total == sum(p.numel() for p in self.parameters() if p.requires_grad)
-        return total
-
 class ReplayMemory:
     def __init__(self, capacity):
         self.capacity = capacity
@@ -90,17 +63,17 @@ class SeqReplayMemory:
         # 
         self.new_entry.append(transition)
         if type(self.new_s_tensor).__name__ == 'NoneType':
-            self.new_s_tensor       =torch.Tensor(transition[0][None,:]).to(device)
-            self.new_a_tensor       =torch.Tensor([transition[1]]).to(device)
-            self.new_r_tensor       =torch.Tensor([transition[2]]).to(device)
-            self.new_sprime_tensor  =torch.Tensor(transition[3][None,:]).to(device)
-            self.new_d_tensor       =torch.Tensor([transition[4]]).to(device)
+            self.new_s_tensor       =torch.Tensor(transition[0][None,:])#.to(device)
+            self.new_a_tensor       =torch.tensor([transition[1]],dtype=torch.int64)#.to(device)
+            self.new_r_tensor       =torch.Tensor([transition[2]])#.to(device)
+            self.new_sprime_tensor  =torch.Tensor(transition[3][None,:])#.to(device)
+            self.new_d_tensor       =torch.Tensor([transition[4]])#.to(device)
         else:
-            self.new_s_tensor       =torch.cat((self.new_s_tensor,torch.Tensor(transition[0][None,:]).to(device)))
-            self.new_a_tensor       =torch.cat((self.new_a_tensor,torch.Tensor([transition[1]]).to(device)))
-            self.new_r_tensor       =torch.cat((self.new_r_tensor,torch.Tensor([transition[2]]).to(device)))
-            self.new_sprime_tensor  =torch.cat((self.new_sprime_tensor,torch.Tensor(transition[3][None,:]).to(device)))
-            self.new_d_tensor       =torch.cat((self.new_d_tensor,torch.Tensor([transition[4]]).to(device)))
+            self.new_s_tensor       =torch.cat((self.new_s_tensor,torch.Tensor(transition[0][None,:])))
+            self.new_a_tensor       =torch.cat((self.new_a_tensor,torch.tensor([transition[1]],dtype=torch.int64)))
+            self.new_r_tensor       =torch.cat((self.new_r_tensor,torch.Tensor([transition[2]])))
+            self.new_sprime_tensor  =torch.cat((self.new_sprime_tensor,torch.Tensor(transition[3][None,:])))
+            self.new_d_tensor       =torch.cat((self.new_d_tensor,torch.Tensor([transition[4]])))
 
         if transition[-1] == True: # Sequence done?
             self.memory[self.insert_idx] = (
@@ -109,13 +82,13 @@ class SeqReplayMemory:
                 self.new_r_tensor,
                 self.new_sprime_tensor,
                 self.new_d_tensor,
-                [i for i in range(1,len(self.new_a_tensor),1)]
+                [i for i in range(0,len(self.new_a_tensor),1)]
                 )
-            self.new_s_tensor       =None
-            self.new_a_tensor       =None
-            self.new_r_tensor       =None
-            self.new_sprime_tensor  =None
-            self.new_d_tensor       =None
+            self.new_s_tensor       = None
+            self.new_a_tensor       = None
+            self.new_r_tensor       = None
+            self.new_sprime_tensor  = None
+            self.new_d_tensor       = None
 
             if self.num_filled < self.capacity:
                 self.num_filled+=1
@@ -125,32 +98,51 @@ class SeqReplayMemory:
         # Insights used from https://github.com/HarshTrivedi/packing-unpacking-pytorch-minimal-tutorial
         seq_tensors=[]
         seq_lengths=[]
-        assert batch_size <= len(self.memory)
+        actions=[]
+        rewards=[]
+        next_states=None
+        dones=[]
+        assert batch_size <= self.num_filled
         episode_samples = random.sample(self.memory[:self.num_filled], batch_size)
         for ep_sample in episode_samples:
             seq_end_idx = random.choice(ep_sample[5]) # choose sequence length for this saved episode
             seq_lengths.append(seq_end_idx+1)
             seq_tensors.append(ep_sample[0][:seq_end_idx+1,:])
-        seq_lengths=torch.tensor(seq_lengths,dtype=torch.int64,device=device)
-        seq_tensors=pad_sequence(seq_tensors,batch_first=True).to(device)
+            if type(next_states).__name__ == 'NoneType':
+                next_states       = ep_sample[3][seq_end_idx][None,:]#.to(device)
+            else:
+                next_states       = torch.cat((next_states,ep_sample[3][seq_end_idx][None,:]))
+            actions.append(ep_sample[1][seq_end_idx])
+            rewards.append(ep_sample[2][seq_end_idx])
+            dones.append(ep_sample[4][seq_end_idx])
+        #actions=torch.tensor(actions,dtype=torch.int64).to(device)
+        actions=torch.tensor(actions)[:,None].to(device)
+        rewards=torch.tensor(rewards)[:,None].to(device)
+        dones=torch.tensor(dones, dtype=torch.bool).to(device)
+        next_states=next_states[:,None,:].to(device) # convert to (bsize, seq_length=1, emb_dim)
+        # Put state sequences in a packed datastructure ready to feed an RNN
+        seq_lengths = torch.tensor(seq_lengths, dtype = torch.int64,device=device)
+        seq_tensors = pad_sequence(seq_tensors, batch_first = True).to(device)
         seq_lengths, indices = torch.sort(seq_lengths, descending=True)
         seq_tensors=seq_tensors[indices]
-        packed_input=pack_padded_sequence(seq_tensors,seq_lengths.cpu().numpy(),batch_first=True)
-        return packed_input, seq_tensors, seq_lengths
+        packed_input = pack_padded_sequence(seq_tensors, seq_lengths.cpu().numpy(), batch_first=True)
+        return packed_input, actions, rewards, next_states, dones
 
     def __len__(self):
-        return len(self.memory)
+        return self.num_filled
 
     def __num_transitions__(self):
         count=0
-        for entry in self.memory:
-            count += len(entry)
+        for e in range(self.num_filled):
+            entry = self.memory[e]
+            count += len(entry[0])
         return count
 
     def __memsize__(self):
         # returns memory used in kb
         memsize=0
-        for entry in self.memory:
+        for e in range(self.num_filled):
+            entry = self.memory[e]
             for i in range(4):
                 memsize += entry[i].element_size()*entry[i].nelement()
         return memsize/1000
@@ -206,58 +198,10 @@ class FastReplayMemory:
     def __len__(self):
         return self.num_filled
 
+    def __num_transitions__(self):
+        return self.num_filled
 
 
-
-class EpsilonGreedyPolicyDQN(object):
-    """
-    A simple epsilon greedy policy.
-    """
-    def __init__(self, Q, env, eps_0 = 1., eps_min=0.1, eps_cutoff=100):
-        self.Q = Q
-        self.rng = np.random.RandomState(1)
-        # Epsilon scheduling
-        self.epsilon = eps_0
-        self.epsilon0   = eps_0
-        self.eps_min    = eps_min
-        self.eps_cutoff = eps_cutoff
-        self.eps_slope  = (eps_0-eps_min)/eps_cutoff
-        # Graph attributes
-        self.actions_from_node = env.neighbors
-        self.out_degree=env.out_degree
-        self.V = env.sp.V
-        self.max_outdegree=4
-    
-    def sample_action(self, obs, available_actions):
-        """
-        This method takes a state as input and returns an action sampled from this policy.  
-
-        Args:
-            obs: current state
-
-        Returns:
-            An action (int).
-        """
-        draw = self.rng.uniform(0,1,1)
-        if draw <= self.epsilon:
-            num_actions = len(available_actions)
-            action_idx = random.randint(0,num_actions-1)
-            return action_idx, available_actions[action_idx]
-        else:
-            with torch.no_grad():
-                y = self.Q(torch.tensor(obs,dtype=torch.float32).to(device))
-                num_actions=len(available_actions)
-                action_idx = torch.argmax(y[:num_actions]).item()
-            return action_idx, None
-
-    def set_epsilon(self, episodes_run):
-        if self.eps_cutoff > 0:
-            if episodes_run > self.eps_cutoff:
-                self.epsilon = self.eps_min
-            else:
-                self.epsilon = self.epsilon0 - self.eps_slope * episodes_run
-        #else:
-        #   self.epsilon = self.epsilon0
 
 def compute_q_vals(Q, states, actions):
     """
@@ -274,10 +218,10 @@ def compute_q_vals(Q, states, actions):
     # YOUR CODE HERE
     #states = torch.tensor(states,dtype=torch.float32)
     #actions = torch.tensor(actions,dtype=torch.int64)
-    Qvals = Q(states)
-    return torch.gather(Qvals,1,actions)
+    Qvals, modelstate = Q(states)
+    return torch.gather(Qvals,1,actions), modelstate
     
-def compute_targets(Q, rewards, next_states, dones, discount_factor):
+def compute_targets(Q, rewards, next_states, dones, discount_factor, modelstate=None):
     """
     This method returns targets (values towards which Q-values should move).
     
@@ -287,11 +231,13 @@ def compute_targets(Q, rewards, next_states, dones, discount_factor):
         next_states: a tensor of states. Shape: batch_size x obs_dim
         dones: a tensor of boolean done flags (indicates if next_state is terminal) Shape: batch_size x 1
         discount_factor: discount
+        modelstate=(ht,ct) if recurrent network
     Returns:
         A torch tensor filled with target values. Shape: batch_size x 1.
     """
     # YOUR CODE HERE
-    next_qvals = Q(next_states).max(dim=1)[0].unsqueeze(1)
+    predictions, modelstate = Q(next_states, modelstate)
+    next_qvals = predictions.max(dim=1)[0].unsqueeze(1)
     done_bool = dones.squeeze()#.bool()
     # If we are done (terminal state is reached) next q value is always 0
     next_qvals[done_bool] = 0.
@@ -305,9 +251,9 @@ def train(Q, Q_target, memory, optimizer, batch_size, discount_factor):
         return 0.
 
     state, action, reward, next_state, done = memory.sample(batch_size)
-    q_val = compute_q_vals(Q, state, action)
+    q_val, modelstate = compute_q_vals(Q, state, action)
     with torch.no_grad():  # Don't compute gradient info for the target (semi-gradient)
-        target = compute_targets(Q_target, reward, next_state, done, discount_factor)
+        target = compute_targets(Q_target, reward, next_state, done, discount_factor, modelstate)
     loss = F.smooth_l1_loss(q_val, target)
     #loss = F.mse_loss(q_val, target)
 
@@ -330,11 +276,11 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
     best_model_path = None
     start_time=time.time()
     for epi in range(num_episodes):
-        if (epi+1)%4000 == 0:
+        if (epi+1)%1000 == 0:
             optimizer.param_groups[0]['lr'] *= 0.9
         state = env.reset() 
         if noise:
-            state += np.random.rand(100)/200.
+            state += np.random.rand(200)/200.
         
         steps = 0
         R=0
@@ -344,7 +290,7 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
             action_idx, next_node = policy.sample_action(state,env._availableActionsInCurrentState())
             s_next, r, done, _ = env.step(action_idx)
             if noise:
-                s_next += np.random.rand(100)/200.
+                s_next += np.random.rand(200)/200.
             memory.push((state,action_idx,r,s_next,done))
             state = s_next
             steps += 1
@@ -353,6 +299,8 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
             # Take a train step
             loss = train(Q, Q_target, memory, optimizer, batch_size, discount_factor)
             if done:
+                if type(policy).__name__ == 'EpsilonGreedyPolicyRDQN':
+                    policy.reset_init_states()
                 Q_target.load_state_dict(Q.state_dict())
                 #policy.Q=Q_target
                 if (epi) % print_every == 0:
@@ -361,9 +309,16 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
                     avg_returns = np.mean(episode_returns[-print_every:])
                     avg_loss = np.mean(episode_losses[-print_every:])
                     start_time=time.time()
-                    print("{2} Episode {0}. Last avg episode length {1:0.1f}; "
+                    print("{2} Epi {0}. Avg epi len {1:0.1f}; "
                           .format(epi, avg_steps, '\033[92m' if avg_returns >= 0 else '\033[97m'), end='')
-                    print("Avg episode return:",avg_returns, "epsilon: {:.1f}".format(policy.epsilon), "Avg loss: {:.2f}".format(avg_loss),"time per episode(ms) {:.2f}".format(duration/print_every*1000))
+                    print("Avg epi ret:",avg_returns, \
+                        "eps: {:.1f}".format(policy.epsilon),\
+                        "lr: {:.2E}".format(optimizer.param_groups[0]['lr']),\
+                        "Avg loss: {:.2f}".format(avg_loss),\
+                        "time/epi (ms) {:.2f}".format(duration/print_every*1000),\
+                        "#entr in mem {:.0f}".format(memory.num_filled),\
+                        "#trans in mem {:.0f}".format(memory.__num_transitions__())
+                        )
 
                     if avg_returns > max_return:
                         max_return=avg_returns

@@ -3,12 +3,12 @@ import numpy as np
 import simdata_utils as su
 import matplotlib.pyplot as plt
 import torch
-from dqn_utils import seed_everything, FastReplayMemory, train, run_episodes
-from rl_models import QNetwork
+from dqn_utils import seed_everything, SeqReplayMemory, train, run_episodes
 from rl_utils import EvaluatePolicy, CreateDuplicatesTrainsets
-from rl_policy import MinIndegreePolicy, EpsilonGreedyPolicyDQN
+from rl_models import RecurrentQNetwork
+from rl_policy import EpsilonGreedyPolicyRDQN
 import time
-import os
+#import os
 
 #os.environ["CUDA_VISIBLE_DEVICES"]="-1"
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -28,12 +28,12 @@ dims_hidden_layers = [128]#[256, 128]
 # Select hyperparameters
 seed = 42  # This is not randomly chosen
 batch_size      = 64
-mem_size        = 5000
+mem_size        = 1500
 discount_factor = .9#1.#0.8
-learn_rate      = 5e-4
-num_episodes    = 2000
+learn_rate      = 1e-5
+num_episodes    = 2500
 eps_0           = 1.
-eps_min         = 0.05
+eps_min         = 0.1
 cutoff          = 0.7*num_episodes # lower plateau reached and maintained from this point onward
 state_noise     = False
 
@@ -48,9 +48,9 @@ env.world_pool = init_pos_trainset_indices0 # limit the training set to the sele
 
 dim_in = env.state_encoding_dim
 dim_out = env.max_outdegree
-memory = FastReplayMemory(mem_size,dim_in)
-qnet = QNetwork(dim_in, dim_out, dims_hidden_layers).to(device)
-policy = EpsilonGreedyPolicyDQN(qnet, env, eps_0=eps_0, eps_min=eps_min, eps_cutoff=cutoff)
+memory = SeqReplayMemory(mem_size)
+qnet = RecurrentQNetwork(dim_in, 24, dim_out, dims_hidden_layers).to(device)
+policy = EpsilonGreedyPolicyRDQN(qnet, env, eps_0=eps_0, eps_min=eps_min, eps_cutoff=cutoff)
 
 # Run DQN
 start_time = time.time()

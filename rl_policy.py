@@ -1,5 +1,10 @@
 import numpy as np
 import random
+import torch
+from torch import nn
+import torch.nn.functional as F
+from torch import optim
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 class EpsilonGreedyPolicy(object):
     """
@@ -133,3 +138,123 @@ class MinIndegreePolicy(object):
         next_node = self.env.sp.coord2labels[best_path[1]]
         action = self.env.neighbors[source_node_label].index(int(next_node))
         return action, None
+
+class EpsilonGreedyPolicyDQN(object):
+    """
+    A simple epsilon greedy policy.
+    """
+    def __init__(self, Q, env, eps_0 = 1., eps_min=0.1, eps_cutoff=100):
+        self.Q = Q
+        self.rng = np.random.RandomState(1)
+        # Epsilon scheduling
+        self.epsilon = eps_0
+        self.epsilon0   = eps_0
+        self.eps_min    = eps_min
+        self.eps_cutoff = eps_cutoff
+        self.eps_slope  = (eps_0-eps_min)/eps_cutoff
+        # Graph attributes
+        self.actions_from_node = env.neighbors
+        self.out_degree=env.out_degree
+        self.V = env.sp.V
+        self.max_outdegree=env.max_outdegree
+    
+    def sample_action(self, obs, available_actions):
+        """
+        This method takes a state as input and returns an action sampled from this policy.  
+
+        Args:
+            obs: current state
+
+        Returns:
+            An action (int).
+        """
+        draw = self.rng.uniform(0,1,1)
+        if draw <= self.epsilon:
+            num_actions = len(available_actions)
+            action_idx = random.randint(0,num_actions-1)
+            return action_idx, available_actions[action_idx]
+        else:
+            with torch.no_grad():
+                y, modelstate = self.Q(torch.tensor(obs,dtype=torch.float32).to(device))
+                num_actions=len(available_actions)
+                action_idx = torch.argmax(y[:num_actions]).item()
+            return action_idx, None
+
+    def set_epsilon(self, episodes_run):
+        if self.eps_cutoff > 0:
+            if episodes_run > self.eps_cutoff:
+                self.epsilon = self.eps_min
+            else:
+                self.epsilon = self.epsilon0 - self.eps_slope * episodes_run
+        #else:
+        #   self.epsilon = self.epsilon0
+
+
+
+class EpsilonGreedyPolicyRDQN(object):
+    """
+    A simple epsilon greedy policy.
+    """
+    def __init__(self, Q, env, eps_0 = 1., eps_min=0.1, eps_cutoff=100):
+        self.Q = Q
+        # Attributes used to manage hidden state of lstm
+        self.lstm_input_size=Q.lstm.input_size
+        self.lstm_hidden_size=Q.lstm.hidden_size
+        #self.ht=torch.zeros(self.lstm_hidden_size).to(device)
+        #self.ct=torch.zeros(self.lstm_hidden_size).to(device)
+        self.reset_init_states()
+        # Epsilon scheduling
+        self.epsilon = eps_0
+        self.epsilon0   = eps_0
+        self.eps_min    = eps_min
+        self.eps_cutoff = eps_cutoff
+        self.eps_slope  = (eps_0-eps_min)/eps_cutoff
+        # Graph attributes
+        self.actions_from_node = env.neighbors
+        self.out_degree=env.out_degree
+        self.V = env.sp.V
+        self.max_outdegree=env.max_outdegree
+        # Sampling generator
+        self.rng = np.random.RandomState(1)
+    
+    def reset_init_states(self):
+        self.ht=torch.zeros(self.lstm_hidden_size)[None,None,:].to(device)
+        self.ct=torch.zeros(self.lstm_hidden_size)[None,None,:].to(device)
+
+    def sample_action(self, obs, available_actions):
+        """
+        This method takes a state as input and returns an action sampled from this policy.  
+
+        Args:
+            obs: current state
+
+        Returns:
+            An action (int).
+        """
+        draw = self.rng.uniform(0,1,1)
+        if draw <= self.epsilon:
+            num_actions = len(available_actions)
+            action_idx = random.randint(0,num_actions-1)
+            return action_idx, available_actions[action_idx]
+        else:
+            with torch.no_grad():
+                y, (ht_,ct_) = self.Q(torch.tensor(obs,dtype=torch.float32)[None,None,:].to(device), (self.ht,self.ct))
+                self.ht=ht_
+                self.ct=ct_
+                num_actions=len(available_actions)
+                action_idx = torch.argmax(y.squeeze()[:num_actions]).item()
+                # if num_actions<4:
+                #     if action_idx > num_actions-1:
+                #         assert False
+                # if len(y.shape) != 2:
+                #     k=0
+            return action_idx, None
+
+    def set_epsilon(self, episodes_run):
+        if self.eps_cutoff > 0:
+            if episodes_run > self.eps_cutoff:
+                self.epsilon = self.eps_min
+            else:
+                self.epsilon = self.epsilon0 - self.eps_slope * episodes_run
+        #else:
+        #   self.epsilon = self.epsilon0

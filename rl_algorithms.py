@@ -70,21 +70,7 @@ def q_learning(env, policy, num_episodes, discount_factor=1.0, alpha_0 = 0.5, al
 
 def q_learning_exhaustive(env, policy, num_episodes, discount_factor=1.0, alpha_0 = 0.5, alpha_decay=0., print_episodes=False):
     """
-    Q-Learning algorithm: Off-policy TD control. Finds the optimal greedy policy
-    while following an epsilon-greedy policy
-
-    Args:
-        env: OpenAI environment.
-        policy: A behavior policy which allows us to sample actions with its sample_action method.
-        Q: Q value function
-        num_episodes: Number of episodes to run for.
-        discount_factor: Gamma discount factor.
-        alpha: TD learning rate.
-
-    Returns:
-        A tuple (Q, stats).
-        Q is a numpy array Q[s,a] -> state-action value.
-        stats is a list of tuples giving the episode lengths and returns.
+    Trains all possible initial conditions of the environment with pre-set number of episodes
     """
 
     # Keeps track of useful statistics
@@ -133,7 +119,6 @@ def q_learning_exhaustive(env, policy, num_episodes, discount_factor=1.0, alpha_
     episode_lengths, episode_returns = zip(*stats)
     metrics_vanilla = [episode_returns, episode_lengths]
     return policy.Q, metrics_vanilla, policy, Q_tables
-
 
 def sarsa(env, policy, num_episodes, discount_factor=1.0, alpha_0 = 0.5, alpha_decay=0., print_episodes=False):
     """
@@ -233,8 +218,6 @@ def expected_sarsa(env, policy, num_episodes, discount_factor=1.0, alpha_0 = 0.5
     episode_lengths, episode_returns = zip(*stats)
     metrics_vanilla = [episode_returns, episode_lengths]
     return policy.Q, metrics_vanilla, policy, Q_tables
-
-
 
 def mc_q_learning(env, policy, num_episodes, discount_factor=1.0, alpha_0 = 0.5, alpha_decay=0., print_episodes=False):
     # Keeps track of useful statistics
