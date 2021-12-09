@@ -3,9 +3,10 @@ import numpy as np
 import simdata_utils as su
 import matplotlib.pyplot as plt
 import torch
-from dqn_utils import seed_everything, QNetwork, FastReplayMemory, EpsilonGreedyPolicyDQN, train, run_episodes
-from rl_utils import EvaluatePolicy, SelectTrainset
-from rl_policy import MinIndegreePolicy
+from dqn_utils import seed_everything, FastReplayMemory, train, run_episodes
+from rl_models import QNetwork
+from rl_utils import EvaluatePolicy, CreateDuplicatesTrainsets
+from rl_policy import MinIndegreePolicy, EpsilonGreedyPolicyDQN
 import random
 import time
 import os
@@ -33,10 +34,10 @@ env.world_pool = env.all_worlds
 dim_in = env.state_encoding_dim
 dim_out = env.max_outdegree
 qnet = QNetwork(dim_in, dim_out, dims_hidden_layers).to(device)
-qnet.load_state_dict(torch.load("models/dqn_[256,128]_best_model_1.94.pt"))
+qnet.load_state_dict(torch.load("models/dqn_[256,128]_packed_best_model_3.08.pt"))
 
 policy = EpsilonGreedyPolicyDQN(qnet, env)
 policy.epsilon=0.
-EvaluatePolicy(env, policy, random.sample(env.world_pool,10), print_runs=False, save_plots=True)
+EvaluatePolicy(env, policy, random.sample(env.world_pool,2), print_runs=False, save_plots=False)
 
 

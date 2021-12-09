@@ -35,7 +35,7 @@ class RecurrentQNetwork(nn.Module):
     def __init__(self, num_in, lstm_hidden, num_out, num_hidden=[128]):
         nn.Module.__init__(self)
         self.lstm   = nn.LSTM(input_size=num_in, hidden_size=lstm_hidden, batch_first=True).to(device)
-        layers      = []
+        layers      = [nn.Tanh()]
         layer_sizes = [lstm_hidden]+num_hidden
         for layer_idx in range(1,len(layer_sizes)):
             layers += [ nn.Linear(layer_sizes[layer_idx-1], layer_sizes[layer_idx]), nn.ReLU() ]
@@ -68,3 +68,4 @@ class RecurrentQNetwork(nn.Module):
         print('------------------------------------------')
         assert total == sum(p.numel() for p in self.parameters() if p.requires_grad)
         return total
+

@@ -23,18 +23,18 @@ conf['direction_north']=False
 fixed_init=conf['fixed_initial_positions']
 
 # Define qnet 
-dims_hidden_layers = [128]#[256, 128]
+dims_hidden_layers = [256, 128]
 
 # Select hyperparameters
 seed = 42  # This is not randomly chosen
 batch_size      = 64
-mem_size        = 5000
+mem_size        = 15000
 discount_factor = .9#1.#0.8
-learn_rate      = 5e-4
-num_episodes    = 2000
+learn_rate      = 1e-4
+num_episodes    = 25000
 eps_0           = 1.
 eps_min         = 0.05
-cutoff          = 0.7*num_episodes # lower plateau reached and maintained from this point onward
+cutoff          = 0.8*num_episodes # lower plateau reached and maintained from this point onward
 state_noise     = False
 
 # Initialize
@@ -42,9 +42,9 @@ seed_everything(seed)
 env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=fixed_init, state_representation='etUte0U0', state_encoding='tensor')
 # Select specific trainset, set0 has identical states with different rollouts, set1 has identical states with identical rollouts
 init_pos_trainset_indices0, init_pos_trainset_indices1 = CreateDuplicatesTrainsets(env, min_y_coord=env.sp.N-1, min_num_same_positions=env.sp.U, min_num_worlds=4, print_selection=False)
-env.world_pool = init_pos_trainset_indices0 # limit the training set to the selected entries
+#env.world_pool = init_pos_trainset_indices1 # limit the training set to the selected entries
 # Select full world pool
-#env.world_pool = env.all_worlds
+env.world_pool = env.all_worlds
 
 dim_in = env.state_encoding_dim
 dim_out = env.max_outdegree

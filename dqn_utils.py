@@ -268,7 +268,7 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
     optimizer = optim.Adam(Q.parameters(), learn_rate)
     Q_target=copy.deepcopy(Q)
     
-    max_return = 0.
+    max_return = -12.
     global_steps = 0  # Count the steps (do not reset at episode start, to compute epsilon)
     episode_lengths = []  
     episode_returns = []
@@ -276,7 +276,7 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
     best_model_path = None
     start_time=time.time()
     for epi in range(num_episodes):
-        if (epi+1)%1000 == 0:
+        if (epi+1)%4000 == 0:
             optimizer.param_groups[0]['lr'] *= 0.9
         state = env.reset() 
         if noise:

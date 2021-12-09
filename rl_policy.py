@@ -233,6 +233,11 @@ class EpsilonGreedyPolicyRDQN(object):
         """
         draw = self.rng.uniform(0,1,1)
         if draw <= self.epsilon:
+            # check if this is necessary
+            y, (ht_,ct_) = self.Q(torch.tensor(obs,dtype=torch.float32)[None,None,:].to(device), (self.ht,self.ct))
+            self.ht=ht_
+            self.ct=ct_
+            #####
             num_actions = len(available_actions)
             action_idx = random.randint(0,num_actions-1)
             return action_idx, available_actions[action_idx]

@@ -44,11 +44,14 @@ def GetStateEncodingDimension(state_representation, V, U):
     if state_representation == 'et':
         return V
     elif state_representation == 'etUt':
-        return (1+U)*V
+        return 2*V
+        #return (1+U)*V
     elif state_representation == 'ete0U0':
-        return (2+U)*V
+        return 2*V
+        #return (2+U)*V
     elif state_representation == 'etUte0U0':
-        return 2*(1+U)*V
+        return 3*V
+        #return 2*(1+U)*V
     else:
         assert False
 

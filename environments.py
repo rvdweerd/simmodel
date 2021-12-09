@@ -40,7 +40,7 @@ class GraphWorld(object):
         return s
 
     def _encode_tensor(self, s):
-        return self._state2vec(s)
+        return self._state2vec_packed(s)
 
     def _state2np_mat(self,s):
         if self.state_representation == 'etUt':
@@ -61,6 +61,21 @@ class GraphWorld(object):
         else:
             for i, pos in enumerate(state):
                 out[i*self.sp.V + pos] = 1
+        return out
+
+    def _state2vec_packed(self, state, sort_units=False):
+        chunks=[]
+        chunks.append((state[0],))
+        chunks.append(state[1:(1+self.sp.U)])
+        chunks.append(state[(1+self.sp.U):])
+        num_chunks= int(len(chunks[0])>0)+int(len(chunks[1])>0)+int(len(chunks[2])>0)
+        out=np.zeros(self.sp.V * num_chunks) # 
+        if sort_units:
+            return NotImplementedError
+        else:
+            for i, chunk in enumerate(chunks):
+                for pos in chunk:
+                    out[i*self.sp.V + pos] += 1
         return out
 
     def _LoadAndConvertDataFile(self, dirname):
