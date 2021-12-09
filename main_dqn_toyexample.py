@@ -24,35 +24,35 @@ def plot_traindata(episode_returns,losses):
 
 # Select graph world
 configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
-conf=configs['Manhattan5']
-#conf=configs['Manhattan11']
-#conf=configs['CircGraph']
+conf=configs['Manhattan3']
 conf['direction_north']=False
 fixed_init=conf['fixed_initial_positions']
 
 # Define qnet 
-dims_hidden_layers = [256,128]
+dims_hidden_layers = [128]
 
 # Select hyperparameters
-seed = 42  # This is not randomly chosen
-batch_size      = 64
-mem_size        = 15000
-discount_factor = .9#1.#0.8
-learn_rate      = 1e-4
-num_episodes    = 25000
-eps_0           = 1.
-eps_min         = 0.05
-cutoff          = 0.8*num_episodes # lower plateau reached and maintained from this point onward
-state_noise     = False
+seed = 42                           # Parameters to find optimum        # Parameters to find local optimum
+batch_size      = 64                # 64                                # 64
+mem_size        = 64                # 64                                # 1500
+discount_factor = .9                # .9                                # .9
+learn_rate      = 1e-4              # 1e-4                              # 1e-4
+num_episodes    = 1000              # 1000                              # 1000
+eps_0           = 1.                # 1.                                # 1.
+eps_min         = 0.1               # 0.1                               # 0.1
+cutoff          = 0.8*num_episodes  # 0.8                               # 0.8
+state_noise     = False             # Cut-off = lower plateau reached and maintained from this point onward
 
 # Initialize
 seed_everything(seed)
-env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=fixed_init, state_representation='et', state_encoding='tensor')
-# Select specific trainset, set0 has identical states with different rollouts, set1 has identical states with identical rollouts
-init_pos_trainset_indices0, init_pos_trainset_indices1 = CreateDuplicatesTrainsets(env, min_y_coord=env.sp.N-1, min_num_same_positions=env.sp.U, min_num_worlds=4, print_selection=False)
-#env.world_pool = init_pos_trainset_indices0 # limit the training set to the selected entries
-# Select full world pool
-env.world_pool = env.all_worlds
+env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=fixed_init, state_representation='etUt', state_encoding='tensor')
+env.register['coords']={((1,0),(0,2),(1,2),(2,2)):0}
+env.register['labels']={(1,6,7,8):0}
+env.databank['coords']=[{'start_escape_route':(1,0), 'start_units':[(0,2),(1,2),(2,2)], 'paths':[[(0,2),(0,1),(0,0),(0,1),(0,0)],[(1,2),(1,2),(1,2),(0,2),(0,1)],[(2,2),(2,1)]]}]
+env.databank['labels']=[{'start_escape_route':1, 'start_units':[6,7,8], 'paths':[[6,3,0,3,0],[7,7,7,6,3],[8,5]]}]
+env.iratios=[1.]
+env.all_worlds=[0]
+env.world_pool=[0]
 
 dim_in = env.state_encoding_dim
 dim_out = env.max_outdegree
@@ -73,4 +73,4 @@ if best_model_path is not None:
 policy.Q = qnet_best
 print('evaluation of learned policy on trainset')
 policy.epsilon=0.
-EvaluatePolicy(env, policy, env.world_pool, print_runs=False, save_plots=False)
+EvaluatePolicy(env, policy, env.world_pool, print_runs=False, save_plots=True)

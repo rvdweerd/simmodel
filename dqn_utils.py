@@ -268,7 +268,7 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
     optimizer = optim.Adam(Q.parameters(), learn_rate)
     Q_target=copy.deepcopy(Q)
     
-    max_return = -12.
+    max_return = 0.
     global_steps = 0  # Count the steps (do not reset at episode start, to compute epsilon)
     episode_lengths = []  
     episode_returns = []
@@ -280,7 +280,7 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
             optimizer.param_groups[0]['lr'] *= 0.9
         state = env.reset() 
         if noise:
-            state += np.random.rand(200)/200.
+            state += np.random.rand(env.state_encoding_dim)/env.state_encoding_dim
         
         steps = 0
         R=0
@@ -290,7 +290,7 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
             action_idx, next_node = policy.sample_action(state,env._availableActionsInCurrentState())
             s_next, r, done, _ = env.step(action_idx)
             if noise:
-                s_next += np.random.rand(200)/200.
+                s_next += np.random.rand(env.state_encoding_dim)/env.state_encoding_dim
             memory.push((state,action_idx,r,s_next,done))
             state = s_next
             steps += 1

@@ -13,7 +13,7 @@ class GraphWorld(object):
         self.optimization           = optimization_method
         self.fixed_initial_positions= fixed_initial_positions
         self.state_representation   = state_representation
-        self.state_encoding_dim     = su.GetStateEncodingDimension(state_representation, self.sp.V, self.sp.U)
+        self.state_encoding_dim, self.state_chunks = su.GetStateEncodingDimension(state_representation, self.sp.V, self.sp.U)
         
         # Load relevant pre-saved optimization runs for the U trajectories
         dirname                     = su.make_result_directory(self.sp, optimization_method)
@@ -34,7 +34,7 @@ class GraphWorld(object):
         self.local_t                = 0
         self.max_timesteps          = self.sp.T*2
         self.neighbors, self.in_degree, self.max_indegree, self.out_degree, self.max_outdegree = su.GetGraphData(self.sp)
-        self.reset()
+        #self.reset()
 
     def _encode_nodes(self, s):
         return s
@@ -64,18 +64,18 @@ class GraphWorld(object):
         return out
 
     def _state2vec_packed(self, state, sort_units=False):
-        chunks=[]
-        chunks.append((state[0],))
-        chunks.append(state[1:(1+self.sp.U)])
-        chunks.append(state[(1+self.sp.U):])
-        num_chunks= int(len(chunks[0])>0)+int(len(chunks[1])>0)+int(len(chunks[2])>0)
-        out=np.zeros(self.sp.V * num_chunks) # 
+        #chunks=[]
+        #chunks.append((state[0],))
+        #chunks.append(state[1:(1+self.sp.U)])
+        #chunks.append(state[(1+self.sp.U):])
+        #num_chunks= int(len(chunks[0])>0)+int(len(chunks[1])>0)+int(len(chunks[2])>0)
+        out=np.zeros(self.sp.V * len(self.state_chunks)) # 
         if sort_units:
             return NotImplementedError
         else:
-            for i, chunk in enumerate(chunks):
+            for i, chunk in enumerate(self.state_chunks):
                 for pos in chunk:
-                    out[i*self.sp.V + pos] += 1
+                    out[i*self.sp.V + state[pos]] += 1
         return out
 
     def _LoadAndConvertDataFile(self, dirname):
@@ -183,7 +183,7 @@ class GraphWorld(object):
             reward += -10
             info={'Captured':True}
             #print('Captured')
-        if self.sp.labels2coord[next_node][1] == self.sp.most_northern_y: # northern boundary of manhattan graph reached
+        elif self.sp.labels2coord[next_node][1] == self.sp.most_northern_y: # northern boundary of manhattan graph reached
             done = True
             reward += +10
             #print('Goal reached')

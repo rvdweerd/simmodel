@@ -16,6 +16,6 @@ policy_mindeg = MinIndegreePolicy(env)
 policy_random = RandomPolicy(env)
 #env.world_pool = env.all_worlds
 
-#EvaluatePolicy(env,policy_mindeg,env.world_pool,print_runs=False, save_plots=False)
-env.max_timesteps=env.sp.L
-EvaluatePolicy(env,policy_random,random.choices(env.world_pool,k=50000),print_runs=False, save_plots=False)
+EvaluatePolicy(env,policy_mindeg,[100],print_runs=False, save_plots=True)
+#env.max_timesteps=env.sp.L
+EvaluatePolicy(env,policy_random,env.world_pool*1,print_runs=False, save_plots=False)

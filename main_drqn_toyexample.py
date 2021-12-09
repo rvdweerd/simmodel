@@ -3,12 +3,12 @@ import numpy as np
 import simdata_utils as su
 import matplotlib.pyplot as plt
 import torch
-from dqn_utils import seed_everything, FastReplayMemory, train, run_episodes
-from rl_models import QNetwork
+from dqn_utils import seed_everything, SeqReplayMemory, train, run_episodes
 from rl_utils import EvaluatePolicy, CreateDuplicatesTrainsets
-from rl_policy import MinIndegreePolicy, EpsilonGreedyPolicyDQN
+from rl_models import RecurrentQNetwork
+from rl_policy import EpsilonGreedyPolicyRDQN
 import time
-import os
+#import os
 
 #os.environ["CUDA_VISIBLE_DEVICES"]="-1"
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -24,41 +24,41 @@ def plot_traindata(episode_returns,losses):
 
 # Select graph world
 configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
-conf=configs['Manhattan5']
-#conf=configs['Manhattan11']
-#conf=configs['CircGraph']
+conf=configs['Manhattan3']
 conf['direction_north']=False
 fixed_init=conf['fixed_initial_positions']
 
 # Define qnet 
-dims_hidden_layers = [256,128]
+dims_hidden_layers = [128]#[256, 128]
 
 # Select hyperparameters
-seed = 42  # This is not randomly chosen
-batch_size      = 64
-mem_size        = 15000
-discount_factor = .9#1.#0.8
-learn_rate      = 1e-4
-num_episodes    = 25000
-eps_0           = 1.
-eps_min         = 0.05
-cutoff          = 0.8*num_episodes # lower plateau reached and maintained from this point onward
-state_noise     = False
+seed = 42                          # Parameters to find optimum         
+batch_size      = 64                # 64
+mem_size        = 1000              # 1000                               
+discount_factor = .9                # .9
+learn_rate      = 1e-5              # 1e-5
+num_episodes    = 3500              # 2500
+eps_0           = 1.                # 1.0
+eps_min         = 0.1               # 0.1
+cutoff          = 0.5*num_episodes  # 0.7
+state_noise     = False             # Cut-off = lower plateau reached and maintained from this point onward
 
 # Initialize
 seed_everything(seed)
 env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=fixed_init, state_representation='et', state_encoding='tensor')
-# Select specific trainset, set0 has identical states with different rollouts, set1 has identical states with identical rollouts
-init_pos_trainset_indices0, init_pos_trainset_indices1 = CreateDuplicatesTrainsets(env, min_y_coord=env.sp.N-1, min_num_same_positions=env.sp.U, min_num_worlds=4, print_selection=False)
-#env.world_pool = init_pos_trainset_indices0 # limit the training set to the selected entries
-# Select full world pool
-env.world_pool = env.all_worlds
+env.register['coords']={((1,0),(0,2),(1,2),(2,2)):0}
+env.register['labels']={(1,6,7,8):0}
+env.databank['coords']=[{'start_escape_route':(1,0), 'start_units':[(0,2),(1,2),(2,2)], 'paths':[[(0,2),(0,1),(0,0),(0,1),(0,0)],[(1,2),(1,2),(1,2),(0,2),(0,1)],[(2,2),(2,1)]]}]
+env.databank['labels']=[{'start_escape_route':1, 'start_units':[6,7,8], 'paths':[[6,3,0,3,0],[7,7,7,6,3],[8,5]]}]
+env.iratios=[1.]
+env.all_worlds=[0]
+env.world_pool=[0]
 
 dim_in = env.state_encoding_dim
 dim_out = env.max_outdegree
-memory = FastReplayMemory(mem_size,dim_in)
-qnet = QNetwork(dim_in, dim_out, dims_hidden_layers).to(device)
-policy = EpsilonGreedyPolicyDQN(qnet, env, eps_0=eps_0, eps_min=eps_min, eps_cutoff=cutoff)
+memory = SeqReplayMemory(mem_size)
+qnet = RecurrentQNetwork(dim_in, 12, dim_out, dims_hidden_layers).to(device)
+policy = EpsilonGreedyPolicyRDQN(qnet, env, eps_0=eps_0, eps_min=eps_min, eps_cutoff=cutoff)
 
 # Run DQN
 start_time = time.time()
@@ -73,4 +73,5 @@ if best_model_path is not None:
 policy.Q = qnet_best
 print('evaluation of learned policy on trainset')
 policy.epsilon=0.
-EvaluatePolicy(env, policy, env.world_pool, print_runs=False, save_plots=False)
+EvaluatePolicy(env, policy, env.world_pool, print_runs=False, save_plots=True)
+

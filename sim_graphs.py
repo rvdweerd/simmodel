@@ -162,3 +162,95 @@ def TKGraph():
     }
 
     return G, labels, pos
+
+def MetroGraph():
+    # Generate example graph 
+    ##
+    G = nx.Graph()
+    nodes={
+        0: (21,18),
+        1: (4,0),
+        2: (7,0),        
+        3: (13,0),
+        4: (18,0),
+        5: (3,3),
+        6: (10,4),
+        7: (15,4),
+        8: (18,5),
+        9: (21,7),
+        10: (0,6),
+        11: (2,7),
+        12: (5.5,7),
+        13: (9,8),
+        14: (13.5,7.5),
+        15: (0,10),
+        16: (4,10),
+        17: (10,9),
+        18: (14.5,9.5),
+        19: (17.5,9),
+        20: (21,10.5),
+        21: (5,12.5),
+        22: (8.5,11),        
+        23: (10.5,13),
+        24: (13.5,12),
+        25: (16.5,14),
+        26: (0,16),
+        27: (3,16),
+        28: (9.5,15.5),
+        29: (14.5,16.5),
+        30: (3,18),
+        31: (16.5,18)
+    }
+    nodelist=[v for k,v in nodes.items()]
+    G.add_nodes_from(nodelist)
+    edgelist=[
+        (0,25,{'N_pref':-1, 'weight':1}),
+        (1,5,{'N_pref':-1, 'weight':1}),        
+        (2,6,{'N_pref':-1, 'weight':1}),        
+        (3,6,{'N_pref':-1, 'weight':1}),        
+        (4,7,{'N_pref':-1, 'weight':1}),        
+        (5,6,{'N_pref':-1, 'weight':1}),        
+        (5,11,{'N_pref':-1, 'weight':1}),        
+        (6,7,{'N_pref':-1, 'weight':1}),        
+        (6,12,{'N_pref':-1, 'weight':1}),        
+        (6,13,{'N_pref':-1, 'weight':1}),        
+        (7,8,{'N_pref':-1, 'weight':1}),        
+        (7,14,{'N_pref':-1, 'weight':1}),        
+        (8,9,{'N_pref':-1, 'weight':1}),        
+        (8,19,{'N_pref':-1, 'weight':1}),        
+        (10,11,{'N_pref':-1, 'weight':1}),        
+        (11,12,{'N_pref':-1, 'weight':1}),        
+        (12,13,{'N_pref':-1, 'weight':1}),        
+        (12,16,{'N_pref':-1, 'weight':1}),        
+        (13,17,{'N_pref':-1, 'weight':1}),        
+        (14,17,{'N_pref':-1, 'weight':1}),        
+        (14,18,{'N_pref':-1, 'weight':1}),        
+        (15,16,{'N_pref':-1, 'weight':1}),        
+        (16,21,{'N_pref':-1, 'weight':1}),        
+        (17,22,{'N_pref':-1, 'weight':1}),        
+        (18,19,{'N_pref':-1, 'weight':1}),        
+        (18,22,{'N_pref':-1, 'weight':1}),        
+        (18,24,{'N_pref':-1, 'weight':1}),        
+        (19,20,{'N_pref':-1, 'weight':1}),        
+        (19,25,{'N_pref':-1, 'weight':1}),        
+        (20,25,{'N_pref':-1, 'weight':1}),        
+        (21,22,{'N_pref':-1, 'weight':1}),        
+        (21,27,{'N_pref':-1, 'weight':1}),        
+        (22,23,{'N_pref':-1, 'weight':1}),        
+        (23,24,{'N_pref':-1, 'weight':1}),        
+        (23,28,{'N_pref':-1, 'weight':1}),        
+        (24,25,{'N_pref':-1, 'weight':1}),        
+        (25,29,{'N_pref':-1, 'weight':1}),        
+        (26,27,{'N_pref':-1, 'weight':1}),        
+        (27,28,{'N_pref':-1, 'weight':1}),        
+        (27,30,{'N_pref':-1, 'weight':1}),        
+        (28,29,{'N_pref':-1, 'weight':1}),        
+        (29,31,{'N_pref':-1, 'weight':1})
+    ]
+    edgelist_coord=[(nodes[i[0]],nodes[i[1]],i[2]) for i in edgelist]
+    G.add_edges_from(edgelist_coord)
+    G=G.to_directed()
+    pos = dict( (n,n) for n in G.nodes() )
+    labels = dict([(v,k) for k,v in nodes.items()])
+
+    return G, labels, pos

@@ -10,7 +10,7 @@ import random
 from pathlib import Path
 import os
 import pickle
-from sim_graphs import graph, CircGraph, TKGraph
+from sim_graphs import graph, CircGraph, TKGraph, MetroGraph
 from rl_plotting import PlotAgentsOnGraph
 
 class SimParameters(object):
@@ -34,6 +34,7 @@ class SimParameters(object):
         self.direction_north = None
         self.start_escape_route = None
         self.most_northern_y = None
+        self.most_eastern_x = None
         self.target_node = None
     def __str__(self):
         out = self.graph_type
@@ -42,18 +43,28 @@ class SimParameters(object):
 
 def GetStateEncodingDimension(state_representation, V, U):
     if state_representation == 'et':
-        return V
+        state_dim=V
+        chunks=[(0,)]
     elif state_representation == 'etUt':
-        return 2*V
+        #state_len=1+U
+        state_dim= 2*V
+        chunks=[(0,), tuple([1+i for i in range(U)]) ]
         #return (1+U)*V
     elif state_representation == 'ete0U0':
-        return 2*V
+        #return (2+U)*V, None
+        #state_len=1+1+U
+        state_dim= 2*V
+        chunks=[(0,), tuple([1+i for i in range(U+1)])]
         #return (2+U)*V
     elif state_representation == 'etUte0U0':
-        return 3*V
+        #state_len=1+U+1+U
+        state_dim= 3*V
+        chunks=[(0,), tuple([1+i for i in range(U)]), tuple([1+U+i for i in range(U+1)]) ]
         #return 2*(1+U)*V
     else:
         assert False
+    print('State encoding vector dim:',state_dim)
+    return state_dim, chunks
 
 def GetWorldPool(all_worlds, fixed_initial_positions, register):
     if fixed_initial_positions == None:
@@ -67,6 +78,16 @@ def GetWorldPool(all_worlds, fixed_initial_positions, register):
 
 def GetConfigs():
     configs = {
+        "Metro": {
+            'graph_type': "MetroGraph",
+            'N': 32,    # number of nodes along one side
+            'U': 3,    # number of pursuer units
+            'L': 6,    # Time steps
+            'R': 500,  # Number of escape routes sampled 
+            'direction_north': False,       # Directional preference of escaper
+            'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
+            'fixed_initial_positions': (17,5,7,28)
+        },
         "Manhattan3": {
             'graph_type': "Manhattan",
             'N': 3,    # number of nodes along one side
@@ -136,6 +157,17 @@ def DefineSimParameters(config):
         sp.start_escape_route = (sp.N//2,0) # bottom center of grid
         sp.most_northern_y = max([c[1] for c in sp.G.nodes])
         sp.target_node = (sp.N//2,sp.N-1)
+    elif sp.graph_type == 'MetroGraph':
+        sp.G, sp.labels, sp.pos = MetroGraph()#manhattan_graph(N)
+        sp.N = config['N']
+        sp.V = sp.N             # Total number of vertices (FIXED)
+        sp.T = sp.L+1         # Total steps in time taken (L + start node)
+        sp.direction_north = False # (NOT VERY INTERESTING IF TRUE)
+        sp.nodeid2coord = dict( (i, n) for i,n in enumerate(sp.G.nodes()) )
+        sp.start_escape_route = sp.nodeid2coord[17]
+        sp.most_northern_y = 18
+        sp.most_eastern_x = 21
+        sp.target_node = None
     elif sp.graph_type == 'CircGraph':
         sp.G, sp.labels, sp.pos = CircGraph()#manhattan_graph(N)
         sp.N = 10             # Number of nodes (FIXED)
