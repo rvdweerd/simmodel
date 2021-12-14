@@ -168,7 +168,6 @@ class GraphWorld(object):
         info = {'Captured':False, 'u_positions':self.state[1:]}
         self.global_t += 1
         self.local_t  += 1
-        assert next_node in self.neighbors[self.state[0]]
         
         new_Upositions = self._getUpositions(self.local_t) # uses local time: u_paths may have been updated from last state if sim is dynamic
         new_Upositions.sort()

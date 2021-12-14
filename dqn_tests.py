@@ -65,7 +65,9 @@ def FastMemTest(env,capacity=10, num_episodes=3, print_output=True):
     if print_output:
         print('\n########## FastMemoryTest #################')
     #capacity = 10
-    memory = FastReplayMemory(capacity=10000,tensor_length=100)
+    s=env.reset()
+    assert  env.state_encoding_dim == s.shape[0]
+    memory = FastReplayMemory(capacity=10000,tensor_length=env.state_encoding_dim)
 
     for episode in range(num_episodes):
         # Sample a transition
@@ -117,7 +119,7 @@ def SeqMemTest(env, capacity=1000, num_episodes=1100, print_output=True):
     packed_sequences, actions, rewards, next_states, dones = memory.sample(8)
     #state, action, reward, next_state, done = memory.sample(batch_size)
 
-    lstm=LSTM(input_size=100,hidden_size=13,batch_first=True).to(device)
+    lstm=LSTM(input_size=s.shape[0],hidden_size=13,batch_first=True).to(device)
     packed_output, (ht, ct) = lstm(packed_sequences)
     output, input_sizes = pad_packed_sequence(packed_output, batch_first=True)
     
@@ -180,12 +182,13 @@ def TorchTest():
 def TrainTest(env):
     print('\n########## TrainTest #################')
     replay_buffer = FastMemTest(env,capacity=100, num_episodes=50, print_output=False)
-
+    s=env.reset()
+    assert s.shape[0] == env.state_encoding_dim
     # You may want to test your functions individually, but after you do so lets see if the method train works.
     batch_size = 64
     discount_factor = 0.8
     learn_rate = 1e-3
-    dim_in=(1+env.sp.U)*env.sp.V
+    dim_in=env.state_encoding_dim #(1+env.sp.U)*env.sp.V
     dim_out=4 #(max out-degree)
     dim_hidden=[128]
     qnet=QNetwork(dim_in,dim_out,dim_hidden).to(device)

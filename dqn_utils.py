@@ -267,8 +267,9 @@ def train(Q, Q_target, memory, optimizer, batch_size, discount_factor):
 def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discount_factor, learn_rate, print_every=100,  noise=False):
     optimizer = optim.Adam(Q.parameters(), learn_rate)
     Q_target=copy.deepcopy(Q)
-    
+    best_model=copy.deepcopy(Q)
     max_return = 0.
+    max_return_abs = -1e6
     global_steps = 0  # Count the steps (do not reset at episode start, to compute epsilon)
     episode_lengths = []  
     episode_returns = []
@@ -324,6 +325,9 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
                         max_return=avg_returns
                         best_model_path='models/dqn_best_model_{:.2f}'.format(max_return)+'.pt'
                         torch.save(Q.state_dict(), best_model_path)
+                    if avg_returns > max_return_abs:
+                        max_return_abs = avg_returns
+                        best_model.load_state_dict(Q.state_dict())
                 episode_lengths.append(steps)
                 episode_returns.append(R)
                 episode_losses.append(loss)#.detach().item())
@@ -331,7 +335,7 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
                 break
         
     print('\033[97m')
-    return episode_lengths, episode_returns, episode_losses, best_model_path
+    return episode_lengths, episode_returns, episode_losses, best_model_path, best_model
 
 if __name__ == '__main__':
     pass

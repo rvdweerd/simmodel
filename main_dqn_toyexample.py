@@ -6,7 +6,7 @@ import torch
 from dqn_utils import seed_everything, FastReplayMemory, train, run_episodes
 from rl_models import QNetwork
 from rl_utils import EvaluatePolicy, CreateDuplicatesTrainsets
-from rl_policy import MinIndegreePolicy, EpsilonGreedyPolicyDQN
+from rl_policy import EpsilonGreedyPolicyDQN
 import time
 import os
 
@@ -27,25 +27,26 @@ configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11
 conf=configs['Manhattan3']
 conf['direction_north']=False
 fixed_init=conf['fixed_initial_positions']
+conf['make_reflexive']=True
 
 # Define qnet 
-dims_hidden_layers = [128]
+dims_hidden_layers = [64,64]
 
-# Select hyperparameters
+# Select hyperparameters            etUt, reflexive
 seed = 42                           # Parameters to find optimum        # Parameters to find local optimum
 batch_size      = 64                # 64                                # 64
 mem_size        = 64                # 64                                # 1500
 discount_factor = .9                # .9                                # .9
 learn_rate      = 1e-4              # 1e-4                              # 1e-4
-num_episodes    = 1000              # 1000                              # 1000
+num_episodes    = 5500              # 1500                              # 1000
 eps_0           = 1.                # 1.                                # 1.
-eps_min         = 0.1               # 0.1                               # 0.1
+eps_min         = 0.1              # 0.1                               # 0.1
 cutoff          = 0.8*num_episodes  # 0.8                               # 0.8
 state_noise     = False             # Cut-off = lower plateau reached and maintained from this point onward
 
 # Initialize
 seed_everything(seed)
-env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=fixed_init, state_representation='etUt', state_encoding='tensor')
+env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=fixed_init, state_representation='et', state_encoding='tensor')
 env.register['coords']={((1,0),(0,2),(1,2),(2,2)):0}
 env.register['labels']={(1,6,7,8):0}
 env.databank['coords']=[{'start_escape_route':(1,0), 'start_units':[(0,2),(1,2),(2,2)], 'paths':[[(0,2),(0,1),(0,0),(0,1),(0,0)],[(1,2),(1,2),(1,2),(0,2),(0,1)],[(2,2),(2,1)]]}]

@@ -9,7 +9,7 @@ import random
 
 configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
 #conf=configs['Manhattan5']
-conf=configs['MetroGraphU3']
+conf=configs['MetroGraphU3L8_node1']
 #conf=configs['Manhattan11']
 conf['direction_north']=False
 conf['loadAllStartingPositions']=False
@@ -26,8 +26,8 @@ env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=Non
 # env.world_pool=[0]
 
 # CODE TO CREATE DUPLICATE SETS
-init_pos_trainset_indices0, init_pos_trainset_indices1 = CreateDuplicatesTrainsets(env, min_y_coord=env.sp.N-1, min_num_same_positions=env.sp.U, min_num_worlds=4, print_selection=False)
-env.world_pool = init_pos_trainset_indices1 # limit the training set to the selected entries
+#init_pos_trainset_indices0, init_pos_trainset_indices1 = CreateDuplicatesTrainsets(env, min_y_coord=env.sp.N-1, min_num_same_positions=env.sp.U, min_num_worlds=4, print_selection=False)
+#env.world_pool = init_pos_trainset_indices1 # limit the training set to the selected entries
 # Select full world pool
 #env.world_pool = env.all_worlds
 
@@ -35,7 +35,7 @@ policy_random   = RandomPolicy(env)
 policy_shortest = ShortestPathPolicy(env, weights = 'equal')
 policy_mindeg   = ShortestPathPolicy(env, weights = 'min_indegree')
 
-#env.sp.target_nodes=[31]
+env.sp.target_nodes=[31]
 #env.world_pool = env.all_worlds
 
 #env.max_timesteps=env.sp.L
