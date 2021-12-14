@@ -21,7 +21,9 @@ def graph(N):
     G = nx.grid_2d_graph(N,N)
     pos = dict( (n, n) for n in G.nodes() )
     labels = dict( ((i, j), j* N + i) for i, j in G.nodes() ) # 
-    
+    G=G.to_directed()    
+    #edgelist=[(e,e,{}) for e in G.nodes()]
+    #G.add_edges_from(edgelist)
     return G, labels, pos
 
 def CircGraph():
@@ -169,19 +171,19 @@ def MetroGraph():
     G = nx.Graph()
     nodes={
         0: (21,18),
-        1: (4,0),
+        1: (0,0),
         2: (7,0),        
         3: (13,0),
-        4: (18,0),
+        4: (21,0),
         5: (3,3),
         6: (10,4),
-        7: (15,4),
+        7: (14,5),
         8: (18,5),
         9: (21,7),
         10: (0,6),
         11: (2,7),
         12: (5.5,7),
-        13: (9,8),
+        13: (9,8),#(8.5,7.5),
         14: (13.5,7.5),
         15: (0,10),
         16: (4,10),
@@ -199,7 +201,8 @@ def MetroGraph():
         28: (9.5,15.5),
         29: (14.5,16.5),
         30: (3,18),
-        31: (16.5,18)
+        31: (16.5,18),
+        32: (16,2.5)
     }
     nodelist=[v for k,v in nodes.items()]
     G.add_nodes_from(nodelist)
@@ -208,7 +211,7 @@ def MetroGraph():
         (1,5,{'N_pref':-1, 'weight':1}),        
         (2,6,{'N_pref':-1, 'weight':1}),        
         (3,6,{'N_pref':-1, 'weight':1}),        
-        (4,7,{'N_pref':-1, 'weight':1}),        
+        (4,32,{'N_pref':-1, 'weight':1}),        
         (5,6,{'N_pref':-1, 'weight':1}),        
         (5,11,{'N_pref':-1, 'weight':1}),        
         (6,7,{'N_pref':-1, 'weight':1}),        
@@ -216,6 +219,7 @@ def MetroGraph():
         (6,13,{'N_pref':-1, 'weight':1}),        
         (7,8,{'N_pref':-1, 'weight':1}),        
         (7,14,{'N_pref':-1, 'weight':1}),        
+        (7,32,{'N_pref':-1, 'weight':1}),        
         (8,9,{'N_pref':-1, 'weight':1}),        
         (8,19,{'N_pref':-1, 'weight':1}),        
         (10,11,{'N_pref':-1, 'weight':1}),        

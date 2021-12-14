@@ -35,7 +35,8 @@ class SimParameters(object):
         self.start_escape_route = None
         self.most_northern_y = None
         self.most_eastern_x = None
-        self.target_node = None
+        self.target_nodes = None
+        self.loadAllStartingPositions = False
     def __str__(self):
         out = self.graph_type
         out += ', ('+str(self.N)+'x'+str(self.N)+') nodes, ...'
@@ -78,66 +79,105 @@ def GetWorldPool(all_worlds, fixed_initial_positions, register):
 
 def GetConfigs():
     configs = {
-        "Metro": {
+        "MetroGraphU3": {
+            # Note: E starting position is center node 17
             'graph_type': "MetroGraph",
-            'N': 32,    # number of nodes along one side
+            'make_reflexive': False,
+            'N': 33,    # number of nodes along one side
             'U': 3,    # number of pursuer units
             'L': 6,    # Time steps
             'R': 500,  # Number of escape routes sampled 
             'direction_north': False,       # Directional preference of escaper
             'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
-            'fixed_initial_positions': (17,5,7,28)
+            'fixed_initial_positions': (17,5,7,28),
+            'loadAllStartingPositions': False
+        },
+        "MetroGraphU4": {
+            'graph_type': "MetroGraph",
+            'make_reflexive': False,
+            # Note: E starting position is center node 17
+            'N': 33,    # number of nodes along one side
+            'U': 4,    # number of pursuer units
+            'L': 6,    # Time steps
+            'R': 500,  # Number of escape routes sampled 
+            'direction_north': False,       # Directional preference of escaper
+            'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
+            'fixed_initial_positions': (17,5,7,28),
+            'loadAllStartingPositions': False
+        },
+        "MetroGraphU3L8_node1": {
+            # Note: E starting position is bottom left node 1
+            'graph_type': "MetroGraph",
+            'make_reflexive': False,            
+            'N': 33,    # number of nodes along one side
+            'U': 3,    # number of pursuer units
+            'L': 8,    # Time steps
+            'R': 500,  # Number of escape routes sampled 
+            'direction_north': False,       # Directional preference of escaper
+            'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
+            'fixed_initial_positions': (1,5,7,28),
+            'loadAllStartingPositions': False
         },
         "Manhattan3": {
             'graph_type': "Manhattan",
+            'make_reflexive': False,
+            'make_reflexive': False,                        
             'N': 3,    # number of nodes along one side
             'U': 2,    # number of pursuer units
             'L': 4,    # Time steps
             'R': 100,  # Number of escape routes sampled 
             'direction_north': True,       # Directional preference of escaper
             'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
-            'fixed_initial_positions': (1,6,8)
+            'fixed_initial_positions': (1,6,8),
+            'loadAllStartingPositions': False
         },
         "Manhattan5": {
             'graph_type': "Manhattan",
+            'make_reflexive': False,            
             'N': 5,    # number of nodes along one side
             'U': 3,    # number of pursuer units
             'L': 6,    # Time steps
             'R': 200,  # Number of escape routes sampled 
             'direction_north': True,       # Directional preference of escaper
             'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
-            'fixed_initial_positions': (2,15,19,22)
+            'fixed_initial_positions': (2,15,19,22),
+            'loadAllStartingPositions': False
         },
         "Manhattan11": {
             'graph_type': "Manhattan",
+            'make_reflexive': False,            
             'N': 11,    # number of nodes along one side
             'U': 3,    # number of pursuer units
             'L': 16,    # Time steps
             'R': 1000,  # Number of escape routes sampled 
             'direction_north': True,       # Directional preference of escaper
             'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
-            'fixed_initial_positions': (5,107,110,114)
+            'fixed_initial_positions': (5,107,110,114),
+            'loadAllStartingPositions': False
         },
         "CircGraph": {
             'graph_type': "CircGraph",
+            'make_reflexive': False,            
             'N': 10,    # number of nodes along one side
             'U': 2,    # number of pursuer units
             'L': 6,    # Time steps
             'R': 100,  # Number of escape routes sampled 
             'direction_north': False,       # Directional preference of escaper
             'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
-            'fixed_initial_positions': (9,1,2)
+            'fixed_initial_positions': (9,1,2),
+            'loadAllStartingPositions': False
         },
         "TKGraph": {
             'graph_type': "TKGraph",
+            'make_reflexive': False,            
             'N': 6,    # number of nodes along one side
             'U': 1,    # number of pursuer units
             'L': 4,    # Time steps
             'R': 10000,  # Number of escape routes sampled 
             'direction_north': False,       # Directional preference of escaper
-            'start_escape_route': 'left' # Initial position of escaper (always bottom center)
+            'start_escape_route': 'left', # Initial position of escaper (always bottom center)
+            'loadAllStartingPositions': False
         },
-
     }
     return configs
 
@@ -147,6 +187,7 @@ def DefineSimParameters(config):
     sp.U = config['U']              # number of pursuer units
     sp.L = config['L']              # Time steps
     sp.R = config['R']              # Number of escape routes sampled 
+    sp.loadAllStartingPositions = config['loadAllStartingPositions']
     if sp.graph_type == 'Manhattan':
         sp.G, sp.labels, sp.pos = graph(config['N'])
         sp.N = config['N']
@@ -156,7 +197,8 @@ def DefineSimParameters(config):
         sp.nodeid2coord = dict( (i, n) for i,n in enumerate(sp.G.nodes()) )
         sp.start_escape_route = (sp.N//2,0) # bottom center of grid
         sp.most_northern_y = max([c[1] for c in sp.G.nodes])
-        sp.target_node = (sp.N//2,sp.N-1)
+        #sp.target_nodes = set([sp.labels[sp.N//2,sp.N-1]])
+        sp.target_nodes = set([sp.N*(sp.N-1)+i for i in range(sp.N)])
     elif sp.graph_type == 'MetroGraph':
         sp.G, sp.labels, sp.pos = MetroGraph()#manhattan_graph(N)
         sp.N = config['N']
@@ -167,7 +209,8 @@ def DefineSimParameters(config):
         sp.start_escape_route = sp.nodeid2coord[17]
         sp.most_northern_y = 18
         sp.most_eastern_x = 21
-        sp.target_node = None
+        sp.target_nodes = set([ 0,1,2,3,4,9,10,15,20,26,30,31])
+        #sp.target_nodes = set([ 0,4,9,20])
     elif sp.graph_type == 'CircGraph':
         sp.G, sp.labels, sp.pos = CircGraph()#manhattan_graph(N)
         sp.N = 10             # Number of nodes (FIXED)
@@ -177,7 +220,7 @@ def DefineSimParameters(config):
         sp.nodeid2coord = dict( (i, n) for i,n in enumerate(sp.G.nodes()) )
         sp.start_escape_route = sp.nodeid2coord[9]
         sp.most_northern_y = max([c[1] for c in sp.G.nodes])
-        sp.target_node = (3,6)
+        sp.target_nodes = set([sp.labels[(3,6)]])
     elif sp.graph_type == 'TKGraph':
         sp.G, sp.labels, sp.pos = TKGraph()#manhattan_graph(N)
         sp.N = 7              # Number of nodes (FIXED)
@@ -187,7 +230,7 @@ def DefineSimParameters(config):
         sp.nodeid2coord = dict( (i, n) for i,n in enumerate(sp.G.nodes()) )        
         sp.start_escape_route = sp.nodeid2coord[0]
         sp.most_northern_y = max([c[1] for c in sp.G.nodes])
-        sp.target_node = None
+        sp.target_nodes = set([])
     # Define mappings between node naming conventions
     sp.coord2nodeid = dict( (n, i) for i,n in enumerate(sp.G.nodes()) )
     sp.coord2labels = sp.labels
@@ -196,6 +239,9 @@ def DefineSimParameters(config):
         label = sp.coord2labels[coord]
         sp.labels2nodeids[label]=nodeid
         sp.nodeids2labels[nodeid]=label
+    if config['make_reflexive']:
+        edgelist=[(e,e,{}) for e in sp.G.nodes()]
+        sp.G.add_edges_from(edgelist)
     return sp
 
 def GetGraphData(sp):
@@ -241,7 +287,7 @@ def make_result_directory(sp, optimization_method):
     ######## Create folder for results ########
     dirname = make_dirname(sp)
     # dirname = "results/" + str(config['name'])
-    if optimization_method == 'dynamic':
+    if optimization_method == 'dynamic' or sp.loadAllStartingPositions:
         dirname += '_allE'
     Path(dirname).mkdir(parents=True, exist_ok=True)
     return dirname

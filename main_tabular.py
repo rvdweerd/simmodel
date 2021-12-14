@@ -11,21 +11,22 @@ num_seeds   = 1
 eps_0       = .2
 eps_min     = 0.2
 cutoff      = 1#200
-num_iter    = 2600*250#000
+num_iter    = 1000*250#2600*250
 gamma       = .9
 alpha_0     = .2
 alpha_decay = 0.
 initial_Q_values = 10.
 
 configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
-conf=configs['Manhattan5']
+#conf=configs['Manhattan5']
+conf=configs['MetroGraphU3']
 conf['direction_north']=False
 
 #env = GraphWorld(conf, optimization_method='dynamic', fixed_initial_positions=(2,15,19,22),state_representation='ete0U0')
-env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation='et')
+env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation='etUt')
 
 policy = EpsilonGreedyPolicy(env, eps_0, initial_Q_values)
-init_pos_trainset_indices0, init_pos_trainset_indices1 = CreateDuplicatesTrainsets(env, min_y_coord=env.sp.N-1, min_num_same_positions=env.sp.U, min_num_worlds=4)
+#init_pos_trainset_indices0, init_pos_trainset_indices1 = CreateDuplicatesTrainsets(env, min_y_coord=env.sp.N-1, min_num_same_positions=env.sp.U, min_num_worlds=4)
 #env.world_pool = init_pos_trainset_indices1 # limit the training set to the selected entries
 #env.world_pool = [env.all_worlds[env.register['labels'][(2,4,5,22)]]]#random.sample(env.all_worlds,10)
 #env.world_pool = random.sample(env.all_worlds,260)

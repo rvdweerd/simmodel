@@ -11,23 +11,22 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False):
     iratios_sampled=[]
     rewards=[]
     lengths=[]
+    print('\n-------------------------------------------------------------------------------------------------------')
     for i, entry in enumerate(test_set):
         s=env.reset(entry)
         iratios_sampled.append(env.iratio)
         done=False
         R=0
-        if env.sp.coord2labels[env.sp.target_node] == env.state[0]:
+        if len(env.sp.target_nodes)>0 and env.state[0] in env.sp.target_nodes:
             done = True
             R=10
-            info = {'Captured':True}
+            info = {'Captured':False}
         if print_runs:
             print('Run',i+1,': Initial state:,',env.state0,', Path:[',end='')
         count=0
-        #e_history=[]
         while not done:
             if save_plots:
-                env.render(file_name='images_rl/Run'+str(i+1)+'_s0='+str(env.state0)+'t='+str(env.global_t))
-            #e_history.append(s[0])
+                env.render(file_name='images_rl/Run'+str(i+1)+'_s0='+str(env.state0)+'_'+policy.__name__+'_t='+str(env.global_t))
             if print_runs:
                 print(str(env.state[0])+'->',end='')
             
@@ -36,22 +35,24 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False):
             s,r,done,info = env.step(action)
             count+=1
             R+=r
-            # if count >= env.sp.L:
-            #     break
         if print_runs:
             print(str(s[0])+']. Done after',count,'steps, Captured:',info['Captured'],'Reward:',str(R))
+        # if not info['Captured']:
+        #     print(entry)
         if save_plots:
-            env.render(file_name='images_rl/Run'+str(i+1)+'_s0='+str(env.state0)+'t='+str(env.global_t))
+            env.render(file_name='images_rl/Run'+str(i+1)+'_s0='+str(env.state0)+'_'+policy.__name__+'_t='+str(env.global_t))
         captured.append(int(info['Captured']))
         rewards.append(R)
         lengths.append(count)
         plt.clf()
-    print('------------------')
+    print('  >', 'Environment :', env.sp.graph_type+'_N='+str(env.sp.N)+'_U='+str(env.sp.U)+'_T='+str(env.max_timesteps)+'_Ndir='+str(env.sp.direction_north)[0])
+    print('  >', 'Policy      :', policy.__name__)
     print('Test set size:',len(test_set),'Observed escape ratio: {:.3f}'.format(1-np.mean(captured)),', Average episode length: {:.2f}'.format(np.mean(lengths)),', Average return: {:.2f}'.format(np.mean(rewards)))
     print('Escape ratio at data generation: last {:.3f}'.format(1-env.iratio),', avg at generation {:.3f}'.format(1-sum(env.iratios)/len(env.iratios)),\
-        ', avg sampled {:.3f}'.format(1-sum(iratios_sampled)/len(iratios_sampled)),'\n')
+        ', avg sampled {:.3f}'.format(1-sum(iratios_sampled)/len(iratios_sampled)))
     if len(rewards) <20:
         print('Returns:',rewards)
+    #print('-------------------------------------------------------------------------------------------------------')
 
 def GetInitialStatesList(env, min_y_coord):
     # Get pointers to all initial conditions with Units above min_y_coord

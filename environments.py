@@ -34,7 +34,7 @@ class GraphWorld(object):
         self.local_t                = 0
         self.max_timesteps          = self.sp.T*2
         self.neighbors, self.in_degree, self.max_indegree, self.out_degree, self.max_outdegree = su.GetGraphData(self.sp)
-        #self.reset()
+        self.reset()
 
     def _encode_nodes(self, s):
         return s
@@ -183,7 +183,8 @@ class GraphWorld(object):
             reward += -10
             info={'Captured':True}
             #print('Captured')
-        elif self.sp.labels2coord[next_node][1] == self.sp.most_northern_y: # northern boundary of manhattan graph reached
+        #elif self.sp.labels2coord[next_node][1] == self.sp.most_northern_y: # northern boundary of manhattan graph reached
+        elif next_node in self.sp.target_nodes: 
             done = True
             reward += +10
             #print('Goal reached')

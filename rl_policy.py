@@ -30,7 +30,8 @@ class EpsilonGreedyPolicy(object):
         self.epsilon = self.epsilon0
         self.state_count = {} 
         self.sa_count = {} #np.zeros((self.nS,max_outdegree))
-    
+        self.__name__ = 'EpsGreedy, tabular Q'
+
     def Reset(self):
         self.epsilon = self.epsilon0
         self.state_count = {}
@@ -87,6 +88,7 @@ class EpsilonGreedyPolicy(object):
 class LeftUpPolicy(object):
     def __init__(self, env):
         self.env=env
+        self.__name__ = 'LeftUp'
     def sample_greedy_action(self, s, available_actions=None):
         possible_actions = self.env.neighbors[s[0]]
         if s[0]-1 in possible_actions: # can go left
@@ -103,6 +105,7 @@ class RandomPolicy(object):
     def __init__(self, env):
         #self.env=env
         self.out_degree=env.out_degree
+        self.__name__ = 'RandomWalker'
     def sample_action(self, s, available_actions=None):
         num_actions = self.out_degree[s[0]]
 
@@ -112,31 +115,51 @@ class RandomPolicy(object):
         return action, None
 
 import networkx as nx
-class MinIndegreePolicy(object):
-    def __init__(self, env):
+
+class ShortestPathPolicy(object):
+    def __init__(self, env, weights='equal'):
         self.env=env
+        self.weights=weights
         self.G = self.env.sp.G.to_directed()
         self._assign_weights()
-
+        self.cache = {}
+        if weights=='equal':
+            self.__name__ = 'ShortestPath'
+        elif weights=='min_indegree':
+            self.__name__ = 'MinInDegPath'
     def _assign_weights(self):    
         for e in self.G.edges():
             v_label = self.env.sp.coord2labels[e[1]]
-            self.G[e[0]][e[1]]['weight'] = self.env.in_degree[v_label]**6 # exponential to sufficiently punish larger indegrees
+            if self.weights == 'equal':
+                self.G[e[0]][e[1]]['weight'] = 1 # 
+            elif self.weights == 'min_indegree':
+                self.G[e[0]][e[1]]['weight'] = self.env.in_degree[v_label]**2 # exponential to sufficiently punish larger indegrees
+            else:
+                assert False
 
     def sample_action(self, s, available_actions=None):
         return self.sample_greedy_action(s, available_actions)
 
     def sample_greedy_action(self, s, available_actions=None):
-        target_node_label = self.env.sp.coord2labels[self.env.sp.target_node]
-        target_node_coord = self.env.sp.target_node
         if type(s) == np.ndarray:
             source_node_label = int(np.where(s[:self.env.sp.V]>0)[0])
         elif type(s) == tuple:
             source_node_label = s[0]
-        source_node_coord = self.env.sp.labels2coord[source_node_label]
-        best_path = nx.dijkstra_path(self.G, source_node_coord, target_node_coord, weight='weight')
+        if source_node_label not in self.cache:
+            min_cost=1e12
+            for target_node_label in self.env.sp.target_nodes:
+                target_node_coord = self.env.sp.labels2coord[target_node_label]
+                source_node_coord = self.env.sp.labels2coord[source_node_label]
+                cost, path = nx.single_source_dijkstra(self.G, source_node_coord, target_node_coord, weight='weight')
+                if cost < min_cost:
+                    best_path=path
+                    min_cost = cost
+                self.cache[source_node_label] = best_path
+        else:
+            best_path = self.cache[source_node_label]
         next_node = self.env.sp.coord2labels[best_path[1]]
         action = self.env.neighbors[source_node_label].index(int(next_node))
+        #print('----------')
         return action, None
 
 class EpsilonGreedyPolicyDQN(object):
@@ -157,6 +180,8 @@ class EpsilonGreedyPolicyDQN(object):
         self.out_degree=env.out_degree
         self.V = env.sp.V
         self.max_outdegree=env.max_outdegree
+        self.__name__ = 'EpsGreedy, DQN'
+
     
     def sample_action(self, obs, available_actions):
         """
@@ -216,6 +241,7 @@ class EpsilonGreedyPolicyRDQN(object):
         self.max_outdegree=env.max_outdegree
         # Sampling generator
         self.rng = np.random.RandomState(1)
+        self.__name__ = 'EpsGreedy, RDQN'
     
     def reset_init_states(self):
         self.ht=torch.zeros(self.lstm_hidden_size)[None,None,:].to(device)
