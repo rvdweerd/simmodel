@@ -4,6 +4,7 @@ import random
 #import time
 from rl_plotting import PlotAgentsOnGraph, PlotAgentsOnGraph_
 import numpy as np
+import matplotlib.pyplot as plt
 
 class GraphWorld(object):
     """"""
@@ -138,6 +139,8 @@ class GraphWorld(object):
 
     def reset(self, entry=None):
         # Reset time
+        if len(self.world_pool)==0:
+            return
         self.global_t = 0
         self.local_t = 0 # used if optimization is dynamic; lookup time for new paths is set to 0 after each step
         if entry==None:
@@ -206,3 +209,4 @@ class GraphWorld(object):
         e = self.state[0]
         p=self.state[1:]
         PlotAgentsOnGraph_(self.sp, e, p, self.global_t, fig_show=False, fig_save=True, filename=file_name)
+        #plt.clf()

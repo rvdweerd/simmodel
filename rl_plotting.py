@@ -7,6 +7,14 @@ import matplotlib
 import plotly.graph_objects as go
 import networkx as nx
 
+def plot_traindata(episode_returns,losses):
+    plt.plot(episode_returns)
+    plt.savefig('images_rl/testplots_returns_curve.png')
+    plt.clf()
+    plt.plot(losses)
+    plt.savefig('images_rl/testplots_loss_curve.png')
+    plt.clf()
+
 def PlotAgentsOnGraph_(sp, escape_pos, pursuers_pos, timestep, fig_show=False, fig_save=True, filename=None):
     G=sp.G#.to_directed()
     labels=sp.labels

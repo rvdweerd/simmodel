@@ -110,7 +110,7 @@ def GetConfigs():
             'graph_type': "MetroGraph",
             'make_reflexive': False,            
             'N': 33,    # number of nodes along one side
-            'U': 4,    # number of pursuer units
+            'U': 3,    # number of pursuer units
             'L': 8,    # Time steps
             'R': 500,  # Number of escape routes sampled 
             'direction_north': False,       # Directional preference of escaper
