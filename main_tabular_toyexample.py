@@ -12,8 +12,7 @@ import random
 # Select graph world
 #env=GetCustomWorld('Manhattan3x3_TestWorld')
 #env=GetCustomWorld('Manhattan3x3_PauseFreezeWorld')
-env=GetCustomWorld('Manhattan3x3_PauseDynamicWorld')
-env._encode=env._encode_nodes
+env=GetCustomWorld('Manhattan3x3_PauseDynamicWorld', state_enc='nodes')
 env.state_representation = 'etUte0U0'
 
 # Select hyperparameters

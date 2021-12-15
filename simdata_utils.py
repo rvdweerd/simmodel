@@ -46,26 +46,23 @@ def GetStateEncodingDimension(state_representation, V, U):
     if state_representation == 'et':
         state_dim=V
         chunks=[(0,)]
+        state_len=1
     elif state_representation == 'etUt':
-        #state_len=1+U
         state_dim= 2*V
         chunks=[(0,), tuple([1+i for i in range(U)]) ]
-        #return (1+U)*V
+        state_len=1+U
     elif state_representation == 'ete0U0':
-        #return (2+U)*V, None
-        #state_len=1+1+U
         state_dim= 2*V
         chunks=[(0,), tuple([1+i for i in range(U+1)])]
-        #return (2+U)*V
+        state_len=2+U
     elif state_representation == 'etUte0U0':
-        #state_len=1+U+1+U
         state_dim= 3*V
         chunks=[(0,), tuple([1+i for i in range(U)]), tuple([1+U+i for i in range(U+1)]) ]
-        #return 2*(1+U)*V
+        state_len=2*(1+U)
     else:
         assert False
-    print('State encoding vector dim:',state_dim)
-    return state_dim, chunks
+    print('State encoding vector dim:',state_dim, 'State node based dim:',state_len)
+    return state_dim, chunks, state_len
 
 def GetWorldPool(all_worlds, fixed_initial_positions, register):
     if fixed_initial_positions == None:

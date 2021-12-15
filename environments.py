@@ -5,8 +5,10 @@ import random
 from rl_plotting import PlotAgentsOnGraph, PlotAgentsOnGraph_
 import numpy as np
 import matplotlib.pyplot as plt
+import gym
+from gym import spaces
 
-class GraphWorld(object):
+class GraphWorld(gym.Env):
     """"""
     def __init__(self, config, optimization_method='static', fixed_initial_positions=None, state_representation='etUt', state_encoding='nodes'):
         self.type                   ='GraphWorld'
@@ -14,7 +16,7 @@ class GraphWorld(object):
         self.optimization           = optimization_method
         self.fixed_initial_positions= fixed_initial_positions
         self.state_representation   = state_representation
-        self.state_encoding_dim, self.state_chunks = su.GetStateEncodingDimension(state_representation, self.sp.V, self.sp.U)
+        self.state_encoding_dim, self.state_chunks, self.state_len = su.GetStateEncodingDimension(state_representation, self.sp.V, self.sp.U)
         
         # Load relevant pre-saved optimization runs for the U trajectories
         dirname                     = su.make_result_directory(self.sp, optimization_method)
@@ -35,6 +37,17 @@ class GraphWorld(object):
         self.local_t                = 0
         self.max_timesteps          = self.sp.T*2
         self.neighbors, self.in_degree, self.max_indegree, self.out_degree, self.max_outdegree = su.GetGraphData(self.sp)
+
+        # Gym objects
+        self.observation_space = spaces.Discrete(self.sp.V)
+        #self.observation_space = spaces.Tuple([spaces.Discrete(self.sp.V) for i in range(self.state_len)])             
+        # @property
+        # def action_space(self):
+        #     return spaces.Discrete(self.out_degree[self.state[0]])
+        self.action_space = spaces.Discrete(self.max_outdegree)
+        self.metadata = {'render.modes':['human']}
+        self.max_episode_length = self.max_timesteps
+        
         self.reset()
 
     def _encode_nodes(self, s):
@@ -155,6 +168,7 @@ class GraphWorld(object):
         self.u_paths  = data_sample['paths']
         self.state    = self._to_state(e_init_labels,u_init_labels)
         self.state0   = self.state
+        #self.action_space = spaces.Discrete(self.out_degree[self.state[0]])        
         if self.state_representation == 'etUt':
             return self._encode(self.state)
         elif self.state_representation == 'et':
@@ -167,34 +181,41 @@ class GraphWorld(object):
             assert False
 
     def step(self, action_idx):
-        next_node = self.neighbors[self.state[0]][action_idx]
-        info = {'Captured':False, 'u_positions':self.state[1:]}
-        self.global_t += 1
-        self.local_t  += 1
-        
-        new_Upositions = self._getUpositions(self.local_t) # uses local time: u_paths may have been updated from last state if sim is dynamic
-        new_Upositions.sort()
-        self.state = tuple([next_node] + new_Upositions)
-        reward = -1.
-        done = False
-        if self.global_t >= self.max_timesteps:
+        if action_idx >= len(self.neighbors[self.state[0]]):
+            reward=-100
             done=True
-            #print('Time ran out')
-        if next_node in new_Upositions: # captured
-            done=True
-            reward += -10
             info={'Captured':True}
-            #print('Captured')
-        #elif self.sp.labels2coord[next_node][1] == self.sp.most_northern_y: # northern boundary of manhattan graph reached
-        elif next_node in self.sp.target_nodes: 
-            done = True
-            reward += +10
-            #print('Goal reached')
-        if self.optimization == 'dynamic' and not done:
-            self.u_paths = self.databank['labels'][self.register['labels'][self.state]]['paths']
-            if len(self.u_paths) < 2:
-                assert False
-            self.local_t = 0
+            #print('action out of bounds chosen')
+        else:          
+            next_node = self.neighbors[self.state[0]][action_idx]
+            info = {'Captured':False, 'u_positions':self.state[1:]}
+            self.global_t += 1
+            self.local_t  += 1
+            
+            new_Upositions = self._getUpositions(self.local_t) # uses local time: u_paths may have been updated from last state if sim is dynamic
+            new_Upositions.sort()
+            self.state = tuple([next_node] + new_Upositions)
+            reward = -1.
+            done = False
+            if self.global_t >= self.max_timesteps:
+                done=True
+                #print('Time ran out')
+            if next_node in new_Upositions: # captured
+                done=True
+                reward += -10
+                info={'Captured':True}
+                #print('Captured')
+            #elif self.sp.labels2coord[next_node][1] == self.sp.most_northern_y: # northern boundary of manhattan graph reached
+            elif next_node in self.sp.target_nodes: 
+                done = True
+                reward += +10
+                #print('Goal reached')
+            if self.optimization == 'dynamic' and not done:
+                self.u_paths = self.databank['labels'][self.register['labels'][self.state]]['paths']
+                if len(self.u_paths) < 2:
+                    assert False
+                self.local_t = 0
+            #self.action_space = spaces.Discrete(self.out_degree[self.state[0]])
 
         if self.state_representation == 'etUt':
             return self._encode(self.state), reward, done, info
@@ -205,8 +226,9 @@ class GraphWorld(object):
         elif self.state_representation == 'ete0U0':
             return self._encode(tuple([self.state[0]])+self.state0), reward, done, info
 
-    def render(self, file_name=None):
+    def render(self, mode, fname='scenario_t='):#file_name=None):
         e = self.state[0]
         p=self.state[1:]
+        file_name = fname+str(self.global_t)
         PlotAgentsOnGraph_(self.sp, e, p, self.global_t, fig_show=False, fig_save=True, filename=file_name)
-        #plt.clf()
+        plt.clf()

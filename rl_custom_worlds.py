@@ -1,14 +1,14 @@
 import simdata_utils as su
 from environments import GraphWorld
 
-def GetCustomWorld(world_name):
+def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='tensor'):
     if world_name == 'Manhattan3x3_PauseFreezeWorld':
         configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
         conf=configs['Manhattan3']
         conf['direction_north']=False
-        conf['make_reflexive']=True
+        conf['make_reflexive']=make_reflexive
         conf['U']=3
-        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None, state_representation='et', state_encoding='tensor')
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
         env.register['coords']={((1,0),(0,2),(1,2),(2,2)):0}
         env.register['labels']={(1,6,7,8):0}
         env.databank['coords']=[{'start_escape_route':(1,0), 'start_units':[(0,2),(1,2),(2,2)], 'paths':[[(0,2),(0,1)],[(1,2),(1,2),(1,2),(0,2)],[(2,2),(2,1)]]}]
@@ -23,7 +23,7 @@ def GetCustomWorld(world_name):
         conf['direction_north']=False
         conf['make_reflexive']=True
         conf['U']=3
-        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None, state_representation='et', state_encoding='tensor')
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
         env.register['coords']={((1,0),(0,2),(1,2),(2,2)):0}
         env.register['labels']={(1,6,7,8):0}
         env.databank['coords']=[{'start_escape_route':(1,0), 'start_units':[(0,2),(1,2),(2,2)], 'paths':[[(0,2),(0,1),(0,0)],[(1,2),(1,1),(0,1)],[(2,2),(2,1)]]}]
@@ -38,7 +38,7 @@ def GetCustomWorld(world_name):
         conf['direction_north']=False
         conf['make_reflexive']=True
         conf['U']=3
-        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None, state_representation='et', state_encoding='tensor')
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
         env.register['coords']={((1,0),(0,2),(1,2),(2,2)):0}
         env.register['labels']={(1,6,7,8):0}
         env.databank['coords']=[{'start_escape_route':(1,0), 'start_units':[(0,2),(1,2),(2,2)], 'paths':[[(0,2)],[(1,2),(0,2)],[(2,2)]]}]
