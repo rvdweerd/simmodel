@@ -12,10 +12,10 @@ configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11
 #conf=configs['Manhattan5']
 #conf=configs['Manhattan11']
 #conf=configs['MetroGraphU3L8_node1']
-conf=configs['MetroGraphU4']
+conf=configs['MetroGraphU4L8_node1']
 conf['direction_north']=False
 conf['loadAllStartingPositions']=False
-#conf['make_reflexive']=True
+conf['make_reflexive']=False
 env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation='etUte0U0')
 
 #env=GetCustomWorld('Manhattan3x3_PauseFreezeWorld')
@@ -32,17 +32,17 @@ policy_random   = RandomPolicy(env)
 policy_shortest = ShortestPathPolicy(env, weights = 'equal')
 policy_mindeg   = ShortestPathPolicy(env, weights = 'min_indegree')
 
-#env.sp.target_nodes=[31]
+env.sp.target_nodes=[31]
 #env.world_pool = env.all_worlds
 
 #env.max_timesteps=env.sp.L
 pr=False
 sp=False
-EvaluatePolicy(env, policy_random  , env.world_pool, print_runs=pr, save_plots=sp)
+EvaluatePolicy(env, policy_random  , env.world_pool*20, print_runs=pr, save_plots=sp)
 #EvaluatePolicy(env, policy_random  , [142,179], print_runs=True, save_plots=True)
 
 EvaluatePolicy(env, policy_shortest, env.world_pool, print_runs=pr, save_plots=sp)
 #EvaluatePolicy(env, policy_shortest, [0,1,2,3,4,5,6,7,8,9], print_runs=True, save_plots=True)
 
 EvaluatePolicy(env, policy_mindeg  , env.world_pool, print_runs=pr, save_plots=sp)
-#EvaluatePolicy(env, policy_mindeg  , [0,1,2,3,4,5,6,7,8,9], print_runs=True, save_plots=True)
+#EvaluatePolicy(env, policy_mindeg  , [0], print_runs=True, save_plots=True)

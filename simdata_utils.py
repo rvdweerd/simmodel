@@ -115,6 +115,19 @@ def GetConfigs():
             'fixed_initial_positions': (1,5,7,28),
             'loadAllStartingPositions': False
         },
+        "MetroGraphU4L8_node1": {
+            # Note: E starting position is bottom left node 1
+            'graph_type': "MetroGraph",
+            'make_reflexive': False,            
+            'N': 33,    # number of nodes along one side
+            'U': 4,    # number of pursuer units
+            'L': 8,    # Time steps
+            'R': 500,  # Number of escape routes sampled 
+            'direction_north': False,       # Directional preference of escaper
+            'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
+            'fixed_initial_positions': (1,5,7,28),
+            'loadAllStartingPositions': False
+        },
         "Manhattan3": {
             'graph_type': "Manhattan",
             'make_reflexive': False,
@@ -122,7 +135,7 @@ def GetConfigs():
             'U': 2,    # number of pursuer units
             'L': 4,    # Time steps
             'R': 100,  # Number of escape routes sampled 
-            'direction_north': True,       # Directional preference of escaper
+            'direction_north': False,       # Directional preference of escaper
             'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
             'fixed_initial_positions': (1,6,8),
             'loadAllStartingPositions': False
@@ -205,7 +218,7 @@ def DefineSimParameters(config):
         sp.start_escape_route = sp.nodeid2coord[17]
         sp.most_northern_y = 18
         sp.most_eastern_x = 21
-        sp.target_nodes = set([ 0,1,2,3,4,9,10,15,20,26,30,31])
+        sp.target_nodes = set([0,1,2,3,4,9,10,15,20,26,30,31])
         #sp.target_nodes = set([ 0,4,9,20])
     elif sp.graph_type == 'CircGraph':
         sp.G, sp.labels, sp.pos = CircGraph()#manhattan_graph(N)

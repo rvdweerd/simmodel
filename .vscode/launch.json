@@ -9,7 +9,10 @@
             "type": "python",
             "request": "launch",
             "program": "${file}",
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+//            "pipeArgs": [
+//                "export DISPLAY=:0;${debuggerCommand}",
+//              ]
         }
     ]
 }

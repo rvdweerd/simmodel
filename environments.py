@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import gym
 from gym import spaces
+from gym import register
 
 class GraphWorld(gym.Env):
     """"""
@@ -17,7 +18,7 @@ class GraphWorld(gym.Env):
         self.fixed_initial_positions= fixed_initial_positions
         self.state_representation   = state_representation
         self.state_encoding_dim, self.state_chunks, self.state_len = su.GetStateEncodingDimension(state_representation, self.sp.V, self.sp.U)
-        
+        self.render_fileprefix      = 'test_scenario_t='
         # Load relevant pre-saved optimization runs for the U trajectories
         dirname                     = su.make_result_directory(self.sp, optimization_method)
         self.register, self.databank, self.iratios = self._LoadAndConvertDataFile(dirname) #su.LoadDatafile(dirname)
@@ -26,6 +27,7 @@ class GraphWorld(gym.Env):
         self.all_worlds             = [ind for k,ind in self.register['labels'].items()]
         self.world_pool             = su.GetWorldPool(self.all_worlds, fixed_initial_positions, self.register)
         self._encode                = self._encode_nodes if state_encoding == 'nodes' else self._encode_tensor
+        if state_encoding not in ['nodes', 'tensor']: assert False
 
         # Dynamics parameters
         self.current_entry          = 0    # which entry in the world pool is active
@@ -39,7 +41,12 @@ class GraphWorld(gym.Env):
         self.neighbors, self.in_degree, self.max_indegree, self.out_degree, self.max_outdegree = su.GetGraphData(self.sp)
 
         # Gym objects
-        self.observation_space = spaces.Discrete(self.sp.V)
+        #self.observation_space = spaces.Discrete(self.sp.V) if state_encoding == 'nodes' else spaces.MultiBinary(self.state_encoding_dim)
+        
+        self.observation_space = spaces.Box(
+            0., self.sp.U, shape=(self.state_encoding_dim,), dtype=np.float32
+        )
+        
         #self.observation_space = spaces.Tuple([spaces.Discrete(self.sp.V) for i in range(self.state_len)])             
         # @property
         # def action_space(self):
@@ -90,7 +97,7 @@ class GraphWorld(gym.Env):
             for i, chunk in enumerate(self.state_chunks):
                 for pos in chunk:
                     out[i*self.sp.V + state[pos]] += 1
-        return out
+        return out.astype(np.int64)
 
     def _LoadAndConvertDataFile(self, dirname):
         register_coords, databank_coords, iratios = su.LoadDatafile(dirname)
@@ -221,14 +228,23 @@ class GraphWorld(gym.Env):
             return self._encode(self.state), reward, done, info
         elif self.state_representation == 'et':
             return self._encode((self.state[0],)), reward, done, info
+            #return self._encode(self.state[0]), reward, done, info
         elif self.state_representation == 'etUte0U0':
             return self._encode(self.state+self.state0), reward, done, info
         elif self.state_representation == 'ete0U0':
             return self._encode(tuple([self.state[0]])+self.state0), reward, done, info
 
-    def render(self, mode, fname='scenario_t='):#file_name=None):
+    def render(self, mode=None, fname=None):#file_name=None):
         e = self.state[0]
         p=self.state[1:]
-        file_name = fname+str(self.global_t)
+        if fname == None:
+            file_name=self.render_fileprefix+str(self.global_t)
+        else:
+            file_name = fname+str(self.global_t)
         PlotAgentsOnGraph_(self.sp, e, p, self.global_t, fig_show=False, fig_save=True, filename=file_name)
         plt.clf()
+
+register(
+    id='GraphWorld-v0',
+    entry_point='environments:GraphWorld'
+)

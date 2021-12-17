@@ -11,7 +11,7 @@ import random
 
 #G, labels, pos = MetroGraph_ext()
 configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
-conf=configs['MetroGraphL8']
+conf=configs['MetroGraphU4']
 conf['direction_north']=False
 env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation='et')
-env.render('test-image')
+env.render(fname='test-image')
