@@ -188,41 +188,44 @@ class GraphWorld(gym.Env):
             assert False
 
     def step(self, action_idx):
+        info = {'Captured':False, 'u_positions':self.state[1:], 'Misc':None}
         if action_idx >= len(self.neighbors[self.state[0]]):
-            reward=-100
+            next_node = self.state[0]
+            reward=-2.
+            info['Misc']='action_out_of_bounds'
             done=True
-            info={'Captured':True}
+            #done=False
+            #info={'Captured':False}
             #print('action out of bounds chosen')
         else:          
             next_node = self.neighbors[self.state[0]][action_idx]
-            info = {'Captured':False, 'u_positions':self.state[1:]}
-            self.global_t += 1
-            self.local_t  += 1
-            
-            new_Upositions = self._getUpositions(self.local_t) # uses local time: u_paths may have been updated from last state if sim is dynamic
-            new_Upositions.sort()
-            self.state = tuple([next_node] + new_Upositions)
             reward = -1.
-            done = False
-            if self.global_t >= self.max_timesteps:
-                done=True
-                #print('Time ran out')
-            if next_node in new_Upositions: # captured
-                done=True
-                reward += -10
-                info={'Captured':True}
-                #print('Captured')
-            #elif self.sp.labels2coord[next_node][1] == self.sp.most_northern_y: # northern boundary of manhattan graph reached
-            elif next_node in self.sp.target_nodes: 
-                done = True
-                reward += +10
-                #print('Goal reached')
-            if self.optimization == 'dynamic' and not done:
-                self.u_paths = self.databank['labels'][self.register['labels'][self.state]]['paths']
-                if len(self.u_paths) < 2:
-                    assert False
-                self.local_t = 0
-            #self.action_space = spaces.Discrete(self.out_degree[self.state[0]])
+        self.global_t += 1
+        self.local_t  += 1
+        
+        new_Upositions = self._getUpositions(self.local_t) # uses local time: u_paths may have been updated from last state if sim is dynamic
+        new_Upositions.sort()
+        self.state = tuple([next_node] + new_Upositions)
+        done = False
+        if self.global_t >= self.max_timesteps:
+            done=True
+            #print('Time ran out')
+        if next_node in new_Upositions: # captured
+            done=True
+            reward += -10
+            info['Captured']=True
+            #print('Captured')
+        #elif self.sp.labels2coord[next_node][1] == self.sp.most_northern_y: # northern boundary of manhattan graph reached
+        elif next_node in self.sp.target_nodes: 
+            done = True
+            reward += +10
+            #print('Goal reached')
+        if self.optimization == 'dynamic' and not done:
+            self.u_paths = self.databank['labels'][self.register['labels'][self.state]]['paths']
+            if len(self.u_paths) < 2:
+                assert False
+            self.local_t = 0
+        #self.action_space = spaces.Discrete(self.out_degree[self.state[0]])
 
         if self.state_representation == 'etUt':
             return self._encode(self.state), reward, done, info
