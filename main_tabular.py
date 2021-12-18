@@ -42,7 +42,7 @@ for algo in algos:
     metrics_all = np.zeros((num_seeds,2,num_iter))
     for s in range(num_seeds):
         #seed_everthing(seed=s)
-        policy.Reset()
+        policy.reset_epsilon()
         Q_table, metrics_singleseed, policy, _ = algo(env, policy, num_iter, discount_factor=gamma, alpha_0=alpha_0, alpha_decay=alpha_decay,print_episodes=False)
         metrics_all[s] = metrics_singleseed
         print('entries in Q table:',len(Q_table))

@@ -301,7 +301,7 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
             loss = train(Q, Q_target, memory, optimizer, batch_size, discount_factor)
             if done:
                 if type(policy).__name__ == 'EpsilonGreedyPolicyRDQN':
-                    policy.reset_init_states()
+                    policy.reset_hidden_states()
                 Q_target.load_state_dict(Q.state_dict())
                 #policy.Q=Q_target
                 if (epi) % print_every == 0:

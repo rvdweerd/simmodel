@@ -201,7 +201,7 @@ def DefineSimParameters(config):
         sp.G, sp.labels, sp.pos = graph(config['N'])
         sp.N = config['N']
         sp.V = sp.N**2        # Total number of vertices
-        sp.T = sp.L+1         # Total steps in time taken (L + start node)
+        sp.T = (sp.N)*2+1     # Max timesteps for running experiments
         sp.direction_north = config['direction_north']
         sp.nodeid2coord = dict( (i, n) for i,n in enumerate(sp.G.nodes()) )
         sp.start_escape_route = (sp.N//2,0) # bottom center of grid

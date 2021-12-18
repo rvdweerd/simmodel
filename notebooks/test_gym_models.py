@@ -26,5 +26,5 @@ import gym
 from PIL import Image
 env = gym.make('LunarLander-v2')
 env.reset()
-ima = Image.fromarray(env.render(mode='rgb_array'))
+#ima = Image.fromarray(env.render(mode='rgb_array'))
 print('done')

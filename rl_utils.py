@@ -1,6 +1,7 @@
 from itertools import combinations
 import numpy as np
 import matplotlib.pyplot as plt
+plt.switch_backend('agg')
 from torch.cuda import init
 
 def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False):
@@ -11,9 +12,20 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False):
     iratios_sampled=[]
     rewards=[]
     lengths=[]
+    file_prefix='images/rl/'+env.sp.graph_type+'_Entry='
+    
+    OutputFile= 'images/rl/'+env.sp.graph_type+'log_n='+str(len(test_set))+'.txt'
+    OF = open(OutputFile, 'w')
+
+    def printing(text):
+        print(text)
+        OF.write(text + "\n")
+    
+    np.set_printoptions(formatter={'float':"{0:0.1f}".format})
     print('\n-------------------------------------------------------------------------------------------------------')
     for i, entry in enumerate(test_set):
         s=env.reset(entry)
+        policy.reset_hidden_states()
         iratios_sampled.append(env.iratio)
         done=False
         R=0
@@ -22,36 +34,40 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False):
             R=10
             info = {'Captured':False}
         if print_runs:
-            print('Run',i+1,': Initial state:,',env.state0,', Path:[',end='')
+            printing('\nRun '+str(i+1)+': dataset entry '+str(entry)+', Initial state '+str(env.state0))
         count=0
         while not done:
             if save_plots:
-                env.render(fname='images/rl/Run'+str(i+1)+'_s0='+str(env.state0)+'_'+policy.__name__+'_t='+str(env.global_t))
-            if print_runs:
-                print(str(env.state[0])+'->',end='')
+                env.render(fname=file_prefix+str(entry)+'_s0='+str(env.state0)+'_'+policy.__name__)
             
+            s_start=env.state
             action,_ = policy.sample_action(s, env._availableActionsInCurrentState())
+            action_probs = policy.get_action_probs()
+            s_,r,done,info = env.step(action)
+            s_prime = env.state
+            if print_runs:
+                printing('  s: {0:>18}'.format(str(s_start))+' a '+str(action)+' action_probs '+str(action_probs)+' r '+str(r)+' s_ '+str(s_prime))
 
-            s,r,done,info = env.step(action)
             count+=1
             R+=r
         if print_runs:
-            print(str(s[0])+']. Done after',count,'steps, Captured:',info['Captured'],'Reward:',str(R))
+            printing('  Done after '+str(count)+' steps, Captured: '+str(info['Captured'])+' Reward: '+str(R))
         # if not info['Captured']:
         #     print(entry)
         if save_plots:
-            env.render(fname='images/rl/Run'+str(i+1)+'_s0='+str(env.state0)+'_'+policy.__name__+'_t='+str(env.global_t))
+            env.render(fname=file_prefix+str(entry)+'_s0='+str(env.state0)+'_'+policy.__name__)
         captured.append(int(info['Captured']))
         rewards.append(R)
         lengths.append(count)
         plt.clf()
-    print('  >', 'Environment :', env.sp.graph_type+'_N='+str(env.sp.N)+'_U='+str(env.sp.U)+'_T='+str(env.max_timesteps)+'_Ndir='+str(env.sp.direction_north)[0])
-    print('  >', 'Policy      :', policy.__name__)
-    print('Test set size:',len(test_set),'Observed escape ratio: {:.3f}'.format(1-np.mean(captured)),', Average episode length: {:.2f}'.format(np.mean(lengths)),', Average return: {:.2f}'.format(np.mean(rewards)))
-    print('Escape ratio at data generation: last {:.3f}'.format(1-env.iratio),', avg at generation {:.3f}'.format(1-sum(env.iratios)/len(env.iratios)),\
+    printing('\nAggregated test results:')
+    printing('  > Environment : '+env.sp.graph_type+'_N='+str(env.sp.N)+'_U='+str(env.sp.U)+'_T='+str(env.max_timesteps)+'_Ndir='+str(env.sp.direction_north)[0])
+    printing('  > Policy      : '+policy.__name__)
+    printing('Test set size: '+str(len(test_set))+' Observed escape ratio: {:.3f}'.format(1-np.mean(captured))+', Average episode length: {:.2f}'.format(np.mean(lengths))+', Average return: {:.2f}'.format(np.mean(rewards)))
+    printing('Escape ratio at data generation: last {:.3f}'.format(1-env.iratio)+', avg at generation {:.3f}'.format(1-sum(env.iratios)/len(env.iratios))+\
         ', avg sampled {:.3f}'.format(1-sum(iratios_sampled)/len(iratios_sampled)))
     if len(rewards) <20:
-        print('Returns:',rewards)
+        printing('Returns:'+str(rewards))
     #print('-------------------------------------------------------------------------------------------------------')
 
 def GetInitialStatesList(env, min_y_coord):

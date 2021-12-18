@@ -8,6 +8,8 @@ from torch.distributions import Categorical
 import time
 import numpy as np
 from rl_custom_worlds import GetCustomWorld
+from rl_policy import EpsilonGreedyPolicyLSTM_PPO
+from rl_utils import EvaluatePolicy
 
 #Hyperparameters
 learning_rate = 0.0005
@@ -18,19 +20,20 @@ K_epoch       = 2
 T_horizon     = 40
 
 class PPO(nn.Module):
-    def __init__(self, dim_obs=4, dim_actions=2):
+    def __init__(self, dim_obs=4, dim_actions=2, mlp_dim=64, lstm_hidden_dim=32):
         super(PPO, self).__init__()
         self.data = []
-        
-        self.fc1   = nn.Linear(dim_obs,64)
-        self.lstm  = nn.LSTM(64,32)
-        self.fc_pi = nn.Linear(32,dim_actions)
-        self.fc_v  = nn.Linear(32,1)
+        self.lstm_hidden_dim = lstm_hidden_dim
+        self.mlp_dim = mlp_dim
+        self.fc1   = nn.Linear(dim_obs, mlp_dim)
+        self.lstm  = nn.LSTM(mlp_dim, lstm_hidden_dim)
+        self.fc_pi = nn.Linear(lstm_hidden_dim, dim_actions)
+        self.fc_v  = nn.Linear(lstm_hidden_dim, 1)
         self.optimizer = optim.Adam(self.parameters(), lr=learning_rate)
 
     def pi(self, x, hidden):
         x = F.relu(self.fc1(x))
-        x = x.view(-1, 1, 64)
+        x = x.view(-1, 1, self.mlp_dim)
         x, lstm_hidden = self.lstm(x, hidden)
         x = self.fc_pi(x)
         prob = F.softmax(x, dim=2)
@@ -38,7 +41,7 @@ class PPO(nn.Module):
     
     def v(self, x, hidden):
         x = F.relu(self.fc1(x))
-        x = x.view(-1, 1, 64)
+        x = x.view(-1, 1, self.mlp_dim)
         x, lstm_hidden = self.lstm(x, hidden)
         v = self.fc_v(x)
         return v
@@ -99,12 +102,12 @@ class PPO(nn.Module):
             loss.mean().backward(retain_graph=True)
             self.optimizer.step()
         
-def GetTrainedModel(env):
+def GetTrainedModel(env, num_episodes=10000):
     model = PPO(env.state_encoding_dim, env.action_space.n)
     score = 0.0
     print_interval = 20
     
-    for n_epi in range(10000):
+    for n_epi in range(num_episodes):
         h_out = (torch.zeros([1, 1, 32], dtype=torch.float), torch.zeros([1, 1, 32], dtype=torch.float))
         s = env.reset()
         done = False
@@ -135,13 +138,17 @@ def GetTrainedModel(env):
     env.close()
     return model
 
+
 if __name__ == '__main__':
     # Select graph world
     #world_name='Manhattan3x3_PauseFreezeWorld'
-    world_name='Manhattan3x3_PauseDynamicWorld'
-    #world_name='Manhattan5x5_FixedEscapeInit'
+    #world_name='Manhattan3x3_PauseDynamicWorld'
+    world_name='Manhattan5x5_FixedEscapeInit'
     #world_name='Manhattan5x5_VariableEscapeInit'
     #world_name='MetroU3_e17_FixedEscapeInit'
     env=GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='tensor')
 
-    model = GetTrainedModel(env)
+    lstm_ppo_net = GetTrainedModel(env, num_episodes=25000)
+    policy=EpsilonGreedyPolicyLSTM_PPO(env, lstm_ppo_net, deterministic=True)
+    EvaluatePolicy(env, policy  , env.world_pool*1, print_runs=False, save_plots=False)
+    EvaluatePolicy(env, policy  , env.world_pool*5, print_runs=False, save_plots=True)

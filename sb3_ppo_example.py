@@ -71,7 +71,7 @@ for i in range(N_eval):
     obs = env.reset()
     if i%save_every == 0:
         print('----------\nRun',i)
-        env.render(fname='./images/sb3/example_'+str(i)+'_t=')
+        env.render(fname='./images/sb3/example_'+str(i))
     dones=False
     R=0
     steps=0
@@ -93,7 +93,7 @@ for i in range(N_eval):
                 action_prob1 = torch.exp(model.policy.evaluate_actions(old_obs,all_actions)[1])
                 action_prob2 = torch.exp(model.policy.get_distribution(old_obs).log_prob(all_actions))
             print('s:',old_obs_nodes,'a:',action,'action_probs',action_prob2.detach().cpu().numpy(), 'r',rewards, 's_',obs_nodes)
-            env.render(fname='./images/sb3/example_'+str(i)+'_t=')
+            env.render(fname='./images/sb3/example_'+str(i))
     G.append(R)
     L.append(steps)
     if rewards>0:

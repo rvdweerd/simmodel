@@ -37,7 +37,7 @@ class GraphWorld(gym.Env):
         self.state                  = ()   # current internal state in node labels: (e,U1,U2,...)
         self.global_t               = 0
         self.local_t                = 0
-        self.max_timesteps          = self.sp.T*2
+        self.max_timesteps          = self.sp.T
         self.neighbors, self.in_degree, self.max_indegree, self.out_degree, self.max_outdegree = su.GetGraphData(self.sp)
 
         # Gym objects
@@ -191,7 +191,7 @@ class GraphWorld(gym.Env):
         info = {'Captured':False, 'u_positions':self.state[1:], 'Misc':None}
         if action_idx >= len(self.neighbors[self.state[0]]):
             next_node = self.state[0]
-            reward=-2.
+            reward=-3.
             info['Misc']='action_out_of_bounds'
             done=True
             #done=False
@@ -241,9 +241,9 @@ class GraphWorld(gym.Env):
         e = self.state[0]
         p=self.state[1:]
         if fname == None:
-            file_name=self.render_fileprefix+str(self.global_t)
+            file_name=self.render_fileprefix+'_t='+str(self.global_t)
         else:
-            file_name = fname+str(self.global_t)
+            file_name = fname+'_t='+str(self.global_t)
         PlotAgentsOnGraph_(self.sp, e, p, self.global_t, fig_show=False, fig_save=True, filename=file_name)
         plt.clf()
 

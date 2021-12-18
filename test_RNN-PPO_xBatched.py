@@ -50,35 +50,35 @@ GATHER_DEVICE = "cuda" if torch.cuda.is_available() and not FORCE_CPU_GATHER els
 
 # Environment parameters
 #ENV = "LunarLander-v2"
-#world_name='MetroU3_e17_FixedEscapeInit'
-world_name='Manhattan3x3_PauseFreezeWorld'
-STATE_REPR='et'
+world_name='MetroU3_e17_FixedEscapeInit'
+#world_name='Manhattan3x3_PauseFreezeWorld'
+STATE_REPR='etUt'
 MAKE_REFLEXIVE=True
 ENV=world_name
 EXPERIMENT_NAME = "Test"
 ENV_MASK_VELOCITY = False 
 
-# Default Hyperparameters
-SCALE_REWARD:         float = 1. # was: 0.01
-MIN_REWARD:           float = -15. # was: -1000.
-HIDDEN_SIZE:          float = 64# was:128
-LIN_SIZE:             float = 128
-BATCH_SIZE:           int   = 24 # was: 512##############
+# Default Hyperparameters           For PauseFreeWold   For MetroU3_e17_FixedEscapeInit
+SCALE_REWARD:         float = 1.    # 1.                
+MIN_REWARD:           float = -15.  # -15.
+HIDDEN_SIZE:          float = 128   # 128?
+LIN_SIZE:             float = 1280  # 128               1280
+BATCH_SIZE:           int   = 64    # 80                64
 DISCOUNT:             float = 0.99
 GAE_LAMBDA:           float = 0.95
-PPO_CLIP:             float = 0.2 #was:0.2
+PPO_CLIP:             float = 0.2   # 0.2
 PPO_EPOCHS:           int   = 10
-MAX_GRAD_NORM:        float = 1. # was 1.
+MAX_GRAD_NORM:        float = 1.    # 1.
 ENTROPY_FACTOR:       float = 0.
-ACTOR_LEARNING_RATE:  float = 1e-4 # was:1e-4
-CRITIC_LEARNING_RATE: float = 1e-4 #was:1e-4
-RECURRENT_SEQ_LEN:    int = 6  # was: 8###################
-RECURRENT_LAYERS:     int = 1 #was:1     
-ROLLOUT_STEPS:        int = 40 #was: 2048 ###########
-PARALLEL_ROLLOUTS:    int = 4 # was:8 ################
-PATIENCE:             int = 200 #  was: 200
-TRAINABLE_STD_DEV:    bool = False # was: False
-INIT_LOG_STD_DEV:     float = 0. # was: 0.
+ACTOR_LEARNING_RATE:  float = 1e-4  # 1e-4
+CRITIC_LEARNING_RATE: float = 1e-4  # 1e-4
+RECURRENT_SEQ_LEN:    int = 3       # 2                 3
+RECURRENT_LAYERS:     int = 1       # 1     
+ROLLOUT_STEPS:        int = 400      # 40               400
+PARALLEL_ROLLOUTS:    int = 6       # 4                 6
+PATIENCE:             int = 200     # 200
+TRAINABLE_STD_DEV:    bool = False  # False
+INIT_LOG_STD_DEV:     float = 0.    # 0.
 
 @dataclass
 class HyperParameters():
@@ -678,6 +678,25 @@ def train_model(actor, critic, actor_optimizer, critic_optimizer, iteration, sto
         
     return stop_conditions.best_reward 
 
-writer = SummaryWriter(log_dir=f"{WORKSPACE_PATH}/logs/{EXPERIMENT_NAME}")
-actor, critic, actor_optimizer, critic_optimizer, iteration, stop_conditions = start_or_resume_from_checkpoint()
-score = train_model(actor, critic, actor_optimizer, critic_optimizer, iteration, stop_conditions)
+def TrainAndSaveModel():
+    writer = SummaryWriter(log_dir=f"{WORKSPACE_PATH}/logs/{EXPERIMENT_NAME}")
+    actor, critic, actor_optimizer, critic_optimizer, iteration, stop_conditions = start_or_resume_from_checkpoint()
+    score = train_model(actor, critic, actor_optimizer, critic_optimizer, iteration, stop_conditions)
+
+from rl_policy import EpsilonGreedyPolicyLSTM_PPO2
+from rl_utils import EvaluatePolicy
+def EvaluateSavedModel():
+    actor, critic, actor_optimizer, critic_optimizer, iteration, stop_conditions = start_or_resume_from_checkpoint()
+    @dataclass
+    class LSTP_PPO_MODEL():
+        lstm_hidden_dim:    int 
+        pi:                 torch.nn.modules.module.Module = None
+        v:                  torch.nn.modules.module.Module = None
+    lstm_ppo_model = LSTP_PPO_MODEL(lstm_hidden_dim=HIDDEN_SIZE ,pi=actor.to(TRAIN_DEVICE), v=critic.to(TRAIN_DEVICE))
+
+    env=GetCustomWorld(world_name, make_reflexive=MAKE_REFLEXIVE, state_repr=STATE_REPR, state_enc='tensor')
+    policy = EpsilonGreedyPolicyLSTM_PPO2(env,lstm_ppo_model, deterministic=False)
+    EvaluatePolicy(env, policy  , env.world_pool[3010:], print_runs=False, save_plots=False)
+
+#TrainAndSaveModel()
+EvaluateSavedModel()

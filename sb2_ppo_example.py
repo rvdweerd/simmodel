@@ -60,7 +60,7 @@ for i in range(N_eval):
     obs = env.reset()
     if i%save_every == 0:
         print('----------\nRun',i)
-        env.render(fname='./images/sb2/example_'+str(i)+'_t=')
+        env.render(fname='./images/sb2/example_'+str(i))
     dones=False
     R=0
     steps=0
@@ -76,7 +76,7 @@ for i in range(N_eval):
             #action_prob1 = torch.exp(model.policy.evaluate_actions(torch.tensor(old_obs).to(device).long(),torch.tensor([0,1,2,3,4]).to(device))[1])
             #action_prob2 = torch.exp(model.policy.get_distribution(torch.tensor(old_obs).to(device).long()).log_prob(torch.tensor([0,1,2,3,4]).to(device)))
             #print('s:',old_obs,'a:',action,'action_probs',action_prob2.detach().cpu().numpy(), 'r',rewards, 's_',obs)
-            env.render(fname='./images/sb2/example_'+str(i)+'_t=')
+            env.render(fname='./images/sb2/example_'+str(i))
     G.append(R)
     L.append(steps)
     if rewards>0:
