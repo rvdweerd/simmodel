@@ -26,12 +26,13 @@ class EpsilonGreedyPolicy(Policy):
     """
     A simple epsilon greedy policy.
     """
-    def __init__(self, graph_env, epsilon0, initial_Q_values=0.):
+    def __init__(self, graph_env, epsilon0, epsilon_min=0., initial_Q_values=0.):
         # const
         self.nS = graph_env.sp.V
         self.initial_Q_values = initial_Q_values
         self.Q = {}
         self.epsilon0 = epsilon0
+        self.epsilon_min = epsilon_min
         self.epsilon   = epsilon0
         # graph attributes
         self.actions_from_node = graph_env.neighbors
@@ -370,3 +371,24 @@ class EpsilonGreedyPolicyLSTM_PPO2(Policy):
             # if len(y.shape) != 2:
             #     k=0
         return a, None
+
+class EpsilonGreedyPolicySB3_PPO(Policy):
+    def __init__(self, env, model, deterministic=False):
+        super().__init__('Non-RecurrentNetwork')
+        #self.env=env
+        self.model = model
+        self.deterministic = deterministic
+        self.reset_hidden_states()
+        self.__name__ = 'EpsGreedy, SB3_PPO'
+        self.probs = None
+        self.all_actions=[i for i in range(env.max_outdegree)]
+    def get_action_probs(self):
+        return self.probs
+
+    def sample_greedy_action(self, obs, available_actions):
+        with torch.no_grad():
+            action, _states = self.model.predict(obs, deterministic=self.deterministic)
+            obs = torch.tensor(obs)[None,:].to(device)
+            all_actions = torch.tensor(self.all_actions).to(device)
+            self.probs = torch.exp(self.model.policy.get_distribution(obs).log_prob(all_actions)).detach().cpu().numpy()
+        return action, None

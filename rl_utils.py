@@ -13,7 +13,8 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False):
     rewards=[]
     lengths=[]
     file_prefix='images/rl/'+env.sp.graph_type+'_Entry='
-    
+    maxR=1e-6
+    minR=1e6
     OutputFile= 'images/rl/'+env.sp.graph_type+'log_n='+str(len(test_set))+'.txt'
     OF = open(OutputFile, 'w')
 
@@ -22,9 +23,9 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False):
         OF.write(text + "\n")
     
     np.set_printoptions(formatter={'float':"{0:0.1f}".format})
-    print('\n-------------------------------------------------------------------------------------------------------')
+    printing('\n-------------------------------------------------------------------------------------------------------')
     for i, entry in enumerate(test_set):
-        s=env.reset(entry)
+        s=env.reset(entry=entry)
         policy.reset_hidden_states()
         iratios_sampled.append(env.iratio)
         done=False
@@ -33,33 +34,53 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False):
             done = True
             R=10
             info = {'Captured':False}
+        text_cache=""
+        plot_cache=[]
         if print_runs:
-            printing('\nRun '+str(i+1)+': dataset entry '+str(entry)+', Initial state '+str(env.state0))
+            #printing('\nRun '+str(i+1)+': dataset entry '+str(entry)+', Initial state '+str(env.state0))
+            text_cache += ('\nRun '+str(i+1)+': dataset entry '+str(entry)+', Initial state '+str(env.state0)+'\n')
         count=0
         while not done:
             if save_plots:
-                env.render(fname=file_prefix+str(entry)+'_s0='+str(env.state0)+'_'+policy.__name__)
-            
+                plot=env.render(fname=None)
+                plot_cache.append(plot)
             s_start=env.state
             action,_ = policy.sample_action(s, env._availableActionsInCurrentState())
             action_probs = policy.get_action_probs()
-            s_,r,done,info = env.step(action)
+            s,r,done,info = env.step(action)
             s_prime = env.state
             if print_runs:
-                printing('  s: {0:>18}'.format(str(s_start))+' a '+str(action)+' action_probs '+str(action_probs)+' r '+str(r)+' s_ '+str(s_prime))
-
+                text_cache+=('  s: {0:>18}'.format(str(s_start))+' a '+str(action)+' action_probs '+str(action_probs)+' r '+str(r)+' s_ '+str(s_prime)+'\n')
             count+=1
             R+=r
         if print_runs:
-            printing('  Done after '+str(count)+' steps, Captured: '+str(info['Captured'])+' Reward: '+str(R))
-        # if not info['Captured']:
-        #     print(entry)
+            text_cache+=('  Done after '+str(count)+' steps, Captured: '+str(info['Captured'])+' Reward: '+str(R)+'\n')
         if save_plots:
-            env.render(fname=file_prefix+str(entry)+'_s0='+str(env.state0)+'_'+policy.__name__)
+            plot=env.render(fname=None)
+            plot_cache.append(plot)
+        if R>maxR:
+            maxR=R
+            if minR==1e6: minR=R
+            if print_runs:
+                printing(text_cache)
+            if save_plots:
+                for i_plt,p in enumerate(plot_cache):
+                    fname=file_prefix+str(entry)+'_s0='+str(env.state0)+'_'+policy.__name__+'_t='+str(i_plt)
+                    p.savefig(fname)
+                    #plt.clf()
+        if R<minR:
+            minR=R
+            if maxR==-1e6: maxR=R
+            if print_runs:
+                printing(text_cache)
+            if save_plots:
+                for i_plt,p in enumerate(plot_cache):
+                    fname=file_prefix+str(entry)+'_s0='+str(env.state0)+'_'+policy.__name__+'_t='+str(i_plt)
+                    p.savefig(fname)
+                    #plt.clf()
         captured.append(int(info['Captured']))
         rewards.append(R)
         lengths.append(count)
-        plt.clf()
     printing('\nAggregated test results:')
     printing('  > Environment : '+env.sp.graph_type+'_N='+str(env.sp.N)+'_U='+str(env.sp.U)+'_T='+str(env.max_timesteps)+'_Ndir='+str(env.sp.direction_north)[0])
     printing('  > Policy      : '+policy.__name__)

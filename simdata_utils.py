@@ -83,6 +83,7 @@ def GetConfigs():
             'N': 33,    # number of nodes along one side
             'U': 3,    # number of pursuer units
             'L': 6,    # Time steps
+            'T': 20,
             'R': 500,  # Number of escape routes sampled 
             'direction_north': False,       # Directional preference of escaper
             'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
@@ -96,6 +97,7 @@ def GetConfigs():
             'N': 33,    # number of nodes along one side
             'U': 4,    # number of pursuer units
             'L': 6,    # Time steps
+            'T': 20,
             'R': 500,  # Number of escape routes sampled 
             'direction_north': False,       # Directional preference of escaper
             'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
@@ -109,6 +111,7 @@ def GetConfigs():
             'N': 33,    # number of nodes along one side
             'U': 3,    # number of pursuer units
             'L': 8,    # Time steps
+            'T': 25,
             'R': 500,  # Number of escape routes sampled 
             'direction_north': False,       # Directional preference of escaper
             'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
@@ -122,6 +125,7 @@ def GetConfigs():
             'N': 33,    # number of nodes along one side
             'U': 4,    # number of pursuer units
             'L': 8,    # Time steps
+            'T': 25,
             'R': 500,  # Number of escape routes sampled 
             'direction_north': False,       # Directional preference of escaper
             'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
@@ -134,6 +138,7 @@ def GetConfigs():
             'N': 3,    # number of nodes along one side
             'U': 2,    # number of pursuer units
             'L': 4,    # Time steps
+            'T': 7,
             'R': 100,  # Number of escape routes sampled 
             'direction_north': False,       # Directional preference of escaper
             'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
@@ -146,6 +151,7 @@ def GetConfigs():
             'N': 5,    # number of nodes along one side
             'U': 3,    # number of pursuer units
             'L': 6,    # Time steps
+            'T': 11,
             'R': 200,  # Number of escape routes sampled 
             'direction_north': True,       # Directional preference of escaper
             'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
@@ -158,6 +164,7 @@ def GetConfigs():
             'N': 11,    # number of nodes along one side
             'U': 3,    # number of pursuer units
             'L': 16,    # Time steps
+            'T': 23,
             'R': 1000,  # Number of escape routes sampled 
             'direction_north': True,       # Directional preference of escaper
             'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
@@ -170,6 +177,7 @@ def GetConfigs():
             'N': 10,    # number of nodes along one side
             'U': 2,    # number of pursuer units
             'L': 6,    # Time steps
+            'T': 7,
             'R': 100,  # Number of escape routes sampled 
             'direction_north': False,       # Directional preference of escaper
             'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
@@ -182,6 +190,7 @@ def GetConfigs():
             'N': 6,    # number of nodes along one side
             'U': 1,    # number of pursuer units
             'L': 4,    # Time steps
+            'T': 5,
             'R': 10000,  # Number of escape routes sampled 
             'direction_north': False,       # Directional preference of escaper
             'start_escape_route': 'left', # Initial position of escaper (always bottom center)
@@ -196,12 +205,13 @@ def DefineSimParameters(config):
     sp.U = config['U']              # number of pursuer units
     sp.L = config['L']              # Time steps
     sp.R = config['R']              # Number of escape routes sampled 
+    sp.T = config['T']
     sp.loadAllStartingPositions = config['loadAllStartingPositions']
     if sp.graph_type == 'Manhattan':
         sp.G, sp.labels, sp.pos = graph(config['N'])
         sp.N = config['N']
         sp.V = sp.N**2        # Total number of vertices
-        sp.T = (sp.N)*2+1     # Max timesteps for running experiments
+        #sp.T = (sp.N)*2+1     # Max timesteps for running experiments
         sp.direction_north = config['direction_north']
         sp.nodeid2coord = dict( (i, n) for i,n in enumerate(sp.G.nodes()) )
         sp.start_escape_route = (sp.N//2,0) # bottom center of grid
@@ -212,7 +222,7 @@ def DefineSimParameters(config):
         sp.G, sp.labels, sp.pos = MetroGraph()#manhattan_graph(N)
         sp.N = config['N']
         sp.V = sp.N             # Total number of vertices (FIXED)
-        sp.T = sp.L+1         # Total steps in time taken (L + start node)
+        #sp.T = sp.L+1         # Total steps in time taken (L + start node)
         sp.direction_north = False # (NOT VERY INTERESTING IF TRUE)
         sp.nodeid2coord = dict( (i, n) for i,n in enumerate(sp.G.nodes()) )
         sp.start_escape_route = sp.nodeid2coord[17]
@@ -224,7 +234,7 @@ def DefineSimParameters(config):
         sp.G, sp.labels, sp.pos = CircGraph()#manhattan_graph(N)
         sp.N = 10             # Number of nodes (FIXED)
         sp.V = 10             # Total number of vertices (FIXED)
-        sp.T = sp.L+1         # Total steps in time taken (L + start node)
+        #sp.T = sp.L+1         # Total steps in time taken (L + start node)
         sp.direction_north = False # (NOT VERY INTERESTING IF TRUE)
         sp.nodeid2coord = dict( (i, n) for i,n in enumerate(sp.G.nodes()) )
         sp.start_escape_route = sp.nodeid2coord[9]
@@ -234,7 +244,7 @@ def DefineSimParameters(config):
         sp.G, sp.labels, sp.pos = TKGraph()#manhattan_graph(N)
         sp.N = 7              # Number of nodes (FIXED)
         sp.V = 7              # Total number of vertices (FIXED)
-        sp.T = sp.L+1         # Total steps in time taken (L + start node)
+        #sp.T = sp.L+1         # Total steps in time taken (L + start node)
         sp.direction_north = False # (NOT VERY INTERESTING IF TRUE)
         sp.nodeid2coord = dict( (i, n) for i,n in enumerate(sp.G.nodes()) )        
         sp.start_escape_route = sp.nodeid2coord[0]

@@ -76,12 +76,15 @@ def q_learning_exhaustive(env, policy, num_episodes, discount_factor=1.0, alpha_
     # Keeps track of useful statistics
     stats = []
     Q_tables = []
-    runs=250
+    Captured=[]
+    # runs=250
     for world in env.world_pool:
         if (world)%100==0:
-            print('World',world)
+            cr=np.sum(Captured) / len(Captured)
+            print('World',world,' running er=',1-cr)
+
         policy.epsilon=policy.epsilon0
-        for i_episode in range(runs):#tqdm(range(runs)):
+        for i_episode in range(num_episodes):#tqdm(range(runs)):
             i = 0
             R = 0
             start_state = env.reset(world)
@@ -90,7 +93,7 @@ def q_learning_exhaustive(env, policy, num_episodes, discount_factor=1.0, alpha_
             while not done:
                 start_action_idx, start_action = policy.sample_action(start_state, None)
                 #print('state '+str(start_state)+'action '+str(start_action)+',',end='')
-                new_state, reward, done, _ = env.step(start_action_idx)
+                new_state, reward, done, info = env.step(start_action_idx)
                 if print_episodes: 
                     print('eps('+'{:.2f}'.format(policy.epsilon)+'),a('+str(start_action)+'),(r'+str(reward)+')]-> [S'+str(new_state)+' ', end='')
                 
@@ -114,7 +117,14 @@ def q_learning_exhaustive(env, policy, num_episodes, discount_factor=1.0, alpha_
             if print_episodes: print('] - Steps:', i, 'Reward', R)
             stats.append((i, R))
             #Q_tables.append(policy.Q.copy())
-            policy.epsilon-=policy.epsilon0/runs
+            policy.epsilon -= policy.epsilon0/num_episodes
+            policy.epsilon = max(policy.epsilon_min,policy.epsilon)
+            #print('eps',policy.epsilon)
+        if info['Captured']:
+            Captured.append(1)
+        else:
+            Captured.append(0)
+        #print('R=',R)
 
     episode_lengths, episode_returns = zip(*stats)
     metrics_vanilla = [episode_returns, episode_lengths]

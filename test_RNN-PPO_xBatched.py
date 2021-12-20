@@ -50,8 +50,9 @@ GATHER_DEVICE = "cuda" if torch.cuda.is_available() and not FORCE_CPU_GATHER els
 
 # Environment parameters
 #ENV = "LunarLander-v2"
-world_name='MetroU3_e17_FixedEscapeInit'
+#world_name='MetroU3_e17_FixedEscapeInit'
 #world_name='Manhattan3x3_PauseFreezeWorld'
+world_name='MetroU3_e1L8t31_FixedEscapeInit'
 STATE_REPR='etUt'
 MAKE_REFLEXIVE=True
 ENV=world_name
@@ -62,21 +63,21 @@ ENV_MASK_VELOCITY = False
 SCALE_REWARD:         float = 1.    # 1.                
 MIN_REWARD:           float = -15.  # -15.
 HIDDEN_SIZE:          float = 128   # 128?
-LIN_SIZE:             float = 1280  # 128               1280
-BATCH_SIZE:           int   = 64    # 80                64
+LIN_SIZE:             float = 128   # 128               128 3 layers
+BATCH_SIZE:           int   = 48    # 80                64
 DISCOUNT:             float = 0.99
 GAE_LAMBDA:           float = 0.95
 PPO_CLIP:             float = 0.2   # 0.2
 PPO_EPOCHS:           int   = 10
 MAX_GRAD_NORM:        float = 1.    # 1.
 ENTROPY_FACTOR:       float = 0.
-ACTOR_LEARNING_RATE:  float = 1e-4  # 1e-4
-CRITIC_LEARNING_RATE: float = 1e-4  # 1e-4
-RECURRENT_SEQ_LEN:    int = 3       # 2                 3
+ACTOR_LEARNING_RATE:  float = 1e-4  # 1e-4              1e-4
+CRITIC_LEARNING_RATE: float = 1e-4  # 1e-4              1e-4
+RECURRENT_SEQ_LEN:    int = 2       # 2                 2
 RECURRENT_LAYERS:     int = 1       # 1     
-ROLLOUT_STEPS:        int = 400      # 40               400
-PARALLEL_ROLLOUTS:    int = 6       # 4                 6
-PATIENCE:             int = 200     # 200
+ROLLOUT_STEPS:        int = 400     # 40               400
+PARALLEL_ROLLOUTS:    int = 7       # 4                 6
+PATIENCE:             int = 1000    # 200
 TRAINABLE_STD_DEV:    bool = False  # False
 INIT_LOG_STD_DEV:     float = 0.    # 0.
 
@@ -162,7 +163,7 @@ def get_env_space():
     Return obsvervation dimensions, action dimensions and whether or not action space is continuous.
     """
     #env = gym.make(ENV)
-    env=GetCustomWorld(world_name, make_reflexive=True, state_repr=STATE_REPR, state_enc='tensor')
+    env=GetCustomWorld(world_name, make_reflexive=MAKE_REFLEXIVE, state_repr=STATE_REPR, state_enc='tensor')
 
     continuous_action_space = type(env.action_space) is gym.spaces.box.Box
     if continuous_action_space:
@@ -177,9 +178,11 @@ class Actor(nn.Module):
         super().__init__()
         self.lstm = nn.LSTM(state_dim, hp.hidden_size, num_layers=hp.recurrent_layers)
         #self.layer_hidden = nn.Linear(hp.hidden_size, hp.hidden_size)
-        self.layer_hidden = nn.Linear(hp.hidden_size, LIN_SIZE)
+        self.layer_hidden1 = nn.Linear(hp.hidden_size, LIN_SIZE)
+        self.layer_hidden2 = nn.Linear(LIN_SIZE, LIN_SIZE)
+        self.layer_hidden3 = nn.Linear(LIN_SIZE, LIN_SIZE//2)
         #self.layer_policy_logits = nn.Linear(hp.hidden_size, action_dim)
-        self.layer_policy_logits = nn.Linear(LIN_SIZE, action_dim)
+        self.layer_policy_logits = nn.Linear(LIN_SIZE//2, action_dim)
         self.action_dim = action_dim
         self.continuous_action_space = continuous_action_space 
         self.log_std_dev = nn.Parameter(init_log_std_dev * torch.ones((action_dim), dtype=torch.float), requires_grad=trainable_std_dev)
@@ -198,8 +201,10 @@ class Actor(nn.Module):
         if terminal is not None:
             self.hidden_cell = [value * (1. - terminal).reshape(1, batch_size, 1) for value in self.hidden_cell]
         _, self.hidden_cell = self.lstm(state, self.hidden_cell)
-        hidden_out = F.elu(self.layer_hidden(self.hidden_cell[0][-1]))
-        policy_logits_out = self.layer_policy_logits(hidden_out)
+        hidden_out1 = F.elu(self.layer_hidden1(self.hidden_cell[0][-1]))
+        hidden_out2 = F.elu(self.layer_hidden2(hidden_out1))
+        hidden_out3 = F.elu(self.layer_hidden3(hidden_out2))
+        policy_logits_out = self.layer_policy_logits(hidden_out3)
         if self.continuous_action_space:
             cov_matrix = self.covariance_eye.to(device).expand(batch_size, self.action_dim, self.action_dim) * torch.exp(self.log_std_dev.to(device))
             # We define the distribution on the CPU since otherwise operations fail with CUDA illegal memory access error.
@@ -213,9 +218,11 @@ class Critic(nn.Module):
         super().__init__()
         self.layer_lstm = nn.LSTM(state_dim, hp.hidden_size, num_layers=hp.recurrent_layers)
         #self.layer_hidden = nn.Linear(hp.hidden_size, hp.hidden_size)
-        self.layer_hidden = nn.Linear(hp.hidden_size, LIN_SIZE)
+        self.layer_hidden1 = nn.Linear(hp.hidden_size, LIN_SIZE)
+        self.layer_hidden2 = nn.Linear(LIN_SIZE, LIN_SIZE)
+        self.layer_hidden3 = nn.Linear(LIN_SIZE, LIN_SIZE//2)
         #self.layer_value = nn.Linear(hp.hidden_size, 1)
-        self.layer_value = nn.Linear(LIN_SIZE, 1)
+        self.layer_value = nn.Linear(LIN_SIZE//2, 1)
         self.hidden_cell = None
         
     def get_init_state(self, batch_size, device):
@@ -230,8 +237,10 @@ class Critic(nn.Module):
         if terminal is not None:
             self.hidden_cell = [value * (1. - terminal).reshape(1, batch_size, 1) for value in self.hidden_cell]
         _, self.hidden_cell = self.layer_lstm(state, self.hidden_cell)
-        hidden_out = F.elu(self.layer_hidden(self.hidden_cell[0][-1]))
-        value_out = self.layer_value(hidden_out)
+        hidden_out1 = F.elu(self.layer_hidden1(self.hidden_cell[0][-1]))
+        hidden_out2 = F.elu(self.layer_hidden2(hidden_out1))
+        hidden_out3 = F.elu(self.layer_hidden3(hidden_out2))
+        value_out = self.layer_value(hidden_out3)
         return value_out
 
 def get_last_checkpoint_iteration():
@@ -613,6 +622,7 @@ def train_model(actor, critic, actor_optimizer, critic_optimizer, iteration, sto
         if mean_reward > stop_conditions.best_reward:
             stop_conditions.best_reward = mean_reward
             stop_conditions.fail_to_improve_count = 0
+            print("NEW BEST MEAN REWARD----------------------<<<<<<<<<<<")
         else:
             stop_conditions.fail_to_improve_count += 1
         if stop_conditions.fail_to_improve_count > hp.patience:
@@ -678,8 +688,8 @@ def train_model(actor, critic, actor_optimizer, critic_optimizer, iteration, sto
         
     return stop_conditions.best_reward 
 
+writer = SummaryWriter(log_dir=f"{WORKSPACE_PATH}/logs/{EXPERIMENT_NAME}")
 def TrainAndSaveModel():
-    writer = SummaryWriter(log_dir=f"{WORKSPACE_PATH}/logs/{EXPERIMENT_NAME}")
     actor, critic, actor_optimizer, critic_optimizer, iteration, stop_conditions = start_or_resume_from_checkpoint()
     score = train_model(actor, critic, actor_optimizer, critic_optimizer, iteration, stop_conditions)
 
@@ -696,7 +706,8 @@ def EvaluateSavedModel():
 
     env=GetCustomWorld(world_name, make_reflexive=MAKE_REFLEXIVE, state_repr=STATE_REPR, state_enc='tensor')
     policy = EpsilonGreedyPolicyLSTM_PPO2(env,lstm_ppo_model, deterministic=False)
-    EvaluatePolicy(env, policy  , env.world_pool[3010:], print_runs=False, save_plots=False)
+    EvaluatePolicy(env, policy  , env.world_pool, print_runs=False, save_plots=False)    
+    EvaluatePolicy(env, policy  , env.world_pool[::1000], print_runs=True, save_plots=True)
 
 #TrainAndSaveModel()
 EvaluateSavedModel()

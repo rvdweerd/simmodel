@@ -19,7 +19,7 @@ def PlotAgentsOnGraph_(sp, escape_pos, pursuers_pos, timestep, fig_show=False, f
     G=sp.G#.to_directed()
     labels=sp.labels
     pos=sp.pos
-
+    plt.clf()
     colorlist = [1 for _ in range(sp.V)]
     sizelist =  [400 for _ in range(sp.V)]
     node_text = dict([(c,str(sp.coord2labels[c])) for c in sp.G.nodes])
@@ -62,10 +62,16 @@ def PlotAgentsOnGraph_(sp, escape_pos, pursuers_pos, timestep, fig_show=False, f
     ax = plt.gca()
     ax.set_aspect('equal')
     if filename == None:
-        plt.savefig('test_t='+str(timestep)+'.png')
+        pass
+        #plt.savefig('test_t='+str(timestep)+'.png')
     else:
         plt.savefig(filename+'.png')
+    out=plt.gcf()
     #plt.clf()
+    plt.close()
+    #plt.figure()
+
+    return out
     
 
 def PlotAgentsOnGraph(sp, escape_pos, pursuers_pos, timestep, fig_show=False, fig_save=True):
@@ -196,7 +202,7 @@ def PlotPerformanceCharts(algos,performance_metrics):
     plt.title("Episode returns")
     #plt.ylim((-8,6))
     plt.show()
-    plt.savefig('images_rl/test_lcurve.png')
+    plt.savefig('images/rl/test_lcurve.png')
 
 
 import math

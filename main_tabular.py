@@ -3,34 +3,39 @@ from rl_policy import EpsilonGreedyPolicy
 from rl_algorithms import q_learning, sarsa, expected_sarsa, q_learning_exhaustive
 from rl_plotting import PlotPerformanceCharts, PlotGridValues, PlotNodeValues
 from rl_utils import EvaluatePolicy, CreateDuplicatesTrainsets
+from rl_custom_worlds import GetCustomWorld
 import numpy as np
 import simdata_utils as su
 import random 
 
 num_seeds   = 1
-eps_0       = .2
-eps_min     = 0.2
+eps_0       = 1.#.2
+eps_min     = 0.#1#.1#0.2
 cutoff      = 1#200
-num_iter    = 1000*250#2600*250
-gamma       = .9
+num_iter    = 250
+gamma       = .9#.9
 alpha_0     = .2
 alpha_decay = 0.
 initial_Q_values = 10.
 
 configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
-#conf=configs['Manhattan5']
-conf=configs['MetroGraphU3']
+conf=configs['Manhattan5']
+#conf=configs['MetroGraphU3']
 conf['direction_north']=False
-
 #env = GraphWorld(conf, optimization_method='dynamic', fixed_initial_positions=(2,15,19,22),state_representation='ete0U0')
-env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation='etUt')
+env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation='etUte0U0')
 
-policy = EpsilonGreedyPolicy(env, eps_0, initial_Q_values)
+#world_name='MetroU3_e17t31_FixedEscapeInit'
+#world_name='MetroU3_e17t0_FixedEscapeInit'
+#env=GetCustomWorld(world_name, make_reflexive=True, state_repr='etUt', state_enc='nodes')
+
+policy = EpsilonGreedyPolicy(env, eps_0, eps_min, initial_Q_values)
 #init_pos_trainset_indices0, init_pos_trainset_indices1 = CreateDuplicatesTrainsets(env, min_y_coord=env.sp.N-1, min_num_same_positions=env.sp.U, min_num_worlds=4)
 #env.world_pool = init_pos_trainset_indices1 # limit the training set to the selected entries
 #env.world_pool = [env.all_worlds[env.register['labels'][(2,4,5,22)]]]#random.sample(env.all_worlds,10)
-#env.world_pool = random.sample(env.all_worlds,260)
-env.world_pool = env.all_worlds
+#env.world_pool = random.sample(env.all_worlds,10)
+#env.world_pool = [env.all_worlds[1500]]
+
 
 metrics_episode_returns = {}
 metrics_episode_lengths = {}
@@ -39,7 +44,7 @@ Q_tables = {}
 
 algos  = [q_learning_exhaustive]#,sarsa,expected_sarsa]
 for algo in algos:
-    metrics_all = np.zeros((num_seeds,2,num_iter))
+    metrics_all = np.zeros((num_seeds,2,num_iter*len(env.world_pool)))
     for s in range(num_seeds):
         #seed_everthing(seed=s)
         policy.reset_epsilon()
@@ -63,5 +68,7 @@ for k,v in policy.Q.items():
     for i in v:
         count+=1
 print('Total number of q values stored',count)
+policy.epsilon=0.
 EvaluatePolicy(env,policy,env.world_pool,print_runs=False, save_plots=False)
+#EvaluatePolicy(env,policy,env.world_pool[::250],print_runs=True, save_plots=True)
 #env.fixed_initial_positions=None

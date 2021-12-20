@@ -21,7 +21,7 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
         conf=configs['Manhattan3']
         conf['direction_north']=False
-        conf['make_reflexive']=True
+        conf['make_reflexive']=make_reflexive
         conf['U']=3
         env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
         env.register['coords']={((1,0),(0,2),(1,2),(2,2)):0}
@@ -32,20 +32,51 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         env.all_worlds=[0]
         env.world_pool=[0]
         return env
-    if world_name == 'MetroU3_e17_FixedEscapeInit':
+    if world_name == 'MetroU3_e17tborder_FixedEscapeInit':
         configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
         conf=configs['MetroGraphU3']
         conf['direction_north']=False
         conf['loadAllStartingPositions']=False
-        conf['make_reflexive']=True
+        assert conf['T'] ==  20
+        conf['make_reflexive']=make_reflexive
         env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
+        return env
+    if world_name == 'MetroU3_e17t31_FixedEscapeInit':
+        configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
+        conf=configs['MetroGraphU3']
+        conf['direction_north']=False
+        conf['loadAllStartingPositions']=False
+        conf['make_reflexive']=make_reflexive
+        assert  conf['T'] == 20
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
+        env.sp.target_nodes=[31]
+        return env
+    if world_name == 'MetroU3_e17t0_FixedEscapeInit':
+        configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
+        conf=configs['MetroGraphU3']
+        conf['direction_north']=False
+        conf['loadAllStartingPositions']=False
+        conf['make_reflexive']=make_reflexive
+        assert  conf['T'] == 20
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
+        env.sp.target_nodes=[0]
+        return env
+    if world_name == 'MetroU3_e1t31_FixedEscapeInit':
+        configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
+        conf=configs['MetroGraphU3L8_node1']
+        conf['direction_north']=False
+        conf['loadAllStartingPositions']=False
+        conf['make_reflexive']=make_reflexive
+        assert conf['T'] == 25
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
+        env.sp.target_nodes=[31]
         return env
     if world_name == 'Manhattan5x5_FixedEscapeInit':
         configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
         conf=configs['Manhattan5']
         conf['direction_north']=False
         conf['loadAllStartingPositions']=False
-        conf['make_reflexive']=True
+        conf['make_reflexive']=make_reflexive
         env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
         return env
     if world_name == 'Manhattan5x5_VariableEscapeInit':
@@ -53,7 +84,7 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         conf=configs['Manhattan5']
         conf['direction_north']=False
         conf['loadAllStartingPositions']=True
-        conf['make_reflexive']=True
+        conf['make_reflexive']=make_reflexive
         env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
         return env
 

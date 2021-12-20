@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import gym
 from gym import spaces
 from gym import register
+import copy
 
 class GraphWorld(gym.Env):
     """"""
@@ -191,15 +192,17 @@ class GraphWorld(gym.Env):
         info = {'Captured':False, 'u_positions':self.state[1:], 'Misc':None}
         if action_idx >= len(self.neighbors[self.state[0]]):
             next_node = self.state[0]
-            reward=-3.
+            reward=-2.
             info['Misc']='action_out_of_bounds'
-            done=True
+            done=False
             #done=False
             #info={'Captured':False}
             #print('action out of bounds chosen')
         else:          
             next_node = self.neighbors[self.state[0]][action_idx]
-            reward = -1.
+            reward = -1.#-1.
+            if next_node == self.state[0]:
+               reward = -1.5
         self.global_t += 1
         self.local_t  += 1
         
@@ -241,11 +244,12 @@ class GraphWorld(gym.Env):
         e = self.state[0]
         p=self.state[1:]
         if fname == None:
-            file_name=self.render_fileprefix+'_t='+str(self.global_t)
+            #file_name=self.render_fileprefix+'_t='+str(self.global_t)
+            file_name=None
         else:
             file_name = fname+'_t='+str(self.global_t)
-        PlotAgentsOnGraph_(self.sp, e, p, self.global_t, fig_show=False, fig_save=True, filename=file_name)
-        plt.clf()
+        plot=PlotAgentsOnGraph_(self.sp, e, p, self.global_t, fig_show=False, fig_save=True, filename=file_name)
+        return plot
 
 register(
     id='GraphWorld-v0',
