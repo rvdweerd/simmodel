@@ -2,7 +2,7 @@ from environments import GraphWorld
 from rl_policy import EpsilonGreedyPolicy
 from rl_algorithms import q_learning, sarsa, expected_sarsa, q_learning_exhaustive
 from rl_plotting import PlotPerformanceCharts, PlotGridValues, PlotNodeValues
-from rl_utils import EvaluatePolicy, CreateDuplicatesTrainsets
+from rl_utils import EvaluatePolicy, CreateDuplicatesTrainsets, GetOutliersSample, GetFullCoverageSample
 from rl_custom_worlds import GetCustomWorld
 import numpy as np
 import simdata_utils as su
@@ -12,7 +12,7 @@ num_seeds   = 1
 eps_0       = 1.#.2
 eps_min     = 0.#1#.1#0.2
 cutoff      = 1#200
-num_iter    = 250
+num_iter    = 1000
 gamma       = .9#.9
 alpha_0     = .2
 alpha_decay = 0.
@@ -23,7 +23,7 @@ conf=configs['Manhattan5']
 #conf=configs['MetroGraphU3']
 conf['direction_north']=False
 #env = GraphWorld(conf, optimization_method='dynamic', fixed_initial_positions=(2,15,19,22),state_representation='ete0U0')
-env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation='etUte0U0')
+env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation='etUt')
 
 #world_name='MetroU3_e17t31_FixedEscapeInit'
 #world_name='MetroU3_e17t0_FixedEscapeInit'
@@ -34,7 +34,7 @@ policy = EpsilonGreedyPolicy(env, eps_0, eps_min, initial_Q_values)
 #env.world_pool = init_pos_trainset_indices1 # limit the training set to the selected entries
 #env.world_pool = [env.all_worlds[env.register['labels'][(2,4,5,22)]]]#random.sample(env.all_worlds,10)
 #env.world_pool = random.sample(env.all_worlds,10)
-#env.world_pool = [env.all_worlds[1500]]
+#env.world_pool = env.all_worlds[:10]
 
 
 metrics_episode_returns = {}
@@ -61,6 +61,8 @@ performance_metrics = { 'e_returns': metrics_episode_returns, 'e_lengths':metric
 
 #PlotPerformanceCharts(algos, performance_metrics)
 #PlotNodeValues(algos,env,Q_tables)
+
+
 import matplotlib.pyplot as plt
 plt.clf()
 count=0
@@ -69,6 +71,9 @@ for k,v in policy.Q.items():
         count+=1
 print('Total number of q values stored',count)
 policy.epsilon=0.
-EvaluatePolicy(env,policy,env.world_pool,print_runs=False, save_plots=False)
-#EvaluatePolicy(env,policy,env.world_pool[::250],print_runs=True, save_plots=True)
+logdir = 'results/TabQL/'+env.sp.graph_type+'/eval'
+_, returns, _ = EvaluatePolicy(env,policy,env.world_pool,print_runs=False, save_plots=False, logdir=logdir)
+#plotlist = GetOutliersSample(returns)
+plotlist = GetFullCoverageSample(returns,bins=10,n=10)
+EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=logdir)
 #env.fixed_initial_positions=None

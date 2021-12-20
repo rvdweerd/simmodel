@@ -3,43 +3,44 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.switch_backend('agg')
 from torch.cuda import init
+from pathlib import Path
 
-def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False):
+def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, logdir='.'):
     # Escaper chooses random neighboring nodes until temination
     # Inputs:
     #   test_set: list of indices to the databank
-    captured=[]
+    captures=[]
     iratios_sampled=[]
-    rewards=[]
     lengths=[]
-    file_prefix='images/rl/'+env.sp.graph_type+'_Entry='
-    maxR=1e-6
-    minR=1e6
-    OutputFile= 'images/rl/'+env.sp.graph_type+'log_n='+str(len(test_set))+'.txt'
+    returns=[]
+    #if print_runs or save_plots:
+    Path(logdir).mkdir(parents=True, exist_ok=True)
+    file_prefix=logdir+'/Entry='
+    OutputFile= logdir+'/Log_n='+str(len(test_set))+'.txt'
     OF = open(OutputFile, 'w')
-
     def printing(text):
         print(text)
         OF.write(text + "\n")
-    
     np.set_printoptions(formatter={'float':"{0:0.1f}".format})
+    np.set_printoptions(formatter={'int'  :"{0:<3}".format})
     printing('\n-------------------------------------------------------------------------------------------------------')
+    
     for i, entry in enumerate(test_set):
         s=env.reset(entry=entry)
         policy.reset_hidden_states()
         iratios_sampled.append(env.iratio)
         done=False
+        text_cache=""
+        plot_cache=[]
         R=0
+        count=0
         if len(env.sp.target_nodes)>0 and env.state[0] in env.sp.target_nodes:
             done = True
             R=10
             info = {'Captured':False}
-        text_cache=""
-        plot_cache=[]
         if print_runs:
             #printing('\nRun '+str(i+1)+': dataset entry '+str(entry)+', Initial state '+str(env.state0))
             text_cache += ('\nRun '+str(i+1)+': dataset entry '+str(entry)+', Initial state '+str(env.state0)+'\n')
-        count=0
         while not done:
             if save_plots:
                 plot=env.render(fname=None)
@@ -58,38 +59,24 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False):
         if save_plots:
             plot=env.render(fname=None)
             plot_cache.append(plot)
-        if R>maxR:
-            maxR=R
-            if minR==1e6: minR=R
-            if print_runs:
-                printing(text_cache)
-            if save_plots:
-                for i_plt,p in enumerate(plot_cache):
-                    fname=file_prefix+str(entry)+'_s0='+str(env.state0)+'_'+policy.__name__+'_t='+str(i_plt)
-                    p.savefig(fname)
-                    #plt.clf()
-        if R<minR:
-            minR=R
-            if maxR==-1e6: maxR=R
-            if print_runs:
-                printing(text_cache)
-            if save_plots:
-                for i_plt,p in enumerate(plot_cache):
-                    fname=file_prefix+str(entry)+'_s0='+str(env.state0)+'_'+policy.__name__+'_t='+str(i_plt)
-                    p.savefig(fname)
-                    #plt.clf()
-        captured.append(int(info['Captured']))
-        rewards.append(R)
+            for i_plt,p in enumerate(plot_cache):
+                fname=file_prefix+str(entry)+'_s0='+str(env.state0)+'_'+policy.__name__+'_t='+str(i_plt)
+                p.savefig(fname)
+        captures.append(int(info['Captured']))
+        returns.append(R)
         lengths.append(count)
     printing('\nAggregated test results:')
     printing('  > Environment : '+env.sp.graph_type+'_N='+str(env.sp.N)+'_U='+str(env.sp.U)+'_T='+str(env.max_timesteps)+'_Ndir='+str(env.sp.direction_north)[0])
     printing('  > Policy      : '+policy.__name__)
-    printing('Test set size: '+str(len(test_set))+' Observed escape ratio: {:.3f}'.format(1-np.mean(captured))+', Average episode length: {:.2f}'.format(np.mean(lengths))+', Average return: {:.2f}'.format(np.mean(rewards)))
+    printing('Test set size: '+str(len(test_set))+' Observed escape ratio: {:.3f}'.format(1-np.mean(captures))+', Average episode length: {:.2f}'.format(np.mean(lengths))+', Average return: {:.2f}'.format(np.mean(returns)))
     printing('Escape ratio at data generation: last {:.3f}'.format(1-env.iratio)+', avg at generation {:.3f}'.format(1-sum(env.iratios)/len(env.iratios))+\
         ', avg sampled {:.3f}'.format(1-sum(iratios_sampled)/len(iratios_sampled)))
-    if len(rewards) <20:
-        printing('Returns:'+str(rewards))
+    if len(returns) <20 or print_runs:
+        printing('Lengths :'+str(np.array(lengths) ))
+        printing('Returns :'+str(np.array(returns) ))
+        printing('Captures:'+str(np.array(captures)))
     #print('-------------------------------------------------------------------------------------------------------')
+    return (lengths, returns, captures)
 
 def GetInitialStatesList(env, min_y_coord):
     # Get pointers to all initial conditions with Units above min_y_coord
@@ -207,3 +194,42 @@ def CreateDuplicatesTrainsets(env, min_y_coord, min_num_same_positions, min_num_
         if e1 in init_pos_trainset_indices0:
             init_pos_trainset_indices0.remove(e1)
     return init_pos_trainset_indices0, init_pos_trainset_indices1
+
+def GetOutliersSample(returns):
+    MAX_INIT = -1e6
+    MIN_INIT = 1e6
+    maxR=MAX_INIT
+    minR=MIN_INIT
+    selection=[]
+    for i,R in enumerate(returns):
+        if R > maxR:
+            maxR = R
+            if minR == MIN_INIT:
+                minR = R
+            selection.append(i)
+        if R < minR:
+            minR = R
+            if maxR == MAX_INIT:
+                maxR = R
+            selection.append(i)
+    selection.sort()
+    return selection
+
+def GetFullCoverageSample(returns, bins=10, n=10):
+    assert n<len(returns)
+    assert n>=bins
+    chosen_indices=[]
+    edges=np.histogram_bin_edges(returns,bins=bins)
+    bin_digits=np.digitize(returns,edges)
+    a=np.min(bin_digits)
+    b=np.max(bin_digits)
+    while len(chosen_indices)<n:
+        for bin in np.arange(a,b+1,1):
+            indices=np.where(bin_digits==bin)[0]
+            if len(indices)>0:
+                chosen_indices.append(np.random.choice(indices))
+            if len(chosen_indices)==n:
+                break
+    return chosen_indices
+
+

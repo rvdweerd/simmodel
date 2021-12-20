@@ -147,7 +147,7 @@ def GetConfigs():
         },
         "Manhattan5": {
             'graph_type': "Manhattan",
-            'make_reflexive': False,            
+            'make_reflexive': True,            
             'N': 5,    # number of nodes along one side
             'U': 3,    # number of pursuer units
             'L': 6,    # Time steps
