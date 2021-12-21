@@ -32,6 +32,22 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         env.all_worlds=[0]
         env.world_pool=[0]
         return env
+    if world_name == 'Manhattan5x5_FixedEscapeInit':
+        configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
+        conf=configs['Manhattan5']
+        conf['direction_north']=False
+        conf['loadAllStartingPositions']=False
+        conf['make_reflexive']=make_reflexive
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
+        return env
+    if world_name == 'Manhattan5x5_VariableEscapeInit':
+        configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
+        conf=configs['Manhattan5']
+        conf['direction_north']=False
+        conf['loadAllStartingPositions']=True
+        conf['make_reflexive']=make_reflexive
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
+        return env
     if world_name == 'MetroU3_e17tborder_FixedEscapeInit':
         configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
         conf=configs['MetroGraphU3']
@@ -71,20 +87,9 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
         env.sp.target_nodes=[31]
         return env
-    if world_name == 'Manhattan5x5_FixedEscapeInit':
-        configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
-        conf=configs['Manhattan5']
-        conf['direction_north']=False
-        conf['loadAllStartingPositions']=False
-        conf['make_reflexive']=make_reflexive
-        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
-        return env
-    if world_name == 'Manhattan5x5_VariableEscapeInit':
-        configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
-        conf=configs['Manhattan5']
-        conf['direction_north']=False
-        conf['loadAllStartingPositions']=True
-        conf['make_reflexive']=make_reflexive
-        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
-        return env
 
+def CreateWorlds(run_world_names, make_reflexive=True, state_repr='et', state_enc='nodes'):
+    worlds=[]
+    for world_name in run_world_names:
+        worlds.append(GetCustomWorld(world_name, make_reflexive, state_repr, state_enc))
+    return worlds

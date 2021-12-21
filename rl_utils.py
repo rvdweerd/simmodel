@@ -15,7 +15,8 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
     returns=[]
     #if print_runs or save_plots:
     Path(logdir).mkdir(parents=True, exist_ok=True)
-    file_prefix=logdir+'/Entry='
+    Path(logdir+'/runs').mkdir(parents=True, exist_ok=True)
+    file_prefix=logdir+'/runs/Entry='
     OutputFile= logdir+'/Log_n='+str(len(test_set))+'.txt'
     OF = open(OutputFile, 'w')
     def printing(text):
@@ -23,8 +24,13 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
         OF.write(text + "\n")
     np.set_printoptions(formatter={'float':"{0:0.1f}".format})
     np.set_printoptions(formatter={'int'  :"{0:<3}".format})
-    printing('\n-------------------------------------------------------------------------------------------------------')
-    
+    count=0
+    for k,v in policy.Q.items():
+        for i in v:
+            count+=1
+    printing('entries in Q table: '+str(len(policy.Q)))
+    printing('Total number of q values stored: '+str(count))
+    printing('\n-------------------------------------------------------------------------------------------------------')   
     for i, entry in enumerate(test_set):
         s=env.reset(entry=entry)
         policy.reset_hidden_states()
@@ -60,22 +66,27 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
             plot=env.render(fname=None)
             plot_cache.append(plot)
             for i_plt,p in enumerate(plot_cache):
-                fname=file_prefix+str(entry)+'_s0='+str(env.state0)+'_'+policy.__name__+'_t='+str(i_plt)
-                p.savefig(fname)
+                fname=file_prefix+str(entry)+'_s0='+str(env.state0)+'_'+policy.__name__+'_R='+str(R)+'_t='+str(i_plt)
+                p.savefig(fname+'.png')
         captures.append(int(info['Captured']))
         returns.append(R)
         lengths.append(count)
     printing('\nAggregated test results:')
     printing('  > Environment : '+env.sp.graph_type+'_N='+str(env.sp.N)+'_U='+str(env.sp.U)+'_T='+str(env.max_timesteps)+'_Ndir='+str(env.sp.direction_north)[0])
     printing('  > Policy      : '+policy.__name__)
-    printing('Test set size: '+str(len(test_set))+' Observed escape ratio: {:.3f}'.format(1-np.mean(captures))+', Average episode length: {:.2f}'.format(np.mean(lengths))+', Average return: {:.2f}'.format(np.mean(returns)))
-    printing('Escape ratio at data generation: last {:.3f}'.format(1-env.iratio)+', avg at generation {:.3f}'.format(1-sum(env.iratios)/len(env.iratios))+\
-        ', avg sampled {:.3f}'.format(1-sum(iratios_sampled)/len(iratios_sampled)))
+    printing('Test set size: '+str(len(test_set)))
+    printing('Observed escape ratio: {:.3f}'.format(1-np.mean(captures)))
     if len(returns) <20 or print_runs:
-        printing('Lengths :'+str(np.array(lengths) ))
-        printing('Returns :'+str(np.array(returns) ))
-        printing('Captures:'+str(np.array(captures)))
-    #print('-------------------------------------------------------------------------------------------------------')
+        printing('   Captures:'+str(np.array(captures)))
+    printing('Average episode length: {:.2f}'.format(np.mean(lengths))+' +/- {:.2f}'.format(np.std(lengths)))
+    if len(returns) <20 or print_runs:
+        printing('   Lengths :'+str(np.array(lengths) ))
+    printing('Average return: {:.2f}'.format(np.mean(returns))+' +/- {:.2f}'.format(np.std(returns)))
+    if len(returns) <20 or print_runs:
+        printing('   Returns :'+str(np.array(returns) ))
+    printing('\nEscape ratio at data generation: last {:.3f}'.format(1-env.iratio)+', avg at generation {:.3f}'.format(1-sum(env.iratios)/len(env.iratios))+\
+        ', avg sampled {:.3f}'.format(1-sum(iratios_sampled)/len(iratios_sampled)))
+    printing('-------------------------------------------------------------------------------------------------------')
     return (lengths, returns, captures)
 
 def GetInitialStatesList(env, min_y_coord):
