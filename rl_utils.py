@@ -5,7 +5,7 @@ plt.switch_backend('agg')
 from torch.cuda import init
 from pathlib import Path
 
-def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, logdir='.'):
+def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, logdir='.', has_Q_table=False):
     # Escaper chooses random neighboring nodes until temination
     # Inputs:
     #   test_set: list of indices to the databank
@@ -24,15 +24,16 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
         OF.write(text + "\n")
     np.set_printoptions(formatter={'float':"{0:0.1f}".format})
     np.set_printoptions(formatter={'int'  :"{0:<3}".format})
-    count=0
-    for k,v in policy.Q.items():
-        for i in v:
-            count+=1
-    printing('entries in Q table: '+str(len(policy.Q)))
-    printing('Total number of q values stored: '+str(count))
+    if has_Q_table:
+        count=0
+        for k,v in policy.Q.items():
+            for i in v:
+                count+=1
+        printing('entries in Q table: '+str(len(policy.Q)))
+        printing('Total number of q values stored: '+str(count))
     printing('\n-------------------------------------------------------------------------------------------------------')   
     for i, entry in enumerate(test_set):
-        s=env.reset(entry=entry)
+        s=env.reset(entry = entry) 
         policy.reset_hidden_states()
         iratios_sampled.append(env.iratio)
         done=False
@@ -62,6 +63,7 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
             R+=r
         if print_runs:
             text_cache+=('  Done after '+str(count)+' steps, Captured: '+str(info['Captured'])+' Reward: '+str(R)+'\n')
+            printing(text_cache)
         if save_plots:
             plot=env.render(fname=None)
             plot_cache.append(plot)
@@ -206,7 +208,7 @@ def CreateDuplicatesTrainsets(env, min_y_coord, min_num_same_positions, min_num_
             init_pos_trainset_indices0.remove(e1)
     return init_pos_trainset_indices0, init_pos_trainset_indices1
 
-def GetOutliersSample(returns):
+def GetOutliersSample(returns, world_list):
     MAX_INIT = -1e6
     MIN_INIT = 1e6
     maxR=MAX_INIT
@@ -217,30 +219,32 @@ def GetOutliersSample(returns):
             maxR = R
             if minR == MIN_INIT:
                 minR = R
-            selection.append(i)
+            selection.append(world_list[i])
         if R < minR:
             minR = R
             if maxR == MAX_INIT:
                 maxR = R
-            selection.append(i)
+            selection.append(world_list[i])
     selection.sort()
     return selection
 
-def GetFullCoverageSample(returns, bins=10, n=10):
-    assert n<len(returns)
+def GetFullCoverageSample(returns, world_list, bins=10, n=10):
+    if n>len(returns):
+        return world_list
     assert n>=bins
-    chosen_indices=[]
+    chosen_worlds=[]
     edges=np.histogram_bin_edges(returns,bins=bins)
     bin_digits=np.digitize(returns,edges)
     a=np.min(bin_digits)
     b=np.max(bin_digits)
-    while len(chosen_indices)<n:
+    while len(chosen_worlds)<n:
         for bin in np.arange(a,b+1,1):
             indices=np.where(bin_digits==bin)[0]
             if len(indices)>0:
-                chosen_indices.append(np.random.choice(indices))
-            if len(chosen_indices)==n:
+                chosen_index = np.random.choice(indices)
+                chosen_worlds.append(world_list[chosen_index])
+            if len(chosen_worlds)==n:
                 break
-    return chosen_indices
+    return chosen_worlds
 
 

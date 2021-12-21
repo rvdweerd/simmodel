@@ -1,4 +1,5 @@
 import simdata_utils as su
+from rl_utils import CreateDuplicatesTrainsets
 from environments import GraphWorld
 
 def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='nodes'):
@@ -32,6 +33,26 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         env.all_worlds=[0]
         env.world_pool=[0]
         return env
+    if world_name == 'Manhattan5x5_DuplicateSetA':
+        configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
+        conf=configs['Manhattan5']
+        conf['direction_north']=False
+        conf['make_reflexive']=make_reflexive
+        conf['U']=3
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
+        init_pos_trainset_indices0, init_pos_trainset_indices1 = CreateDuplicatesTrainsets(env, min_y_coord=env.sp.N-1, min_num_same_positions=env.sp.U, min_num_worlds=4)
+        env.world_pool = init_pos_trainset_indices0 # limit the training set to the selected entries
+        return env        
+    if world_name == 'Manhattan5x5_DuplicateSetB':
+        configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
+        conf=configs['Manhattan5']
+        conf['direction_north']=False
+        conf['make_reflexive']=make_reflexive
+        conf['U']=3
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
+        init_pos_trainset_indices0, init_pos_trainset_indices1 = CreateDuplicatesTrainsets(env, min_y_coord=env.sp.N-1, min_num_same_positions=env.sp.U, min_num_worlds=4)
+        env.world_pool = init_pos_trainset_indices1 # limit the training set to the selected entries
+        return env
     if world_name == 'Manhattan5x5_FixedEscapeInit':
         configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
         conf=configs['Manhattan5']
@@ -53,6 +74,15 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         conf=configs['MetroGraphU3']
         conf['direction_north']=False
         conf['loadAllStartingPositions']=False
+        assert conf['T'] ==  20
+        conf['make_reflexive']=make_reflexive
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
+        return env
+    if world_name == 'MetroU3_e17tborder_VariableEscapeInit':
+        configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
+        conf=configs['MetroGraphU3']
+        conf['direction_north']=False
+        conf['loadAllStartingPositions']=True
         assert conf['T'] ==  20
         conf['make_reflexive']=make_reflexive
         env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
@@ -92,4 +122,5 @@ def CreateWorlds(run_world_names, make_reflexive=True, state_repr='et', state_en
     worlds=[]
     for world_name in run_world_names:
         worlds.append(GetCustomWorld(world_name, make_reflexive, state_repr, state_enc))
+    if len(worlds) == 0: assert False
     return worlds

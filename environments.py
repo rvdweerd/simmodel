@@ -28,7 +28,7 @@ class GraphWorld(gym.Env):
         self.all_worlds             = [ind for k,ind in self.register['labels'].items()]
         self.world_pool             = su.GetWorldPool(self.all_worlds, fixed_initial_positions, self.register)
         self._encode                = self._encode_nodes if state_encoding == 'nodes' else self._encode_tensor
-        if state_encoding not in ['nodes', 'tensor']: assert False
+        if state_encoding not in ['nodes', 'tensors']: assert False
 
         # Dynamics parameters
         self.current_entry          = 0    # which entry in the world pool is active

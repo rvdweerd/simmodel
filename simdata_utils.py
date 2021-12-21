@@ -79,7 +79,7 @@ def GetConfigs():
         "MetroGraphU3": {
             # Note: E starting position is center node 17
             'graph_type': "MetroGraph",
-            'make_reflexive': False,
+            'make_reflexive': True,
             'N': 33,    # number of nodes along one side
             'U': 3,    # number of pursuer units
             'L': 6,    # Time steps
@@ -92,7 +92,7 @@ def GetConfigs():
         },
         "MetroGraphU4": {
             'graph_type': "MetroGraph",
-            'make_reflexive': False,
+            'make_reflexive': True,
             # Note: E starting position is center node 17
             'N': 33,    # number of nodes along one side
             'U': 4,    # number of pursuer units
@@ -107,7 +107,7 @@ def GetConfigs():
         "MetroGraphU3L8_node1": {
             # Note: E starting position is bottom left node 1
             'graph_type': "MetroGraph",
-            'make_reflexive': False,            
+            'make_reflexive': True,            
             'N': 33,    # number of nodes along one side
             'U': 3,    # number of pursuer units
             'L': 8,    # Time steps
@@ -121,7 +121,7 @@ def GetConfigs():
         "MetroGraphU4L8_node1": {
             # Note: E starting position is bottom left node 1
             'graph_type': "MetroGraph",
-            'make_reflexive': False,            
+            'make_reflexive': True,            
             'N': 33,    # number of nodes along one side
             'U': 4,    # number of pursuer units
             'L': 8,    # Time steps
@@ -134,7 +134,7 @@ def GetConfigs():
         },
         "Manhattan3": {
             'graph_type': "Manhattan",
-            'make_reflexive': False,
+            'make_reflexive': True,
             'N': 3,    # number of nodes along one side
             'U': 2,    # number of pursuer units
             'L': 4,    # Time steps
@@ -153,27 +153,27 @@ def GetConfigs():
             'L': 6,    # Time steps
             'T': 11,
             'R': 200,  # Number of escape routes sampled 
-            'direction_north': True,       # Directional preference of escaper
+            'direction_north': False,       # Directional preference of escaper
             'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
             'fixed_initial_positions': (2,15,19,22),
             'loadAllStartingPositions': False
         },
         "Manhattan11": {
             'graph_type': "Manhattan",
-            'make_reflexive': False,            
+            'make_reflexive': True,            
             'N': 11,    # number of nodes along one side
             'U': 3,    # number of pursuer units
             'L': 16,    # Time steps
             'T': 23,
             'R': 1000,  # Number of escape routes sampled 
-            'direction_north': True,       # Directional preference of escaper
+            'direction_north': False,       # Directional preference of escaper
             'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
             'fixed_initial_positions': (5,107,110,114),
             'loadAllStartingPositions': False
         },
         "CircGraph": {
             'graph_type': "CircGraph",
-            'make_reflexive': False,            
+            'make_reflexive': True,            
             'N': 10,    # number of nodes along one side
             'U': 2,    # number of pursuer units
             'L': 6,    # Time steps
@@ -186,7 +186,7 @@ def GetConfigs():
         },
         "TKGraph": {
             'graph_type': "TKGraph",
-            'make_reflexive': False,            
+            'make_reflexive': True,            
             'N': 6,    # number of nodes along one side
             'U': 1,    # number of pursuer units
             'L': 4,    # Time steps
