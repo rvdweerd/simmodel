@@ -1,4 +1,5 @@
 from itertools import combinations
+import gym
 import numpy as np
 import matplotlib.pyplot as plt
 plt.switch_backend('agg')
@@ -47,7 +48,8 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
             info = {'Captured':False}
         if print_runs:
             #printing('\nRun '+str(i+1)+': dataset entry '+str(entry)+', Initial state '+str(env.state0))
-            text_cache += ('\nRun '+str(i+1)+': dataset entry '+str(entry)+', Initial state '+str(env.state0)+'\n')
+            text_cache += ('\nRun '+str(i+1)+': dataset entry '+str(entry)+', Initial state '+str(env.state0))
+            text_cache += ', Deterministic policy: '+str(policy.deterministic)+'\n'
         while not done:
             if save_plots:
                 plot=env.render(fname=None)
@@ -58,6 +60,7 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
             s,r,done,info = env.step(action)
             s_prime = env.state
             if print_runs:
+                np.set_printoptions(formatter={'float':"{0:0.1f}".format})
                 text_cache+=('  s: {0:>18}'.format(str(s_start))+' a '+str(action)+' action_probs '+str(action_probs)+' r '+str(r)+' s_ '+str(s_prime)+'\n')
             count+=1
             R+=r
@@ -73,9 +76,9 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
         captures.append(int(info['Captured']))
         returns.append(R)
         lengths.append(count)
-    printing('\nAggregated test results:')
+    printing('\nAggregated test results.')
     printing('  > Environment : '+env.sp.graph_type+'_N='+str(env.sp.N)+'_U='+str(env.sp.U)+'_T='+str(env.max_timesteps)+'_Ndir='+str(env.sp.direction_north)[0])
-    printing('  > Policy      : '+policy.__name__)
+    printing('  > Policy      : '+policy.__name__+'Deterministic: '+str(policy.deterministic))
     printing('Test set size: '+str(len(test_set)))
     printing('Observed escape ratio: {:.3f}'.format(1-np.mean(captures)))
     if len(returns) <20 or print_runs:
@@ -248,3 +251,21 @@ def GetFullCoverageSample(returns, world_list, bins=10, n=10):
     return chosen_worlds
 
 
+def print_parameters(model):
+    print(model)
+    print('Policy model size:')
+    print('------------------------------------------')
+    total = 0
+    for name, p in model.named_parameters():
+        total += np.prod(p.shape)
+        print("{:44s} {:12s} requires_grad={}".format(name, str(list(p.shape)), p.requires_grad))
+    print("Total number of parameters: {}".format(total))
+    print('------------------------------------------')
+    assert total == sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+class NpWrapper(gym.ObservationWrapper):
+    def _availableActionsInCurrentState(self):
+        return None
+    def observation(self, observation):
+        obs = np.array(observation).astype(np.float64)
+        return obs

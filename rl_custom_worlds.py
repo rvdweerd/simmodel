@@ -17,6 +17,7 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         env.iratios=[1.]
         env.all_worlds=[0]
         env.world_pool=[0]
+        env.reset()
         return env
     if world_name == 'Manhattan3x3_PauseDynamicWorld':
         configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
@@ -32,6 +33,7 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         env.iratios=[1.]
         env.all_worlds=[0]
         env.world_pool=[0]
+        env.reset()
         return env
     if world_name == 'Manhattan5x5_DuplicateSetA':
         configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"

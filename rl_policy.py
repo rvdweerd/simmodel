@@ -11,6 +11,7 @@ class Policy():
     def __init__(self, type_name='none'):
         self.type = type_name
         self.__name__ = 'none'
+        self.deterministic=True
     def sample_action(self, obs, available_actions):
         return self.sample_greedy_action(obs, available_actions)
     def sample_greedy_action(self, obs, available_actions):
@@ -383,7 +384,7 @@ class EpsilonGreedyPolicySB3_PPO(Policy):
         self.probs = None
         self.all_actions=[i for i in range(env.max_outdegree)]
     def get_action_probs(self):
-        return self.probs
+        return self.probs.astype(np.float64)
 
     def sample_greedy_action(self, obs, available_actions):
         with torch.no_grad():
