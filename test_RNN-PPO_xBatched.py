@@ -590,8 +590,7 @@ def make_custom(env_id, num_envs=1, asynchronous=True, wrappers=None, **kwargs):
     return AsyncVectorEnv(env_fns) if asynchronous else SyncVectorEnv(env_fns)
 
 
-def train_model(actor, critic, actor_optimizer, critic_optimizer, iteration, stop_conditions):
-    
+def train_model(actor, critic, actor_optimizer, critic_optimizer, iteration, stop_conditions):   
     # Vector environment manages multiple instances of the environment.
     # A key difference between this and the standard gym environment is it automatically resets.
     # Therefore when the done flag is active in the done vector the corresponding state is the first new state.

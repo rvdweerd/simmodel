@@ -121,8 +121,8 @@ def GetHyperParams_SB3PPO(world):
     hp={}
     #                      sr='et'              sr='etUt'           sr='ete0U0'             sr='etUte0U0'
     #                     -----------        ------------------   --------------------   ----------------------
-    hp['actor']       = {'et':[256,256,64], 'etUt':[256,256,64], 'ete0U0':[256,256,64], 'etUte0U0':[256,256,64] }
-    hp['critic']      = {'et':[256,256,64], 'etUt':[256,256,64], 'ete0U0':[256,256,64], 'etUte0U0':[256,256,64] }
+    hp['actor']       = {'et':[128,128,64], 'etUt':[128,128,64], 'ete0U0':[128,128,64], 'etUte0U0':[128,128,64] }
+    hp['critic']      = {'et':[128,128,64], 'etUt':[128,128,64], 'ete0U0':[128,128,64], 'etUte0U0':[128,128,64] }
     hp['activation']  = {'et':act         , 'etUt':act         , 'ete0U0':act         , 'etUte0U0':act     }
     hp['num_seeds']   = {'et':5           , 'etUt':5           , 'ete0U0':5           , 'etUte0U0':5       }
     hp['total_steps'] = {'et':150000      , 'etUt':150000      , 'ete0U0':150000      , 'etUte0U0':150000  }

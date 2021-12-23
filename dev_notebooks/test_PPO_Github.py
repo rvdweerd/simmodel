@@ -6,6 +6,7 @@ import torch.optim as optim
 from torch.distributions import Categorical
 from rl_custom_worlds import GetCustomWorld
 
+# code from https://github.com/seungeunrho/minimalRL/blob/master/ppo.py
 #Hyperparameters
 learning_rate = 0.0005
 gamma         = 0.98

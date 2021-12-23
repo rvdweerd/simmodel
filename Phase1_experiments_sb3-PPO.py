@@ -4,7 +4,7 @@ import simdata_utils as su
 from stable_baselines3.common.env_checker import check_env
 from environments import GraphWorld
 from rl_policy import EpsilonGreedyPolicySB3_PPO
-from rl_hyperparameters import GetHyperParams_SB3PPO
+from Phase1_hyperparameters import GetHyperParams_SB3PPO
 from rl_custom_worlds import GetCustomWorld
 from rl_utils import EvaluatePolicy, print_parameters, GetFullCoverageSample, NpWrapper
 from stable_baselines3.common.vec_env import DummyVecEnv
@@ -129,5 +129,3 @@ if __name__ == '__main__':
 #rewards, epi_lengths = evaluate_policy(model, env, n_eval_episodes=N_eval, deterministic=False, return_episode_rewards=True)
 #print(f"mean_reward={np.mean(rewards):.2f} +/- {np.std(rewards)}")
 #print(f"mean_lengths={np.mean(epi_lengths):.2f} +/- {np.std(epi_lengths)}")
-
-

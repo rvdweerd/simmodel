@@ -1,3 +1,5 @@
+# Code from https://github.com/seungeunrho/minimalRL/blob/master/ppo-lstm.py
+
 #PPO-LSTM
 import gym
 import torch
