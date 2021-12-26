@@ -10,6 +10,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 class Policy():
     def __init__(self, type_name='none'):
         self.type = type_name
+        self.model = None
         self.__name__ = 'none'
         self.deterministic=True
     def sample_action(self, obs, available_actions):
@@ -105,6 +106,7 @@ class EpsilonGreedyPolicy(Policy):
 
 class LeftUpPolicy(Policy):
     def __init__(self, env):
+        super().__init__('Heuristic policy')
         self.env=env
         self.__name__ = 'LeftUp'
     def sample_greedy_action(self, s, available_actions=None):
@@ -122,6 +124,7 @@ class LeftUpPolicy(Policy):
 class RandomPolicy(Policy):
     def __init__(self, env):
         #self.env=env
+        super().__init__('Heuristic policy')
         self.out_degree=env.out_degree
         self.__name__ = 'RandomWalker'
     def sample_action(self, s, available_actions=None):
@@ -136,6 +139,7 @@ import networkx as nx
 
 class ShortestPathPolicy(Policy):
     def __init__(self, env, weights='equal'):
+        super().__init__('Heuristic policy')
         self.env=env
         self.weights=weights
         self.G = self.env.sp.G.to_directed()
@@ -185,7 +189,8 @@ class EpsilonGreedyPolicyDQN(Policy):
     A simple epsilon greedy policy.
     """
     def __init__(self, Q, env, eps_0 = 1., eps_min=0.1, eps_cutoff=100):
-        self.Q = Q
+        super().__init__('DQN based policy')
+        self.model = Q
         self.rng = np.random.RandomState(1)
         # Epsilon scheduling
         self.epsilon = eps_0
@@ -218,7 +223,7 @@ class EpsilonGreedyPolicyDQN(Policy):
             return action_idx, available_actions[action_idx]
         else:
             with torch.no_grad():
-                y, modelstate = self.Q(torch.tensor(obs,dtype=torch.float32).to(device))
+                y, modelstate = self.model(torch.tensor(obs,dtype=torch.float32).to(device))
                 num_actions=len(available_actions)
                 action_idx = torch.argmax(y[:num_actions]).item()
             return action_idx, None
@@ -239,7 +244,8 @@ class EpsilonGreedyPolicyRDQN(Policy):
     A simple epsilon greedy policy.
     """
     def __init__(self, Q, env, eps_0 = 1., eps_min=0.1, eps_cutoff=100):
-        self.Q = Q
+        super().__init__('Recurrent DQN based policy')
+        self.model = Q
         # Attributes used to manage hidden state of lstm
         self.lstm_input_size=Q.lstm.input_size
         self.lstm_hidden_size=Q.lstm.hidden_size
@@ -278,7 +284,7 @@ class EpsilonGreedyPolicyRDQN(Policy):
         draw = self.rng.uniform(0,1,1)
         if draw <= self.epsilon:
             # CHECK! if this is necessary
-            y, (ht_,ct_) = self.Q(torch.tensor(obs,dtype=torch.float32)[None,None,:].to(device), (self.ht,self.ct))
+            y, (ht_,ct_) = self.model(torch.tensor(obs,dtype=torch.float32)[None,None,:].to(device), (self.ht,self.ct))
             self.ht=ht_
             self.ct=ct_
             #####
@@ -287,7 +293,7 @@ class EpsilonGreedyPolicyRDQN(Policy):
             return action_idx, available_actions[action_idx]
         else:
             with torch.no_grad():
-                y, (ht_,ct_) = self.Q(torch.tensor(obs,dtype=torch.float32)[None,None,:].to(device), (self.ht,self.ct))
+                y, (ht_,ct_) = self.model(torch.tensor(obs,dtype=torch.float32)[None,None,:].to(device), (self.ht,self.ct))
                 self.ht=ht_
                 self.ct=ct_
                 num_actions=len(available_actions)
@@ -341,7 +347,7 @@ class EpsilonGreedyPolicyLSTM_PPO2(Policy):
     def __init__(self, env, lstm_ppo_model, deterministic=False):
         super().__init__('RecurrentNetwork')
         #self.env=env
-        self.lstm_ppo_model = lstm_ppo_model
+        self.model = lstm_ppo_model.pi
         self.deterministic = deterministic
         #self.lstm_hidden_dim = lstm_ppo_model.lstm_hidden_dim
         self.reset_hidden_states()
@@ -353,11 +359,11 @@ class EpsilonGreedyPolicyLSTM_PPO2(Policy):
 
     def reset_hidden_states(self):
         #self.lstm_hidden = (torch.zeros([1, 1, self.lstm_hidden_dim], dtype=torch.float), torch.zeros([1, 1, self.lstm_hidden_dim], dtype=torch.float))
-        self.lstm_ppo_model.pi.hidden_cell=None
+        self.model.hidden_cell=None
 
     def sample_greedy_action(self, obs, available_actions):
         with torch.no_grad():
-            prob = self.lstm_ppo_model.pi(torch.from_numpy(obs).reshape(1,1,-1).to(dtype=torch.float32).to(device))
+            prob = self.model(torch.from_numpy(obs).reshape(1,1,-1).to(dtype=torch.float32).to(device))
             self.probs=prob.probs.flatten().cpu().numpy()
             #prob = prob.view(-1)
             if self.deterministic:

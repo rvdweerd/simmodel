@@ -264,7 +264,9 @@ def train(Q, Q_target, memory, optimizer, batch_size, discount_factor):
     
     return loss.item()  # Returns a Python scalar, and releases history (similar to .detach())
 
-def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discount_factor, learn_rate, print_every=100,  noise=False):
+from torch.utils.tensorboard import SummaryWriter
+def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discount_factor, learn_rate, print_every=100,  noise=False, logdir='./temp'):
+    writer=writer = SummaryWriter(log_dir=logdir)
     optimizer = optim.Adam(Q.parameters(), learn_rate)
     Q_target=copy.deepcopy(Q)
     best_model=copy.deepcopy(Q)
@@ -320,11 +322,16 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
                         "#entr in mem {:.0f}".format(memory.num_filled),\
                         "#trans in mem {:.0f}".format(memory.__num_transitions__())
                         )
+                    writer.add_scalar("1. epsilon", policy.epsilon,epi)
+                    writer.add_scalar("2. learning_rate", optimizer.param_groups[0]['lr'],epi)
+                    writer.add_scalar("3. loss", avg_loss,epi)
+                    writer.add_scalar("4. steps_per_epi", avg_steps, epi)
+                    writer.add_scalar("5. return_per_epi", avg_returns,epi)
 
-                    if avg_returns > max_return:
-                        max_return=avg_returns
-                        best_model_path='models/dqn_best_model_{:.2f}'.format(max_return)+'.pt'
-                        torch.save(Q.state_dict(), best_model_path)
+                    # if avg_returns > max_return:
+                    #     max_return=avg_returns
+                    #     best_model_path='models/dqn_best_model_{:.2f}'.format(max_return)+'.pt'
+                    #     torch.save(Q.state_dict(), best_model_path)
                     if avg_returns > max_return_abs:
                         max_return_abs = avg_returns
                         best_model.load_state_dict(Q.state_dict())
@@ -335,7 +342,7 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
                 break
         
     print('\033[97m')
-    return episode_lengths, episode_returns, episode_losses, best_model_path, best_model
+    return episode_lengths, episode_returns, episode_losses, Q#best_model
 
 if __name__ == '__main__':
     pass

@@ -1,10 +1,19 @@
 from itertools import combinations
+import torch
+from stable_baselines3 import PPO
 import gym
 import numpy as np
 import matplotlib.pyplot as plt
 plt.switch_backend('agg')
 from torch.cuda import init
 from pathlib import Path
+
+def CalculateNumTrainableParameters(model):
+    total = 0
+    for name, p in model.named_parameters():
+        total += np.prod(p.shape)
+    assert total == sum(p.numel() for p in model.parameters() if p.requires_grad)
+    return total
 
 def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, logdir='.', has_Q_table=False):
     # Escaper chooses random neighboring nodes until temination
@@ -32,6 +41,13 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
                 count+=1
         printing('entries in Q table: '+str(len(policy.Q)))
         printing('Total number of q values stored: '+str(count))
+    else:
+        if issubclass(type(policy.model),torch.nn.Module):
+            printing(str(policy.model))
+            printing('#Trainable parameters: '+str(policy.model.numTrainableParameters()))
+        if issubclass(type(policy.model),PPO):
+            printing(str(policy.model.policy))
+            printing('#Trainable parameters: '+str(CalculateNumTrainableParameters(policy.model.policy)))
     printing('\n-------------------------------------------------------------------------------------------------------')   
     for i, entry in enumerate(test_set):
         s=env.reset(entry = entry) 
@@ -78,7 +94,7 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
         lengths.append(count)
     printing('\nAggregated test results.')
     printing('  > Environment : '+env.sp.graph_type+'_N='+str(env.sp.N)+'_U='+str(env.sp.U)+'_T='+str(env.max_timesteps)+'_Ndir='+str(env.sp.direction_north)[0])
-    printing('  > Policy      : '+policy.__name__+'Deterministic: '+str(policy.deterministic))
+    printing('  > Policy      : '+policy.__name__+', Deterministic: '+str(policy.deterministic))
     printing('Test set size: '+str(len(test_set)))
     printing('Observed escape ratio: {:.3f}'.format(1-np.mean(captures)))
     if len(returns) <20 or print_runs:

@@ -14,8 +14,9 @@
             "args" : [
                 "--world_name", "Manhattan3x3_PauseFreezeWorld",
                 "--state_repr","etUt",
-                "--TRAIN","True",
-                "--EVAL","False",
+                "--train","True",
+                "--eval","True",
+                "--num_seeds","5",
             ]
 //            "pipeArgs": [
 //                "export DISPLAY=:0;${debuggerCommand}",

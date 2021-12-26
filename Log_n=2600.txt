@@ -1,0 +1,15 @@
+QNetwork(
+  (layers): Sequential(
+    (0): Linear(in_features=25, out_features=256, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=256, out_features=128, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=128, out_features=5, bias=True)
+  )
+)
+#Trainable parameters: 40197
+
+-------------------------------------------------------------------------------------------------------
+
+Aggregated test results.
+  > Environment : Manhattan_N=5_U=3_T=11_Ndir=F

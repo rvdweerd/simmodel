@@ -16,8 +16,8 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 def RunSB3_PPO_Experiment(args):
     world_name = args.world_name
     state_repr = args.state_repr
-    TRAIN = args.TRAIN
-    EVALUATE = args.EVAL
+    TRAIN = args.train
+    EVALUATE = args.eval
     
     # Setup
     env=GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc='tensors')
@@ -30,7 +30,7 @@ def RunSB3_PPO_Experiment(args):
     total_steps       = hp['total_steps'][env.state_representation]
     eval_deterministic= hp['eval_determ'][env.state_representation]
     sample_multiplier = hp['sampling_m'][env.state_representation]
-    exp_rootdir='./results/sb3-PPO/'+world_name+'/'+env.state_representation+'/'
+    exp_rootdir='./results/PPO/'+world_name+'/'+env.state_representation+'/'
 
     # Train and evaluate
     if TRAIN:
@@ -114,12 +114,8 @@ if __name__ == '__main__':
                             'etUt',
                             'ete0U0',
                             'etUte0U0' ])
-    parser.add_argument('--TRAIN', default=True, type=bool, 
-                        help='Train a policy',
-                        choices=[True, False])
-    parser.add_argument('--EVAL', default=True, type=bool, 
-                        help='Evaluate a (trained or saved) policy',
-                        choices=[True, False])
+    parser.add_argument('--train', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
+    parser.add_argument('--eval', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
 
     args=parser.parse_args()
     RunSB3_PPO_Experiment(args)

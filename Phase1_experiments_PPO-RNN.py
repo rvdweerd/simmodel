@@ -22,13 +22,51 @@ from dotmap import DotMap
 from base64 import b64encode
 from IPython.display import HTML
 from rl_custom_worlds import GetCustomWorld
+import argparse
+from Phase1_hyperparameters import GetHyperParams_PPO_RNN
+from dqn_utils import seed_everything
+from rl_utils import GetFullCoverageSample
 
 # Source of this code: 
 # https://gitlab.com/ngoodger/ppo_lstm/-/blob/master/recurrent_ppo.ipynb
 
-WORKSPACE_PATH = "./RNN-PPO"
+parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)    
 
- # Save metrics for viewing with tensorboard.
+# Model hyperparameters
+parser.add_argument('--world_name', default='Manhattan3x3_PauseDynamicWorld', type=str, 
+                    help='Environment to run',
+                    choices=[
+                        'Manhattan3x3_PauseFreezeWorld',
+                        'Manhattan3x3_PauseDynamicWorld',
+                        'Manhattan5x5_FixedEscapeInit',
+                        'Manhattan5x5_VariableEscapeInit',
+                        'Manhattan5x5_DuplicateSetA',
+                        'Manhattan5x5_DuplicateSetB',
+                        'MetroU3_e17tborder_FixedEscapeInit',
+                        'MetroU3_e17tborder_VariableEscapeInit',
+                        'MetroU3_e17t31_FixedEscapeInit',
+                        'MetroU3_e17t0_FixedEscapeInit' ])
+parser.add_argument('--state_repr', default='et', type=str, 
+                    help='Which part of the state is observable',
+                    choices=[
+                        'et',
+                        'etUt',
+                        'ete0U0',
+                        'etUte0U0' ])
+parser.add_argument('--train', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
+parser.add_argument('--eval', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
+parser.add_argument('--num_seeds', default=1, type=int, 
+                    help='Number of seeds to run')
+
+args=parser.parse_args()
+WORLD_NAME=args.world_name
+STATE_REPR=args.state_repr
+EVALUATE=args.eval
+TRAIN=args.train
+print(TRAIN)
+NUM_SEEDS=args.num_seeds
+hp_lookup=GetHyperParams_PPO_RNN(WORLD_NAME)
+# Save metrics for viewing with tensorboard.
 SAVE_METRICS_TENSORBOARD = True
 # Save actor & critic parameters for viewing in tensorboard.
 SAVE_PARAMETERS_TENSORBOARD = False
@@ -39,47 +77,43 @@ ASYNCHRONOUS_ENVIRONMENT = False
 # Force using CPU for gathering trajectories.
 FORCE_CPU_GATHER = True
 
-RANDOM_SEED = 0
-# Set random seed for consistant runs.
-torch.random.manual_seed(RANDOM_SEED)
-np.random.seed(RANDOM_SEED)
 # Set maximum threads for torch to avoid inefficient use of multiple cpu cores.
 torch.set_num_threads(1)
 TRAIN_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 GATHER_DEVICE = "cuda" if torch.cuda.is_available() and not FORCE_CPU_GATHER else "cpu"
 
 # Environment parameters
-#ENV = "LunarLander-v2"
-#world_name='MetroU3_e17_FixedEscapeInit'
-#world_name='Manhattan3x3_PauseFreezeWorld'
-world_name='MetroU3_e1L8t31_FixedEscapeInit'
-STATE_REPR='etUt'
 MAKE_REFLEXIVE=True
-ENV=world_name
-EXPERIMENT_NAME = "Test"
+ENV=WORLD_NAME
 ENV_MASK_VELOCITY = False 
+exp_rootdir='./results/PPO-RNN/'+WORLD_NAME+'/'+STATE_REPR+'/'
+WORKSPACE_PATH = exp_rootdir
 
-# Default Hyperparameters           For PauseFreeWold   For MetroU3_e17_FixedEscapeInit
-SCALE_REWARD:         float = 1.    # 1.                
-MIN_REWARD:           float = -15.  # -15.
-HIDDEN_SIZE:          float = 128   # 128?
-LIN_SIZE:             float = 128   # 128               128 3 layers
-BATCH_SIZE:           int   = 48    # 80                64
+# Default Hyperparameters                                           For PauseFreeWold   For MetroU3_e17_FixedEscapeInit
+SCALE_REWARD:         float = 1. 
+MIN_REWARD:           float = -15.                                  
+HIDDEN_SIZE:          float = hp_lookup['HIDDEN_SIZE'][STATE_REPR]  # 128?
+LIN_SIZE:             float = hp_lookup['LIN_SIZE'][STATE_REPR]     # 128               128 3 layers
+BATCH_SIZE:           int   = hp_lookup['BATCH_SIZE'][STATE_REPR]   # 80                64
 DISCOUNT:             float = 0.99
 GAE_LAMBDA:           float = 0.95
-PPO_CLIP:             float = 0.2   # 0.2
+PPO_CLIP:             float = 0.2                                   
 PPO_EPOCHS:           int   = 10
-MAX_GRAD_NORM:        float = 1.    # 1.
+MAX_GRAD_NORM:        float = 1.                                    
 ENTROPY_FACTOR:       float = 0.
-ACTOR_LEARNING_RATE:  float = 1e-4  # 1e-4              1e-4
-CRITIC_LEARNING_RATE: float = 1e-4  # 1e-4              1e-4
-RECURRENT_SEQ_LEN:    int = 2       # 2                 2
-RECURRENT_LAYERS:     int = 1       # 1     
-ROLLOUT_STEPS:        int = 400     # 40               400
-PARALLEL_ROLLOUTS:    int = 7       # 4                 6
-PATIENCE:             int = 1000    # 200
-TRAINABLE_STD_DEV:    bool = False  # False
-INIT_LOG_STD_DEV:     float = 0.    # 0.
+ACTOR_LEARNING_RATE:  float = hp_lookup['ACTOR_LEARNING_RATE'][STATE_REPR]                                
+CRITIC_LEARNING_RATE: float = hp_lookup['CRITIC_LEARNING_RATE'][STATE_REPR]                                
+RECURRENT_SEQ_LEN:    int = hp_lookup['RECURRENT_SEQ_LEN'][STATE_REPR]# 2                 2
+RECURRENT_LAYERS:     int = 1                                       # 1     
+ROLLOUT_STEPS:        int = hp_lookup['ROLLOUT_STEPS'][STATE_REPR]  # 40               400
+PARALLEL_ROLLOUTS:    int = hp_lookup['PARALLEL_ROLLOUTS'][STATE_REPR]# 4                 6
+PATIENCE:             int = hp_lookup['PATIENCE'][STATE_REPR]        # 200
+TRAINABLE_STD_DEV:    bool = False                                  # False
+INIT_LOG_STD_DEV:     float = 0.                                    # 0.
+EVAL_DETERMINISTIC:   bool = hp_lookup['EVAL_DETERMINISTIC'][STATE_REPR]
+SAMPLE_MULTIPLIER:    int  = hp_lookup['SAMPLE_MULTIPLIER'][STATE_REPR]
+# WARMUP=5000
+#GLOBAL_COUNT=0
 
 @dataclass
 class HyperParameters():
@@ -134,7 +168,7 @@ def compute_advantages(rewards, values, discount, gae_lambda):
     return advs[:-1]
 
 _INVALID_TAG_CHARACTERS = re.compile(r"[^-/\w\.]")
-BASE_CHECKPOINT_PATH = f"{WORKSPACE_PATH}/checkpoints/{EXPERIMENT_NAME}/"
+BASE_CHECKPOINT_PATH = f"{WORKSPACE_PATH}/checkpoints/"
 
 def save_parameters(writer, tag, model, batch_idx):
     """
@@ -163,7 +197,7 @@ def get_env_space():
     Return obsvervation dimensions, action dimensions and whether or not action space is continuous.
     """
     #env = gym.make(ENV)
-    env=GetCustomWorld(world_name, make_reflexive=MAKE_REFLEXIVE, state_repr=STATE_REPR, state_enc='tensor')
+    env=GetCustomWorld(WORLD_NAME, make_reflexive=MAKE_REFLEXIVE, state_repr=STATE_REPR, state_enc='tensors')
 
     continuous_action_space = type(env.action_space) is gym.spaces.box.Box
     if continuous_action_space:
@@ -176,18 +210,31 @@ def get_env_space():
 class Actor(nn.Module):
     def __init__(self, state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev=None):
         super().__init__()
+        self.counter=0
         self.lstm = nn.LSTM(state_dim, hp.hidden_size, num_layers=hp.recurrent_layers)
-        #self.layer_hidden = nn.Linear(hp.hidden_size, hp.hidden_size)
-        self.layer_hidden1 = nn.Linear(hp.hidden_size, LIN_SIZE)
-        self.layer_hidden2 = nn.Linear(LIN_SIZE, LIN_SIZE)
-        self.layer_hidden3 = nn.Linear(LIN_SIZE, LIN_SIZE//2)
-        #self.layer_policy_logits = nn.Linear(hp.hidden_size, action_dim)
-        self.layer_policy_logits = nn.Linear(LIN_SIZE//2, action_dim)
+        
+        if type(LIN_SIZE) is not list:
+            assert False
+        layers=[]
+        layer_sizes=[hp.hidden_size]+LIN_SIZE
+        for layer_idx in range(1,len(layer_sizes)):
+            layers+= [nn.Linear(layer_sizes[layer_idx-1], layer_sizes[layer_idx]), nn.ELU() ]
+        layers+= [nn.Linear(layer_sizes[-1], action_dim)]
+        self.lin_layers = nn.Sequential(*layers)
+
+        # self.layer_hidden1 = nn.Linear(hp.hidden_size, LIN_SIZE)
+        # self.layer_hidden2 = nn.Linear(LIN_SIZE, LIN_SIZE)
+        # self.layer_hidden3 = nn.Linear(LIN_SIZE, LIN_SIZE//2)
+        # self.layer_policy_logits = nn.Linear(LIN_SIZE//2, action_dim)
+
         self.action_dim = action_dim
         self.continuous_action_space = continuous_action_space 
         self.log_std_dev = nn.Parameter(init_log_std_dev * torch.ones((action_dim), dtype=torch.float), requires_grad=trainable_std_dev)
         self.covariance_eye = torch.eye(self.action_dim).unsqueeze(0)
         self.hidden_cell = None
+        print('Actor network:')
+        self.numTrainableParameters()
+        print(self)
         
     def get_init_state(self, batch_size, device):
         self.hidden_cell = (torch.zeros(hp.recurrent_layers, batch_size, hp.hidden_size).to(device),
@@ -200,11 +247,11 @@ class Actor(nn.Module):
             self.get_init_state(batch_size, device)
         if terminal is not None:
             self.hidden_cell = [value * (1. - terminal).reshape(1, batch_size, 1) for value in self.hidden_cell]
+        self.counter+=1
+
         _, self.hidden_cell = self.lstm(state, self.hidden_cell)
-        hidden_out1 = F.elu(self.layer_hidden1(self.hidden_cell[0][-1]))
-        hidden_out2 = F.elu(self.layer_hidden2(hidden_out1))
-        hidden_out3 = F.elu(self.layer_hidden3(hidden_out2))
-        policy_logits_out = self.layer_policy_logits(hidden_out3)
+        policy_logits_out = self.lin_layers(self.hidden_cell[0][-1])
+        
         if self.continuous_action_space:
             cov_matrix = self.covariance_eye.to(device).expand(batch_size, self.action_dim, self.action_dim) * torch.exp(self.log_std_dev.to(device))
             # We define the distribution on the CPU since otherwise operations fail with CUDA illegal memory access error.
@@ -212,17 +259,32 @@ class Actor(nn.Module):
         else:
             policy_dist = distributions.Categorical(F.softmax(policy_logits_out, dim=1).to("cpu"))
         return policy_dist
-    
+    def numTrainableParameters(self):
+        print('Qnet size:')
+        print('------------------------------------------')
+        total = 0
+        for name, p in self.named_parameters():
+            if p.requires_grad:
+                total += np.prod(p.shape)
+            print("{:24s} {:12s} requires_grad={}".format(name, str(list(p.shape)), p.requires_grad))
+        print("Total number of trainable parameters: {}".format(total))
+        print('------------------------------------------')
+        assert total == sum(p.numel() for p in self.parameters() if p.requires_grad)
+        return total
+
 class Critic(nn.Module):
     def __init__(self, state_dim):
         super().__init__()
         self.layer_lstm = nn.LSTM(state_dim, hp.hidden_size, num_layers=hp.recurrent_layers)
-        #self.layer_hidden = nn.Linear(hp.hidden_size, hp.hidden_size)
-        self.layer_hidden1 = nn.Linear(hp.hidden_size, LIN_SIZE)
-        self.layer_hidden2 = nn.Linear(LIN_SIZE, LIN_SIZE)
-        self.layer_hidden3 = nn.Linear(LIN_SIZE, LIN_SIZE//2)
-        #self.layer_value = nn.Linear(hp.hidden_size, 1)
-        self.layer_value = nn.Linear(LIN_SIZE//2, 1)
+        self.counter=0
+        if type(LIN_SIZE) is not list:
+            assert False
+        layers=[]
+        layer_sizes=[hp.hidden_size]+LIN_SIZE
+        for layer_idx in range(1,len(layer_sizes)):
+            layers+= [nn.Linear(layer_sizes[layer_idx-1], layer_sizes[layer_idx]), nn.ELU() ]
+        layers+= [nn.Linear(layer_sizes[-1], 1)]
+        self.lin_layers = nn.Sequential(*layers)
         self.hidden_cell = None
         
     def get_init_state(self, batch_size, device):
@@ -236,11 +298,9 @@ class Critic(nn.Module):
             self.get_init_state(batch_size, device)
         if terminal is not None:
             self.hidden_cell = [value * (1. - terminal).reshape(1, batch_size, 1) for value in self.hidden_cell]
+        
         _, self.hidden_cell = self.layer_lstm(state, self.hidden_cell)
-        hidden_out1 = F.elu(self.layer_hidden1(self.hidden_cell[0][-1]))
-        hidden_out2 = F.elu(self.layer_hidden2(hidden_out1))
-        hidden_out3 = F.elu(self.layer_hidden3(hidden_out2))
-        value_out = self.layer_value(hidden_out3)
+        value_out = self.lin_layers(self.hidden_cell[0][-1])
         return value_out
 
 def get_last_checkpoint_iteration():
@@ -573,7 +633,7 @@ def make_custom(env_id, num_envs=1, asynchronous=True, wrappers=None, **kwargs):
 
     def _make_env():
         #env = make_(id, **kwargs)
-        env=GetCustomWorld(env_id, make_reflexive=MAKE_REFLEXIVE, state_repr=STATE_REPR, state_enc='tensor')
+        env=GetCustomWorld(env_id, make_reflexive=MAKE_REFLEXIVE, state_repr=STATE_REPR, state_enc='tensors')
         if wrappers is not None:
             if callable(wrappers):
                 env = wrappers(env)
@@ -595,7 +655,8 @@ def train_model(actor, critic, actor_optimizer, critic_optimizer, iteration, sto
     # A key difference between this and the standard gym environment is it automatically resets.
     # Therefore when the done flag is active in the done vector the corresponding state is the first new state.
     #env = gym.vector.make(ENV, hp.parallel_rollouts, asynchronous=ASYNCHRONOUS_ENVIRONMENT)
-    env = make_custom(world_name, hp.parallel_rollouts, asynchronous=ASYNCHRONOUS_ENVIRONMENT)
+    # GLOBAL_COUNT=0
+    env = make_custom(WORLD_NAME, hp.parallel_rollouts, asynchronous=ASYNCHRONOUS_ENVIRONMENT)
     if ENV_MASK_VELOCITY:
         env = MaskVelocityWrapper(env)
 
@@ -621,7 +682,14 @@ def train_model(actor, critic, actor_optimizer, critic_optimizer, iteration, sto
         if mean_reward > stop_conditions.best_reward:
             stop_conditions.best_reward = mean_reward
             stop_conditions.fail_to_improve_count = 0
-            print("NEW BEST MEAN REWARD----------------------<<<<<<<<<<<")
+            print("NEW BEST MEAN REWARD----------------------<<<<<<<<<<< ")#global count: ",GLOBAL_COUNT)
+            print('rec seq len',hp.recurrent_seq_len)
+            print('actor lr',actor_optimizer.param_groups[0]['lr'])
+
+            if iteration>=50:
+                print('#################### SAVE CHECKPOINT #######################')
+                save_checkpoint(actor,critic, actor_optimizer, critic_optimizer, 99999, stop_conditions)
+                # best model saved as iteration0
         else:
             stop_conditions.fail_to_improve_count += 1
         if stop_conditions.fail_to_improve_count > hp.patience:
@@ -643,6 +711,11 @@ def train_model(actor, critic, actor_optimizer, critic_optimizer, iteration, sto
                 # Get batch 
                 actor.hidden_cell = (batch.actor_hidden_states[:1], batch.actor_cell_states[:1])
                 
+                # GLOBAL_COUNT+=1
+                # if GLOBAL_COUNT%WARMUP==0:
+                #     actor_optimizer.param_groups[0]['lr'] *= 0.5
+                #     hp.recurrent_seq_len=3
+                #     print('############################################# LR adjusted to',actor_optimizer.param_groups[0]['lr'])
                 # Update actor
                 actor_optimizer.zero_grad()
                 action_dist = actor(batch.states)
@@ -682,12 +755,14 @@ def train_model(actor, critic, actor_optimizer, critic_optimizer, iteration, sto
             save_parameters(writer, "actor", actor, iteration)
             save_parameters(writer, "value", critic, iteration)
         if iteration % CHECKPOINT_FREQUENCY == 0: 
+            print('rec seq len',hp.recurrent_seq_len)
+            print('actor lr',actor_optimizer.param_groups[0]['lr'])
             save_checkpoint(actor,critic, actor_optimizer, critic_optimizer, iteration, stop_conditions)
         iteration += 1
         
     return stop_conditions.best_reward 
 
-writer = SummaryWriter(log_dir=f"{WORKSPACE_PATH}/logs/{EXPERIMENT_NAME}")
+writer = SummaryWriter(log_dir=f"{WORKSPACE_PATH}/logs")
 def TrainAndSaveModel():
     actor, critic, actor_optimizer, critic_optimizer, iteration, stop_conditions = start_or_resume_from_checkpoint()
     score = train_model(actor, critic, actor_optimizer, critic_optimizer, iteration, stop_conditions)
@@ -703,10 +778,18 @@ def EvaluateSavedModel():
         v:                  torch.nn.modules.module.Module = None
     lstm_ppo_model = LSTP_PPO_MODEL(lstm_hidden_dim=HIDDEN_SIZE ,pi=actor.to(TRAIN_DEVICE), v=critic.to(TRAIN_DEVICE))
 
-    env=GetCustomWorld(world_name, make_reflexive=MAKE_REFLEXIVE, state_repr=STATE_REPR, state_enc='tensor')
-    policy = EpsilonGreedyPolicyLSTM_PPO2(env,lstm_ppo_model, deterministic=False)
-    EvaluatePolicy(env, policy  , env.world_pool, print_runs=False, save_plots=False)    
-    EvaluatePolicy(env, policy  , env.world_pool[::1000], print_runs=True, save_plots=True)
+    env=GetCustomWorld(WORLD_NAME, make_reflexive=MAKE_REFLEXIVE, state_repr=STATE_REPR, state_enc='tensors')
+    policy = EpsilonGreedyPolicyLSTM_PPO2(env,lstm_ppo_model, deterministic=EVAL_DETERMINISTIC)
+    lengths, returns, captures = EvaluatePolicy(env, policy  , env.world_pool*SAMPLE_MULTIPLIER, print_runs=False, save_plots=False, logdir=exp_rootdir)    
+    plotlist = GetFullCoverageSample(returns, env.world_pool*SAMPLE_MULTIPLIER, bins=10, n=10)
+    EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=exp_rootdir)
 
-#TrainAndSaveModel()
-EvaluateSavedModel()
+if TRAIN:
+    for RANDOM_SEED in range(NUM_SEEDS):
+        # Set random seed for consistant runs.
+        #torch.random.manual_seed(RANDOM_SEED)
+        #np.random.seed(RANDOM_SEED)
+        seed_everything(RANDOM_SEED)
+        TrainAndSaveModel()
+if EVALUATE:
+    EvaluateSavedModel()

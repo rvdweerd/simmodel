@@ -1,5 +1,292 @@
 import torch
 
+# DQN
+def GetHyperParams_DQN(world):
+    HP={}
+    # Manhattan3x3_PauseFreezeWorld
+    hp={}
+    #                            sr='et'              sr='etUt'           sr='ete0U0'             sr='etUte0U0'
+    #                          -----------        ------------------   --------------------   ----------------------
+    hp['dims_hidden_layers']= {'et':[128],         'etUt':[128],       'ete0U0':[128],            'etUte0U0':[128], }
+    hp['batch_size']        = {'et':32,            'etUt':32,          'ete0U0':32,               'etUte0U0':32,    }
+    hp['mem_size']          = {'et':300,           'etUt':300,         'ete0U0':300,              'etUte0U0':300,   }
+    hp['learning_rate']     = {'et':1e-5,          'etUt':1e-5,        'ete0U0':1e-5,             'etUte0U0':1e-5,  }
+    hp['num_episodes']      = {'et':3500,          'etUt':3500,        'ete0U0':3500,             'etUte0U0':3500,  }
+    hp['eps_0']             = {'et':1.,            'etUt':1.,          'ete0U0':1.,               'etUte0U0':1.,    }
+    hp['eps_min']           = {'et':0.1,           'etUt':0.1,         'ete0U0':0.1,              'etUte0U0':0.1,   }
+    hp['cutoff_factor']     = {'et':0.8,           'etUt':0.8,         'ete0U0':0.8,              'etUte0U0':0.8,   }  
+    HP['Manhattan3x3_PauseFreezeWorld'] = hp
+    # Manhattan3x3_PauseDynamicWorld
+    hp={}
+    #                            sr='et'              sr='etUt'           sr='ete0U0'             sr='etUte0U0'
+    #                          -----------        ------------------   --------------------   ----------------------
+    hp['dims_hidden_layers']= {'et':[128],         'etUt':[128],       'ete0U0':[128],            'etUte0U0':[128], }
+    hp['batch_size']        = {'et':32,            'etUt':32,          'ete0U0':32,               'etUte0U0':32,    }
+    hp['mem_size']          = {'et':300,           'etUt':300,         'ete0U0':300,              'etUte0U0':300,   }
+    hp['learning_rate']     = {'et':1e-5,          'etUt':1e-5,        'ete0U0':1e-5,             'etUte0U0':1e-5,  }
+    hp['num_episodes']      = {'et':3500,          'etUt':3500,        'ete0U0':3500,             'etUte0U0':3500,  }
+    hp['eps_0']             = {'et':1.,            'etUt':1.,          'ete0U0':1.,               'etUte0U0':1.,    }
+    hp['eps_min']           = {'et':0.1,           'etUt':0.1,         'ete0U0':0.1,              'etUte0U0':0.1,   }
+    hp['cutoff_factor']     = {'et':0.8,           'etUt':0.8,         'ete0U0':0.8,              'etUte0U0':0.8,   }  
+    HP['Manhattan3x3_PauseDynamicWorld'] = hp
+   
+    # Manhattan5x5_FixedEscapeInit
+    #                            sr='et'              sr='etUt'           sr='ete0U0'             sr='etUte0U0'
+    #                          -----------        -----------------     -------------------     ---------------------
+    hp={}
+    hp['dims_hidden_layers']= {'et':[256,128],   'etUt':[256,128],      'ete0U0':[256,128],     'etUte0U0':[256,128], }
+    hp['batch_size']        = {'et':64,          'etUt':64,             'ete0U0':64,            'etUte0U0':64,        }
+    hp['mem_size']          = {'et':15000,       'etUt':15000,          'ete0U0':15000,         'etUte0U0':15000,     }
+    hp['learning_rate']     = {'et':1e-4,        'etUt':1e-4,           'ete0U0':1e-4,          'etUte0U0':1e-4,      }
+    hp['num_episodes']      = {'et':25000,       'etUt':25000,          'ete0U0':25000,         'etUte0U0':25000,     }
+    hp['eps_0']             = {'et':1.,          'etUt':1.,             'ete0U0':1.,            'etUte0U0':1.,        }
+    hp['eps_min']           = {'et':0.05,        'etUt':0.05,           'ete0U0':0.05,          'etUte0U0':0.05,      }
+    hp['cutoff_factor']     = {'et':0.8,         'etUt':0.8,            'ete0U0':0.8,           'etUte0U0':0.8,       }  
+    HP['Manhattan5x5_FixedEscapeInit'] = hp
+    
+    # Manhattan5x5_VariableEscapeInit
+    #                            sr='et'              sr='etUt'           sr='ete0U0'             sr='etUte0U0'
+    #                          -----------        -----------------     -------------------     ---------------------
+    hp={}
+    hp['dims_hidden_layers']= {'et':[256,128],   'etUt':[256,128],      'ete0U0':[256,128],     'etUte0U0':[256,128], }
+    hp['batch_size']        = {'et':64,          'etUt':64,             'ete0U0':64,            'etUte0U0':64,        }
+    hp['mem_size']          = {'et':15000,       'etUt':15000,          'ete0U0':15000,         'etUte0U0':15000,     }
+    hp['learning_rate']     = {'et':1e-4,        'etUt':1e-4,           'ete0U0':1e-4,          'etUte0U0':1e-4,      }
+    hp['num_episodes']      = {'et':25000,       'etUt':25000,          'ete0U0':25000,         'etUte0U0':25000,     }
+    hp['eps_0']             = {'et':1.,          'etUt':1.,             'ete0U0':1.,            'etUte0U0':1.,        }
+    hp['eps_min']           = {'et':0.05,        'etUt':0.05,           'ete0U0':0.05,          'etUte0U0':0.05,      }
+    hp['cutoff_factor']     = {'et':0.8,         'etUt':0.8,            'ete0U0':0.8,           'etUte0U0':0.8,       }  
+    HP['Manhattan5x5_VariableEscapeInit'] = hp
+
+    # Manhattan5x5_DuplicateSetA
+    hp={}
+    #                            sr='et'              sr='etUt'           sr='ete0U0'             sr='etUte0U0'
+    #                          ---FIXED---        ----FIXED-------   ----FIXED-----------   ------FIXED----------
+    hp['dims_hidden_layers']= {'et':[128],   'etUt':[128],      'ete0U0':[256,128],     'etUte0U0':[256,128], }
+    hp['batch_size']        = {'et':64,          'etUt':64,             'ete0U0':64,            'etUte0U0':64,        }
+    hp['mem_size']          = {'et':1000,       'etUt':1000,          'ete0U0':15000,         'etUte0U0':15000,     }
+    hp['learning_rate']     = {'et':1e-3,        'etUt':1e-3,           'ete0U0':1e-4,          'etUte0U0':1e-4,      }
+    hp['num_episodes']      = {'et':200,       'etUt':200,          'ete0U0':25000,         'etUte0U0':25000,     }
+    hp['eps_0']             = {'et':1.,          'etUt':1.,             'ete0U0':1.,            'etUte0U0':1.,        }
+    hp['eps_min']           = {'et':0.1,        'etUt':0.1,           'ete0U0':0.05,          'etUte0U0':0.05,      }
+    hp['cutoff_factor']     = {'et':0.9,         'etUt':0.9,            'ete0U0':0.8,           'etUte0U0':0.8,       }  
+    HP['Manhattan5x5_DuplicateSetA'] = hp
+    # Manhattan5x5_DuplicateSetB
+    hp={}
+    #                            sr='et'              sr='etUt'           sr='ete0U0'             sr='etUte0U0'
+    #                          -----------        ------------------   --------------------   ----------------------
+    hp['dims_hidden_layers']= {'et':[128],   'etUt':[128],      'ete0U0':[128],     'etUte0U0':[256,128], }
+    hp['batch_size']        = {'et':64,          'etUt':64,             'ete0U0':64,            'etUte0U0':64,        }
+    hp['mem_size']          = {'et':1000,       'etUt':1000,          'ete0U0':1000,         'etUte0U0':15000,     }
+    hp['learning_rate']     = {'et':1e-3,        'etUt':1e-3,           'ete0U0':1e-3,          'etUte0U0':1e-4,      }
+    hp['num_episodes']      = {'et':200,       'etUt':200,          'ete0U0':200,         'etUte0U0':25000,     }
+    hp['eps_0']             = {'et':1.,          'etUt':1.,             'ete0U0':1.,            'etUte0U0':1.,        }
+    hp['eps_min']           = {'et':0.1,        'etUt':0.1,           'ete0U0':0.1,          'etUte0U0':0.05,      }
+    hp['cutoff_factor']     = {'et':0.9,         'etUt':0.9,            'ete0U0':0.9,           'etUte0U0':0.8,       }  
+    HP['Manhattan5x5_DuplicateSetB'] = hp
+
+    # MetroU3_e17tborder_FixedEscapeInit
+    hp={}
+    #                            sr='et'              sr='etUt'           sr='ete0U0'             sr='etUte0U0'
+    #                          --FIXED-----        ----FIXED----------   --------------------   ----------------------
+    hp['dims_hidden_layers']= {'et':[256,128],   'etUt':[256,128],      'ete0U0':[256,128],     'etUte0U0':[256,128], }
+    hp['batch_size']        = {'et':64,          'etUt':64,             'ete0U0':64,            'etUte0U0':64,        }
+    hp['mem_size']          = {'et':15000,       'etUt':15000,          'ete0U0':15000,         'etUte0U0':15000,     }
+    hp['learning_rate']     = {'et':1e-4,        'etUt':1e-4,           'ete0U0':1e-4,          'etUte0U0':1e-4,      }
+    hp['num_episodes']      = {'et':25000,       'etUt':25000,          'ete0U0':25000,         'etUte0U0':25000,     }
+    hp['eps_0']             = {'et':1.,          'etUt':1.,             'ete0U0':1.,            'etUte0U0':1.,        }
+    hp['eps_min']           = {'et':0.05,        'etUt':0.05,           'ete0U0':0.05,          'etUte0U0':0.05,      }
+    hp['cutoff_factor']     = {'et':0.8,         'etUt':0.8,            'ete0U0':0.8,           'etUte0U0':0.8,       }  
+    HP['MetroU3_e17tborder_FixedEscapeInit'] = hp
+    # MetroU3_e17t0_FixedEscapeInit
+    hp={}
+    #                            sr='et'              sr='etUt'           sr='ete0U0'             sr='etUte0U0'
+    #                          ------------        ------------------   --------------------   ----------------------
+    hp['dims_hidden_layers']= {'et':[256,128],   'etUt':[256,128],      'ete0U0':[256,128],     'etUte0U0':[256,128], }
+    hp['batch_size']        = {'et':64,          'etUt':64,             'ete0U0':64,            'etUte0U0':64,        }
+    hp['mem_size']          = {'et':15000,       'etUt':15000,          'ete0U0':15000,         'etUte0U0':15000,     }
+    hp['learning_rate']     = {'et':1e-4,        'etUt':1e-4,           'ete0U0':1e-4,          'etUte0U0':1e-4,      }
+    hp['num_episodes']      = {'et':25000,       'etUt':25000,          'ete0U0':25000,         'etUte0U0':25000,     }
+    hp['eps_0']             = {'et':1.,          'etUt':1.,             'ete0U0':1.,            'etUte0U0':1.,        }
+    hp['eps_min']           = {'et':0.05,        'etUt':0.05,           'ete0U0':0.05,          'etUte0U0':0.05,      }
+    hp['cutoff_factor']     = {'et':0.8,         'etUt':0.8,            'ete0U0':0.8,           'etUte0U0':0.8,       }  
+    HP['MetroU3_e17t0_FixedEscapeInit'] = hp    
+    # MetroU3_e17t31_FixedEscapeInit
+    hp={}
+    #                            sr='et'              sr='etUt'           sr='ete0U0'             sr='etUte0U0'
+    #                          --------------        ----------------   --------------------   ----------------------
+    hp['dims_hidden_layers']= {'et':[256,128],   'etUt':[256,128],      'ete0U0':[256,128],     'etUte0U0':[256,128], }
+    hp['batch_size']        = {'et':64,          'etUt':64,             'ete0U0':64,            'etUte0U0':64,        }
+    hp['mem_size']          = {'et':15000,       'etUt':15000,          'ete0U0':15000,         'etUte0U0':15000,     }
+    hp['learning_rate']     = {'et':1e-4,        'etUt':1e-4,           'ete0U0':1e-4,          'etUte0U0':1e-4,      }
+    hp['num_episodes']      = {'et':25000,       'etUt':25000,          'ete0U0':25000,         'etUte0U0':25000,     }
+    hp['eps_0']             = {'et':1.,          'etUt':1.,             'ete0U0':1.,            'etUte0U0':1.,        }
+    hp['eps_min']           = {'et':0.05,        'etUt':0.05,           'ete0U0':0.05,          'etUte0U0':0.05,      }
+    hp['cutoff_factor']     = {'et':0.8,         'etUt':0.8,            'ete0U0':0.8,           'etUte0U0':0.8,       }  
+    HP['MetroU3_e17t31_FixedEscapeInit'] = hp    
+    
+    return HP[world]
+
+
+
+# PPO-RNN
+def GetHyperParams_PPO_RNN(world):
+    HP={}
+    # Manhattan3x3_PauseFreezeWorld
+    hp={}
+    #                            sr='et'              sr='etUt'           sr='ete0U0'             sr='etUte0U0'
+    #                          -----------        ------------------   --------------------   ----------------------
+    hp['HIDDEN_SIZE']       = {'et':128,          'etUt':128,          'ete0U0':128,          'etUte0U0':128 }
+    hp['LIN_SIZE']          = {'et':[128,64], 'etUt':[128,64], 'ete0U0':[128,64], 'etUte0U0':[128,64] }
+    hp['BATCH_SIZE']        = {'et':80,           'etUt':80,           'ete0U0':80,           'etUte0U0':80 }
+    hp['ACTOR_LEARNING_RATE']={'et':1e-4,           'etUt':1e-4,           'ete0U0':1e-4,           'etUte0U0':1e-4 }
+    hp['CRITIC_LEARNING_RATE']={'et':1e-4,           'etUt':1e-4,           'ete0U0':1e-4,           'etUte0U0':1e-4 }
+    hp['BATCH_SIZE']        = {'et':80,           'etUt':80,           'ete0U0':80,           'etUte0U0':80 }
+    hp['RECURRENT_SEQ_LEN'] = {'et':2,            'etUt':2,            'ete0U0':2,            'etUte0U0':2 }
+    hp['ROLLOUT_STEPS']     = {'et':40,           'etUt':40,           'ete0U0':40,           'etUte0U0':40 }
+    hp['PARALLEL_ROLLOUTS'] = {'et':6,            'etUt':6,            'ete0U0':6,            'etUte0U0':6 }
+    hp['PATIENCE']          = {'et':200,          'etUt':200,          'ete0U0':200,          'etUte0U0':200 }
+    hp['EVAL_DETERMINISTIC']= {'et':True,         'etUt':True,         'ete0U0':True,         'etUte0U0':True }    
+    hp['SAMPLE_MULTIPLIER'] = {'et':1,            'etUt':1,            'ete0U0':1,            'etUte0U0':1 }    
+    HP['Manhattan3x3_PauseFreezeWorld'] = hp
+    # Manhattan3x3_PauseDynamicWorld
+    hp={}
+    #                            sr='et'              sr='etUt'           sr='ete0U0'             sr='etUte0U0'
+    #                          -----------        ------------------   --------------------   ----------------------
+    hp['HIDDEN_SIZE']       = {'et':128,          'etUt':128,          'ete0U0':128,          'etUte0U0':128 }
+    hp['LIN_SIZE']          = {'et':[128,64], 'etUt':[128,64], 'ete0U0':[128,64], 'etUte0U0':[128,64] } #[128,64]
+    hp['BATCH_SIZE']        = {'et':80,           'etUt':80,           'ete0U0':80,           'etUte0U0':80 }
+    hp['ACTOR_LEARNING_RATE']={'et':1e-4,           'etUt':1e-4,           'ete0U0':1e-4,           'etUte0U0':1e-4 }
+    hp['CRITIC_LEARNING_RATE']={'et':1e-4,           'etUt':1e-4,           'ete0U0':1e-4,           'etUte0U0':1e-4 }
+    hp['RECURRENT_SEQ_LEN'] = {'et':2,            'etUt':2,            'ete0U0':2,            'etUte0U0':2 }
+    hp['ROLLOUT_STEPS']     = {'et':40,           'etUt':40,           'ete0U0':40,           'etUte0U0':40 }
+    hp['PARALLEL_ROLLOUTS'] = {'et':6,            'etUt':6,            'ete0U0':6,            'etUte0U0':6 }
+    hp['PATIENCE']          = {'et':200,          'etUt':200,          'ete0U0':200,          'etUte0U0':200 }
+    hp['EVAL_DETERMINISTIC']= {'et':True,         'etUt':True,         'ete0U0':True,         'etUte0U0':True }    
+    hp['SAMPLE_MULTIPLIER'] = {'et':1,            'etUt':1,            'ete0U0':1,            'etUte0U0':1 }    
+    HP['Manhattan3x3_PauseDynamicWorld'] = hp
+   
+    # Manhattan5x5_FixedEscapeInit
+    hp={}
+    #                            sr='et'              sr='etUt'           sr='ete0U0'             sr='etUte0U0'
+    #                          -----------        ----FIXED----------   -----FIXED-----------   ----------------------
+    hp['HIDDEN_SIZE']       = {'et':128,          'etUt':128,          'ete0U0':128,          'etUte0U0':128 }
+    hp['LIN_SIZE']          = {'et':[128,128,64], 'etUt':[128,128,64], 'ete0U0':[128,128,64], 'etUte0U0':[128,128,64] }
+    hp['BATCH_SIZE']        = {'et':64,           'etUt':64,           'ete0U0':64,           'etUte0U0':64 }
+    hp['ACTOR_LEARNING_RATE']={'et':5e-4,           'etUt':5e-4,           'ete0U0':5e-4,           'etUte0U0':1e-4 }
+    hp['CRITIC_LEARNING_RATE']={'et':5e-4,           'etUt':5e-4,           'ete0U0':5e-4,           'etUte0U0':1e-4 }
+    hp['RECURRENT_SEQ_LEN'] = {'et':2,            'etUt':2,            'ete0U0':2,            'etUte0U0':2 }
+    hp['ROLLOUT_STEPS']     = {'et':400,          'etUt':400,          'ete0U0':400,          'etUte0U0':400 }
+    hp['PARALLEL_ROLLOUTS'] = {'et':6,            'etUt':6,            'ete0U0':6,            'etUte0U0':6 }
+    hp['PATIENCE']          = {'et':300,          'etUt':300,          'ete0U0':300,          'etUte0U0':300 }
+    hp['EVAL_DETERMINISTIC']= {'et':True,         'etUt':True,         'ete0U0':True,         'etUte0U0':True }    
+    hp['SAMPLE_MULTIPLIER'] = {'et':1,            'etUt':1,            'ete0U0':1,            'etUte0U0':1 }    
+    HP['Manhattan5x5_FixedEscapeInit'] = hp
+    # Manhattan5x5_VariableEscapeInit
+    hp={}
+    #                            sr='et'              sr='etUt'           sr='ete0U0'             sr='etUte0U0'
+    #                          ---FIXED-----        ----FIXED-------   -----FIXED---------   ----------------------
+    hp['HIDDEN_SIZE']       = {'et':128,          'etUt':128,          'ete0U0':128,          'etUte0U0':128 }
+    hp['LIN_SIZE']          = {'et':[256,256,64], 'etUt':[256,256,64], 'ete0U0':[256,256,64], 'etUte0U0':[256,256,64] }
+    hp['BATCH_SIZE']        = {'et':64,           'etUt':64,           'ete0U0':64,           'etUte0U0':64 }
+    hp['ACTOR_LEARNING_RATE']={'et':1e-4,           'etUt':5e-4,           'ete0U0':5e-4,           'etUte0U0':5e-4 }
+    hp['CRITIC_LEARNING_RATE']={'et':1e-4,           'etUt':5e-4,           'ete0U0':5e-4,           'etUte0U0':5e-4 }
+    hp['RECURRENT_SEQ_LEN'] = {'et':2,            'etUt':2,            'ete0U0':2,            'etUte0U0':2 }
+    hp['ROLLOUT_STEPS']     = {'et':400,          'etUt':400,          'ete0U0':400,          'etUte0U0':400 }
+    hp['PARALLEL_ROLLOUTS'] = {'et':6,            'etUt':6,            'ete0U0':6,            'etUte0U0':6 }
+    hp['PATIENCE']          = {'et':300,          'etUt':300,          'ete0U0':300,          'etUte0U0':300 }
+    hp['EVAL_DETERMINISTIC']= {'et':True,         'etUt':True,         'ete0U0':True,         'etUte0U0':True }    
+    hp['SAMPLE_MULTIPLIER'] = {'et':1,            'etUt':1,            'ete0U0':1,            'etUte0U0':1 }    
+    HP['Manhattan5x5_VariableEscapeInit'] = hp
+    # Manhattan5x5_DuplicateSetA
+    hp={}
+    #                            sr='et'              sr='etUt'           sr='ete0U0'             sr='etUte0U0'
+    #                          ---FIXED---        ----FIXED-------   ----FIXED-----------   ------FIXED----------
+    hp['HIDDEN_SIZE']       = {'et':128,          'etUt':128,          'ete0U0':128,          'etUte0U0':128 }
+    hp['LIN_SIZE']          = {'et':[128,64], 'etUt':[128,64], 'ete0U0':[128,64], 'etUte0U0':[128,64] }
+    hp['BATCH_SIZE']        = {'et':80,           'etUt':80,           'ete0U0':80,           'etUte0U0':80 }
+    hp['ACTOR_LEARNING_RATE']={'et':5e-4,           'etUt':1e-4,           'ete0U0':5e-4,           'etUte0U0':5e-4 }
+    hp['CRITIC_LEARNING_RATE']={'et':5e-4,           'etUt':1e-4,           'ete0U0':5e-4,           'etUte0U0':5e-4 }
+    hp['BATCH_SIZE']        = {'et':80,           'etUt':80,           'ete0U0':80,           'etUte0U0':80 }
+    hp['RECURRENT_SEQ_LEN'] = {'et':2,            'etUt':2,            'ete0U0':2,            'etUte0U0':2 }
+    hp['ROLLOUT_STEPS']     = {'et':40,           'etUt':40,           'ete0U0':40,           'etUte0U0':40 }
+    hp['PARALLEL_ROLLOUTS'] = {'et':6,            'etUt':6,            'ete0U0':6,            'etUte0U0':6 }
+    hp['PATIENCE']          = {'et':200,          'etUt':200,          'ete0U0':200,          'etUte0U0':200 }
+    hp['EVAL_DETERMINISTIC']= {'et':True,         'etUt':True,         'ete0U0':True,         'etUte0U0':True }    
+    hp['SAMPLE_MULTIPLIER'] = {'et':1,            'etUt':1,            'ete0U0':1,            'etUte0U0':1 }    
+    HP['Manhattan5x5_DuplicateSetA'] = hp
+    # Manhattan5x5_DuplicateSetB
+    hp={}
+    #                            sr='et'              sr='etUt'           sr='ete0U0'             sr='etUte0U0'
+    #                          -----------        ------------------   --------------------   ----------------------
+    hp['HIDDEN_SIZE']       = {'et':128,          'etUt':128,          'ete0U0':128,          'etUte0U0':128 }
+    hp['LIN_SIZE']          = {'et':[128,64],     'etUt':[128,64],     'ete0U0':[128,64],     'etUte0U0':[128,64] }
+    hp['BATCH_SIZE']        = {'et':64,           'etUt':64,           'ete0U0':64,           'etUte0U0':64 }
+    hp['ACTOR_LEARNING_RATE']={'et':5e-4,         'etUt':5e-4,         'ete0U0':5e-4,         'etUte0U0':5e-4 }
+    hp['CRITIC_LEARNING_RATE']={'et':5e-4,        'etUt':5e-4,         'ete0U0':5e-4,         'etUte0U0':5e-4 }
+    hp['BATCH_SIZE']        = {'et':80,           'etUt':80,           'ete0U0':80,           'etUte0U0':80 }
+    hp['RECURRENT_SEQ_LEN'] = {'et':1,            'etUt':1,            'ete0U0':1,            'etUte0U0':1 }
+    hp['ROLLOUT_STEPS']     = {'et':200,           'etUt':200,           'ete0U0':200,           'etUte0U0':200 }
+    hp['PARALLEL_ROLLOUTS'] = {'et':6,            'etUt':6,            'ete0U0':6,            'etUte0U0':6 }
+    hp['PATIENCE']          = {'et':200,          'etUt':200,          'ete0U0':200,          'etUte0U0':200 }
+    hp['EVAL_DETERMINISTIC']= {'et':False,         'etUt':False,         'ete0U0':False,         'etUte0U0':False }    
+    hp['SAMPLE_MULTIPLIER'] = {'et':1,            'etUt':1,            'ete0U0':1,            'etUte0U0':1 }    
+    HP['Manhattan5x5_DuplicateSetB'] = hp
+
+    # MetroU3_e17tborder_FixedEscapeInit
+    hp={}
+    #                            sr='et'              sr='etUt'           sr='ete0U0'             sr='etUte0U0'
+    #                          --FIXED-----        ----FIXED----------   --------------------   ----------------------
+    hp['HIDDEN_SIZE']       = {'et':128,          'etUt':128,          'ete0U0':128,          'etUte0U0':128 }
+    hp['LIN_SIZE']          = {'et':[128,128,64], 'etUt':[128,128,64], 'ete0U0':[128,128,64], 'etUte0U0':[128,128,64] }
+    hp['BATCH_SIZE']        = {'et':64,           'etUt':64,           'ete0U0':64,           'etUte0U0':64 }
+    hp['ACTOR_LEARNING_RATE']={'et':1e-4,           'etUt':5e-4,           'ete0U0':5e-4,           'etUte0U0':1e-4 }
+    hp['CRITIC_LEARNING_RATE']={'et':1e-4,           'etUt':5e-4,           'ete0U0':5e-4,           'etUte0U0':1e-4 }
+    hp['RECURRENT_SEQ_LEN'] = {'et':2,            'etUt':2,            'ete0U0':2,            'etUte0U0':2 }
+    hp['ROLLOUT_STEPS']     = {'et':400,          'etUt':400,          'ete0U0':400,          'etUte0U0':400 }
+    hp['PARALLEL_ROLLOUTS'] = {'et':6,            'etUt':6,            'ete0U0':6,            'etUte0U0':6 }
+    hp['PATIENCE']          = {'et':300,          'etUt':300,          'ete0U0':300,          'etUte0U0':300 }
+    hp['EVAL_DETERMINISTIC']= {'et':True,         'etUt':True,         'ete0U0':True,         'etUte0U0':True }    
+    hp['SAMPLE_MULTIPLIER'] = {'et':1,            'etUt':1,            'ete0U0':1,            'etUte0U0':1 }    
+    HP['MetroU3_e17tborder_FixedEscapeInit'] = hp
+    # MetroU3_e17t0_FixedEscapeInit
+    hp={}
+    #                            sr='et'              sr='etUt'           sr='ete0U0'             sr='etUte0U0'
+    #                          ------------        ------------------   --------------------   ----------------------
+    hp['HIDDEN_SIZE']       = {'et':128,          'etUt':128,          'ete0U0':128,          'etUte0U0':128 }
+    hp['LIN_SIZE']          = {'et':[256,128,64], 'etUt':[128,128,64], 'ete0U0':[128,128,64], 'etUte0U0':[128,128,64] }
+    hp['BATCH_SIZE']        = {'et':64,           'etUt':64,           'ete0U0':64,           'etUte0U0':64 }
+    hp['ACTOR_LEARNING_RATE']={'et':1e-3,           'etUt':5e-4,           'ete0U0':5e-4,           'etUte0U0':5e-4 }
+    hp['CRITIC_LEARNING_RATE']={'et':1e-3,           'etUt':5e-4,           'ete0U0':5e-4,           'etUte0U0':5e-4 }
+    hp['RECURRENT_SEQ_LEN'] = {'et':2,            'etUt':2,            'ete0U0':2,            'etUte0U0':2 }
+    hp['ROLLOUT_STEPS']     = {'et':400,          'etUt':400,          'ete0U0':400,          'etUte0U0':400 }
+    hp['PARALLEL_ROLLOUTS'] = {'et':6,            'etUt':6,            'ete0U0':6,            'etUte0U0':6 }
+    hp['PATIENCE']          = {'et':300,          'etUt':300,          'ete0U0':300,          'etUte0U0':300 }
+    hp['EVAL_DETERMINISTIC']= {'et':True,         'etUt':True,         'ete0U0':True,         'etUte0U0':True }    
+    hp['SAMPLE_MULTIPLIER'] = {'et':1,            'etUt':1,            'ete0U0':1,            'etUte0U0':1 }    
+    HP['MetroU3_e17t0_FixedEscapeInit'] = hp    
+    # MetroU3_e17t31_FixedEscapeInit
+    hp={}
+    #                            sr='et'              sr='etUt'           sr='ete0U0'             sr='etUte0U0'
+    #                          --------------        ----------------   --------------------   ----------------------
+    hp['HIDDEN_SIZE']       = {'et':128,          'etUt':256,          'ete0U0':128,          'etUte0U0':128 }
+    hp['LIN_SIZE']          = {'et':[256,256,64], 'etUt':[256,256,256], 'ete0U0':[256,256,64], 'etUte0U0':[256,256,64] }
+    hp['BATCH_SIZE']        = {'et':64,           'etUt':64,           'ete0U0':64,           'etUte0U0':64 }
+    hp['ACTOR_LEARNING_RATE']={'et':2e-4,         'etUt':2.5e-4,           'ete0U0':5e-4,           'etUte0U0':5e-4 }
+    hp['CRITIC_LEARNING_RATE']={'et':2e-4,        'etUt':2.5e-4,           'ete0U0':5e-4,           'etUte0U0':5e-4 }
+    hp['RECURRENT_SEQ_LEN'] = {'et':2,            'etUt':2,            'ete0U0':2,            'etUte0U0':2}
+    hp['ROLLOUT_STEPS']     = {'et':200,          'etUt':200,          'ete0U0':200,          'etUte0U0':200 }
+    hp['PARALLEL_ROLLOUTS'] = {'et':6,            'etUt':6,            'ete0U0':6,            'etUte0U0':6 }
+    hp['PATIENCE']          = {'et':400,          'etUt':200,          'ete0U0':400,          'etUte0U0':400 }
+    hp['EVAL_DETERMINISTIC']= {'et':True,         'etUt':True,         'ete0U0':True,         'etUte0U0':True }    
+    hp['SAMPLE_MULTIPLIER'] = {'et':1,            'etUt':1,            'ete0U0':1,            'etUte0U0':1 }    
+    HP['MetroU3_e17t31_FixedEscapeInit'] = hp    
+
+    
+    
+    
+    return HP[world]
+
 # SB3 PPO
 def GetHyperParams_SB3PPO(world):
     HP={}
