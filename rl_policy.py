@@ -279,12 +279,14 @@ class EpsilonGreedyPolicyDRQN(Policy):
         Returns:
             An action (int).
         """
-        draw = self.rng.uniform(0,1,1)
+        #draw = self.rng.uniform(0,1,1)
+        draw=random.uniform(0,1)
         if draw <= self.epsilon:
             # CHECK! if this is necessary
-            y, (ht_,ct_) = self.model(torch.tensor(obs,dtype=torch.float32)[None,None,:].to(device), (self.ht,self.ct))
-            self.ht=ht_
-            self.ct=ct_
+            with torch.no_grad():
+                y, (ht_,ct_) = self.model(torch.tensor(obs,dtype=torch.float32)[None,None,:].to(device), (self.ht,self.ct))
+                self.ht=ht_
+                self.ct=ct_
             #####
             num_actions = len(available_actions)
             action_idx = random.randint(0,num_actions-1)

@@ -260,6 +260,10 @@ def train(Q, Q_target, memory, optimizer, batch_size, discount_factor):
     # backpropagation of loss to Neural Network
     optimizer.zero_grad()
     loss.backward()
+    #print('mean grad lstm_hh_10 {:02f}'.format(torch.mean(Q.lstm.weight_hh_l0.grad).cpu().item()),end='')
+    #print('mean grad lstm_ih_10 {:02f}'.format(torch.mean(Q.lstm.weight_ih_l0.grad).cpu().item()),end='')
+    #print('mean grad lin_layer1 {:02f}'.format(torch.mean(Q.layers[0].weight.grad).cpu().item()),end='')
+    #print('mean grad lin_layer2 {:02f}'.format(torch.mean(Q.layers[2].weight.grad).cpu().item()))
     optimizer.step()
     
     return loss.item()  # Returns a Python scalar, and releases history (similar to .detach())
@@ -304,9 +308,9 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
             if done:
                 if type(policy).__name__ == 'EpsilonGreedyPolicyRDQN':
                     policy.reset_hidden_states()
-                Q_target.load_state_dict(Q.state_dict())
                 #policy.Q=Q_target
                 if (epi) % print_every == 0:
+                    Q_target.load_state_dict(Q.state_dict())
                     duration=time.time()-start_time
                     avg_steps = np.mean(episode_lengths[-print_every:])
                     avg_returns = np.mean(episode_returns[-print_every:])
@@ -342,7 +346,7 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
                 break
         
     print('\033[97m')
-    return episode_lengths, episode_returns, episode_losses, Q#best_model
+    return episode_lengths, episode_returns, episode_losses, Q
 
 if __name__ == '__main__':
     pass
