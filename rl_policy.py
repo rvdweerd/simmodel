@@ -237,9 +237,7 @@ class EpsilonGreedyPolicyDQN(Policy):
         #else:
         #   self.epsilon = self.epsilon0
 
-
-
-class EpsilonGreedyPolicyRDQN(Policy):
+class EpsilonGreedyPolicyDRQN(Policy):
     """
     A simple epsilon greedy policy.
     """

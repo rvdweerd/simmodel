@@ -4,12 +4,12 @@ import numpy as np
 import simdata_utils as su
 import matplotlib.pyplot as plt
 import torch
-from dqn_utils import seed_everything, FastReplayMemory, train, run_episodes
-from rl_models import QNetwork
+from dqn_utils import seed_everything, SeqReplayMemory, train, run_episodes
+from rl_models import RecurrentQNetwork
 from rl_utils import EvaluatePolicy, CreateDuplicatesTrainsets, GetFullCoverageSample
-from rl_policy import EpsilonGreedyPolicyDQN
+from rl_policy import EpsilonGreedyPolicyDRQN
 from rl_custom_worlds import GetCustomWorld
-from Phase1_hyperparameters_test import GetHyperParams_DQN
+from Phase1_hyperparameters import GetHyperParams_DRQN
 import time
 import os
 
@@ -35,7 +35,7 @@ ALL_STATE_REPR=[
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print('Device = ',device)
 
-def Run_DQN_Experiment(args):
+def Run_DRQN_Experiment(args):
     world_name_in = args.world_name
     state_repr_in = args.state_repr
     num_seeds     = args.num_seeds
@@ -55,9 +55,10 @@ def Run_DQN_Experiment(args):
         for world_name in world_names:    
             # Setup
             #env=GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc='tensors')
-            exp_rootdir='./results/DQN_testing/'+world_name+'/'+state_repr+'/'
+            exp_rootdir='./results/DRQN/'+world_name+'/'+state_repr+'/'
             # Load hyperparameters
-            hp=GetHyperParams_DQN(world_name)
+            hp=GetHyperParams_DRQN(world_name)
+            lstm_hidden_size    = hp['lstm_hidden_size'][state_repr]
             dims_hidden_layers  = hp['dims_hidden_layers'][state_repr]
             batch_size          = hp['batch_size'][state_repr]
             mem_size            = hp['mem_size'][state_repr]
@@ -80,12 +81,12 @@ def Run_DQN_Experiment(args):
                     # Initialize
                     seed_everything(seed+42)
                     env=GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc='tensors')
-                    tensorboard_dir=exp_rootdir+'tensorboard/DQN'+str(seed+1)
+                    tensorboard_dir=exp_rootdir+'tensorboard/DRQN'+str(seed+1)
                     dim_in = env.state_encoding_dim
                     dim_out = env.max_outdegree
-                    memory = FastReplayMemory(mem_size,dim_in)
-                    qnet = QNetwork(dim_in, dim_out, dims_hidden_layers).to(device)
-                    policy = EpsilonGreedyPolicyDQN(qnet, env, eps_0=eps_0, eps_min=eps_min, eps_cutoff=cutoff)
+                    memory = SeqReplayMemory(mem_size)
+                    qnet = RecurrentQNetwork(dim_in, lstm_hidden_size, dim_out, dims_hidden_layers).to(device)
+                    policy = EpsilonGreedyPolicyDRQN(qnet, env, eps_0=eps_0, eps_min=eps_min, eps_cutoff=cutoff)
 
                     # Run DQN
                     start_time = time.time()
@@ -122,9 +123,9 @@ def Run_DQN_Experiment(args):
                 OF.close()
 
             if EVALUATE:
-                qnet_best = QNetwork(dim_in, dim_out, dims_hidden_layers).to(device)
+                qnet_best = RecurrentQNetwork(dim_in, lstm_hidden_size, dim_out, dims_hidden_layers).to(device)
                 qnet_best.load_state_dict(torch.load(exp_rootdir+'Model_best'))
-                policy = EpsilonGreedyPolicyDQN(qnet_best, env, eps_0=eps_0, eps_min=eps_min, eps_cutoff=cutoff)
+                policy = EpsilonGreedyPolicyDRQN(qnet_best, env, eps_0=eps_0, eps_min=eps_min, eps_cutoff=cutoff)
                 policy.epsilon=0.
                 lengths, returns, captures = EvaluatePolicy(env, policy, env.world_pool, print_runs=False, save_plots=False, logdir=exp_rootdir)
                 plotlist = GetFullCoverageSample(returns, env.world_pool, bins=10, n=10)
@@ -161,4 +162,4 @@ if __name__ == '__main__':
     parser.add_argument('--eval', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
 
     args=parser.parse_args()
-    Run_DQN_Experiment(args)
+    Run_DRQN_Experiment(args)

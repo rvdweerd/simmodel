@@ -1,0 +1,25 @@
+RecurrentQNetwork(
+  (lstm): LSTM(9, 18, batch_first=True)
+  (layers): Sequential(
+    (0): Linear(in_features=18, out_features=128, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=128, out_features=5, bias=True)
+  )
+)
+#Trainable parameters: 5165
+
+-------------------------------------------------------------------------------------------------------
+
+Aggregated test results.
+  > Environment : Manhattan_N=3_U=3_T=7_Ndir=F
+  > Policy      : EpsGreedy, RDQN, Deterministic: True
+Test set size: 1
+Observed escape ratio: 0.000
+   Captures:[1  ]
+Average episode length: 2.00 +/- 0.00
+   Lengths :[2  ]
+Average return: -12.00 +/- 0.00
+   Returns :[-12.]
+
+Escape ratio at data generation: last 0.000, avg at generation 0.000, avg sampled 0.000
+-------------------------------------------------------------------------------------------------------
