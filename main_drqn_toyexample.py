@@ -17,19 +17,19 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print('Device = ',device)
 
 # Select graph world
-env=GetCustomWorld('Manhattan3x3_PauseFreezeWorld',make_reflexive=True, state_repr='et' ,state_enc='tensors')
+env=GetCustomWorld('Manhattan3x3_PauseDynamicWorld',make_reflexive=True, state_repr='et' ,state_enc='tensors')
 
 
 # Define qnet                       # PauseFreezeWorld best: 
 dims_hidden_layers = [128]          # [128]
 lstm_hidden_size = 18               # 18
 # Select hyperparameters
-seed = 42                           # 42            41             
+seed = 421                           # 42            41             
 batch_size      = 64                # 64                
-mem_size        = 300                # 300           230                
+mem_size        = 100                # 300           230                
 discount_factor = .9                # .9
-learn_rate      = 5e-6             # 5e-6          3e-6
-num_episodes    = 4500              # 3500          2500
+learn_rate      = 5e-5             # 5e-6          3e-6
+num_episodes    = 3500              # 3500          2500
 eps_0           = 1.                # 1.0
 eps_min         = 0.1               # 0.1
 cutoff          = 0.8*num_episodes  # 0.8
@@ -45,7 +45,7 @@ policy = EpsilonGreedyPolicyDRQN(qnet, env, eps_0=eps_0, eps_min=eps_min, eps_cu
 
 # Run DRQN
 start_time = time.time()
-episode_durations, episode_returns, losses, best_model = run_episodes(train, qnet, policy, memory, env, num_episodes, batch_size, discount_factor, learn_rate, print_every=100, noise=state_noise)
+episode_durations, episode_returns, losses, best_model = run_episodes(train, policy, memory, env, num_episodes, batch_size, discount_factor, learn_rate, print_every=100, noise=state_noise)
 duration = time.time() - start_time
 print('run time in seconds: ', duration)
 plot_traindata(episode_returns,losses)

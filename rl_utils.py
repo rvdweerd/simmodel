@@ -15,7 +15,7 @@ def CalculateNumTrainableParameters(model):
     assert total == sum(p.numel() for p in model.parameters() if p.requires_grad)
     return total
 
-def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, logdir='.', has_Q_table=False):
+def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, logdir='./temp', has_Q_table=False):
     # Escaper chooses random neighboring nodes until temination
     # Inputs:
     #   test_set: list of indices to the databank

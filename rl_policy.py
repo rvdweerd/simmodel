@@ -263,7 +263,7 @@ class EpsilonGreedyPolicyDRQN(Policy):
         self.max_outdegree=env.max_outdegree
         # Sampling generator
         self.rng = np.random.RandomState(1)
-        self.__name__ = 'EpsGreedy, RDQN'
+        self.__name__ = 'EpsGreedy, DRQN'
     
     def reset_hidden_states(self):
         self.ht=torch.zeros(self.lstm_hidden_size)[None,None,:].to(device)

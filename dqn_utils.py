@@ -269,18 +269,18 @@ def train(Q, Q_target, memory, optimizer, batch_size, discount_factor):
     return loss.item()  # Returns a Python scalar, and releases history (similar to .detach())
 
 from torch.utils.tensorboard import SummaryWriter
-def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discount_factor, learn_rate, print_every=100,  noise=False, logdir='./temp'):
+def run_episodes(train, policy, memory, env, num_episodes, batch_size, discount_factor, learn_rate, print_every=100,  noise=False, logdir='./temp'):
     writer=writer = SummaryWriter(log_dir=logdir)
-    optimizer = optim.Adam(Q.parameters(), learn_rate)
-    Q_target=copy.deepcopy(Q)
-    best_model=copy.deepcopy(Q)
-    max_return = 0.
+    optimizer = optim.Adam(policy.model.parameters(), learn_rate)
+    Q_target=copy.deepcopy(policy.model)
+    best_model=copy.deepcopy(Q_target).to('cpu')
+    #max_return = 0.
     max_return_abs = -1e6
     global_steps = 0  # Count the steps (do not reset at episode start, to compute epsilon)
     episode_lengths = []  
     episode_returns = []
     episode_losses = []
-    best_model_path = None
+    #best_model_path = None
     start_time=time.time()
     for epi in range(num_episodes):
         if (epi+1)%4000 == 0:
@@ -288,12 +288,13 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
         state = env.reset() 
         if noise:
             state += np.random.rand(env.state_encoding_dim)/env.state_encoding_dim
-        
+        policy.set_epsilon(epi)
+        if type(policy).__name__ == 'EpsilonGreedyPolicyDRQN':
+            policy.reset_hidden_states()
         steps = 0
         R=0
         while True:
             # Run one episode
-            policy.set_epsilon(epi)
             action_idx, next_node = policy.sample_action(state,env._availableActionsInCurrentState())
             s_next, r, done, _ = env.step(action_idx)
             if noise:
@@ -304,13 +305,10 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
             global_steps += 1
             R+=r # need to apply discounting!!! CHECK
             # Take a train step
-            loss = train(Q, Q_target, memory, optimizer, batch_size, discount_factor)
+            loss = train(policy.model, Q_target, memory, optimizer, batch_size, discount_factor)
             if done:
-                if type(policy).__name__ == 'EpsilonGreedyPolicyRDQN':
-                    policy.reset_hidden_states()
-                #policy.Q=Q_target
                 if (epi) % print_every == 0:
-                    Q_target.load_state_dict(Q.state_dict())
+                    Q_target.load_state_dict(policy.model.state_dict())
                     duration=time.time()-start_time
                     avg_steps = np.mean(episode_lengths[-print_every:])
                     avg_returns = np.mean(episode_returns[-print_every:])
@@ -338,7 +336,7 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
                     #     torch.save(Q.state_dict(), best_model_path)
                     if avg_returns > max_return_abs:
                         max_return_abs = avg_returns
-                        best_model.load_state_dict(Q.state_dict())
+                        best_model.load_state_dict(policy.model.state_dict())
                 episode_lengths.append(steps)
                 episode_returns.append(R)
                 episode_losses.append(loss)#.detach().item())
@@ -346,7 +344,7 @@ def run_episodes(train, Q, policy, memory, env, num_episodes, batch_size, discou
                 break
         
     print('\033[97m')
-    return episode_lengths, episode_returns, episode_losses, Q
+    return episode_lengths, episode_returns, episode_losses, best_model
 
 if __name__ == '__main__':
     pass
