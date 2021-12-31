@@ -71,6 +71,9 @@ def Run_DQN_Experiment(args):
             state_noise         = False
 
             # Train and evaluate
+            env=GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc='tensors')
+            dim_in = env.state_encoding_dim
+            dim_out = env.max_outdegree
             if TRAIN:
                 best_result=-1e6
                 len_seeds=[]
@@ -79,20 +82,18 @@ def Run_DQN_Experiment(args):
                 for seed in range(num_seeds):
                     # Initialize
                     seed_everything(seed+42)
-                    env=GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc='tensors')
                     tensorboard_dir=exp_rootdir+'tensorboard/DQN'+str(seed+1)
-                    dim_in = env.state_encoding_dim
-                    dim_out = env.max_outdegree
                     memory = FastReplayMemory(mem_size,dim_in)
                     qnet = QNetwork(dim_in, dim_out, dims_hidden_layers).to(device)
                     policy = EpsilonGreedyPolicyDQN(qnet, env, eps_0=eps_0, eps_min=eps_min, eps_cutoff=cutoff)
 
                     # Run DQN
                     start_time = time.time()
-                    episode_durations, episode_returns, losses, best_model = run_episodes(train, qnet, policy, memory, env, num_episodes, batch_size, discount_factor, learn_rate, print_every=100, noise=state_noise, logdir=tensorboard_dir)
+                    episode_durations, episode_returns, losses, best_model = run_episodes(train, policy, memory, env, num_episodes, batch_size, discount_factor, learn_rate, print_every=100, noise=state_noise, logdir=tensorboard_dir)
                     duration = time.time() - start_time
                     print('run time in seconds: ', duration)
 
+                    policy.model=best_model.to(device)
                     policy.epsilon=0.
                     lengths, returns, captures = EvaluatePolicy(env, policy, env.world_pool, print_runs=False, save_plots=False, logdir=exp_rootdir)    
                     # Results admin

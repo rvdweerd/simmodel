@@ -57,7 +57,7 @@ class SeqReplayMemory:
         self.new_d_tensor       =None
         self.insert_idx = 0
         self.num_filled = 0
-
+        self.p=np.ones(capacity)*0.1
     def push(self, transition):
         # transition_sequenceone entry contains: (s,a,r,s',d)
         # 
@@ -218,7 +218,7 @@ def compute_q_vals(Q, states, actions):
     # YOUR CODE HERE
     #states = torch.tensor(states,dtype=torch.float32)
     #actions = torch.tensor(actions,dtype=torch.int64)
-    Qvals, modelstate = Q(states)
+    Qvals, modelstate = Q(states,None)
     return torch.gather(Qvals,1,actions), modelstate
     
 def compute_targets(Q, rewards, next_states, dones, discount_factor, modelstate=None):
@@ -269,7 +269,8 @@ def train(Q, Q_target, memory, optimizer, batch_size, discount_factor):
     return loss.item()  # Returns a Python scalar, and releases history (similar to .detach())
 
 from torch.utils.tensorboard import SummaryWriter
-def run_episodes(train, policy, memory, env, num_episodes, batch_size, discount_factor, learn_rate, print_every=100,  noise=False, logdir='./temp'):
+def run_episodes(train, policy, memory, env, num_episodes, batch_size, discount_factor, learn_rate, print_every=100,  noise=False, logdir='./temp', target_update_freq=1):
+    is_recurrent = policy.type=="Recurrent DQN based policy"
     writer=writer = SummaryWriter(log_dir=logdir)
     optimizer = optim.Adam(policy.model.parameters(), learn_rate)
     Q_target=copy.deepcopy(policy.model)
@@ -283,13 +284,13 @@ def run_episodes(train, policy, memory, env, num_episodes, batch_size, discount_
     #best_model_path = None
     start_time=time.time()
     for epi in range(num_episodes):
-        if (epi+1)%4000 == 0:
-            optimizer.param_groups[0]['lr'] *= 0.9
+        # if (epi+1)%10000 == 0:
+        #     optimizer.param_groups[0]['lr'] *= 1.0#.5
         state = env.reset() 
         if noise:
             state += np.random.rand(env.state_encoding_dim)/env.state_encoding_dim
         policy.set_epsilon(epi)
-        if type(policy).__name__ == 'EpsilonGreedyPolicyDRQN':
+        if is_recurrent:#type(policy).__name__ == 'EpsilonGreedyPolicyDRQN':
             policy.reset_hidden_states()
         steps = 0
         R=0
@@ -305,10 +306,14 @@ def run_episodes(train, policy, memory, env, num_episodes, batch_size, discount_
             global_steps += 1
             R+=r # need to apply discounting!!! CHECK
             # Take a train step
-            loss = train(policy.model, Q_target, memory, optimizer, batch_size, discount_factor)
+            if not is_recurrent: # we train after each time-step
+                loss = train(policy.model, Q_target, memory, optimizer, batch_size, discount_factor)
             if done:
-                if (epi) % print_every == 0:
+                if is_recurrent: # we train after each finished sequence
+                    loss = train(policy.model, Q_target, memory, optimizer, batch_size, discount_factor)
+                if epi % target_update_freq == 0:
                     Q_target.load_state_dict(policy.model.state_dict())
+                if (epi) % print_every == 0:
                     duration=time.time()-start_time
                     avg_steps = np.mean(episode_lengths[-print_every:])
                     avg_returns = np.mean(episode_returns[-print_every:])

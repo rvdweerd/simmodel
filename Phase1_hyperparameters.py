@@ -139,9 +139,23 @@ def GetHyperParams_DQN(world):
     
     return HP[world]
 
-# DQN
+# DRQN
 def GetHyperParams_DRQN(world):
     HP={}
+    # Manhattan3x3_PauseFreezeWorld
+    hp={}
+    #                            sr='et'              sr='etUt'           sr='ete0U0'             sr='etUte0U0'
+    #                          -----------        ------------------   --------------------   ----------------------
+    hp['lstm_hidden_size']  = {'et':18,            'etUt':18,          'ete0U0':18,               'etUte0U0':18,    }
+    hp['dims_hidden_layers']= {'et':[128],         'etUt':[128],       'ete0U0':[128],            'etUte0U0':[128], }
+    hp['batch_size']        = {'et':64,            'etUt':64,          'ete0U0':64,               'etUte0U0':64,    }
+    hp['mem_size']          = {'et':300,           'etUt':300,         'ete0U0':300,              'etUte0U0':300,   }
+    hp['learning_rate']     = {'et':5e-6,          'etUt':5e-6,        'ete0U0':5e-6,             'etUte0U0':5e-6,  }
+    hp['num_episodes']      = {'et':3500,          'etUt':3500,        'ete0U0':3500,             'etUte0U0':3500,  }
+    hp['eps_0']             = {'et':1.,            'etUt':1.,          'ete0U0':1.,               'etUte0U0':1.,    }
+    hp['eps_min']           = {'et':0.1,           'etUt':0.1,         'ete0U0':0.1,              'etUte0U0':0.1,   }
+    hp['cutoff_factor']     = {'et':0.8,           'etUt':0.8,         'ete0U0':0.8,              'etUte0U0':0.8,   }  
+    HP['Manhattan3x3_PauseFreezeWorld'] = hp    
     # Manhattan3x3_PauseDynamicWorld
     hp={}
     #                            sr='et'              sr='etUt'           sr='ete0U0'             sr='etUte0U0'
@@ -156,6 +170,67 @@ def GetHyperParams_DRQN(world):
     hp['eps_min']           = {'et':0.1,           'etUt':0.1,         'ete0U0':0.1,              'etUte0U0':0.1,   }
     hp['cutoff_factor']     = {'et':0.8,           'etUt':0.8,         'ete0U0':0.8,              'etUte0U0':0.8,   }  
     HP['Manhattan3x3_PauseDynamicWorld'] = hp    
+    # Manhattan5x5_FixedEscapeInit
+    #                            sr='et'              sr='etUt'           sr='ete0U0'             sr='etUte0U0'
+    #                          -----------        -----------------     -------------------     ---------------------
+    hp={}
+    hp['lstm_hidden_size']  = {'et':64,          'etUt':64,           'ete0U0':64,           'etUte0U0':64,       }
+    hp['dims_hidden_layers']= {'et':[256,256],   'etUt':[1028],       'ete0U0':[256,256],    'etUte0U0':[256,256],}
+    hp['batch_size']        = {'et':256,         'etUt':256,          'ete0U0':256,          'etUte0U0':256,      }
+    hp['mem_size']          = {'et':1500,        'etUt':500,          'ete0U0':1500,         'etUte0U0':1500,     }
+    hp['learning_rate']     = {'et':1e-6,        'etUt':5e-6,         'ete0U0':1e-6,         'etUte0U0':1e-6,     }
+    hp['num_episodes']      = {'et':50000,       'etUt':25000,        'ete0U0':50000,        'etUte0U0':50000,    }
+    hp['eps_0']             = {'et':1.,          'etUt':1.,           'ete0U0':1.,           'etUte0U0':1.,       }
+    hp['eps_min']           = {'et':0.1,         'etUt':0.1,          'ete0U0':0.1,          'etUte0U0':0.1,      }
+    hp['cutoff_factor']     = {'et':0.8,         'etUt':0.8,          'ete0U0':0.8,          'etUte0U0':0.8,      }  
+    hp['target_update_freq']= {'et':100,         'etUt':100,          'ete0U0':100,          'etUte0U0':100,      }  
+    HP['Manhattan5x5_FixedEscapeInit'] = hp
+    # MetroU3_e17tborder_FixedEscapeInit
+    #                            sr='et'              sr='etUt'           sr='ete0U0'             sr='etUte0U0'
+    #                          -----------        -----------------     -------------------     ---------------------
+    hp={}
+    hp['lstm_hidden_size']  = {'et':64,          'etUt':64,           'ete0U0':64,           'etUte0U0':64,       }
+    hp['dims_hidden_layers']= {'et':[256,256],   'etUt':[1028],       'ete0U0':[256,256],       'etUte0U0':[256,256],}
+    hp['batch_size']        = {'et':256,         'etUt':256,          'ete0U0':256,          'etUte0U0':256,      }
+    hp['mem_size']          = {'et':1500,        'etUt':500,          'ete0U0':1500,          'etUte0U0':1500,     }
+    hp['learning_rate']     = {'et':1e-6,        'etUt':5e-6,         'ete0U0':1e-6,         'etUte0U0':1e-6,     }
+    hp['num_episodes']      = {'et':50000,       'etUt':25000,        'ete0U0':50000,        'etUte0U0':50000,    }
+    hp['eps_0']             = {'et':1.,          'etUt':1.,           'ete0U0':1.,           'etUte0U0':1.,       }
+    hp['eps_min']           = {'et':0.1,         'etUt':0.1,          'ete0U0':0.1,          'etUte0U0':0.1,      }
+    hp['cutoff_factor']     = {'et':0.8,         'etUt':0.8,          'ete0U0':0.8,          'etUte0U0':0.8,      }  
+    hp['target_update_freq']= {'et':100,         'etUt':100,          'ete0U0':100,          'etUte0U0':100,      }  
+    HP['MetroU3_e17tborder_FixedEscapeInit'] = hp
+    # MetroU3_e17t31_FixedEscapeInit
+    #                            sr='et'              sr='etUt'           sr='ete0U0'             sr='etUte0U0'
+    #                          -----------        -----------------     -------------------     ---------------------
+    hp={}
+    hp['lstm_hidden_size']  = {'et':64,          'etUt':64,           'ete0U0':64,           'etUte0U0':64,       }
+    hp['dims_hidden_layers']= {'et':[256,256],   'etUt':[1028],       'ete0U0':[256,256],       'etUte0U0':[256,256],}
+    hp['batch_size']        = {'et':256,         'etUt':256,          'ete0U0':256,          'etUte0U0':256,      }
+    hp['mem_size']          = {'et':1500,        'etUt':500,          'ete0U0':1500,          'etUte0U0':1500,     }
+    hp['learning_rate']     = {'et':1e-6,        'etUt':5e-6,         'ete0U0':1e-6,         'etUte0U0':1e-6,     }
+    hp['num_episodes']      = {'et':50000,       'etUt':25000,        'ete0U0':50000,        'etUte0U0':50000,    }
+    hp['eps_0']             = {'et':1.,          'etUt':1.,           'ete0U0':1.,           'etUte0U0':1.,       }
+    hp['eps_min']           = {'et':0.1,         'etUt':0.1,          'ete0U0':0.1,          'etUte0U0':0.1,      }
+    hp['cutoff_factor']     = {'et':0.8,         'etUt':0.8,          'ete0U0':0.8,          'etUte0U0':0.8,      }  
+    hp['target_update_freq']= {'et':100,         'etUt':100,          'ete0U0':100,          'etUte0U0':100,      }  
+    HP['MetroU3_e17t31_FixedEscapeInit'] = hp
+    # MetroU3_e17t0_FixedEscapeInit
+    #                            sr='et'              sr='etUt'           sr='ete0U0'             sr='etUte0U0'
+    #                          -----------        -----------------     -------------------     ---------------------
+    hp={}
+    hp['lstm_hidden_size']  = {'et':64,          'etUt':64,           'ete0U0':64,           'etUte0U0':64,       }
+    hp['dims_hidden_layers']= {'et':[256,256],   'etUt':[1028],       'ete0U0':[256,256],       'etUte0U0':[256,256],}
+    hp['batch_size']        = {'et':256,         'etUt':256,          'ete0U0':256,          'etUte0U0':256,      }
+    hp['mem_size']          = {'et':1500,        'etUt':500,          'ete0U0':1500,          'etUte0U0':1500,     }
+    hp['learning_rate']     = {'et':1e-6,        'etUt':5e-6,         'ete0U0':1e-6,         'etUte0U0':1e-6,     }
+    hp['num_episodes']      = {'et':50000,       'etUt':25000,        'ete0U0':50000,        'etUte0U0':50000,    }
+    hp['eps_0']             = {'et':1.,          'etUt':1.,           'ete0U0':1.,           'etUte0U0':1.,       }
+    hp['eps_min']           = {'et':0.1,         'etUt':0.1,          'ete0U0':0.1,          'etUte0U0':0.1,      }
+    hp['cutoff_factor']     = {'et':0.8,         'etUt':0.8,          'ete0U0':0.8,          'etUte0U0':0.8,      }  
+    hp['target_update_freq']= {'et':100,         'etUt':100,          'ete0U0':100,          'etUte0U0':100,      }  
+    HP['MetroU3_e17t0_FixedEscapeInit'] = hp
+
     return HP[world]
 
 

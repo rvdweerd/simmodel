@@ -17,7 +17,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print('Device = ',device)
 
 # Select graph world
-env=GetCustomWorld('Manhattan3x3_PauseDynamicWorld',make_reflexive=True, state_repr='et' ,state_enc='tensors')
+env=GetCustomWorld('Manhattan3x3_PauseFreezeWorld',make_reflexive=True, state_repr='et' ,state_enc='tensors')
 
 
 # Define qnet                       # PauseFreezeWorld best: 
@@ -26,9 +26,9 @@ lstm_hidden_size = 18               # 18
 # Select hyperparameters
 seed = 421                           # 42            41             
 batch_size      = 64                # 64                
-mem_size        = 100                # 300           230                
+mem_size        = 300                # 300           230                
 discount_factor = .9                # .9
-learn_rate      = 5e-5             # 5e-6          3e-6
+learn_rate      = 5e-6             # 5e-6          3e-6
 num_episodes    = 3500              # 3500          2500
 eps_0           = 1.                # 1.0
 eps_min         = 0.1               # 0.1

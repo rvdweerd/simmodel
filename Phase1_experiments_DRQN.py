@@ -14,19 +14,19 @@ import time
 import os
 
 ALL_WORLDS=[
-    'Manhattan3x3_PauseFreezeWorld',
-    'Manhattan3x3_PauseDynamicWorld',
-    'Manhattan5x5_DuplicateSetA',
-    'Manhattan5x5_DuplicateSetB',
+    #'Manhattan3x3_PauseFreezeWorld',
+    #'Manhattan3x3_PauseDynamicWorld',
+    #'Manhattan5x5_DuplicateSetA',
+    #'Manhattan5x5_DuplicateSetB',
     'Manhattan5x5_FixedEscapeInit',
-    'Manhattan5x5_VariableEscapeInit',
+    #'Manhattan5x5_VariableEscapeInit',
     'MetroU3_e17tborder_FixedEscapeInit',
     'MetroU3_e17t31_FixedEscapeInit', 
     'MetroU3_e17t0_FixedEscapeInit', 
-    'MetroU3_e17tborder_VariableEscapeInit'
+    #'MetroU3_e17tborder_VariableEscapeInit'
 ]
 ALL_STATE_REPR=[
-    'et',
+    #'et',
     'etUt',
     'ete0U0',
     'etUte0U0'
@@ -69,9 +69,13 @@ def Run_DRQN_Experiment(args):
             eps_min             = hp['eps_min'][state_repr]
             cutoff_factor       = hp['cutoff_factor'][state_repr]
             cutoff              = cutoff_factor *  num_episodes # lower plateau reached and maintained from this point onward
+            target_update_freq  = hp['target_update_freq'][state_repr] # num of finished episodes before update
             state_noise         = False
 
             # Train and evaluate
+            env=GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc='tensors')
+            dim_in = env.state_encoding_dim
+            dim_out = env.max_outdegree
             if TRAIN:
                 best_result=-1e6
                 len_seeds=[]
@@ -80,20 +84,18 @@ def Run_DRQN_Experiment(args):
                 for seed in range(num_seeds):
                     # Initialize
                     seed_everything(seed+42)
-                    env=GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc='tensors')
                     tensorboard_dir=exp_rootdir+'tensorboard/DRQN'+str(seed+1)
-                    dim_in = env.state_encoding_dim
-                    dim_out = env.max_outdegree
                     memory = SeqReplayMemory(mem_size)
                     qnet = RecurrentQNetwork(dim_in, lstm_hidden_size, dim_out, dims_hidden_layers).to(device)
                     policy = EpsilonGreedyPolicyDRQN(qnet, env, eps_0=eps_0, eps_min=eps_min, eps_cutoff=cutoff)
 
                     # Run DQN
                     start_time = time.time()
-                    episode_durations, episode_returns, losses, best_model = run_episodes(train, qnet, policy, memory, env, num_episodes, batch_size, discount_factor, learn_rate, print_every=100, noise=state_noise, logdir=tensorboard_dir)
+                    episode_durations, episode_returns, losses, best_model = run_episodes(train, policy, memory, env, num_episodes, batch_size, discount_factor, learn_rate, print_every=100, noise=state_noise, logdir=tensorboard_dir, target_update_freq=target_update_freq)
                     duration = time.time() - start_time
                     print('run time in seconds: ', duration)
 
+                    policy.model=best_model.to(device)
                     policy.epsilon=0.
                     lengths, returns, captures = EvaluatePolicy(env, policy, env.world_pool, print_runs=False, save_plots=False, logdir=exp_rootdir)    
                     # Results admin

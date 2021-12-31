@@ -39,6 +39,8 @@ class RecurrentQNetwork(nn.Module):
         layer_sizes = [lstm_hidden]+num_hidden
         for layer_idx in range(1,len(layer_sizes)):
             layers += [ nn.Linear(layer_sizes[layer_idx-1], layer_sizes[layer_idx]), nn.ReLU() ]
+        #layers[-1] = nn.BatchNorm1d(layer_sizes[-1])
+        #layers += [nn.ReLU()]
         layers     += [ nn.Linear(layer_sizes[-1], num_out) ]
         self.layers = nn.Sequential(*layers)
         self.out_dim= num_out
@@ -58,7 +60,7 @@ class RecurrentQNetwork(nn.Module):
             assert False
     
     def numTrainableParameters(self):
-        print('Qnet size:')
+        print('RQnet size:')
         print('------------------------------------------')
         total = 0
         for name, p in self.named_parameters():
