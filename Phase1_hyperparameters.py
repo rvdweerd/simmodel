@@ -155,6 +155,7 @@ def GetHyperParams_DRQN(world):
     hp['eps_0']             = {'et':1.,            'etUt':1.,          'ete0U0':1.,               'etUte0U0':1.,    }
     hp['eps_min']           = {'et':0.1,           'etUt':0.1,         'ete0U0':0.1,              'etUte0U0':0.1,   }
     hp['cutoff_factor']     = {'et':0.8,           'etUt':0.8,         'ete0U0':0.8,              'etUte0U0':0.8,   }  
+    hp['target_update_freq']= {'et':1,             'etUt':1,           'ete0U0':1,                'etUte0U0':1,     }      
     HP['Manhattan3x3_PauseFreezeWorld'] = hp    
     # Manhattan3x3_PauseDynamicWorld
     hp={}
@@ -169,6 +170,7 @@ def GetHyperParams_DRQN(world):
     hp['eps_0']             = {'et':1.,            'etUt':1.,          'ete0U0':1.,               'etUte0U0':1.,    }
     hp['eps_min']           = {'et':0.1,           'etUt':0.1,         'ete0U0':0.1,              'etUte0U0':0.1,   }
     hp['cutoff_factor']     = {'et':0.8,           'etUt':0.8,         'ete0U0':0.8,              'etUte0U0':0.8,   }  
+    hp['target_update_freq']= {'et':1,             'etUt':1,           'ete0U0':1,                'etUte0U0':1,     }      
     HP['Manhattan3x3_PauseDynamicWorld'] = hp    
     # Manhattan5x5_FixedEscapeInit
     #                            sr='et'              sr='etUt'           sr='ete0U0'             sr='etUte0U0'

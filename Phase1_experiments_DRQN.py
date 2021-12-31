@@ -15,7 +15,7 @@ import os
 
 ALL_WORLDS=[
     #'Manhattan3x3_PauseFreezeWorld',
-    #'Manhattan3x3_PauseDynamicWorld',
+    'Manhattan3x3_PauseDynamicWorld',
     #'Manhattan5x5_DuplicateSetA',
     #'Manhattan5x5_DuplicateSetB',
     'Manhattan5x5_FixedEscapeInit',

@@ -269,8 +269,13 @@ def train(Q, Q_target, memory, optimizer, batch_size, discount_factor):
     return loss.item()  # Returns a Python scalar, and releases history (similar to .detach())
 
 from torch.utils.tensorboard import SummaryWriter
+import shutil
 def run_episodes(train, policy, memory, env, num_episodes, batch_size, discount_factor, learn_rate, print_every=100,  noise=False, logdir='./temp', target_update_freq=1):
     is_recurrent = policy.type=="Recurrent DQN based policy"
+    try:
+        shutil.rmtree(logdir)
+    except:
+        pass
     writer=writer = SummaryWriter(log_dir=logdir)
     optimizer = optim.Adam(policy.model.parameters(), learn_rate)
     Q_target=copy.deepcopy(policy.model)

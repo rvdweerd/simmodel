@@ -12,11 +12,11 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args" : [
-                "--world_name", "Manhattan5x5_FixedEscapeInit",
-                "--state_repr","etUte0U0",
+                "--world_name", "Manhattan3x3_PauseDynamicWorld",
+                "--state_repr","etUt",
                 "--train","True",
                 "--eval","True",
-                "--num_seeds","5",
+                "--num_seeds","1",
             ]
 //            "pipeArgs": [
 //                "export DISPLAY=:0;${debuggerCommand}",

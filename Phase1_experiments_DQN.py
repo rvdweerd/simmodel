@@ -9,7 +9,7 @@ from rl_models import QNetwork
 from rl_utils import EvaluatePolicy, CreateDuplicatesTrainsets, GetFullCoverageSample
 from rl_policy import EpsilonGreedyPolicyDQN
 from rl_custom_worlds import GetCustomWorld
-from Phase1_hyperparameters_test import GetHyperParams_DQN
+from Phase1_hyperparameters import GetHyperParams_DQN
 import time
 import os
 
