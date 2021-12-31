@@ -14,19 +14,19 @@ import time
 import os
 
 ALL_WORLDS=[
-    #'Manhattan3x3_PauseFreezeWorld',
+    'Manhattan3x3_PauseFreezeWorld',
     'Manhattan3x3_PauseDynamicWorld',
-    #'Manhattan5x5_DuplicateSetA',
-    #'Manhattan5x5_DuplicateSetB',
+    'Manhattan5x5_DuplicateSetA',
+    'Manhattan5x5_DuplicateSetB',
     'Manhattan5x5_FixedEscapeInit',
-    #'Manhattan5x5_VariableEscapeInit',
+    'Manhattan5x5_VariableEscapeInit',
     'MetroU3_e17tborder_FixedEscapeInit',
     'MetroU3_e17t31_FixedEscapeInit', 
     'MetroU3_e17t0_FixedEscapeInit', 
-    #'MetroU3_e17tborder_VariableEscapeInit'
+    'MetroU3_e17tborder_VariableEscapeInit'
 ]
 ALL_STATE_REPR=[
-    #'et',
+    'et',
     'etUt',
     'ete0U0',
     'etUte0U0'
@@ -115,6 +115,10 @@ def Run_DRQN_Experiment(args):
                 np.set_printoptions(formatter={'float':"{0:0.1f}".format})
                 printing('Results over seeds')
                 printing('Deterministic policy: '+str(policy.deterministic))
+                printing('------------------------------------------------')
+                printing('Hyperparams:')
+                for k,v in hp.items():
+                    printing(k+': '+str(v[state_repr]))
                 printing('------------------------------------------------')
                 printing('Avg er: '+str(np.mean(er_seeds))+' +/- '+str(np.std(er_seeds)))
                 printing('  er_seeds: ' + str(er_seeds))

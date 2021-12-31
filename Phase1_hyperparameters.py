@@ -167,7 +167,7 @@ def GetHyperParams_DRQN(world):
     hp['mem_size']          = {'et':300,           'etUt':300,         'ete0U0':300,              'etUte0U0':300,   }
     hp['learning_rate']     = {'et':5e-6,          'etUt':5e-6,        'ete0U0':5e-6,             'etUte0U0':5e-6,  }
     hp['num_episodes']      = {'et':3500,          'etUt':3500,        'ete0U0':3500,             'etUte0U0':3500,  }
-    hp['eps_0']             = {'et':1.,            'etUt':1.,          'ete0U0':1.,               'etUte0U0':1.,    }
+    hp['eps_0']             = {'et':0.2,            'etUt':.2,          'ete0U0':.2,               'etUte0U0':.2,    }
     hp['eps_min']           = {'et':0.1,           'etUt':0.1,         'ete0U0':0.1,              'etUte0U0':0.1,   }
     hp['cutoff_factor']     = {'et':0.8,           'etUt':0.8,         'ete0U0':0.8,              'etUte0U0':0.8,   }  
     hp['target_update_freq']= {'et':1,             'etUt':1,           'ete0U0':1,                'etUte0U0':1,     }      

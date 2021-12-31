@@ -2,7 +2,7 @@
 
 # This script runs eight sessions on the GPU (2MB per session)
 ###################
-world="all"
+world="Manhattan3x3_PauseFreezeWorld"
 tmux new-session -d -s DRQN_et
 tmux send-keys -t DRQN_et "conda activate rlcourse" Enter
 tmux send-keys -t DRQN_et "cd ~/testing/sim" Enter
