@@ -2,7 +2,7 @@ import argparse
 import gym
 import simdata_utils as su
 from stable_baselines3.common.env_checker import check_env
-from environments import GraphWorld
+from modules.rl.environments import GraphWorld
 from rl_policy import EpsilonGreedyPolicySB3_PPO
 from Phase1_hyperparameters import GetHyperParams_SB3PPO
 from rl_custom_worlds import GetCustomWorld

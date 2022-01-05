@@ -17,7 +17,8 @@
                 "--train","True",
                 "--eval","True",
                 "--num_seeds","5",
-            ]
+            ],
+            //"cwd" : ["${workspaceFolder}"] //{fileDirname}
 //            "pipeArgs": [
 //                "export DISPLAY=:0;${debuggerCommand}",
 //              ]

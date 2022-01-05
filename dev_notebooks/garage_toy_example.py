@@ -1,6 +1,6 @@
 import gym
 from stable_baselines3.common.env_checker import check_env
-from environments import GraphWorld
+from modules.rl.environments import GraphWorld
 import simdata_utils as su
 from rl_custom_worlds import GetCustomWorld
 

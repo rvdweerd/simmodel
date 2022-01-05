@@ -1,14 +1,14 @@
 import argparse
-from environments import GraphWorld
+#from modules.rl.environments import GraphWorld
 import numpy as np
 import simdata_utils as su
 import matplotlib.pyplot as plt
 import torch
-from dqn_utils import seed_everything, SeqReplayMemory, train, run_episodes
-from rl_models import RecurrentQNetwork
-from rl_utils import EvaluatePolicy, CreateDuplicatesTrainsets, GetFullCoverageSample
-from rl_policy import EpsilonGreedyPolicyDRQN
-from rl_custom_worlds import GetCustomWorld
+from modules.dqn.dqn_utils import seed_everything, SeqReplayMemory, train, run_episodes
+from modules.rl.rl_models import RecurrentQNetwork
+from modules.rl.rl_utils import EvaluatePolicy, CreateDuplicatesTrainsets, GetFullCoverageSample
+from modules.rl.rl_policy import EpsilonGreedyPolicyDRQN
+from modules.rl.rl_custom_worlds import GetCustomWorld
 from Phase1_hyperparameters import GetHyperParams_DRQN
 import time
 import os
@@ -55,7 +55,7 @@ def Run_DRQN_Experiment(args):
         for world_name in world_names:    
             # Setup
             #env=GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc='tensors')
-            exp_rootdir='./results/DRQN/'+world_name+'/'+state_repr+'/'
+            exp_rootdir='./results/testing/DRQN/'+world_name+'/'+state_repr+'/'
             # Load hyperparameters
             hp=GetHyperParams_DRQN(world_name)
             lstm_hidden_size    = hp['lstm_hidden_size'][state_repr]
@@ -164,8 +164,8 @@ if __name__ == '__main__':
                             'etUte0U0',
                             'all' ])
     parser.add_argument('--num_seeds', default=1, type=int)
-    parser.add_argument('--train', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
-    parser.add_argument('--eval', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
+    parser.add_argument('--train', type=lambda s: s.lower() in ['true', 't', 'yes', '1'],default='True')
+    parser.add_argument('--eval', type=lambda s: s.lower() in ['true', 't', 'yes', '1'],default='True')
 
     args=parser.parse_args()
     Run_DRQN_Experiment(args)

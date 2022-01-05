@@ -1,6 +1,6 @@
-from rl_policy import RandomPolicy, ShortestPathPolicy
-from rl_utils import EvaluatePolicy, GetFullCoverageSample
-from rl_custom_worlds import CreateWorlds
+from modules.rl.rl_policy import RandomPolicy, ShortestPathPolicy
+from modules.rl.rl_utils import EvaluatePolicy, GetFullCoverageSample
+from modules.rl.rl_custom_worlds import CreateWorlds
 
 run_world_names = [
     'Manhattan3x3_PauseFreezeWorld',
@@ -28,7 +28,7 @@ for env, world_name in zip(worlds, run_world_names):
         #'mindeg_path'
     ]
     for policy_name, policy in zip(policy_names, policies):
-        logdir = 'results/Heuristics/'+world_name+'/'+policy_name
+        logdir = 'results/testing/Heuristics/'+world_name+'/'+policy_name
         m=1
         if policy_name == 'random':
             if len(env.world_pool) < 10:
