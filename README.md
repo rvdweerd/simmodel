@@ -3,4 +3,4 @@ Simulation environment for Reinforcement Learning experiments in Search & Pursui
 Thesis work-in-progress for UvA/AI program
 
 * Predicting escape routes in a passive search scenario with partial observability</br></br>
-![escape_demo](escape_route.gif)
+![escape_demo](modules/sim/escape_route.gif)

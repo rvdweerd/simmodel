@@ -199,7 +199,11 @@ def TrainTest(env):
     print ('Loss: {:.2f}'.format(loss))
     print('Train test... [passed]')
 
-def TestAll(env):
+def TestAllDQN():
+    configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
+    conf=configs['Manhattan5']
+    conf['direction_north']=False
+    env = GraphWorld(conf, optimization_method='dynamic', fixed_initial_positions=(2,15,19,22),state_representation='etUt', state_encoding='tensors')
     MemTest(env)
     FastMemTest(env)
     SeqMemTest(env)
@@ -209,10 +213,4 @@ def TestAll(env):
     #TrainTest(env)
     print('\n#######################################\n')
 
-if __name__ == '__main__':
-    configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
-    conf=configs['Manhattan5']
-    conf['direction_north']=False
-    env = GraphWorld(conf, optimization_method='dynamic', fixed_initial_positions=(2,15,19,22),state_representation='etUt', state_encoding='tensors')
-    TestAll(env)
-    #SeqMemTest(env)
+#if __name__ == '__main__':

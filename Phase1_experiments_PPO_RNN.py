@@ -21,11 +21,11 @@ import gc
 from dotmap import DotMap
 from base64 import b64encode
 from IPython.display import HTML
-from rl_custom_worlds import GetCustomWorld
+from modules.rl.rl_custom_worlds import GetCustomWorld
 import argparse
 from Phase1_hyperparameters import GetHyperParams_PPO_RNN
-from dqn_utils import seed_everything
-from rl_utils import GetFullCoverageSample
+from modules.dqn.dqn_utils import seed_everything
+from modules.rl.rl_utils import GetFullCoverageSample
 
 # Source of this code: 
 # https://gitlab.com/ngoodger/ppo_lstm/-/blob/master/recurrent_ppo.ipynb
@@ -97,9 +97,9 @@ LIN_SIZE:             float = hp_lookup['LIN_SIZE'][STATE_REPR]     # 128       
 BATCH_SIZE:           int   = hp_lookup['BATCH_SIZE'][STATE_REPR]   # 80                64
 DISCOUNT:             float = 0.99
 GAE_LAMBDA:           float = 0.95
-PPO_CLIP:             float = 0.1#0.2                                   
+PPO_CLIP:             float = 0.2#0.1                                   
 PPO_EPOCHS:           int   = 10
-MAX_GRAD_NORM:        float = .5#1.                                    
+MAX_GRAD_NORM:        float = 1.#.5                                    
 ENTROPY_FACTOR:       float = 0.
 ACTOR_LEARNING_RATE:  float = hp_lookup['ACTOR_LEARNING_RATE'][STATE_REPR]                                
 CRITIC_LEARNING_RATE: float = hp_lookup['CRITIC_LEARNING_RATE'][STATE_REPR]                                
@@ -140,6 +140,7 @@ class HyperParameters():
 
 #hp = HyperParameters(parallel_rollouts=32, rollout_steps=1024, batch_size=1024, recurrent_seq_len=8, trainable_std_dev=True,  patience=1000)
 hp = HyperParameters(parallel_rollouts=PARALLEL_ROLLOUTS, rollout_steps=ROLLOUT_STEPS, batch_size=BATCH_SIZE, recurrent_seq_len=RECURRENT_SEQ_LEN, trainable_std_dev=TRAINABLE_STD_DEV,  patience=PATIENCE)
+
 batch_count = hp.parallel_rollouts * hp.rollout_steps / hp.recurrent_seq_len / hp.batch_size
 print(f"batch_count: {batch_count}")
 assert batch_count >= 1., "Less than 1 batch per trajectory.  Are you sure that's what you want?"
@@ -169,6 +170,7 @@ def compute_advantages(rewards, values, discount, gae_lambda):
 
 _INVALID_TAG_CHARACTERS = re.compile(r"[^-/\w\.]")
 BASE_CHECKPOINT_PATH = f"{WORKSPACE_PATH}/checkpoints/"
+#BASE_CHECKPOINT_PATH = f"{WORKSPACE_PATH}checkpoints/"
 
 def save_parameters(writer, tag, model, batch_idx):
     """
@@ -260,7 +262,7 @@ class Actor(nn.Module):
             policy_dist = distributions.Categorical(F.softmax(policy_logits_out, dim=1).to("cpu"))
         return policy_dist
     def numTrainableParameters(self):
-        print('Qnet size:')
+        print('Actor size:')
         print('------------------------------------------')
         total = 0
         for name, p in self.named_parameters():
@@ -388,8 +390,9 @@ def load_checkpoint(iteration):
         
     assert ENV == checkpoint.env, "To resume training environment must match current settings."
     assert ENV_MASK_VELOCITY == checkpoint.env_mask_velocity, "To resume training model architecture must match current settings."
-    assert hp == checkpoint.hp, "To resume training hyperparameters must match current settings."
-
+    #assert hp == checkpoint.hp, "To resume training hyperparameters must match current settings."
+    print(hp)
+    print(checkpoint.hp)
     actor_state_dict = torch.load(CHECKPOINT_PATH + "actor.pt", map_location=torch.device(TRAIN_DEVICE))
     critic_state_dict = torch.load(CHECKPOINT_PATH + "critic.pt", map_location=torch.device(TRAIN_DEVICE))
     actor_optimizer_state_dict = torch.load(CHECKPOINT_PATH + "actor_optimizer.pt", map_location=torch.device(TRAIN_DEVICE))
@@ -767,8 +770,8 @@ def TrainAndSaveModel():
     actor, critic, actor_optimizer, critic_optimizer, iteration, stop_conditions = start_or_resume_from_checkpoint()
     score = train_model(actor, critic, actor_optimizer, critic_optimizer, iteration, stop_conditions)
 
-from rl_policy import EpsilonGreedyPolicyLSTM_PPO2
-from rl_utils import EvaluatePolicy
+from modules.rl.rl_policy import EpsilonGreedyPolicyLSTM_PPO2
+from modules.rl.rl_utils import EvaluatePolicy
 def EvaluateSavedModel():
     actor, critic, actor_optimizer, critic_optimizer, iteration, stop_conditions = start_or_resume_from_checkpoint()
     @dataclass

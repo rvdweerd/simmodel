@@ -3,10 +3,10 @@ import gym
 import simdata_utils as su
 from stable_baselines3.common.env_checker import check_env
 from modules.rl.environments import GraphWorld
-from rl_policy import EpsilonGreedyPolicySB3_PPO
+from modules.rl.rl_policy import EpsilonGreedyPolicySB3_PPO
 from Phase1_hyperparameters import GetHyperParams_SB3PPO
-from rl_custom_worlds import GetCustomWorld
-from rl_utils import EvaluatePolicy, print_parameters, GetFullCoverageSample, NpWrapper
+from modules.rl.rl_custom_worlds import GetCustomWorld
+from modules.rl.rl_utils import EvaluatePolicy, print_parameters, GetFullCoverageSample, NpWrapper
 from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3 import PPO, DQN
 import numpy as np

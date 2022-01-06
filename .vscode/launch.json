@@ -14,11 +14,11 @@
             "args" : [
                 "--world_name", "Manhattan5x5_FixedEscapeInit",
                 "--state_repr","etUt",
-                "--train","True",
+                "--train","False",
                 "--eval","True",
-                "--num_seeds","5",
+                "--num_seeds","1",
             ],
-            //"cwd" : ["${workspaceFolder}"] //{fileDirname}
+            //"cwd" : "${workspaceFolder}" //{fileDirname} {workspaceFolder}
 //            "pipeArgs": [
 //                "export DISPLAY=:0;${debuggerCommand}",
 //              ]

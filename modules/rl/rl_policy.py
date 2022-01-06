@@ -197,7 +197,7 @@ class EpsilonGreedyPolicyDQN(Policy):
         self.epsilon0   = eps_0
         self.eps_min    = eps_min
         self.eps_cutoff = eps_cutoff
-        self.eps_slope  = (eps_0-eps_min)/eps_cutoff
+        self.eps_slope  = (eps_0-eps_min)/eps_cutoff if eps_cutoff > 0 else 0.  
         # Graph attributes
         self.actions_from_node = env.neighbors
         self.out_degree=env.out_degree
