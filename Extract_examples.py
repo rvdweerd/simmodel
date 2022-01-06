@@ -1,8 +1,17 @@
+# This file compares performances of selected (max 3) policies for a selected environment
+# and saves random illustrative rollouts in results/_Examples
+#
+# NOTE: (need to fix) due to structure of PPO-RNN code, need to adjust parsed arguments
+# either in launch.json or default values in Phase1_experiments_PPO_RNN.py
+
+import random
+from dataclasses import dataclass
 from modules.rl.rl_policy import RandomPolicy, ShortestPathPolicy, EpsilonGreedyPolicyDQN, EpsilonGreedyPolicySB3_PPO, EpsilonGreedyPolicyLSTM_PPO2
 from modules.rl.rl_utils import EvaluatePolicy, GetFullCoverageSample, NpWrapper
 from modules.rl.rl_custom_worlds import CreateWorlds
 from modules.rl.rl_models import QNetwork
 from Phase1_hyperparameters import GetHyperParams_DQN, GetHyperParams_SB3PPO, GetHyperParams_PPO_RNN
+from Phase1_experiments_PPO_RNN import start_or_resume_from_checkpoint
 import numpy as np
 import torch
 from stable_baselines3 import PPO
@@ -23,8 +32,9 @@ run_world_names = [
 
 world_name='Manhattan5x5_VariableEscapeInit'
 state_repr='etUt'
-policy1_name='DQN'
-policy2_name='RNN-PPO'
+policy_names=['DQN','PPO','RNN-PPO']
+num_p=len(policy_names)
+assert (num_p > 0 and num_p < 4)
 
 worlds_n = CreateWorlds(run_world_names, make_reflexive=True, state_repr=state_repr, state_enc='nodes')
 worlds_n = dict(zip(run_world_names,worlds_n))
@@ -67,7 +77,6 @@ env_ppo = NpWrapper(env_t)
 ppo_model = PPO.load(exp_rootdir+'Model_best')
 
 # Load RNN-PPO policy
-from dataclasses import dataclass
 #from Phase1_experiments_PPO_RNN import StopConditions
 @dataclass
 class StopConditions():
@@ -102,17 +111,13 @@ class HyperParameters():
     # Apply to continous action spaces only 
     trainable_std_dev:    bool = False    
     init_log_std_dev:     float = 1.
-from Phase1_experiments_PPO_RNN import start_or_resume_from_checkpoint
 actor, critic, actor_optimizer, critic_optimizer, max_checkpoint_iteration, stop_conditions=start_or_resume_from_checkpoint()
 @dataclass
 class LSTP_PPO_MODEL():
     lstm_hidden_dim:    int 
     pi:                 torch.nn.modules.module.Module = None
     v:                  torch.nn.modules.module.Module = None
-lstm_ppo_model = LSTP_PPO_MODEL(lstm_hidden_dim=HIDDEN_SIZE ,pi=actor.to(device), v=critic.to(device))
-policy = EpsilonGreedyPolicyLSTM_PPO2(env_t,lstm_ppo_model, deterministic=EVAL_DETERMINISTIC)
-
-
+lstm_ppo_model = LSTP_PPO_MODEL(lstm_hidden_dim=HIDDEN_SIZE, pi=actor.to(device), v=critic.to(device))
 
 policies={
     'random'  : RandomPolicy(env_t),
@@ -123,49 +128,53 @@ policies={
     'PPO'     : EpsilonGreedyPolicySB3_PPO(env_ppo, ppo_model, deterministic=eval_deterministic),
     'RNN-PPO' : EpsilonGreedyPolicyLSTM_PPO2(env_t,lstm_ppo_model, deterministic=EVAL_DETERMINISTIC),
 }
-env1=env_t
-env2=env_t
-policy1 = policies[policy1_name]
-if policy1_name in ['random','shortest','mindeg','tabQL']: 
-    env1=env_n
-elif policy1_name in ['PPO']:
-    env1=env_ppo
-policy2 = policies[policy2_name]
-if policy2_name in ['random','shortest','mindeg','tabQL']: 
-    env2=env_n
-elif policy2_name in ['PPO']:
-    env2=env_ppo
-
-logdir1 = 'results/_Examples/'+world_name+'/'+state_repr+'/'+policy1_name
-logdir2 = 'results/_Examples/'+world_name+'/'+state_repr+'/'+policy2_name
-
-lengths1, returns1, captures1 = EvaluatePolicy(env1,policy1, env1.world_pool, print_runs=False, save_plots=False, logdir=logdir1)
-lengths2, returns2, captures2 = EvaluatePolicy(env2,policy2, env2.world_pool, print_runs=False, save_plots=False, logdir=logdir2)
+env=[]
+policy=[]
+logdirs=[]
+lengths=[]
+returns=[]
+captures=[]
+for i in range(num_p):
+    env.append(env_t)
+    policy.append(policies[policy_names[i]])
+    if policy_names[i] in ['random','shortest','mindeg','tabQL']: 
+        env[i]=env_n
+    elif policy_names[i] in ['PPO']:
+        env[i]=env_ppo
+    logdirs.append('results/_Examples/'+world_name+'/'+state_repr+'/'+policy_names[i])
+    len_, ret_, cap_ = EvaluatePolicy(env[i],policy[i], env[i].world_pool, print_runs=False, save_plots=False, logdir=logdirs[i])
+    lengths.append(len_)
+    returns.append(ret_)
+    captures.append(cap_)
 
 # Extract worlds of interest
-example_pools=[[],[],[],[],[],[],[],[]]
-for i in range(len(env1.world_pool)):
-    if returns2[i] > returns1[i]:
-        example_pools[0].append(env1.world_pool[i])
-        if returns1[i]>0:
-            example_pools[1].append(env1.world_pool[i])
-        if returns2[i]>0:
-            example_pools[2].append(env1.world_pool[i])
-            if returns1[i]>0:
-                example_pools[3].append(env1.world_pool[i])
-    if returns1[i] > returns2[i]:
-        example_pools[4].append(env1.world_pool[i])
-        if returns2[i]>0:
-            example_pools[5].append(env1.world_pool[i])
-        if returns1[i]>0:
-            example_pools[6].append(env1.world_pool[i])
-            if returns2[i]>0:
-                example_pools[7].append(env1.world_pool[i])
-selected_pool=set()
-for p in example_pools:
-    for q in p[:2]:
-        selected_pool.add(q)
-selected_pool=list(selected_pool)
+returns=np.array(returns)
+example_pools1=[[] for i in range(num_p)]
+example_pools2=[[] for i in range(num_p)]
+selected_pool=[]
+for i in range(returns.shape[1]):
+    maxind = np.where(returns[:,i] == np.max(returns[:,i]))[0]
+    if len(maxind)==1:
+        if np.min(returns[:,i])>0:
+            example_pools1[maxind.item()].append(env[0].world_pool[i])
+        else:
+            example_pools2[maxind.item()].append(env[0].world_pool[i])
+for i in range(num_p):
+    if len(example_pools1[i])>0:
+        selected_pool.append(random.choice(example_pools1[i]))
+    if len(example_pools2[i])>0:
+        selected_pool.append(random.choice(example_pools2[i]))
+res_overview=[[selected_pool]]
+for i in range(num_p):
+    _,r,_ = EvaluatePolicy(env[i],policy[i], selected_pool, print_runs=False, save_plots=True, logdir=logdirs[i])
+    res_overview.append(r)
 
-EvaluatePolicy(env1,policy1, selected_pool, print_runs=False, save_plots=True, logdir=logdir1)
-EvaluatePolicy(env2,policy2, selected_pool, print_runs=False, save_plots=True, logdir=logdir2)
+ofile='results/_Examples/'+world_name+'/'+state_repr+'/Results_overview.txt'
+OF = open(ofile, 'w')
+def printing(text):
+    print(text)
+    OF.write(text + "\n")
+np.set_printoptions(formatter={'float':"{0:0.1f}".format})
+printing('WORLDS: '+str(res_overview[0]))
+for i in range(num_p):
+    printing(policy_names[i]+': '+str(res_overview[i+1]))

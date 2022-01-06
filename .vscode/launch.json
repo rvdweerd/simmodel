@@ -12,10 +12,10 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args" : [
-                "--world_name", "Manhattan5x5_FixedEscapeInit",
+                "--world_name", "Manhattan5x5_VariableEscapeInit",
                 "--state_repr","etUt",
                 "--train","False",
-                "--eval","True",
+                "--eval","False",
                 "--num_seeds","1",
             ],
             //"cwd" : "${workspaceFolder}" //{fileDirname} {workspaceFolder}
