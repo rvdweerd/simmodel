@@ -30,9 +30,9 @@ run_world_names = [
     'MetroU3_e17tborder_VariableEscapeInit'     # 9
 ]
 
-world_name='Manhattan5x5_VariableEscapeInit'
-state_repr='etUt'
-policy_names=['DQN','PPO','RNN-PPO']
+world_name='Manhattan3x3_PauseDynamicWorld'
+state_repr='et'
+policy_names=['PPO','DQN']
 num_p=len(policy_names)
 assert (num_p > 0 and num_p < 4)
 
@@ -77,7 +77,7 @@ env_ppo = NpWrapper(env_t)
 ppo_model = PPO.load(exp_rootdir+'Model_best')
 
 # Load RNN-PPO policy
-#from Phase1_experiments_PPO_RNN import StopConditions
+from Phase1_experiments_PPO_RNN import StopConditions
 @dataclass
 class StopConditions():
     """
@@ -151,22 +151,30 @@ for i in range(num_p):
 returns=np.array(returns)
 example_pools1=[[] for i in range(num_p)]
 example_pools2=[[] for i in range(num_p)]
+example_pool3=[]
+
 selected_pool=[]
-for i in range(returns.shape[1]):
-    maxind = np.where(returns[:,i] == np.max(returns[:,i]))[0]
-    if len(maxind)==1:
-        if np.min(returns[:,i])>0:
+random.seed(123)
+for i in range(returns.shape[1]): # go over all worlds
+    maxind = np.where(returns[:,i] == np.max(returns[:,i]))[0] # find which method performs best in this world
+    if len(maxind)==1: # exactly one of the methods is best
+        if np.min(returns[:,i])>0: # all methods have positive return for this world
             example_pools1[maxind.item()].append(env[0].world_pool[i])
-        else:
+        else: # indexed method is best, but not all are >0
             example_pools2[maxind.item()].append(env[0].world_pool[i])
+    elif len(maxind)==num_p: # all methods perform at max
+        if np.min(returns[:,i])>0:
+            example_pool3.append(env[0].world_pool[i])
 for i in range(num_p):
     if len(example_pools1[i])>0:
         selected_pool.append(random.choice(example_pools1[i]))
     if len(example_pools2[i])>0:
         selected_pool.append(random.choice(example_pools2[i]))
+if len(example_pool3)>0:
+    selected_pool += random.choices(example_pool3,k=min(len(example_pool3),num_p))
 res_overview=[[selected_pool]]
 for i in range(num_p):
-    _,r,_ = EvaluatePolicy(env[i],policy[i], selected_pool, print_runs=False, save_plots=True, logdir=logdirs[i])
+    _,r,_ = EvaluatePolicy(env[i],policy[i], selected_pool, print_runs=True, save_plots=True, logdir=logdirs[i])
     res_overview.append(r)
 
 ofile='results/_Examples/'+world_name+'/'+state_repr+'/Results_overview.txt'

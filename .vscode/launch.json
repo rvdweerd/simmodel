@@ -12,8 +12,8 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args" : [
-                "--world_name", "Manhattan5x5_VariableEscapeInit",
-                "--state_repr","etUt",
+                "--world_name", "Manhattan3x3_PauseDynamicWorld",
+                "--state_repr","et",
                 "--train","False",
                 "--eval","False",
                 "--num_seeds","1",
