@@ -165,6 +165,46 @@ def TKGraph():
 
     return G, labels, pos
 
+def SparseManhattanGraph(nside=5):
+    G=nx.Graph()
+    N=nside**2
+    nodes={i:(i%nside,i//nside) for i in range(N)}
+    nodelist=[v for k,v in nodes.items()]
+    G.add_nodes_from(nodelist)
+    edgelist=[
+        (0,5,{'N_pref':-1, 'weight':1}),
+        (1,2,{'N_pref':-1, 'weight':1}),
+        (1,6,{'N_pref':-1, 'weight':1}),
+        (2,7,{'N_pref':-1, 'weight':1}),
+        (3,4,{'N_pref':-1, 'weight':1}),
+        (3,8,{'N_pref':-1, 'weight':1}),
+        (5,6,{'N_pref':-1, 'weight':1}),
+        (5,10,{'N_pref':-1, 'weight':1}),
+        (7,8,{'N_pref':-1, 'weight':1}),
+        (7,12,{'N_pref':-1, 'weight':1}),
+        (8,13,{'N_pref':-1, 'weight':1}),
+        (9,14,{'N_pref':-1, 'weight':1}),
+        (10,15,{'N_pref':-1, 'weight':1}),
+        (11,12,{'N_pref':-1, 'weight':1}),
+        (11,16,{'N_pref':-1, 'weight':1}),
+        (13,14,{'N_pref':-1, 'weight':1}),
+        (14,19,{'N_pref':-1, 'weight':1}),
+        (15,16,{'N_pref':-1, 'weight':1}),
+        (15,20,{'N_pref':-1, 'weight':1}),
+        (16,21,{'N_pref':-1, 'weight':1}),
+        (17,18,{'N_pref':-1, 'weight':1}),
+        (17,22,{'N_pref':-1, 'weight':1}),                
+        (18,19,{'N_pref':-1, 'weight':1}),
+        (18,23,{'N_pref':-1, 'weight':1}),
+        (23,24,{'N_pref':-1, 'weight':1}),
+    ]
+    edgelist_coord=[(nodes[i[0]],nodes[i[1]],i[2]) for i in edgelist]
+    G.add_edges_from(edgelist_coord)
+    G=G.to_directed()
+    pos = dict( (n,n) for n in G.nodes() )
+    labels = dict([(v,k) for k,v in nodes.items()])
+    return G, labels, pos
+
 def MetroGraph():
     # Generate example graph 
     ##

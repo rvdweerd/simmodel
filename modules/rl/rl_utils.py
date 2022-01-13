@@ -99,6 +99,8 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
     printing('Observed escape ratio: {:.3f}'.format(1-np.mean(captures)))
     if len(returns) <20 or print_runs:
         printing('   Captures:'+str(np.array(captures)))
+    goal_ratio=(np.array(returns)>0).sum()/len(returns)
+    printing('Goal reached ratio: {:.3f}'.format(goal_ratio))
     printing('Average episode length: {:.2f}'.format(np.mean(lengths))+' +/- {:.2f}'.format(np.std(lengths)))
     if len(returns) <20 or print_runs:
         printing('   Lengths :'+str(np.array(lengths) ))

@@ -10,7 +10,7 @@ import random
 from pathlib import Path
 import os
 import pickle
-from modules.sim.sim_graphs import graph, CircGraph, TKGraph, MetroGraph
+from modules.sim.sim_graphs import SparseManhattanGraph, graph, CircGraph, TKGraph, MetroGraph
 from modules.rl.rl_plotting import PlotAgentsOnGraph
 
 class SimParameters(object):
@@ -191,10 +191,20 @@ def GetConfigs():
             'U': 1,    # number of pursuer units
             'L': 4,    # Time steps
             'T': 5,
-            'R': 10000,  # Number of escape routes sampled 
+            'R': 100,  # Number of escape routes sampled 
             'direction_north': False,       # Directional preference of escaper
             'start_escape_route': 'left', # Initial position of escaper (always bottom center)
             'loadAllStartingPositions': False
+        },
+        "SparseManhattan5x5" : {
+            'graph_type': "SparseManhattan",
+            'N': 5,    # number of nodes along one side
+            'U': 3,    # number of pursuer units
+            'L': 6,    # Time steps
+            'T': 11,
+            'R': 200,  # Number of escape routes sampled 
+            'direction_north': False,       # Directional preference of escaper
+            'start_escape_route': 'bottom_center' # Initial position of escaper (always bottom center)
         },
     }
     return configs
@@ -207,6 +217,17 @@ def DefineSimParameters(config):
     sp.R = config['R']              # Number of escape routes sampled 
     sp.T = config['T']
     sp.loadAllStartingPositions = config['loadAllStartingPositions']
+    if sp.graph_type == 'SparseManhattan':
+        sp.G, sp.labels, sp.pos = SparseManhattanGraph(config['N'])
+        sp.N = config['N']
+        sp.V = sp.N**2        # Total number of vertices
+        #sp.T = (sp.N)*2+1     # Max timesteps for running experiments
+        sp.direction_north = config['direction_north']
+        sp.nodeid2coord = dict( (i, n) for i,n in enumerate(sp.G.nodes()) )
+        sp.start_escape_route = (sp.N//2,0) # bottom center of grid
+        sp.most_northern_y = max([c[1] for c in sp.G.nodes])
+        #sp.target_nodes = set([sp.labels[sp.N//2,sp.N-1]])
+        sp.target_nodes = set([sp.N*(sp.N-1)+i for i in range(sp.N)])
     if sp.graph_type == 'Manhattan':
         sp.G, sp.labels, sp.pos = graph(config['N'])
         sp.N = config['N']
@@ -348,7 +369,7 @@ def SimulateInteractiveMode(env):
     s=env.reset()
     done=False
     R=0
-    env.render()
+    env.render(mode=None,fname="testrun")
     while not done:
         print('e position:',s[0],env.sp.labels2coord[s[0]])
         print('u paths (node labels):',env.u_paths)
@@ -370,6 +391,6 @@ def SimulateInteractiveMode(env):
         a=input(']\nAction (new node)?\n> ')
         a=n.index(int(a))
         s,r,done,_=env.step(int(a))
-        env.render()
+        env.render(mode=None,fname="testrun")
         R+=r
     print('done, reward='+str(R),'\n---------------')

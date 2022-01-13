@@ -3,16 +3,17 @@ from modules.rl.rl_utils import EvaluatePolicy, GetFullCoverageSample
 from modules.rl.rl_custom_worlds import CreateWorlds
 
 run_world_names = [
-    'Manhattan3x3_PauseFreezeWorld',
-    'Manhattan3x3_PauseDynamicWorld',
-    'Manhattan5x5_DuplicateSetA',
-    'Manhattan5x5_DuplicateSetB',
-    'Manhattan5x5_FixedEscapeInit',
-    'Manhattan5x5_VariableEscapeInit',
-    'MetroU3_e17tborder_FixedEscapeInit',
-    'MetroU3_e17t31_FixedEscapeInit', 
-    'MetroU3_e17t0_FixedEscapeInit', 
-    'MetroU3_e17tborder_VariableEscapeInit'
+    # 'Manhattan3x3_PauseFreezeWorld',
+    # 'Manhattan3x3_PauseDynamicWorld',
+    # 'Manhattan5x5_DuplicateSetA',
+    # 'Manhattan5x5_DuplicateSetB',
+    # 'Manhattan5x5_FixedEscapeInit',
+    # 'Manhattan5x5_VariableEscapeInit',
+    # 'MetroU3_e17tborder_FixedEscapeInit',
+    # 'MetroU3_e17t31_FixedEscapeInit', 
+    # 'MetroU3_e17t0_FixedEscapeInit', 
+    # 'MetroU3_e17tborder_VariableEscapeInit',
+    'SparseManhattan5x5',
 ]
 worlds = CreateWorlds(run_world_names, make_reflexive=True, state_repr='et', state_enc='nodes')
 
@@ -24,11 +25,11 @@ for env, world_name in zip(worlds, run_world_names):
     ]
     policy_names=[
         'random',
-        #'shortest_path',
-        #'mindeg_path'
+        'shortest_path',
+        'mindeg_path'
     ]
     for policy_name, policy in zip(policy_names, policies):
-        logdir = 'results/testing/Heuristics/'+world_name+'/'+policy_name
+        logdir = 'results/Heuristics/'+world_name+'/'+policy_name
         m=1
         if policy_name == 'random':
             if len(env.world_pool) < 10:

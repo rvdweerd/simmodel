@@ -29,6 +29,7 @@ class EpsilonGreedyPolicy(Policy):
     A simple epsilon greedy policy.
     """
     def __init__(self, graph_env, epsilon0, epsilon_min=0., initial_Q_values=0.):
+        super().__init__('EpsGreedy')
         # const
         self.nS = graph_env.sp.V
         self.initial_Q_values = initial_Q_values

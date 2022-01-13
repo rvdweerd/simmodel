@@ -1,9 +1,9 @@
-from dqn_utils import seed_everything
-from rl_policy import EpsilonGreedyPolicy
-from rl_algorithms import q_learning_exhaustive
-from rl_plotting import PlotPerformanceCharts, PlotGridValues
-from rl_utils import EvaluatePolicy, GetFullCoverageSample
-from rl_custom_worlds import CreateWorlds
+from modules.dqn.dqn_utils import seed_everything
+from modules.rl.rl_policy import EpsilonGreedyPolicy
+from modules.rl.rl_algorithms import q_learning_exhaustive
+from modules.rl.rl_plotting import PlotPerformanceCharts, PlotGridValues
+from modules.rl.rl_utils import EvaluatePolicy, GetFullCoverageSample
+from modules.rl.rl_custom_worlds import CreateWorlds
 import numpy as np
 import pickle
 
@@ -27,7 +27,8 @@ run_world_names = [
     #'MetroU3_e17tborder_FixedEscapeInit',
     #'MetroU3_e17t31_FixedEscapeInit', 
     #'MetroU3_e17t0_FixedEscapeInit', 
-    'MetroU3_e17tborder_VariableEscapeInit'
+    #'MetroU3_e17tborder_VariableEscapeInit'
+    'SparseManhattan5x5'
 ]
 #worlds = CreateWorlds(run_world_names, make_reflexive=True, state_repr='et'      , state_enc='nodes')
 #worlds = CreateWorlds(run_world_names, make_reflexive=True, state_repr='etUt'    , state_enc='nodes')
@@ -36,7 +37,7 @@ worlds = CreateWorlds(run_world_names, make_reflexive=True, state_repr='etUte0U0
 
 for env, world_name in zip(worlds, run_world_names):
     policy = EpsilonGreedyPolicy(env, eps_0, eps_min, initial_Q_values)
-
+    
     # Learn the policy
     metrics_episode_returns = {}
     metrics_episode_lengths = {}

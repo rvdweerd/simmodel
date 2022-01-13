@@ -59,7 +59,20 @@ def PlotAgentsOnGraph_(sp, escape_pos, pursuers_pos, timestep, fig_show=False, f
     plt.axis('off')
     plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, hspace = -0.5, wspace = 0)
     ax = plt.gca()
+    
+    # plt.imshow([[0.,100.],[0.,100.]],
+    #     cmap=plt.cm.Greens,
+    #     interpolation='bicubic',
+    #     vmin=0,vmax=255,
+    #     aspect='equal'
+    # )
+    # rect = Rectangle((10,10),30,30,linewidth=5.,edgecolor='r',facecolor='none')
+    # # Add the patch to the Axes
+    # ax.add_patch(rect)
+
     ax.set_aspect('equal')
+
+
     if filename == None:
         pass
         #plt.savefig('test_t='+str(timestep)+'.png')
