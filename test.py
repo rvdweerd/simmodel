@@ -16,7 +16,8 @@ world_name='SparseManhattan5x5'
 
 state_repr='et'
 env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc='nodes')
-env.render(mode=None,fname='test.png')
+SimulateInteractiveMode(env)
+#env.render(mode=None,fname='test.png')
 # plt.imshow([[0.,1.],[0.,1.]],
 #     cmap=plt.cm.Greens,
 #     interpolation='bicubic',

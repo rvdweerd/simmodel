@@ -8,7 +8,7 @@ import numpy as np
 import gym
 from gym import spaces
 from gym import register
-#import copy
+import copy
 
 class GraphWorld(gym.Env):
     """"""
@@ -43,11 +43,7 @@ class GraphWorld(gym.Env):
 
         # Gym objects
         #self.observation_space = spaces.Discrete(self.sp.V) if state_encoding == 'nodes' else spaces.MultiBinary(self.state_encoding_dim)
-        
-        self.observation_space = spaces.Box(
-            0., self.sp.U, shape=(self.state_encoding_dim,), dtype=np.float32
-        )
-        
+        self.observation_space = spaces.Box(0., self.sp.U, shape=(self.state_encoding_dim,), dtype=np.float32)
         #self.observation_space = spaces.Tuple([spaces.Discrete(self.sp.V) for i in range(self.state_len)])             
         # @property
         # def action_space(self):
@@ -55,7 +51,18 @@ class GraphWorld(gym.Env):
         self.action_space = spaces.Discrete(self.max_outdegree)
         self.metadata = {'render.modes':['human']}
         self.max_episode_length = self.max_timesteps
-        
+
+        # Graph feature matrix, (FxV) with F number of features, V number of nodes
+        # 1  [.] 1 if target node, 0 otherwise 
+        # 2  [.] # of units present at node at current time
+        # 3  [.] 1 if node previously visited by unit
+        # 4  [.] 1 if node previously visited by escaper
+        # 5  [.] distance from nearest target node
+        # 6  [.] ...
+        self.F = 4
+        self.gfm0 = np.zeros((self.F,self.sp.V))
+        self.gfm0[0,np.array(list(self.sp.target_nodes))]=1 # set target nodes, fixed for the given graph
+        self.gfm  = copy.deepcopy(self.gfm0)
         self.reset()
 
     def _encode_nodes(self, s):
@@ -86,11 +93,6 @@ class GraphWorld(gym.Env):
         return out
 
     def _state2vec_packed(self, state, sort_units=False):
-        #chunks=[]
-        #chunks.append((state[0],))
-        #chunks.append(state[1:(1+self.sp.U)])
-        #chunks.append(state[(1+self.sp.U):])
-        #num_chunks= int(len(chunks[0])>0)+int(len(chunks[1])>0)+int(len(chunks[2])>0)
         out=np.zeros(self.sp.V * len(self.state_chunks)) # 
         if sort_units:
             return NotImplementedError
@@ -176,7 +178,15 @@ class GraphWorld(gym.Env):
         self.u_paths  = data_sample['paths']
         self.state    = self._to_state(e_init_labels,u_init_labels)
         self.state0   = self.state
-        #self.action_space = spaces.Discrete(self.out_degree[self.state[0]])        
+        
+        # Initialize graph feature matrix
+        self.gfm = copy.deepcopy(self.gfm0)
+        for u in self.state[1:]: 
+            self.gfm[1,u]+=1        # f2: current presence of unites
+            self.gfm[2,u]=1         # f3: node previously visited by any unit
+        self.gfm[3,self.state[0]]=1 # f4: node previously visited by escaper
+
+        # Return initial state in appropriate form
         if self.state_representation == 'etUt':
             return self._encode(self.state)
         elif self.state_representation == 'et':
@@ -189,52 +199,55 @@ class GraphWorld(gym.Env):
             assert False
 
     def step(self, action_idx):
+        # Take a step
         info = {'Captured':False, 'u_positions':self.state[1:], 'Misc':None}
-        if action_idx >= len(self.neighbors[self.state[0]]):
+        if action_idx >= len(self.neighbors[self.state[0]]): # account for invalid action choices
             next_node = self.state[0]
             reward=-2.
             info['Misc']='action_out_of_bounds'
             done=False
-            #done=False
-            #info={'Captured':False}
-            #print('action out of bounds chosen')
         else:          
             next_node = self.neighbors[self.state[0]][action_idx]
-            reward = -1.#-1.5
+            reward = -1.
             if next_node == self.state[0]:
                reward = -1.5
         self.global_t += 1
         self.local_t  += 1
         
+        # Update unit positions
         new_Upositions = self._getUpositions(self.local_t) # uses local time: u_paths may have been updated from last state if sim is dynamic
         new_Upositions.sort()
         self.state = tuple([next_node] + new_Upositions)
+        
+        # Check termination conditions
         done = False
-        if self.global_t >= self.max_timesteps:
+        if self.global_t >= self.max_timesteps: # max timesteps reached
             done=True
-            #print('Time ran out')
         if next_node in new_Upositions: # captured
             done=True
             reward += -10
             info['Captured']=True
-            #print('Captured')
-        #elif self.sp.labels2coord[next_node][1] == self.sp.most_northern_y: # northern boundary of manhattan graph reached
-        elif next_node in self.sp.target_nodes: 
+        elif next_node in self.sp.target_nodes: # goal reached
             done = True
-            reward += +10
-            #print('Goal reached')
-        if self.optimization == 'dynamic' and not done:
+            reward += +10 
+        if self.optimization == 'dynamic' and not done: # update optimization paths for units
             self.u_paths = self.databank['labels'][self.register['labels'][self.state]]['paths']
             if len(self.u_paths) < 2:
                 assert False
             self.local_t = 0
-        #self.action_space = spaces.Discrete(self.out_degree[self.state[0]])
 
+        # Update feature matrix
+        self.gfm[1,:]=0
+        for u in self.state[1:]: 
+            self.gfm[1,u]+=1        # f2: current presence of unites
+            self.gfm[2,u]=1         # f3: node previously visited by any unit
+        self.gfm[3,self.state[0]]=1 # f4: node previously visited by escaper
+
+        # Return s',r',done,info (new state in appropriate form)
         if self.state_representation == 'etUt':
             return self._encode(self.state), reward, done, info
         elif self.state_representation == 'et':
             return self._encode((self.state[0],)), reward, done, info
-            #return self._encode(self.state[0]), reward, done, info
         elif self.state_representation == 'etUte0U0':
             return self._encode(self.state+self.state0), reward, done, info
         elif self.state_representation == 'ete0U0':
