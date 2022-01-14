@@ -53,15 +53,17 @@ class GraphWorld(gym.Env):
         self.max_episode_length = self.max_timesteps
 
         # Graph feature matrix, (FxV) with F number of features, V number of nodes
+        # 0  [.] node number
         # 1  [.] 1 if target node, 0 otherwise 
         # 2  [.] # of units present at node at current time
-        # 3  [.] 1 if node previously visited by unit
-        # 4  [.] 1 if node previously visited by escaper
-        # 5  [.] distance from nearest target node
+        # 3  [.] ## off ## 1 if node previously visited by unit
+        # 4  [.] ## off ## 1 if node previously visited by escaper
+        # 5  [.] ## off ## distance from nearest target node
         # 6  [.] ...
-        self.F = 4
+        self.F = 3
         self.gfm0 = np.zeros((self.F,self.sp.V))
-        self.gfm0[0,np.array(list(self.sp.target_nodes))]=1 # set target nodes, fixed for the given graph
+        self.gfm0[0,:] = np.array([i for i in range(self.sp.V)])
+        self.gfm0[1,np.array(list(self.sp.target_nodes))]=1 # set target nodes, fixed for the given graph
         self.gfm  = copy.deepcopy(self.gfm0)
         self.reset()
 
@@ -182,9 +184,9 @@ class GraphWorld(gym.Env):
         # Initialize graph feature matrix
         self.gfm = copy.deepcopy(self.gfm0)
         for u in self.state[1:]: 
-            self.gfm[1,u]+=1        # f2: current presence of unites
-            self.gfm[2,u]=1         # f3: node previously visited by any unit
-        self.gfm[3,self.state[0]]=1 # f4: node previously visited by escaper
+            self.gfm[2,u]+=1         # f2: current presence of units
+            #self.gfm[3,u]=1         # f3: node previously visited by any unit
+        #self.gfm[4,self.state[0]]=1 # f4: node previously visited by escaper
 
         # Return initial state in appropriate form
         if self.state_representation == 'etUt':
@@ -237,11 +239,11 @@ class GraphWorld(gym.Env):
             self.local_t = 0
 
         # Update feature matrix
-        self.gfm[1,:]=0
+        self.gfm[2,:]=0
         for u in self.state[1:]: 
-            self.gfm[1,u]+=1        # f2: current presence of unites
-            self.gfm[2,u]=1         # f3: node previously visited by any unit
-        self.gfm[3,self.state[0]]=1 # f4: node previously visited by escaper
+            self.gfm[2,u]+=1        # f2: current presence of units
+            #self.gfm[3,u]=1         # f3: node previously visited by any unit
+        #self.gfm[4,self.state[0]]=1 # f4: node previously visited by escaper
 
         # Return s',r',done,info (new state in appropriate form)
         if self.state_representation == 'etUt':

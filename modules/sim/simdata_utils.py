@@ -1,7 +1,7 @@
 #from sim_visualization import plot_results
 #from dataclasses import dataclass
 #import time
-#import networkx as nx
+import networkx as nx
 #import matplotlib.image as mpimg
 #import matplotlib.pyplot as plt
 #from datetime import datetime
@@ -17,6 +17,7 @@ class SimParameters(object):
     def __init__(self):
         self.graph_type = None
         self.G = None 
+        self.W = None               # Adjacency matrix (numpy)
         self.labels = None
         self.pos = None
         self.N = None
@@ -282,6 +283,7 @@ def DefineSimParameters(config):
     if config['make_reflexive']:
         edgelist=[(e,e,{}) for e in sp.G.nodes()]
         sp.G.add_edges_from(edgelist)
+    sp.W = nx.to_numpy_matrix(sp.G)        
     return sp
 
 def GetGraphData(sp):

@@ -1,6 +1,7 @@
 .vscode
 __pycache__
 results
+results_Phase2
 images
 models
 sb3_ppo_tensorboard

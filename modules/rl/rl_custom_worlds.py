@@ -39,6 +39,22 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         env.world_pool=[0]
         env.reset()
         return env
+    if world_name == 'Manhattan3x3_WalkAround':
+        configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
+        conf=configs['Manhattan3']
+        conf['direction_north']=False
+        conf['make_reflexive']=make_reflexive
+        conf['U']=2
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
+        env.register['coords']={((1,0),(0,2),(1,2)):0}
+        env.register['labels']={(1,6,7):0}
+        env.databank['coords']=[{'start_escape_route':(1,0), 'start_units':[(0,2),(1,2)], 'paths':[[(0,2),(0,1)],[(1,2),(1,1)]]}]
+        env.databank['labels']=[{'start_escape_route':1, 'start_units':[6,7], 'paths':[[6,3],[7,4]]}]
+        env.iratios=[1.]
+        env.all_worlds=[0]
+        env.world_pool=[0]
+        env.reset()
+        return env
     if world_name == 'Manhattan5x5_DuplicateSetA':
         configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
         conf=configs['Manhattan5']
