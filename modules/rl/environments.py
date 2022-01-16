@@ -9,6 +9,7 @@ import gym
 from gym import spaces
 from gym import register
 import copy
+import networkx as nx
 
 class GraphWorld(gym.Env):
     """"""
@@ -65,6 +66,39 @@ class GraphWorld(gym.Env):
         self.gfm0[0,:] = np.array([i for i in range(self.sp.V)])
         self.gfm0[1,np.array(list(self.sp.target_nodes))]=1 # set target nodes, fixed for the given graph
         self.gfm  = copy.deepcopy(self.gfm0)
+        self.reset()
+
+    def redefine_graph_structure(self, W, node2coord):
+        # W:          adjacency matrix (numpy array), based on some node ordering
+        # node2coord: mapping from node number to 2d coords
+        assert W.shape[0]==self.sp.V
+        #self.register = {'coords': {}, 'labels': {}}
+        #self.databank = {'coords': {}, 'labels': {}}
+        #self.iratios = []
+        #self.all_worlds = []
+        #self.world_pool = []
+        self.sp.G = nx.from_numpy_matrix(W, create_using=nx.DiGraph())
+        self.sp.G = nx.relabel_nodes(self.sp.G, self.sp.nodeid2coord)
+        self.sp.nodeid2coord = dict( (i, n) for i,n in enumerate(self.sp.G.nodes()) )
+        # CHECK IF self.sp.target_nodes are still consistent
+        self.sp.coord2nodeid = dict( (n, i) for i,n in enumerate(self.sp.G.nodes()) )
+        self.sp.coord2labels = self.sp.labels
+        self.sp.labels2coord = dict( (v,k) for k,v in self.sp.coord2labels.items())
+        for coord, nodeid in self.sp.coord2nodeid.items():
+            label = self.sp.coord2labels[coord]
+            self.sp.labels2nodeids[label]=nodeid
+            self.sp.nodeids2labels[nodeid]=label
+        self.sp.W = W
+        self.neighbors, self.in_degree, self.max_indegree, self.out_degree, self.max_outdegree = su.GetGraphData(self.sp)
+        self.current_entry          = 0    # which entry in the world pool is active
+        self.u_paths                = []
+        self.iratio                 = 0
+        self.state0                 = ()
+        self.state                  = ()   # current internal state in node labels: (e,U1,U2,...)
+        self.global_t               = 0
+        self.local_t                = 0     
+        self.observation_space = spaces.Box(0., self.sp.U, shape=(self.state_encoding_dim,), dtype=np.float32)
+        self.action_space = spaces.Discrete(self.max_outdegree)
         self.reset()
 
     def _encode_nodes(self, s):
