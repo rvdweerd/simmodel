@@ -1,6 +1,7 @@
 import numpy as np
 from itertools import product
 import random 
+import networkx as nx
 
 def rand_key(p):
     key1 = ""
@@ -24,11 +25,22 @@ def create_adj_matrix(N,coord_upper,vals,W_):
     arr[np.diag_indices_from(arr)] = np.diag(W_) # copy the diagonal elements
     return arr
 
-def get_all_edge_removals_symmetric(W_, removals=[2,3,4], instances_per_num_removed=10):
+def target_reachable(W, start_node, target_nodes):
+    G = nx.from_numpy_matrix(W, create_using=nx.DiGraph())
+    reachable = False
+    for t in target_nodes:
+        if nx.algorithms.shortest_paths.generic.has_path(G,start_node,t):
+            reachable = True
+            break
+    return reachable
+
+def get_all_edge_removals_symmetric(W_, start_node, target_nodes, removals=[2,3,4], instances_per_num_removed=10):
     ##
     # params:
-    # W_ : adjacency matrix (numpy array)
-    # removals: list with number of edges to be removed
+    # W_            : adjacency matrix (numpy array)
+    # start_node    : start position of escaper (in nodeid)
+    # target_nodes  : should be reachable from start_node (in nodeid)
+    # removals      : list with number of edges to be removed
     # instances_per_num_removed: how many graphs created for each case
     #
     # returns:
@@ -54,8 +66,8 @@ def get_all_edge_removals_symmetric(W_, removals=[2,3,4], instances_per_num_remo
             else:
                 hashes_int.add(hash)
             arr = create_adj_matrix(N,coord_upper,vals,W_)
-            # Check; no orphan nodes (nodes with no edges)
-            if np.min(arr.sum(axis=1)) > 1:
+            # Check; no orphan nodes (nodes with no edges) and at least one target node is reachable
+            if np.min(arr.sum(axis=1)) > 1 and target_reachable(arr, start_node, target_nodes):
                 num_edges_removed = K-np.sum(vals)
                 all_W.append((arr, num_edges_removed, hash_int))
                 W_per_num_edge_removals[K-np.sum(vals)].append((arr, hash_int))
@@ -73,8 +85,8 @@ def get_all_edge_removals_symmetric(W_, removals=[2,3,4], instances_per_num_remo
                 else:
                     hashes_int.add(hash)
                 arr = create_adj_matrix(N,coord_upper,vals,W_)
-                # Check; no orphan nodes (nodes with no edges)
-                if np.min(arr.sum(axis=1)) > 1:
+                # Check; no orphan nodes (nodes with no edges) and at least one target node is reachable
+                if np.min(arr.sum(axis=1)) > 1 and target_reachable(arr, start_node, target_nodes):
                     num_edges_removed = K-np.sum(vals)
                     all_W.append((arr, num_edges_removed, hash_int))
                     W_per_num_edge_removals[K-np.sum(vals)].append((arr, hash_int))
