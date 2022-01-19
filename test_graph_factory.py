@@ -18,20 +18,19 @@ config={
 }
 
 state_repr='et'
-state_enc='nodes'
-env = GraphWorld(config, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
+#state_enc='nodes'
+#env = GraphWorld(config, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
 
-#world_name='MetroU3_e17tborder_FixedEscapeInit'
+world_name='MetroU3_e17tborder_FixedEscapeInit'
 #world_name='Manhattan5x5_FixedEscapeInit'
-#env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc='nodes')
+env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc='nodes')
 W_all, W_per_num_edge_removals = get_all_edge_removals_symmetric(
         W_          = nx.convert_matrix.to_numpy_matrix(env.sp.G),
         start_node  = env.sp.labels2nodeids[env.state[0]],
         target_nodes= [env.sp.labels2nodeids[i] for i in env.sp.target_nodes],
         removals    = [8,12,16],
-        instances_per_num_removed = 1    
+        instances_per_num_removed = 2    
     )
-
 for k,v in W_per_num_edge_removals.items():
     # v: list of tuples
     print(k,len(v))
@@ -41,5 +40,17 @@ for k,v in W_per_num_edge_removals.items():#len(W_per_num_edge_removals[2])):
         W=random.choice(v)[0]
         #W=v[0][0]
         env.redefine_graph_structure(W,env.sp.nodeid2coord)
-        env.render(mode=None, fname='graph_'+str(k))
+        #env.render(mode=None, fname='graph_'+str(k))
         #SimulateInteractiveMode(env)
+
+
+from modules.optim.simdata_create import GenerateForAllEscapeStartPosition, GenerateForSingleEscapeStartPosition
+# Initialize the dataset generator
+REQUIRED_DATASET_SIZE=100
+SAVE_EVERY = 1
+UPDATE_EVERY = 1
+env.sp.R=111
+#env.sp.U=2
+env.redefine_graph_structure(W_per_num_edge_removals[16][0][0],env.sp.nodeid2coord)
+env.render(mode=None, fname='graph')
+GenerateForSingleEscapeStartPosition(env.sp, REQUIRED_DATASET_SIZE, SAVE_EVERY, UPDATE_EVERY)

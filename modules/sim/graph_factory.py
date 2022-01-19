@@ -26,6 +26,7 @@ def create_adj_matrix(N,coord_upper,vals,W_):
     return arr
 
 def target_reachable(W, start_node, target_nodes):
+    # Checks if any (at least one) of the target nodes is reachable
     G = nx.from_numpy_matrix(W, create_using=nx.DiGraph())
     reachable = False
     for t in target_nodes:
@@ -34,7 +35,7 @@ def target_reachable(W, start_node, target_nodes):
             break
     return reachable
 
-def get_all_edge_removals_symmetric(W_, start_node, target_nodes, removals=[2,3,4], instances_per_num_removed=10):
+def get_all_edge_removals_symmetric(W_, start_node, target_nodes, removals=[2,3,4], instances_per_num_removed=10, cutoff = 1e4):
     ##
     # params:
     # W_            : adjacency matrix (numpy array)
@@ -75,9 +76,11 @@ def get_all_edge_removals_symmetric(W_, start_node, target_nodes, removals=[2,3,
         #assert instances_per_num_removed <= K
         W_per_num_edge_removals={i:[] for i in removals}
         for num_removed in removals:#range(1,K//2-1):
+            attempts=0
             #theoretic_max = np.prod(range(K-num_removed+1,K+1))
             while len(W_per_num_edge_removals[num_removed]) < instances_per_num_removed:# and len(W_per_num_edge_removals[num_removed]) != :
                 vals = rand_key_fixed_num_removed(K, num_removed)
+                attempts+=1
                 hash_str = "".join(str(v) for v in vals)
                 hash_int = int(hash_str, 2)
                 if hash_int in hashes_int:
@@ -90,5 +93,6 @@ def get_all_edge_removals_symmetric(W_, start_node, target_nodes, removals=[2,3,
                     num_edges_removed = K-np.sum(vals)
                     all_W.append((arr, num_edges_removed, hash_int))
                     W_per_num_edge_removals[K-np.sum(vals)].append((arr, hash_int))
+                assert attempts < cutoff, 'No feasible graphs found for '+str(num_removed)+' edges removed'
 
     return all_W, W_per_num_edge_removals

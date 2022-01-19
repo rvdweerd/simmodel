@@ -1,10 +1,11 @@
 #from sim_visualization import plot_results
 #from dataclasses import dataclass
-#import time
+import time
 import networkx as nx
+import numpy as np
 #import matplotlib.image as mpimg
 #import matplotlib.pyplot as plt
-#from datetime import datetime
+from datetime import datetime
 #import plotly.graph_objects as go
 import random
 from pathlib import Path
@@ -12,6 +13,8 @@ import os
 import pickle
 from modules.sim.sim_graphs import SparseManhattanGraph, graph, CircGraph, TKGraph, MetroGraph
 from modules.rl.rl_plotting import PlotAgentsOnGraph
+from modules.optim.escape_route_generator_MC import mutiple_escape_routes
+from modules.optim.optimization_FIP_gurobipy import unit_ranges, optimization_alt, optimization
 
 class SimParameters(object):
     def __init__(self):
@@ -286,6 +289,107 @@ def DefineSimParameters(config):
     sp.W = nx.to_numpy_matrix(sp.G)        
     return sp
 
+def GetUnitsInitialConditions(sp, register, specific_start_units, cutoff):
+    if specific_start_units is not None:
+        ulist = [sp.start_escape_route] + specific_start_units
+        if tuple(ulist) in register:
+            print('Initial condition already in register')
+            assert False
+    else:
+        # Generate instance of starting conditions
+        i=0
+        #toprows = [(i,j) for i in range(0,sp.N) for j in range(sp.N-1,sp.N-3,-1)]
+        coordlist = list(sp.G.nodes())
+        while True:
+            i+=1
+            ulist=random.choices(coordlist,k=sp.U)
+            #ulist=random.choices(toprows,k=sp.U)
+            if sp.start_escape_route in ulist:
+                continue
+            ulist.sort()
+            ulist=[sp.start_escape_route]+ulist
+            if tuple(ulist) not in register:
+                break
+            if i>cutoff:
+                print('No new entries found')
+                ulist=-1
+                return [-1]
+    return ulist
+
+import timeit
+class FrameTimer():
+    def __init__(self):
+        self.s0= timeit.default_timer()
+        self.s = self.s0
+    def mark(self):
+        e=timeit.default_timer()
+        m=e-self.s
+        self.s=e
+        return m*1 # s
+    def total(self):
+        return (timeit.default_timer()-self.s0)*1 # s
+
+def ObtainSimulationInstance(sp, register, specific_start_units=None, cutoff=1e5, print_InterceptRate=True, create_plot=False):
+    # Input:
+    #   sp:         simulation parameters
+    #   register:   dict ((start_escape_route),(start_unit1),(start_unit2),..)  -> index of databank
+    #   specific_start_units: 
+    #               list [(start_unit1),(start_unit2),..] size U, offers option to run specific initial conditions
+    # 
+    # Returns:
+    #   new_registry_entry: new key for register entry
+    #   new_databank_entry: list of unit paths, U entries, 
+
+    start_time = time.time()
+    ft = FrameTimer()
+    time_marks=[]
+    # Get random initial conditions (positions of pursuit units), not yet in dataset
+    ulist = GetUnitsInitialConditions(sp, register, specific_start_units, cutoff)
+    if ulist[0] == -1:
+        return ulist, None, None, None
+    register_entry = (tuple(ulist),len(register))
+    time_marks.append(ft.mark())
+
+    # Run optimization for instance
+    start_escape_route = ulist[0]
+    start_units = tuple(ulist[1:])
+    routes_time_nodes, routes_time = mutiple_escape_routes(sp.G, sp.N, sp.L, sp.R, start_escape_route, sp.direction_north, start_units,sp.graph_type)
+    time_marks.append(ft.mark())
+
+    units_range_time = unit_ranges(start_units, sp.U, sp.G, sp.L)
+    time_marks.append(ft.mark())
+
+    routes_intercepted, units_places = optimization_alt(sp.G, sp.U, routes_time_nodes, units_range_time, sp.R, sp.V, sp.L+1, sp.labels, start_units, sp.nodeid2coord)   
+    #routes_intercepted, units_places = optimization(sp.G, sp.U, routes_time_nodes, units_range_time, sp.R, sp.V, sp.T, sp.labels)   
+    time_marks.append(ft.mark())
+
+    interception_rate, num_intercepted = GetIR(sp.R, routes_intercepted)
+    time_marks.append(ft.mark())
+
+    # Display results and prepare data to return
+    if print_InterceptRate:
+        print('Of the',sp.R,'sample escapte routes,',num_intercepted,'were intercepted. Interception rate = {:.2f}'.format(interception_rate))
+    #if create_plot:
+    #    plot_results(sp.G,  sp.R, sp.pos, routes_time, routes_time_nodes, start_escape_route, units_places, routes_intercepted)
+    paths=[]
+    for i,u in enumerate(units_places):
+        paths.append(nx.dijkstra_path(sp.G, start_units[i], u)) 
+    sim_instance = {
+        'start_escape_route': start_escape_route,
+        'start_units':        start_units,
+        'paths':              paths
+    }
+    eval_time = time.time() - start_time # seconds
+    return register_entry, sim_instance, interception_rate, eval_time, np.array(time_marks)
+
+def GetIR(R, routes_intercepted):
+    num_intercepted=0
+    for k,v in routes_intercepted.items():
+        num_intercepted+=v
+    return num_intercepted / R, num_intercepted
+
+
+
 def GetGraphData(sp):
     G = sp.G.to_directed()
     neighbors_labels = {}
@@ -325,7 +429,7 @@ def make_dirname(sp):
         "_Ndir="+ str(sp.direction_north)                        
     return dirname
 
-def make_result_directory(sp, optimization_method):
+def make_result_directory(sp, optimization_method='static'):
     ######## Create folder for results ########
     dirname = make_dirname(sp)
     # dirname = "results/" + str(config['name'])
@@ -346,6 +450,29 @@ def LoadDatafile(dirname):
         in_file.close()
         print('Database found, contains',len(results['databank']),'entries.',in_file.name)
         return results['register'], results['databank'], results['interception_ratios']
+
+def SaveResults(dirname,sp,register,databank,iratios):
+    # Check if current databank is bigger than any previously saved databank for this config. If so, return without saving
+    all_lengths_fnames = [f for f in os.listdir(dirname) if f.endswith('.pkl')]
+    if len(all_lengths_fnames) != 0:
+        biggest_dataset_fname = sorted(all_lengths_fnames, key=lambda s: float(s.split('.pkl')[0].split('_')[-1]))[-1]
+        saved_dset_size = int(biggest_dataset_fname.split('.pkl')[0].split('_')[-1])
+        if len(databank) <= saved_dset_size:
+            print('No file saved, dataset size was not increased')
+            return
+    
+    # Save results
+    results= {
+        'Simulation_parameters':sp,
+        'register': register,
+        'databank': databank,
+        'interception_ratios': iratios
+    }
+    tstamp = str(datetime.now()).replace(" ", "_").replace(".", "_").replace(":", "-")
+    filename = tstamp+"_Databank_"+str(len(databank))+".pkl"
+    out_file = open(dirname + "/" + filename, "wb")
+    pickle.dump(results, out_file)
+    out_file.close()
 
 def SimulatePursuersPathways(conf, optimization_method='dynamic', fixed_initial_positions=None):
     # Escaper position static, plot progression of pursuers motion
