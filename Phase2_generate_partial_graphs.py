@@ -93,7 +93,6 @@ def SaveSolvabilityData(args):
     in_file.close()
 
     solvable_dict={}
-    reachable_by_pursuers_dict={}
     
     num_edges=args.num_edges
     U=args.U
@@ -123,6 +122,44 @@ def SaveSolvabilityData(args):
     out_file.close()
     #SimulateInteractiveMode(env)
 
+def SaveReachabilityData():
+    in_file=open("./datasets/_partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_databank_full","rb")
+    databank_full=pickle.load(in_file)
+    in_file.close()
+    in_file=open("./datasets/_partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_partial_graph_register","rb")
+    partial_graph_register=pickle.load(in_file)
+    in_file.close()
+
+    reachable_by_pursuers_dict={}
+    
+    for U in [1,2]:
+        reachable_by_pursuers_dict['U='+str(U)]={}
+        config={
+            'graph_type': "Manhattan",
+            'make_reflexive': True,
+            'N': 3,    # number of nodes along one side
+            'U': U,    # number of pursuer units
+            'L': 4,    # Time steps
+            'T': 7,
+            'R': 100,  # Number of escape routes sampled 
+            'direction_north': False,       # Directional preference of escaper
+            'loadAllStartingPositions': False
+        }
+        state_repr='etUt'
+        state_enc='nodes'
+        #W_, hashint, hashstr = random.choice(partial_graph_register[3])
+        
+        for num_edges in range(7):
+            for W_, hashint, hashstr in partial_graph_register[num_edges]:
+                env_data={'W':W_, 'hashint':hashint, 'databank_full':databank_full}
+                env = GraphWorldFromDatabank(config, env_data, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
+                reachable = IsReachable(env)
+                reachable_by_pursuers_dict['U='+str(U)][hashint]=reachable
+        out_file = open("./datasets/_partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_reachable_by_pursuers","wb")
+        pickle.dump(reachable_by_pursuers_dict, out_file)
+        out_file.close()
+        #SimulateInteractiveMode(env)
+
 def MergeDataFiles():
     merged_databank={'U=1':{},'U=2':{}}
     for i in range(7):
@@ -135,6 +172,21 @@ def MergeDataFiles():
                 merged_databank['U='+str(k)][k2]=v2
     out_file = open("./datasets/_partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_databank_full","wb")
     pickle.dump(merged_databank, out_file)
+    out_file.close()
+
+def MergeDataFilesSolvability():
+    solvable_global = {'U=1':{},'U=2':{}}
+    for e in range(7):
+        for U in [1,2]:
+            in_file=open("./datasets/_partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/solvable_U="+str(U)+"_e="+str(e),"rb")
+            solvable_local = pickle.load(in_file)
+            in_file.close()
+            for k,v in solvable_local.items():
+                for k2,v2 in v.items():
+                    #print(k2,v2)
+                    solvable_global['U='+str(U)][k2]=v2
+    out_file = open("./datasets/_partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_solvable","wb")
+    pickle.dump(solvable_global, out_file)
     out_file.close()
 
 def IsSolvable(env):
@@ -178,6 +230,22 @@ def IsSolvable(env):
     _, returns, _ = EvaluatePolicy(env,policy,env.world_pool,print_runs=False, save_plots=False, logdir=logdir, has_Q_table=True)
     return np.array(returns)>0
 
+def IsReachable(env):
+    # Checks if E is reachable by Pursuers on the given graph instance
+    reachable=[]
+    for i, entry in enumerate(env.world_pool):
+        s = env.reset(entry = entry)
+        epos=s[0]
+        can_reach=False
+        for target in s[1:]:
+            if nx.algorithms.shortest_paths.generic.has_path(env.sp.G, env.sp.labels2coord[epos], env.sp.labels2coord[target]):
+                can_reach=True
+                break
+        reachable.append(can_reach)
+        if not can_reach:
+            k=0
+    return np.array(reachable)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)    
 
@@ -191,4 +259,6 @@ if __name__ == '__main__':
     args=parser.parse_args()
     #RunInstance(args)
     #MergeDataFiles()
-    SaveSolvabilityData(args)
+    #SaveSolvabilityData(args)
+    #SaveReachabilityData()
+    MergeDataFilesSolvability()
