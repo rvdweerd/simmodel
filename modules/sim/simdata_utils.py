@@ -14,7 +14,7 @@ import pickle
 from modules.sim.sim_graphs import SparseManhattanGraph, graph, CircGraph, TKGraph, MetroGraph
 from modules.rl.rl_plotting import PlotAgentsOnGraph
 from modules.optim.escape_route_generator_MC import mutiple_escape_routes
-from modules.optim.optimization_FIP_gurobipy import unit_ranges, optimization_alt, optimization
+from modules.optim.optimization_FIP_gurobipy import unit_ranges, optimization_alt
 
 class SimParameters(object):
     def __init__(self):
@@ -311,7 +311,8 @@ def GetUnitsInitialConditions(sp, register, specific_start_units, cutoff):
             if tuple(ulist) not in register:
                 break
             if i>cutoff:
-                print('No new entries found')
+                #print('No new entries found')
+                #print('full'+str(len(register)))
                 ulist=-1
                 return [-1]
     return ulist
@@ -340,31 +341,31 @@ def ObtainSimulationInstance(sp, register, specific_start_units=None, cutoff=1e5
     #   new_registry_entry: new key for register entry
     #   new_databank_entry: list of unit paths, U entries, 
 
-    start_time = time.time()
-    ft = FrameTimer()
-    time_marks=[]
+    #start_time = time.time()
+    #ft = FrameTimer()
+    #time_marks=[]
     # Get random initial conditions (positions of pursuit units), not yet in dataset
     ulist = GetUnitsInitialConditions(sp, register, specific_start_units, cutoff)
     if ulist[0] == -1:
-        return ulist, None, None, None
+        return ulist, None, None, None, None
     register_entry = (tuple(ulist),len(register))
-    time_marks.append(ft.mark())
+    #time_marks.append(ft.mark())
 
     # Run optimization for instance
     start_escape_route = ulist[0]
     start_units = tuple(ulist[1:])
     routes_time_nodes, routes_time = mutiple_escape_routes(sp.G, sp.N, sp.L, sp.R, start_escape_route, sp.direction_north, start_units,sp.graph_type)
-    time_marks.append(ft.mark())
+    #time_marks.append(ft.mark())
 
     units_range_time = unit_ranges(start_units, sp.U, sp.G, sp.L)
-    time_marks.append(ft.mark())
+    #time_marks.append(ft.mark())
 
     routes_intercepted, units_places = optimization_alt(sp.G, sp.U, routes_time_nodes, units_range_time, sp.R, sp.V, sp.L+1, sp.labels, start_units, sp.nodeid2coord)   
     #routes_intercepted, units_places = optimization(sp.G, sp.U, routes_time_nodes, units_range_time, sp.R, sp.V, sp.T, sp.labels)   
-    time_marks.append(ft.mark())
+    #time_marks.append(ft.mark())
 
     interception_rate, num_intercepted = GetIR(sp.R, routes_intercepted)
-    time_marks.append(ft.mark())
+    #time_marks.append(ft.mark())
 
     # Display results and prepare data to return
     if print_InterceptRate:
@@ -379,8 +380,8 @@ def ObtainSimulationInstance(sp, register, specific_start_units=None, cutoff=1e5
         'start_units':        start_units,
         'paths':              paths
     }
-    eval_time = time.time() - start_time # seconds
-    return register_entry, sim_instance, interception_rate, eval_time, np.array(time_marks)
+    #eval_time = time.time() - start_time # seconds
+    return register_entry, sim_instance, interception_rate, None, None#eval_time, np.array(time_marks)
 
 def GetIR(R, routes_intercepted):
     num_intercepted=0

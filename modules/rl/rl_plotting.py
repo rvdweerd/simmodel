@@ -192,7 +192,7 @@ def PlotAgentsOnGraph(sp, escape_pos, pursuers_pos, timestep, fig_show=False, fi
         imgplot=plt.imshow(img)
         plt.show()
 
-def PlotPerformanceCharts(algos,performance_metrics):
+def PlotPerformanceCharts(algos, performance_metrics, fname='images/rl/test_lcurve.png'):
     num_iter = performance_metrics['e_returns'][algos[0].__name__].shape[1]
     for algo in algos:
         metrics_mean = np.mean(performance_metrics['e_returns'][algo.__name__], axis=0)
@@ -214,8 +214,7 @@ def PlotPerformanceCharts(algos,performance_metrics):
     plt.title("Episode returns")
     #plt.ylim((-8,6))
     plt.show()
-    plt.savefig('images/rl/test_lcurve.png')
-
+    plt.savefig(fname)
 
 import math
 from typing import List

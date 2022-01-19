@@ -23,7 +23,8 @@ class GraphWorld(gym.Env):
         self.render_fileprefix      = 'test_scenario_t='
         # Load relevant pre-saved optimization runs for the U trajectories
         dirname                     = su.make_result_directory(self.sp, optimization_method)
-        self.register, self.databank, self.iratios = self._LoadAndConvertDataFile(dirname) #su.LoadDatafile(dirname)
+        register_coords, databank_coords, iratios = su.LoadDatafile(dirname)
+        self.register, self.databank, self.iratios = self._ConvertDataFile(register_coords, databank_coords, iratios) 
         
         # Create a world_pool list of indices of pre-saved initial conditions and their rollouts of U positions
         self.all_worlds             = [ind for k,ind in self.register['labels'].items()]
@@ -138,8 +139,7 @@ class GraphWorld(gym.Env):
                     out[i*self.sp.V + state[pos]] += 1
         return out.astype(np.int64)
 
-    def _LoadAndConvertDataFile(self, dirname):
-        register_coords, databank_coords, iratios = su.LoadDatafile(dirname)
+    def _ConvertDataFile(self, register_coords, databank_coords, iratios):
         register_labels={}
         databank_labels=[]
         # Convert register
@@ -304,3 +304,68 @@ register(
     id='GraphWorld-v0',
     entry_point='environments:GraphWorld'
 )
+
+class GraphWorldFromDatabank(GraphWorld):
+    def __init__(self, config, env_data, optimization_method='static', fixed_initial_positions=None, state_representation='etUt', state_encoding='nodes'):
+        #super().__init__('EpsGreedy')
+        W_           =env_data['W']
+        hashint      =env_data['hashint']
+        databank_full=env_data['databank_full']
+        
+        self.type                   ='GraphWorld'
+        self.sp                     = su.DefineSimParameters(config)
+        self.optimization           = optimization_method
+        self.fixed_initial_positions= fixed_initial_positions
+        self.state_representation   = state_representation
+        self.state_encoding_dim, self.state_chunks, self.state_len = su.GetStateEncodingDimension(state_representation, self.sp.V, self.sp.U)
+        self.render_fileprefix      = 'test_scenario_t='
+        
+        # Load relevant optimization runs for the U trajectories from databank
+        register_coords = databank_full['U='+str(self.sp.U)][hashint]['register']
+        databank_coords = databank_full['U='+str(self.sp.U)][hashint]['databank']
+        iratios  = databank_full['U='+str(self.sp.U)][hashint]['iratios']
+        self.register, self.databank, self.iratios = self._ConvertDataFile(register_coords, databank_coords, iratios) 
+
+        # Create a world_pool list of indices of pre-saved initial conditions and their rollouts of U positions
+        self.all_worlds             = [ind for k,ind in self.register['labels'].items()]
+        self.world_pool             = su.GetWorldPool(self.all_worlds, fixed_initial_positions, self.register)
+        self._encode                = self._encode_nodes if state_encoding == 'nodes' else self._encode_tensor
+        if state_encoding not in ['nodes', 'tensors']: assert False
+
+        # Dynamics parameters
+        self.current_entry          = 0    # which entry in the world pool is active
+        self.u_paths                = []
+        self.iratio                 = 0
+        self.state0                 = ()
+        self.state                  = ()   # current internal state in node labels: (e,U1,U2,...)
+        self.global_t               = 0
+        self.local_t                = 0
+        self.max_timesteps          = self.sp.T
+        self.neighbors, self.in_degree, self.max_indegree, self.out_degree, self.max_outdegree = su.GetGraphData(self.sp)
+
+        # Gym objects
+        #self.observation_space = spaces.Discrete(self.sp.V) if state_encoding == 'nodes' else spaces.MultiBinary(self.state_encoding_dim)
+        self.observation_space = spaces.Box(0., self.sp.U, shape=(self.state_encoding_dim,), dtype=np.float32)
+        #self.observation_space = spaces.Tuple([spaces.Discrete(self.sp.V) for i in range(self.state_len)])             
+        # @property
+        # def action_space(self):
+        #     return spaces.Discrete(self.out_degree[self.state[0]])
+        self.action_space = spaces.Discrete(self.max_outdegree)
+        self.metadata = {'render.modes':['human']}
+        self.max_episode_length = self.max_timesteps
+
+        # Graph feature matrix, (FxV) with F number of features, V number of nodes
+        # 0  [.] node number
+        # 1  [.] 1 if target node, 0 otherwise 
+        # 2  [.] # of units present at node at current time
+        # 3  [.] ## off ## 1 if node previously visited by unit
+        # 4  [.] ## off ## 1 if node previously visited by escaper
+        # 5  [.] ## off ## distance from nearest target node
+        # 6  [.] ...
+        self.F = 3
+        self.gfm0 = np.zeros((self.F,self.sp.V))
+        self.gfm0[0,:] = np.array([i for i in range(self.sp.V)])
+        self.gfm0[1,np.array(list(self.sp.target_nodes))]=1 # set target nodes, fixed for the given graph
+        self.gfm  = copy.deepcopy(self.gfm0)
+        self.redefine_graph_structure(W_,self.sp.nodeid2coord)
+        #self.reset()

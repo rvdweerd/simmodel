@@ -12,11 +12,13 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args" : [
-                "--world_name", "Manhattan3x3_PauseDynamicWorld",
-                "--state_repr","et",
-                "--train","False",
-                "--eval","False",
-                "--num_seeds","1",
+//                "--world_name", "Manhattan3x3_PauseDynamicWorld",
+//                "--state_repr","et",
+//                "--train","False",
+//                "--eval","False",
+//                "--num_seeds","1",
+                  "--num_edges","4",
+                  "--U","2"  
             ],
             //"cwd" : "${workspaceFolder}" //{fileDirname} {workspaceFolder}
 //            "pipeArgs": [

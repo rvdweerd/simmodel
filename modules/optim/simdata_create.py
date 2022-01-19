@@ -16,7 +16,7 @@ import numpy as np
 import cpuinfo
 import gurobipy
 
-def GenerateForSingleEscapeStartPosition(sp,required_dataset_size,save_every,update_every):
+def GenerateForSingleEscapeStartPosition(sp, required_dataset_size, save_every, update_every):
     cpuinf=cpuinfo.get_cpu_info()
     durations=[]
     markTimes=[]
@@ -102,4 +102,46 @@ def GenerateForAllEscapeStartPosition(sp,required_dataset_size,save_every,update
     su.SaveResults(dirname,sp,register,databank,iratios)
 
 
+def GetDatabankForPartialGraph(sp, required_dataset_size, update_every):
+    #cpuinf=cpuinfo.get_cpu_info()
+    #durations=[]
+    #markTimes=[]
+    #dirname = su.make_result_directory(sp)
+    #register, databank, iratios = su.LoadDatafile(dirname)
+    register={}
+    databank=[]
+    iratios=[]
+
+    # Generate
+    while len(databank) < required_dataset_size:
+        reg_entry, sim_instance, iratio, eval_time, marktimes = su.ObtainSimulationInstance(sp, register, specific_start_units=None, cutoff=1e5, print_InterceptRate=False, create_plot=False)
+        #markTimes.append(marktimes)
+        if reg_entry[0] == -1:
+            break
+
+        #durations.append(eval_time)
+        register[reg_entry[0]] = reg_entry[1]
+        databank.append(sim_instance)
+        iratios.append(iratio)
+
+        # generate progress updates
+        #if len(durations) % update_every == 0:
+            #pass
+            # print('\nOptimization runtime analysis')
+            # print(cpuinf['brand_raw'],cpuinf['arch'])
+            # print('Python version:',cpuinf['python_version'], 'Gurobi version:',gurobipy.gurobi.version())
+            # print('Model parameters: #nodes V:',sp.V,', #units U:',sp.U,', #timesteps L:',sp.L,', #routes R:',sp.R)
+            # print('\nSaved dataset size:',len(databank),'recent average time per run [s]: {:.3f}'.format(sum(durations)/len(durations)))
+            # #print(np.array(markTimes))
+            # print('Average mark times [s]:')
+            # mt_avg=np.mean(np.array(markTimes),axis=0)
+            # print('Get initial conditions.......: {:>8.3f}'.format(mt_avg[0]))
+            # print('Create multiple escape routes: {:>8.3f}'.format(mt_avg[1]))
+            # print('Get unit ranges..............: {:>8.3f}'.format(mt_avg[2]))
+            # print('Run optimizer loop...........: {:>8.3f}'.format(mt_avg[3]))
+            # print('Get intercepted routes.......: {:>8.3f}'.format(mt_avg[4]))          
+            # print('-------------------------------------------')          
+            # print('Total........................: {:>8.3f}'.format(np.sum(mt_avg)))      
+            # durations=[]
+    return register, databank, iratios
 

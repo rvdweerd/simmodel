@@ -35,7 +35,7 @@ def target_reachable(W, start_node, target_nodes):
             break
     return reachable
 
-def get_all_edge_removals_symmetric(W_, start_node, target_nodes, removals=[2,3,4], instances_per_num_removed=10, cutoff = 1e4):
+def get_all_edge_removals_symmetric(W_, start_node, target_nodes, removals=[1], instances_per_num_removed=1, cutoff = 1e4):
     ##
     # params:
     # W_            : adjacency matrix (numpy array)
@@ -48,6 +48,8 @@ def get_all_edge_removals_symmetric(W_, start_node, target_nodes, removals=[2,3,
     # all_W                     : list containing all combinations of edges removed as tuple (W_reduced, num_edges_reduced, hash)
     # W_per_num_edge_removals   : dict from number of edges removed to list of tuples (W_reduced, hash)  
     assert np.array_equal(W_.T,W_) # symmetric
+    assert W_.shape[0]<64 # int64 hashing, only works for graphs with < nodes (purpose is experimentation)
+
     N=W_.shape[0] # number of nodes
     #n=np.sqrt(N)
     idx_upper = np.triu_indices(N, k=1) # offset k=1 (excluding diagonal entries)
@@ -58,7 +60,7 @@ def get_all_edge_removals_symmetric(W_, start_node, target_nodes, removals=[2,3,
     all_W = []
     hashes_int=set()
     if K <= 12: # manageable number of permutation, 2^12=4096, return exhaustive list
-        W_per_num_edge_removals={i:[] for i in range(K+1)}
+        W_per_num_edge_removals={}#i:[] for i in range(K+1)}
         for vals in product([0, 1], repeat=(K)):
             hash_str = "".join(str(v) for v in vals)
             hash_int = int("".join(str(v) for v in vals), 2)
@@ -70,8 +72,10 @@ def get_all_edge_removals_symmetric(W_, start_node, target_nodes, removals=[2,3,
             # Check; no orphan nodes (nodes with no edges) and at least one target node is reachable
             if np.min(arr.sum(axis=1)) > 1 and target_reachable(arr, start_node, target_nodes):
                 num_edges_removed = K-np.sum(vals)
-                all_W.append((arr, num_edges_removed, hash_int))
-                W_per_num_edge_removals[K-np.sum(vals)].append((arr, hash_int))
+                all_W.append((arr, num_edges_removed, hash_int, hash_str))
+                if (K-np.sum(vals)) not in W_per_num_edge_removals:
+                    W_per_num_edge_removals[K-np.sum(vals)]=[]
+                W_per_num_edge_removals[K-np.sum(vals)].append((arr, hash_int, hash_str))
     else:
         #assert instances_per_num_removed <= K
         W_per_num_edge_removals={i:[] for i in removals}

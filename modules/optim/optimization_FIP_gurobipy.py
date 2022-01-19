@@ -46,95 +46,7 @@ def unit_ranges(start_units, U, G, L):
     
     return units_range_time
 
-import timeit
-class FrameTimer():
-    def __init__(self):
-        self.s0= timeit.default_timer()
-        self.s = self.s0
-    def mark(self):
-        e=timeit.default_timer()
-        m=e-self.s
-        self.s=e
-        return m*1 # s
-    def total(self):
-        return (timeit.default_timer()-self.s0)*1 # s
-
-def optimization(G, U, routes_time_nodes, units_range_time, R, V, T, labels, start_units):
-    ft = FrameTimer()
-    env=gp.Env(empty=True)
-    env.setParam('Outputflag', 0)
-    env.start()
-    # Create model
-    m = Model('FIP_unittravel', env=env) 
-    #m.setParam('Outputflag', 0)
-    
-    # Create variables
-    Zr = m.addVars(R,                       vtype=GRB.BINARY, name="Zr")    # routes intercepted
-    pi_uv = m.addVars(U, V,                  vtype=GRB.BINARY, name="pi_uv")
-    z_rutv = m.addVars(R, U, T, V,  vtype=GRB.BINARY, name="z_rutv")
-    print('\noptimization() function - step times [s]')
-    print('Create variables.......: {:>8.3f}'.format(ft.mark()))    
-    
-    #Objective
-    m.setObjective(quicksum(Zr), GRB.MAXIMIZE)
-    print('Set objective..........: {:>8.3f}'.format(ft.mark()))
-
-    # Interception constraint   
-    alpha_rtv = routes_time_nodes.to_numpy().reshape((R,T,V))
-    tau_utv = units_range_time.to_numpy().reshape((U,T,V))
-    for u in range(U):
-        for r in range(R):
-            for v in range(V): 
-                for t in range(T):
-                    m.addConstr(z_rutv[r,u,t,v] == pi_uv[u,v] * (alpha_rtv[r,t,v] * tau_utv[u,t,v])) 
-    print('Interception constraint: {:>8.3f}'.format(ft.mark()))
-
-    for r in range(R):
-        m.addConstr(Zr[r] <= z_rutv.sum(r,'*','*','*'))
-    print('Routes constraint......: {:>8.3f}'.format(ft.mark()))
-    
-    # Max num of police units
-    for u in range(U):
-        m.addConstr(pi_uv.sum(u,'*') <= 1)
-    print('Units constraint.......: {:>8.3f}'.format(ft.mark()))
-
-    m.optimize()
-    print('Optimizer..............: {:>8.3f}'.format(ft.mark()))
-
-    """
-    #create dictionary to translate nodes to node numbers
-    i = 0
-    nodes_dict = {}
-    for node in G.nodes():
-        nodes_dict[i] = node
-        i += 1
-    """
-    routes_intercepted = { k : v.X for k,v in Zr.items() }
-    units_places = { k : v.X for k,v in pi_uv.items() }
-
-    #create dictionary to translate nodes to node numbers
-    i = 0
-    nodes_dict = {}
-    for node in G.nodes():
-        nodes_dict[i] = node
-        i += 1
-        
-    #list of unit nodes from results
-    #list_unit_nodes = []
-    list_unit_nodes = list(start_units)
-    for unit, presence in units_places.items():
-        if presence == 1:
-            unitnr, unitnode = unit
-            list_unit_nodes[unitnr]=nodes_dict[unitnode]
-    print('Create dicts...........: {:>8.3f}'.format(ft.mark()))
-    print('----------------------------------')
-    print('Total optimizer loop...: {:>8.3f}'.format(ft.total()))
-    
-    return routes_intercepted, list_unit_nodes
-
 def optimization_alt(G, U, routes_time_nodes, units_range_time, R, V, T, labels, start_units, nodes_dict=None):
-    # Create model\
-    #ft = FrameTimer()
     # Disable verbose output of gurobi
     env=gp.Env(empty=True)
     env.setParam('Outputflag', 0)
@@ -151,12 +63,9 @@ def optimization_alt(G, U, routes_time_nodes, units_range_time, R, V, T, labels,
     indptr = np.arange(U + 1, dtype=int)
     indices = np.arange(U, dtype=int)
     pi_uv_const = sp.bsr_matrix((data, indices, indptr), blocksize=(1, V), shape=(U, U * V))
-    #print('\noptimization() function - step times [s]')
-    #print('Create variables.......: {:>8.3f}'.format(ft.mark()))    
 
     # Objective
     m.setObjective(quicksum(z_r), GRB.MAXIMIZE)
-    #print('Set objective..........: {:>8.3f}'.format(ft.mark()))
 
     # Interception constraint
     alpha_rtv = routes_time_nodes.to_numpy().reshape((R, T, V))
@@ -167,29 +76,15 @@ def optimization_alt(G, U, routes_time_nodes, units_range_time, R, V, T, labels,
     
     # 5.28 constraint
     m.addConstr(pi_uv_const @ pi_uv <= 1)
-    #print('Interception constraint: {:>8.3f}'.format(ft.mark()))
 
     # 5.29 constraint
     m.addConstr(z_r <= z_r_const @ pi_uv)
-    #print('Routes constraint......: {:>8.3f}'.format(ft.mark()))
-    #print('Units constraint.......: {:>8.3f}'.format(ft.mark()))
-
 
     m.optimize()
-    #print('Optimizer..............: {:>8.3f}'.format(ft.mark()))
 
-    """
-    #create dictionary to translate nodes to node numbers
-    i = 0
-    nodes_dict = {}
-    for node in G.nodes():
-        nodes_dict[i] = node
-        i += 1
-    """
     z_r_np = z_r.x
     routes_intercepted = {i: z_r_np[i] for i in range(z_r_np.shape[0])}
-    pi_uv_np = pi_uv.x.reshape(U, V)
-    # units_places = {k: v.X for k, v in pi_uv.items()}
+    pi_uv_np = pi_uv.x.reshape(U, V) 
 
     # create dictionary to translate nodes to node numbers
     if nodes_dict==None:
@@ -204,16 +99,11 @@ def optimization_alt(G, U, routes_time_nodes, units_range_time, R, V, T, labels,
             assert nodes_dict[i] == node
             i += 1
 
-
     # list of unit nodes from results
     list_unit_nodes = list(start_units)
     for agent in range(U):
         for pos in range(V):
             if pi_uv_np[agent, pos] == 1:
                 list_unit_nodes[agent] = nodes_dict[pos]
-    #print('Create dicts...........: {:>8.3f}'.format(ft.mark()))
-    #print('----------------------------------')
-    #print('Total optimizer loop...: {:>8.3f}'.format(ft.total()))
 
-    #return z_r.sum(), routes_intercepted, list_unit_nodes
     return routes_intercepted, list_unit_nodes
