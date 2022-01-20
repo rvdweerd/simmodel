@@ -309,8 +309,8 @@ class GraphWorldFromDatabank(GraphWorld):
     def __init__(self, config, env_data, optimization_method='static', fixed_initial_positions=None, state_representation='etUt', state_encoding='nodes'):
         #super().__init__('EpsGreedy')
         W_           =env_data['W']
-        hashint      =env_data['hashint']
-        databank_full=env_data['databank_full']
+        #hashint      =env_data['hashint']
+        #databank_full=env_data['databank_full']
         
         self.type                   ='GraphWorld'
         self.sp                     = su.DefineSimParameters(config)
@@ -321,9 +321,9 @@ class GraphWorldFromDatabank(GraphWorld):
         self.render_fileprefix      = 'test_scenario_t='
         
         # Load relevant optimization runs for the U trajectories from databank
-        register_coords = databank_full['U='+str(self.sp.U)][hashint]['register']
-        databank_coords = databank_full['U='+str(self.sp.U)][hashint]['databank']
-        iratios  = databank_full['U='+str(self.sp.U)][hashint]['iratios']
+        register_coords = env_data['register']
+        databank_coords = env_data['databank']
+        iratios  = env_data['iratios']
         self.register, self.databank, self.iratios = self._ConvertDataFile(register_coords, databank_coords, iratios) 
 
         # Create a world_pool list of indices of pre-saved initial conditions and their rollouts of U positions

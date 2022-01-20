@@ -501,7 +501,7 @@ def SimulateInteractiveMode(env):
     R=0
     env.render(mode=None,fname="testrun")
     while not done:
-        print('e position:',s[0],env.sp.labels2coord[s[0]])
+        print('e position:',env.state[0],env.sp.labels2coord[env.state[0]])
         print('u paths (node labels):',env.u_paths)
         print('u paths (node coords): ',end='')
         for p in env.u_paths:
@@ -516,7 +516,7 @@ def SimulateInteractiveMode(env):
         print('Current state:')
         print(s)
         print('Available actions:\n> [ ',end='')
-        n = env.neighbors[s[0]]
+        n = env.neighbors[env.state[0]]
         print(n)
         a=input(']\nAction (new node)?\n> ')
         a=n.index(int(a))
