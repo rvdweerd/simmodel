@@ -23,7 +23,7 @@ def seed_everything(seed):
     # Numpy module.
     random.seed(seed)
     # Python random module.
-    torch.manual_seed(seed)
+    #torch.manual_seed(seed)
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
     os.environ['PYTHONHASHSEED'] = str(seed)

@@ -218,9 +218,12 @@ class GraphWorld(gym.Env):
         
         # Initialize graph feature matrix
         self.gfm = copy.deepcopy(self.gfm0)
-        for u in self.state[1:]: 
+        for u_index, u in enumerate(self.state[1:]): 
             self.gfm[u,2]+=1         # f2: current presence of units
             #self.gfm[u,3]=1         # f3: node previously visited by any unit
+        for p in self.u_paths:
+            if self.local_t >= len(p)-1:
+                self.gfm[p[-1],2] += 10
         #self.gfm[self.state[0],4]=1 # f4: node previously visited by escaper
 
         # Return initial state in appropriate form
@@ -276,9 +279,12 @@ class GraphWorld(gym.Env):
 
         # Update feature matrix
         self.gfm[:,2]=0
-        for u in self.state[1:]: 
+        for u_index, u in enumerate(self.state[1:]): 
             self.gfm[u,2]+=1         # f2: current presence of units
             #self.gfm[u,2]=1         # f3: node previously visited by any unit
+        for p in self.u_paths:
+            if self.local_t >= len(p)-1:
+                self.gfm[p[-1],2] += 10
         #self.gfm[self.state[0],4]=1 # f4: node previously visited by escaper
 
         # Return s',r',done,info (new state in appropriate form)

@@ -43,15 +43,16 @@ class QNet(nn.Module):
         nr_extra_layers_1 = config['num_extra_layers']
         
         # Build the learnable affine maps:
-        self.theta1 = nn.Linear(self.node_dim, self.emb_dim, True)
-        self.theta2 = nn.Linear(self.emb_dim, self.emb_dim, True)
-        self.theta3 = nn.Linear(self.emb_dim, self.emb_dim, True)
-        self.theta4 = nn.Linear(1, self.emb_dim, True)
-        self.theta5 = nn.Linear(2*self.emb_dim, 1, True)
-        self.theta6 = nn.Linear(self.emb_dim, self.emb_dim, True)
-        self.theta7 = nn.Linear(self.emb_dim, self.emb_dim, True)
+        self.theta1 = nn.Linear(self.node_dim, self.emb_dim, True, dtype=torch.float32)
+        #torch.nn.init.xavier_normal_(self.theta1.weight)
+        self.theta2 = nn.Linear(self.emb_dim, self.emb_dim, True, dtype=torch.float32)
+        self.theta3 = nn.Linear(self.emb_dim, self.emb_dim, True, dtype=torch.float32)
+        self.theta4 = nn.Linear(1, self.emb_dim, True, dtype=torch.float32)
+        self.theta5 = nn.Linear(2*self.emb_dim, 1, True, dtype=torch.float32)
+        self.theta6 = nn.Linear(self.emb_dim, self.emb_dim, True, dtype=torch.float32)
+        self.theta7 = nn.Linear(self.emb_dim, self.emb_dim, True, dtype=torch.float32)
         
-        self.theta1_extras = [nn.Linear(self.emb_dim, self.emb_dim, True).to(device) for _ in range(nr_extra_layers_1)]
+        self.theta1_extras = [nn.Linear(self.emb_dim, self.emb_dim, True, dtype=torch.float32).to(device) for _ in range(nr_extra_layers_1)]
         self.numTrainableParameters()
 
     def forward(self, xv, Ws):
@@ -66,7 +67,7 @@ class QNet(nn.Module):
         
         # Graph embedding
         # Note: we first compute s1 and s3 once, as they are not dependent on mu
-        mu = torch.zeros(batch_size, num_nodes, self.emb_dim, device=device)
+        mu = torch.zeros(batch_size, num_nodes, self.emb_dim, device=device, dtype=torch.float32)
         s1 = self.theta1(xv)  # (batch_size, num_nodes, emb_dim)
         for layer in self.theta1_extras:
             s1 = layer(F.relu(s1))  # we apply the extra layer
@@ -124,6 +125,9 @@ class QFunction():
         estimated_rewards = self.predict(state_tsr, W)  # size (nr_nodes,)
         reachable_rewards = estimated_rewards[reachable_nodes]
         #sorted_reward_idx = estimated_rewards.argsort(descending=True)
+        #print(reachable_rewards)
+        #print(state_tsr)
+        #print(W)
         action = torch.argmax(reachable_rewards).detach().item()
         action_nodeselect = reachable_nodes[action]
         best_reward = reachable_rewards[action]
@@ -171,22 +175,26 @@ def init_model(config, fname=None):
     return Q_func, Q_net, optimizer, lr_scheduler
 
 def checkpoint_model(model, optimizer, lr_scheduler, loss, 
-                     episode, avg_length, logdir='test'):
+                     episode, avg_length, logdir='test', best_only=False):
     if not os.path.exists(logdir):
         os.makedirs(logdir)
-    
-    fname = os.path.join(logdir, 'ep_{}'.format(episode))
-    fname += '_length_{}'.format(avg_length)
-    fname += '.tar'
-    
-    torch.save({
-        'episode': episode,
-        'model': model.state_dict(),
-        'optimizer': optimizer.state_dict(),
-        'lr_scheduler': lr_scheduler.state_dict(),
-        'loss': loss,
-        'avg_length': avg_length
-    }, fname)
+        
+    fname_impr = os.path.join(logdir, 'ep_{}'.format(episode))
+    fname_impr += '_length_{}'.format(avg_length)
+    fname_impr += '.tar'
+    fname_best = os.path.join(logdir, 'best_model.tar')
+    fnames=[fname_best]
+    #if not best_only:
+    #    fnames.append(fname_impr)
+    for fname in fnames:
+        torch.save({
+            'episode': episode,
+            'model': model.state_dict(),
+            'optimizer': optimizer.state_dict(),
+            'lr_scheduler': lr_scheduler.state_dict(),
+            'loss': loss,
+            'avg_length': avg_length
+        }, fname)
 
 class Memory(object):
     def __init__(self, capacity):
