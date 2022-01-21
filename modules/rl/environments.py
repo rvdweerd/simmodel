@@ -64,9 +64,9 @@ class GraphWorld(gym.Env):
         # 5  [.] ## off ## distance from nearest target node
         # 6  [.] ...
         self.F = 3
-        self.gfm0 = np.zeros((self.F,self.sp.V))
-        self.gfm0[0,:] = np.array([i for i in range(self.sp.V)])
-        self.gfm0[1,np.array(list(self.sp.target_nodes))]=1 # set target nodes, fixed for the given graph
+        self.gfm0 = np.zeros((self.sp.V,self.F))
+        self.gfm0[:,0] = np.array([i for i in range(self.sp.V)])
+        self.gfm0[np.array(list(self.sp.target_nodes)),1]=1 # set target nodes, fixed for the given graph
         self.gfm  = copy.deepcopy(self.gfm0)
         self.reset()
 
@@ -219,9 +219,9 @@ class GraphWorld(gym.Env):
         # Initialize graph feature matrix
         self.gfm = copy.deepcopy(self.gfm0)
         for u in self.state[1:]: 
-            self.gfm[2,u]+=1         # f2: current presence of units
-            #self.gfm[3,u]=1         # f3: node previously visited by any unit
-        #self.gfm[4,self.state[0]]=1 # f4: node previously visited by escaper
+            self.gfm[u,2]+=1         # f2: current presence of units
+            #self.gfm[u,3]=1         # f3: node previously visited by any unit
+        #self.gfm[self.state[0],4]=1 # f4: node previously visited by escaper
 
         # Return initial state in appropriate form
         if self.state_representation == 'etUt':
@@ -275,11 +275,11 @@ class GraphWorld(gym.Env):
             self.local_t = 0
 
         # Update feature matrix
-        self.gfm[2,:]=0
+        self.gfm[:,2]=0
         for u in self.state[1:]: 
-            self.gfm[2,u]+=1        # f2: current presence of units
-            #self.gfm[3,u]=1         # f3: node previously visited by any unit
-        #self.gfm[4,self.state[0]]=1 # f4: node previously visited by escaper
+            self.gfm[u,2]+=1         # f2: current presence of units
+            #self.gfm[u,2]=1         # f3: node previously visited by any unit
+        #self.gfm[self.state[0],4]=1 # f4: node previously visited by escaper
 
         # Return s',r',done,info (new state in appropriate form)
         if self.state_representation == 'etUt':
@@ -368,9 +368,9 @@ class GraphWorldFromDatabank(GraphWorld):
         # 5  [.] ## off ## distance from nearest target node
         # 6  [.] ...
         self.F = 3
-        self.gfm0 = np.zeros((self.F,self.sp.V))
-        self.gfm0[0,:] = np.array([i for i in range(self.sp.V)])
-        self.gfm0[1,np.array(list(self.sp.target_nodes))]=1 # set target nodes, fixed for the given graph
+        self.gfm0 = np.zeros((self.sp.V,self.F))
+        self.gfm0[:,0] = np.array([i for i in range(self.sp.V)])
+        self.gfm0[np.array(list(self.sp.target_nodes)),1]=1 # set target nodes, fixed for the given graph
         self.gfm  = copy.deepcopy(self.gfm0)
         self.redefine_graph_structure(W_,self.sp.nodeid2coord)
         #self.reset()

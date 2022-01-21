@@ -43,7 +43,7 @@ config['logdir']        = './results_Phase2/CombOpt2'
 
 def Test(config):
     qnet=QNet(config).to(device)
-    xv=torch.tensor(env_all[0].gfm.T, dtype=torch.float32, device=device).unsqueeze(0)
+    xv=torch.tensor(env_all[0].gfm, dtype=torch.float32, device=device).unsqueeze(0)
     W=torch.tensor(env_all[0].sp.W,dtype=torch.float32,device=device).unsqueeze(0)
     y=qnet(xv,W)
     print(y)
@@ -87,7 +87,7 @@ def train():
         env=random.choice(env_all)
         current_state = env.reset()
         done=False   
-        current_state_tsr = torch.tensor(env.gfm.T, dtype=torch.float32, device=device) 
+        current_state_tsr = torch.tensor(env.gfm, dtype=torch.float32, device=device) 
         # Note: gfm = Graph Feature Matrix (FxV), columns are the node features, managed by the environment
         # It's currently defined (for each node) as:
         #   [.] node number
@@ -128,7 +128,7 @@ def train():
                     #print('Ep {} exploit | current sol: {} / next est reward: {} | sol: {}'.format(episode, solution, est_reward,solutions),'nextnode',next_node)
             
             next_state, reward, done, info = env.step(action)
-            next_state_tsr = torch.tensor(env.gfm.T, dtype=torch.float32, device=device)
+            next_state_tsr = torch.tensor(env.gfm, dtype=torch.float32, device=device)
             
             # store rewards and states obtained along this episode:
             states.append(next_state)

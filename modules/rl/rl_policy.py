@@ -410,7 +410,7 @@ class GNN_s2v_Policy(Policy):
         #self.all_actions=[i for i in range(env.max_outdegree)]
     
     def sample_action(self, gfm, W, reachable_nodes):
-        xv=torch.tensor(gfm.T, dtype=torch.float32, device=device)#.unsqueeze(0)
+        xv=torch.tensor(gfm, dtype=torch.float32, device=device)#.unsqueeze(0)
         #W=torch.tensor(W,dtype=torch.float32,device=device).unsqueeze(0)
         with torch.no_grad():
             action, action_nodeselect, best_reward = self.qfunc.get_best_action(xv, W, reachable_nodes)
