@@ -38,6 +38,7 @@ class GraphWorld(gym.Env):
         self.iratio                 = 0
         self.state0                 = ()
         self.state                  = ()   # current internal state in node labels: (e,U1,U2,...)
+        self.obs                    = None # observation, encoded state based on state representation (et,etUt,etU0 or etUte0U0)
         self.global_t               = 0
         self.local_t                = 0
         self.max_timesteps          = self.sp.T
@@ -224,15 +225,16 @@ class GraphWorld(gym.Env):
 
         # Return initial state in appropriate form
         if self.state_representation == 'etUt':
-            return self._encode(self.state)
+            self.obs = self._encode(self.state)
         elif self.state_representation == 'et':
-            return self._encode((self.state[0],))
+            self.obs = self._encode((self.state[0],))
         elif self.state_representation == 'etUte0U0':
-            return self._encode(self.state+self.state0)
+            self.obs = self._encode(self.state+self.state0)
         elif self.state_representation == 'ete0U0':
-            return self._encode(tuple([self.state[0]])+self.state0)
+            self.obs = self._encode(tuple([self.state[0]])+self.state0)
         else:
             assert False
+        return self.obs
 
     def step(self, action_idx):
         # Take a step
@@ -281,13 +283,16 @@ class GraphWorld(gym.Env):
 
         # Return s',r',done,info (new state in appropriate form)
         if self.state_representation == 'etUt':
-            return self._encode(self.state), reward, done, info
+            self.obs = self._encode(self.state), reward, done, info
         elif self.state_representation == 'et':
-            return self._encode((self.state[0],)), reward, done, info
+            self.obs = self._encode((self.state[0],)), reward, done, info
         elif self.state_representation == 'etUte0U0':
-            return self._encode(self.state+self.state0), reward, done, info
+            self.obs = self._encode(self.state+self.state0), reward, done, info
         elif self.state_representation == 'ete0U0':
-            return self._encode(tuple([self.state[0]])+self.state0), reward, done, info
+            self.obs = self._encode(tuple([self.state[0]])+self.state0), reward, done, info
+        else:
+            assert False
+        return self.obs
 
     def render(self, mode=None, fname=None):#file_name=None):
         e = self.state[0]

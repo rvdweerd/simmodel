@@ -20,40 +20,40 @@ def PlotAgentsOnGraph_(sp, escape_pos, pursuers_pos, timestep, fig_show=False, f
     pos=sp.pos
     plt.clf()
     colorlist = [1 for _ in range(sp.V)]
-    sizelist =  [400 for _ in range(sp.V)]
+    sizelist =  [1200 for _ in range(sp.V)]#400
     node_text = dict([(c,str(sp.coord2labels[c])) for c in sp.G.nodes])
     colorlist=["white"]*sp.V
     colorlist[sp.labels2nodeids[escape_pos]]='#FF0000'
-    sizelist[sp.labels2nodeids[escape_pos]]=600
+    sizelist[sp.labels2nodeids[escape_pos]]=1200#600
     
     #node_text[sp.labels2coord[escape_pos]]='e'
     for i,P_pos in enumerate(pursuers_pos):
         colorlist[sp.labels2nodeids[P_pos]]='#0000FF'
-        sizelist[sp.labels2nodeids[P_pos]]=600
+        sizelist[sp.labels2nodeids[P_pos]]=1200#600
         #fontcolors[sp.labels2nodeids[P_pos]]='white'
         #node_text[sp.labels2coord[P_pos]]='u'+str(i)
 
     options = {
     "font_color": 'grey',
     "alpha": 1.,
-    "font_size": 8,
+    "font_size": 12,#8
     "with_labels": False,
-    "node_size": 400,
+    "node_size": 1200,#400,
     "node_color": colorlist,#"white",
-    "linewidths": .5,
+    "linewidths": 1.5,#.5
     "labels": node_text,#labels,
     "edge_color": "black",#["black","black","yellow","black","black","black","black"],
     "edgecolors": ["black"]*sp.V,#["black","black","red","black","black","black","black"],
-    "width": .5,
+    "width": 1.5,#.5
     }
     #nx.relabel_nodes(G, labels, copy=True)
     #nx.convert_node_labels_to_integers(G)
     
     #matplotlib.rcParams['figure.figsize'] = [7, 7]
     #nx.draw_networkx(G, pos, **options)
-    nx.draw_networkx_edges(G, pos, edge_color='grey', width=1, alpha=1.)
-    nx.draw_networkx_labels(G,pos,font_size=8,labels=node_text,font_color='black')
-    nx.draw_networkx_nodes(G, pos, node_size=sizelist, node_color=colorlist, alpha=.6)
+    nx.draw_networkx_edges(G, pos, edge_color='grey', width=5, alpha=1.)#width=1
+    nx.draw_networkx_labels(G,pos,font_size=12,labels=node_text, font_color='black')#fontsize=8
+    nx.draw_networkx_nodes(G, pos, node_size=sizelist, node_color=colorlist, alpha=1.)#alhpa=.6
     #nx.draw_networkx_nodes(G, pos, node_size=10, node_color="k")
     
     plt.axis('off')

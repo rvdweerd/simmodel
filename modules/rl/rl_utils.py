@@ -15,7 +15,17 @@ def CalculateNumTrainableParameters(model):
     assert total == sum(p.numel() for p in model.parameters() if p.requires_grad)
     return total
 
-def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, logdir='./temp', has_Q_table=False):
+def EvalArgs1(env):
+    # arguments of the call to the policy class that samples an action
+    # this is the default
+    return env.obs, env._availableActionsInCurrentState()
+
+def EvalArgs2(env):
+    # arguments of the call to the policy class that samples an action
+    # this version is used for GNNs
+    return env.gfm, env.sp.W, env.neighbors[env.state[0]]
+
+def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, logdir='./temp', has_Q_table=False, eval_arg_func=EvalArgs1, silent_mode=False):
     # Escaper chooses random neighboring nodes until temination
     # Inputs:
     #   test_set: list of indices to the databank
@@ -28,10 +38,14 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
     Path(logdir+'/runs').mkdir(parents=True, exist_ok=True)
     file_prefix=logdir+'/runs/Entry='
     OutputFile= logdir+'/Log_n='+str(len(test_set))+'.txt'
-    OF = open(OutputFile, 'w')
-    def printing(text):
-        print(text)
-        OF.write(text + "\n")
+    if silent_mode:
+        def printing(text):
+            pass
+    else:
+        OF = open(OutputFile, 'w')
+        def printing(text):
+            print(text)
+            OF.write(text + "\n")
     np.set_printoptions(formatter={'float':"{0:0.1f}".format})
     np.set_printoptions(formatter={'int'  :"{0:<3}".format})
     if has_Q_table:
@@ -71,7 +85,9 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
                 plot=env.render(fname=None)
                 plot_cache.append(plot)
             s_start=env.state
-            action,_ = policy.sample_action(s, env._availableActionsInCurrentState())
+            #action,_ = policy.sample_action(s, env._availableActionsInCurrentState())
+            #action,_ = policy.sample_action(env.gfm, env.sp.W, env.neighbors[env.state[0]])
+            action,_ = policy.sample_action(*eval_arg_func(env))
             action_probs = policy.get_action_probs()
             s,r,done,info = env.step(action)
             s_prime = env.state

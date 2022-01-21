@@ -146,5 +146,6 @@ def GetPartialGraphEnvironments_Manh3x3(state_repr, state_enc, edge_removals, U,
                 valids = np.logical_and(np.logical_not(s),r)
             if valids.sum() > 0:
                 env.world_pool = list(np.array(env.all_worlds)[valids])
+                env.reset()
                 all_envs.append(env)
     return all_envs

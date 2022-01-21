@@ -65,7 +65,7 @@ def GetStateEncodingDimension(state_representation, V, U):
         state_len=2*(1+U)
     else:
         assert False
-    print('State encoding vector dim:',state_dim, 'State node based dim:',state_len)
+    #print('State encoding vector dim:',state_dim, 'State node based dim:',state_len)
     return state_dim, chunks, state_len
 
 def GetWorldPool(all_worlds, fixed_initial_positions, register):

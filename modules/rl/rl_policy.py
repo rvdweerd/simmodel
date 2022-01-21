@@ -400,3 +400,22 @@ class EpsilonGreedyPolicySB3_PPO(Policy):
             all_actions = torch.tensor(self.all_actions).to(device)
             self.probs = torch.exp(self.model.policy.get_distribution(obs).log_prob(all_actions)).detach().cpu().numpy()
         return action, None
+
+class GNN_s2v_Policy(Policy):
+    def __init__(self, qfunc):
+        super().__init__('GNN_s2v')
+        #self.env=env
+        self.qfunc = qfunc
+        self.__name__ = 'GNN-Struc2Vec'
+        #self.all_actions=[i for i in range(env.max_outdegree)]
+    
+    def sample_action(self, gfm, W, reachable_nodes):
+        xv=torch.tensor(gfm.T, dtype=torch.float32, device=device)#.unsqueeze(0)
+        #W=torch.tensor(W,dtype=torch.float32,device=device).unsqueeze(0)
+        with torch.no_grad():
+            action, action_nodeselect, best_reward = self.qfunc.get_best_action(xv, W, reachable_nodes)
+            #action, _states = self.model.predict(obs, deterministic=self.deterministic)
+            #obs = torch.tensor(obs)[None,:].to(device)
+            #all_actions = torch.tensor(self.all_actions).to(device)
+            #self.probs = torch.exp(self.model.policy.get_distribution(obs).log_prob(all_actions)).detach().cpu().numpy()
+        return action, None
