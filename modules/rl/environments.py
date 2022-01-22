@@ -65,7 +65,7 @@ class GraphWorld(gym.Env):
         # 6  [.] ...
         self.F = 3
         self.gfm0 = np.zeros((self.sp.V,self.F))
-        self.gfm0[:,0] = np.array([i for i in range(self.sp.V)])
+        #self.gfm0[:,0] = np.array([i for i in range(self.sp.V)])
         self.gfm0[np.array(list(self.sp.target_nodes)),1]=1 # set target nodes, fixed for the given graph
         self.gfm  = copy.deepcopy(self.gfm0)
         self.reset()
@@ -218,12 +218,14 @@ class GraphWorld(gym.Env):
         
         # Initialize graph feature matrix
         self.gfm = copy.deepcopy(self.gfm0)
+        
+        self.gfm[self.state[0],2]=1 # position of E
         for u_index, u in enumerate(self.state[1:]): 
-            self.gfm[u,2]+=1         # f2: current presence of units
-            #self.gfm[u,3]=1         # f3: node previously visited by any unit
+            self.gfm[u,3]+=1         # f2: current presence of units
+            
         for p in self.u_paths:
-            if self.local_t >= len(p)-1:
-                self.gfm[p[-1],2] += 10
+            if self.local_t < len(p)-1:
+                self.gfm[p[self.local_t],4] = 1 # at least one unit at this node will move
         #self.gfm[self.state[0],4]=1 # f4: node previously visited by escaper
 
         # Return initial state in appropriate form
@@ -278,14 +280,18 @@ class GraphWorld(gym.Env):
             self.local_t = 0
 
         # Update feature matrix
+        #self.gfm[:,0]=0
         self.gfm[:,2]=0
+        self.gfm[:,3]=0
+        self.gfm[:,4]=0
+        
+        self.gfm[self.state[0],2]=1 # position of E
         for u_index, u in enumerate(self.state[1:]): 
-            self.gfm[u,2]+=1         # f2: current presence of units
-            #self.gfm[u,2]=1         # f3: node previously visited by any unit
+            self.gfm[u,3]+=1         # f2: current presence of units
+            
         for p in self.u_paths:
-            if self.local_t >= len(p)-1:
-                self.gfm[p[-1],2] += 10
-        #self.gfm[self.state[0],4]=1 # f4: node previously visited by escaper
+            if self.local_t < len(p)-1:
+                self.gfm[p[self.local_t],4] = 1 # at least one unit at this node will move
 
         # Return s',r',done,info (new state in appropriate form)
         if self.state_representation == 'etUt':
@@ -320,7 +326,7 @@ class GraphWorldFromDatabank(GraphWorld):
     def __init__(self, config, env_data, optimization_method='static', fixed_initial_positions=None, state_representation='etUt', state_encoding='nodes'):
         #super().__init__('EpsGreedy')
         W_           =env_data['W']
-        #hashint      =env_data['hashint']
+        self.hashint =env_data['hashint']
         #databank_full=env_data['databank_full']
         
         self.type                   ='GraphWorld'
@@ -365,18 +371,23 @@ class GraphWorldFromDatabank(GraphWorld):
         self.metadata = {'render.modes':['human']}
         self.max_episode_length = self.max_timesteps
 
-        # Graph feature matrix, (FxV) with F number of features, V number of nodes
-        # 0  [.] node number
-        # 1  [.] 1 if target node, 0 otherwise 
-        # 2  [.] # of units present at node at current time
-        # 3  [.] ## off ## 1 if node previously visited by unit
-        # 4  [.] ## off ## 1 if node previously visited by escaper
-        # 5  [.] ## off ## distance from nearest target node
-        # 6  [.] ...
-        self.F = 3
+        # Graph feature matrix, (VxF) with F number of features, V number of nodes
+        # 0  [.] NodeID             : node number 0..N (nodelabel numbering)
+        # 1  [.] Target nodes       : 1 if target node, 0 otherwise 
+        # 2  [.] E position         : position of Escaper
+        # 3  [.] U position         : #units present at node at current time
+        # 4  [.] U movement         : 1 if >one of the units at this pos will move, 0 otherwise
+        # 5  [.] 
+        # 6  [.] 
+        # 7  [.] 
+        self.F = 5
         self.gfm0 = np.zeros((self.sp.V,self.F))
         self.gfm0[:,0] = np.array([i for i in range(self.sp.V)])
         self.gfm0[np.array(list(self.sp.target_nodes)),1]=1 # set target nodes, fixed for the given graph
+        #for n, coord in self.sp.labels2coord.items():
+        #    self.gfm0[n,1]=coord[0]
+        #    self.gfm0[n,2]=coord[1]
+        
         self.gfm  = copy.deepcopy(self.gfm0)
         self.redefine_graph_structure(W_,self.sp.nodeid2coord)
         #self.reset()

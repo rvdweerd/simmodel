@@ -137,6 +137,7 @@ def GetPartialGraphEnvironments_Manh3x3(state_repr, state_enc, edge_removals, U,
         #W_, hashint, hashstr = random.choice(register_full[4])
             env_data = databank_full['U='+str(U)][hashint] # dict contains  'register':{(e0,U0):index}, 'databank':[], 'iratios':[]
             env_data['W'] = W_
+            env_data['hashint']=hashint
             env = GraphWorldFromDatabank(config,env_data,optimization_method='static',state_representation=state_repr,state_encoding=state_enc)
             s = solvable['U=2'][hashint]
             r = reachable['U=2'][hashint]

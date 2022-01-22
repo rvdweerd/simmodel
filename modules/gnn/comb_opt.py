@@ -40,10 +40,11 @@ class QNet(nn.Module):
         self.node_dim = config['node_dim']
         
         # We can have an extra layer after theta_1 (for the sake of example to make the network deeper)
-        nr_extra_layers_1 = config['num_extra_layers']
+        #nr_extra_layers_1 = config['num_extra_layers']
         
         # Build the learnable affine maps:
-        self.theta1 = nn.Linear(self.node_dim, self.emb_dim, True, dtype=torch.float32)
+        self.theta1a = nn.Linear(self.node_dim, self.emb_dim, True, dtype=torch.float32)
+        self.theta1b = nn.Linear(self.emb_dim, self.emb_dim, True, dtype=torch.float32)
         #torch.nn.init.xavier_normal_(self.theta1.weight)
         self.theta2 = nn.Linear(self.emb_dim, self.emb_dim, True, dtype=torch.float32)
         self.theta3 = nn.Linear(self.emb_dim, self.emb_dim, True, dtype=torch.float32)
@@ -52,7 +53,7 @@ class QNet(nn.Module):
         self.theta6 = nn.Linear(self.emb_dim, self.emb_dim, True, dtype=torch.float32)
         self.theta7 = nn.Linear(self.emb_dim, self.emb_dim, True, dtype=torch.float32)
         
-        self.theta1_extras = [nn.Linear(self.emb_dim, self.emb_dim, True, dtype=torch.float32).to(device) for _ in range(nr_extra_layers_1)]
+        #self.theta1_extras = [nn.Linear(self.emb_dim, self.emb_dim, True, dtype=torch.float32).to(device) for _ in range(nr_extra_layers_1)]
         self.numTrainableParameters()
 
     def forward(self, xv, Ws):
@@ -68,9 +69,10 @@ class QNet(nn.Module):
         # Graph embedding
         # Note: we first compute s1 and s3 once, as they are not dependent on mu
         mu = torch.zeros(batch_size, num_nodes, self.emb_dim, device=device, dtype=torch.float32)
-        s1 = self.theta1(xv)  # (batch_size, num_nodes, emb_dim)
-        for layer in self.theta1_extras:
-            s1 = layer(F.relu(s1))  # we apply the extra layer
+        #s1 = self.theta1a(xv)  # (batch_size, num_nodes, emb_dim)
+        s1 = self.theta1b(F.relu(self.theta1a(xv)))  # (batch_size, num_nodes, emb_dim)
+        #for layer in self.theta1_extras:
+        #    s1 = layer(F.relu(s1))  # we apply the extra layer
         
         s3_1 = F.relu(self.theta4(Ws.unsqueeze(3)))  # (batch_size, nr_nodes, nr_nodes, emb_dim) - each "weigth" is a p-dim vector        
         s3_2 = torch.sum(s3_1, dim=1)  # (batch_size, nr_nodes, emb_dim) - the embedding for each node
@@ -109,7 +111,8 @@ class QFunction():
         self.model = model  # The actual QNet
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
-        self.loss_fn = nn.MSELoss()
+        #self.loss_fn = nn.MSELoss()
+        self.loss_fn = nn.SmoothL1Loss()
     
     def predict(self, state_tsr, W):
         # batch of 1 - only called at inference time
@@ -184,8 +187,9 @@ def checkpoint_model(model, optimizer, lr_scheduler, loss,
     fname_impr += '.tar'
     fname_best = os.path.join(logdir, 'best_model.tar')
     fnames=[fname_best]
-    #if not best_only:
-    #    fnames.append(fname_impr)
+    print(fname_impr)
+    if not best_only:
+        pass#fnames.append(fname_impr)
     for fname in fnames:
         torch.save({
             'episode': episode,
