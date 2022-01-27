@@ -14,6 +14,8 @@ class Policy():
         self.__name__ = 'none'
         self.deterministic=True
     def sample_action(self, obs, available_actions):
+        #if type(obs[-1])==dict:
+        #    obs=obs[0]
         return self.sample_greedy_action(obs, available_actions)
     def sample_greedy_action(self, obs, available_actions):
         pass
@@ -65,6 +67,8 @@ class EpsilonGreedyPolicy(Policy):
     def sample_action(self, obs, available_actions):
         """
         """
+        #if type(obs[-1])==dict:
+        #    obs=obs[0]
         # If state has never been visited, create Q table entry and initiate counts
         if obs not in self.Q:
             self.Q[obs] = np.ones(len(self.actions_from_node[obs[0]])).astype(np.float32) * self.initial_Q_values

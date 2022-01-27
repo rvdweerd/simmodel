@@ -496,7 +496,8 @@ def SimulatePursuersPathways(conf, optimization_method='dynamic', fixed_initial_
         PlotAgentsOnGraph(sp, e, p, t)
 
 def SimulateInteractiveMode(env):    
-    s=env.reset()
+    #s=env.reset()
+    s=env.state
     done=False
     R=0
     env.render(mode=None,fname="testrun")

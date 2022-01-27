@@ -3,7 +3,7 @@ from itertools import product
 import random 
 import networkx as nx
 import pickle
-from modules.rl.environments import GraphWorld, GraphWorldFromDatabank
+from modules.rl.environments import GraphWorld#, GraphWorldFromDatabank
 
 def rand_key(p):
     key1 = ""
@@ -72,7 +72,8 @@ def get_all_edge_removals_symmetric(W_, start_node, target_nodes, removals=[1], 
                 hashes_int.add(hash)
             arr = create_adj_matrix(N,coord_upper,vals,W_)
             # Check; no orphan nodes (nodes with no edges) and at least one target node is reachable
-            if np.min(arr.sum(axis=1)) > 1 and target_reachable(arr, start_node, target_nodes):
+            #if np.min(arr.sum(axis=1)) > 1 and target_reachable(arr, start_node, target_nodes):
+            if target_reachable(arr, start_node, target_nodes):
                 num_edges_removed = K-np.sum(vals)
                 all_W.append((arr, num_edges_removed, hash_int, hash_str))
                 if (K-np.sum(vals)) not in W_per_num_edge_removals:
@@ -104,48 +105,48 @@ def get_all_edge_removals_symmetric(W_, start_node, target_nodes, removals=[1], 
     return all_W, W_per_num_edge_removals
 
 def LoadData():
-    in_file=open("./datasets/_partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_databank_full","rb")
+    in_file=open("./datasets/__partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_databank_full","rb")
     databank_full=pickle.load(in_file)
     in_file.close()
-    in_file=open("./datasets/_partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_partial_graph_register","rb")
+    in_file=open("./datasets/__partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_partial_graph_register","rb")
     partial_graph_register=pickle.load(in_file)
     in_file.close()
-    in_file=open("./datasets/_partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_reachable_by_pursuers","rb")
+    in_file=open("./datasets/__partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_reachable_by_pursuers","rb")
     reachable_by_pursuers=pickle.load(in_file)
     in_file.close()
-    in_file=open("./datasets/_partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_solvable","rb")
+    in_file=open("./datasets/__partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_solvable","rb")
     solvable=pickle.load(in_file)
     in_file.close()
     return databank_full, partial_graph_register, solvable, reachable_by_pursuers
 
-def GetPartialGraphEnvironments_Manh3x3(state_repr, state_enc, edge_removals, U, solvable=True, reachable_for_units=True):
-    config={
-        'graph_type': "Manhattan",
-        'make_reflexive': True,
-        'N': 3,    # number of nodes along one side
-        'U': 2,    # number of pursuer units
-        'L': 4,    # Time steps
-        'T': 7,
-        'R': 100,  # Number of escape routes sampled 
-        'direction_north': False,       # Directional preference of escaper
-        'loadAllStartingPositions': False
-    }
-    databank_full, register_full, solvable, reachable = LoadData()
-    all_envs=[]
-    for e in edge_removals:
-        for W_, hashint, hashstr in register_full[e]:
-        #W_, hashint, hashstr = random.choice(register_full[4])
-            env_data = databank_full['U='+str(U)][hashint] # dict contains  'register':{(e0,U0):index}, 'databank':[], 'iratios':[]
-            env_data['W'] = W_
-            env = GraphWorldFromDatabank(config,env_data,optimization_method='static',state_representation=state_repr,state_encoding=state_enc)
-            s = solvable['U=2'][hashint]
-            r = reachable['U=2'][hashint]
-            if solvable and reachable_for_units:
-                valids = np.logical_and(s,r)
-            elif not solvable and reachable_for_units:
-                valids = np.logical_and(np.logical_not(s),r)
-            if valids.sum() > 0:
-                env.world_pool = list(np.array(env.all_worlds)[valids])
-                env.reset()
-                all_envs.append(env)
-    return all_envs
+# def GetPartialGraphEnvironments_Manh3x3(state_repr, state_enc, edge_removals, U, solvable=True, reachable_for_units=True):
+#     config={
+#         'graph_type': "Manhattan",
+#         'make_reflexive': True,
+#         'N': 3,    # number of nodes along one side
+#         'U': 2,    # number of pursuer units
+#         'L': 4,    # Time steps
+#         'T': 7,
+#         'R': 100,  # Number of escape routes sampled 
+#         'direction_north': False,       # Directional preference of escaper
+#         'loadAllStartingPositions': False
+#     }
+#     databank_full, register_full, solvable, reachable = LoadData()
+#     all_envs=[]
+#     for e in edge_removals:
+#         for W_, hashint, hashstr in register_full[e]:
+#         #W_, hashint, hashstr = random.choice(register_full[4])
+#             env_data = databank_full['U='+str(U)][hashint] # dict contains  'register':{(e0,U0):index}, 'databank':[], 'iratios':[]
+#             env_data['W'] = W_
+#             env = GraphWorldFromDatabank(config,env_data,optimization_method='static',state_representation=state_repr,state_encoding=state_enc)
+#             s = solvable['U=2'][hashint]
+#             r = reachable['U=2'][hashint]
+#             if solvable and reachable_for_units:
+#                 valids = np.logical_and(s,r)
+#             elif not solvable and reachable_for_units:
+#                 valids = np.logical_and(np.logical_not(s),r)
+#             if valids.sum() > 0:
+#                 env.world_pool = list(np.array(env.all_worlds)[valids])
+#                 env.reset()
+#                 all_envs.append(env)
+#     return all_envs

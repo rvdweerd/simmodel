@@ -30,3 +30,4 @@ policy=EpsilonGreedyPolicySB3_PPO(env_test, model, deterministic=eval_determinis
 lengths, returns, captures = EvaluatePolicy(env_test, policy, env_test.world_pool*sample_multiplier, print_runs=False, save_plots=False, logdir=exp_rootdir+'/gen')
 plotlist = GetFullCoverageSample(returns, env_test.world_pool*sample_multiplier, bins=10, n=10)
 EvaluatePolicy(env_test, policy, plotlist, print_runs=True, save_plots=True, logdir=exp_rootdir+'/gen')
+print('Finished')
