@@ -10,9 +10,9 @@ import plotly.graph_objects as go
 from pathlib import Path
 
 #world_name='Manhattan3x3_PauseFreezeWorld'
-world_name='Manhattan3x3_WalkAround'
+#world_name='Manhattan3x3_WalkAround'
 #world_name='Manhattan5x5_FixedEscapeInit'
-#world_name='MetroU3_e17tborder_FixedEscapeInit'
+world_name='MetroU3_e17tborder_FixedEscapeInit'
 #world_name='SparseManhattan5x5'
 
 state_repr='et'

@@ -496,7 +496,8 @@ def SimulatePursuersPathways(conf, optimization_method='dynamic', fixed_initial_
         PlotAgentsOnGraph(sp, e, p, t)
 
 def SimulateInteractiveMode(env):    
-    s=env.reset()
+    #s=env.reset()
+    s=env.state
     done=False
     R=0
     env.render(mode=None,fname="testrun")
@@ -515,12 +516,15 @@ def SimulateInteractiveMode(env):
         print('------------')
         print('Current state:')
         print(s)
-        print('Available actions:\n> [ ',end='')
+        print('Available actions:\n',end='')
         n = env.neighbors[env.state[0]]
         print(n)
-        a=input(']\nAction (new node)?\n> ')
+        while True:
+            a=input('\nAction (new node)?\n> ')
+            if int(a) in n: break
         a=n.index(int(a))
         s,r,done,_=env.step(int(a))
+        s=env.state
         env.render(mode=None,fname="testrun")
         R+=r
-    print('done, reward='+str(R),'\n---------------')
+    print('******************** done, reward='+str(R),'**********************\n\n---------------')

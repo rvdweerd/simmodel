@@ -17,8 +17,8 @@
 //                "--train","False",
 //                "--eval","False",
 //                "--num_seeds","1",
-                  "--num_edges","4",
-                  "--U","3"  
+                  "--num_edges","6",
+                  "--U","2"  
             ],
             //"cwd" : "${workspaceFolder}" //{fileDirname} {workspaceFolder}
 //            "pipeArgs": [
