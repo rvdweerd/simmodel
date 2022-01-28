@@ -20,7 +20,7 @@ world_name='Manhattan3x3_WalkAround'
 state_repr='etUt'
 env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc='nodes')
 
-seed_everything(42) # other seeds require more steps (1000)
+seed_everything(420) # other seeds require more steps (1000)
 config={}
 config['node_dim']      = env.F
 config['num_nodes']     = env.sp.V
@@ -121,7 +121,7 @@ for episode in range(config['num_episodes']):
         actions_nodeselect.append(action_nodeselect)
         
         # store our experience in memory, using n-step Q-learning:
-        if len(actions) > N_STEP_QL:
+        if len(actions) >= N_STEP_QL:
             memory.remember(Experience(state          = states[-N_STEP_QL],
                                        state_tsr      = states_tsrs[-N_STEP_QL],
                                        W              = env.sp.W,
