@@ -104,20 +104,42 @@ def get_all_edge_removals_symmetric(W_, start_node, target_nodes, removals=[1], 
 
     return all_W, W_per_num_edge_removals
 
-def LoadData():
+def LoadData(edge_blocking=False):
     in_file=open("./datasets/__partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_databank_full","rb")
     databank_full=pickle.load(in_file)
     in_file.close()
-    in_file=open("./datasets/__partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_partial_graph_register","rb")
+    in_file=open("./datasets/__partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_partial_graph_register_trimmed","rb")
     partial_graph_register=pickle.load(in_file)
     in_file.close()
-    in_file=open("./datasets/__partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_reachable_by_pursuers","rb")
-    reachable_by_pursuers=pickle.load(in_file)
-    in_file.close()
-    in_file=open("./datasets/__partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_solvable","rb")
-    solvable=pickle.load(in_file)
-    in_file.close()
-    return databank_full, partial_graph_register, solvable, reachable_by_pursuers
+    #in_file=open("./datasets/__partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_reachable_by_pursuers","rb")
+    #reachable_by_pursuers=pickle.load(in_file)
+    #in_file.close()
+    if edge_blocking:
+        in_file=open("./datasets/__partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_solvable_edge_blocking","rb")
+        solvable=pickle.load(in_file)
+        in_file.close()
+    else:
+        in_file=open("./datasets/__partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_solvable_edge_crossing","rb")
+        solvable=pickle.load(in_file)
+        in_file.close()
+    return databank_full, partial_graph_register, solvable#, reachable_by_pursuers
+
+
+
+# def LoadData():
+#     in_file=open("./datasets/__partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_databank_full","rb")
+#     databank_full=pickle.load(in_file)
+#     in_file.close()
+#     in_file=open("./datasets/__partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_partial_graph_register","rb")
+#     partial_graph_register=pickle.load(in_file)
+#     in_file.close()
+#     in_file=open("./datasets/__partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_reachable_by_pursuers","rb")
+#     reachable_by_pursuers=pickle.load(in_file)
+#     in_file.close()
+#     in_file=open("./datasets/__partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_solvable","rb")
+#     solvable=pickle.load(in_file)
+#     in_file.close()
+#     return databank_full, partial_graph_register, solvable, reachable_by_pursuers
 
 # def GetPartialGraphEnvironments_Manh3x3(state_repr, state_enc, edge_removals, U, solvable=True, reachable_for_units=True):
 #     config={

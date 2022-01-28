@@ -516,12 +516,15 @@ def SimulateInteractiveMode(env):
         print('------------')
         print('Current state:')
         print(s)
-        print('Available actions:\n> [ ',end='')
+        print('Available actions:\n',end='')
         n = env.neighbors[env.state[0]]
         print(n)
-        a=input(']\nAction (new node)?\n> ')
+        while True:
+            a=input('\nAction (new node)?\n> ')
+            if int(a) in n: break
         a=n.index(int(a))
         s,r,done,_=env.step(int(a))
+        s=env.state
         env.render(mode=None,fname="testrun")
         R+=r
-    print('done, reward='+str(R),'\n---------------')
+    print('******************** done, reward='+str(R),'**********************\n\n---------------')

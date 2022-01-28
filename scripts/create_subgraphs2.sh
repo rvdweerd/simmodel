@@ -1,15 +1,13 @@
 #!/bin/bash
 for e in {0..10}
 do
-    u=3
+    for u in {1..3}
+    do
         tmux new-session -d -s subgr$e$u
         tmux send-keys -t "subgr$e$u" "conda activate rlcourse" Enter
         tmux send-keys -t "subgr$e$u" "cd ~/testing/sim" Enter
         tmux send-keys -t "subgr$e$u" "python Phase2_generate_partial_graphs.py --num_edges $e --U $u" Enter  
-   #for j in {10..15}
-   #     do
-   #       echo "Welcome $i times $j"
-   #     done
+    done
 done
 
 

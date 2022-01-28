@@ -10,6 +10,14 @@ from gym import spaces
 from gym import register
 import copy
 import networkx as nx
+from modules.gnn.nfm_gen import BasicNFM
+
+def is_edge_crossing(old_Upositions, new_Upositions, prev_node, next_node):
+    if prev_node in new_Upositions and next_node in old_Upositions:
+        for i,j in zip(old_Upositions,new_Upositions):
+            if prev_node == j and next_node == i:
+                return True
+    return False
 
 class GraphWorld(gym.Env):
     """"""
@@ -65,12 +73,14 @@ class GraphWorld(gym.Env):
         # 4  [.] ## off ## 1 if node previously visited by escaper
         # 5  [.] ## off ## distance from nearest target node
         # 6  [.] ...
-        self.F = 3
-        self.gfm0 = np.zeros((self.sp.V,self.F))
-        self.gfm0[:,0] = np.array([i for i in range(self.sp.V)])
-        self.gfm0[np.array(list(self.sp.target_nodes)),1]=1 # set target nodes, fixed for the given graph
-        self.gfm  = copy.deepcopy(self.gfm0)
-        self.reset()
+        self.nfm_calculator=BasicNFM()
+        self.nfm_calculator.init(self)
+        # self.F = 3
+        # self.gfm0 = np.zeros((self.sp.V,self.F))
+        # self.gfm0[:,0] = np.array([i for i in range(self.sp.V)])
+        # self.gfm0[np.array(list(self.sp.target_nodes)),1]=1 # set target nodes, fixed for the given graph
+        # self.gfm  = copy.deepcopy(self.gfm0)
+        # self.reset()
 
     def redefine_graph_structure(self, W, in_nodeid2coord, new_nodeids=False):
         # W:          adjacency matrix (numpy array), based on some node ordering
@@ -137,6 +147,7 @@ class GraphWorld(gym.Env):
         self.local_t                = 0     
         self.observation_space = spaces.Box(0., self.sp.U, shape=(self.state_encoding_dim,), dtype=np.float32)
         self.action_space = spaces.Discrete(self.max_outdegree)
+        self.nfm_calculator.init(self)
         self.reset()
         self.state=(self.sp.coord2labels[self.sp.start_escape_route],)
 
@@ -262,13 +273,14 @@ class GraphWorld(gym.Env):
         self.state0   = self.state
         
         # Initialize graph feature matrix
-        self.gfm = copy.deepcopy(self.gfm0)
-        for u_index, u in enumerate(self.state[1:]): 
-            self.gfm[u,2]+=1         # f2: current presence of units
-            #self.gfm[u,3]=1         # f3: node previously visited by any unit
-        for p in self.u_paths:
-            if self.local_t >= len(p)-1:
-                self.gfm[p[-1],2] += 10
+        self.nfm_calculator.reset(self)
+        # self.gfm = copy.deepcopy(self.gfm0)
+        # for u_index, u in enumerate(self.state[1:]): 
+        #     self.gfm[u,2]+=1         # f2: current presence of units
+        #     #self.gfm[u,3]=1         # f3: node previously visited by any unit
+        # for p in self.u_paths:
+        #     if self.local_t >= len(p)-1:
+        #         self.gfm[p[-1],2] += 10
         #self.gfm[self.state[0],4]=1 # f4: node previously visited by escaper
 
         # Return initial state in appropriate form
@@ -304,8 +316,9 @@ class GraphWorld(gym.Env):
         # Update unit positions
         old_Upositions = self._getUpositions(self.local_t-1)
         new_Upositions = self._getUpositions(self.local_t) # uses local time: u_paths may have been updated from last state if sim is dynamic
-        new_Upositions.sort()
-        self.state = tuple([next_node] + new_Upositions)
+        new_Upositions_sorted = list(np.sort(new_Upositions))
+
+        self.state = tuple([next_node] + new_Upositions_sorted)
         
         # Check termination conditions
         done = False
@@ -315,11 +328,10 @@ class GraphWorld(gym.Env):
             done=True
             reward += -10
             info['Captured']=True
-        elif self.capture_on_edges and prev_node in new_Upositions and next_node in old_Upositions:
-            if new_Upositions.index(prev_node) == old_Upositions.index(next_node):
-                done=True
-                reward += -10
-                info['Captured']=True
+        elif self.capture_on_edges and is_edge_crossing(old_Upositions, new_Upositions, prev_node, next_node):
+            done=True
+            reward += -10
+            info['Captured']=True
         elif next_node in self.sp.target_nodes: # goal reached
             done = True
             reward += +10 
@@ -330,13 +342,14 @@ class GraphWorld(gym.Env):
             self.local_t = 0
 
         # Update feature matrix
-        self.gfm[:,2]=0
-        for u_index, u in enumerate(self.state[1:]): 
-            self.gfm[u,2]+=1         # f2: current presence of units
-            #self.gfm[u,2]=1         # f3: node previously visited by any unit
-        for p in self.u_paths:
-            if self.local_t >= len(p)-1:
-                self.gfm[p[-1],2] += 10
+        self.nfm_calculator.update(self)
+        # self.gfm[:,2]=0
+        # for u_index, u in enumerate(self.state[1:]): 
+        #     self.gfm[u,2]+=1         # f2: current presence of units
+        #     #self.gfm[u,2]=1         # f3: node previously visited by any unit
+        # for p in self.u_paths:
+        #     if self.local_t >= len(p)-1:
+        #         self.gfm[p[-1],2] += 10
         #self.gfm[self.state[0],4]=1 # f4: node previously visited by escaper
 
         # Return s',r',done,info (new state in appropriate form)

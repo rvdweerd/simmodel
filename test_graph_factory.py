@@ -1,5 +1,5 @@
 from inspect import CORO_CREATED
-from modules.sim.graph_factory import get_all_edge_removals_symmetric
+from modules.sim.graph_factory import get_all_edge_removals_symmetric, LoadData
 from modules.rl.rl_custom_worlds import GetCustomWorld
 from modules.sim.simdata_utils import SimulateInteractiveMode
 from modules.rl.environments import GraphWorld
@@ -39,19 +39,15 @@ for k,v in W_per_num_edge_removals.items():
 # Plot example graphs
 import copy
 env0=copy.deepcopy(env)
-for k,val in W_per_num_edge_removals.items():#len(W_per_num_edge_removals[2])):
-    #if len(val)>0:
-    if k!=9: continue
-    for i,v in enumerate(val):
-        #i=random.randint(0,len(v)-1)
-        
-        W=v[0]
-        #W=v[0][0]
+edge_blocking = False
+env0.capture_on_edges = edge_blocking
+
+for e, WHHarray in W_per_num_edge_removals.items():
+    for i, WHH in enumerate(WHHarray):
+        W=WHH[0]
         H = nx.from_numpy_matrix(W, create_using=nx.DiGraph()).to_undirected()
         H = nx.relabel_nodes(H, env.sp.nodeid2coord)
-
-        S = [H.subgraph(c).copy() for c in nx.connected_components(H)]
-                   
+        S = [H.subgraph(c).copy() for c in nx.connected_components(H)]                   
         nodeid2coord_new={}
         valid=True
         for s in S:
@@ -64,8 +60,8 @@ for k,val in W_per_num_edge_removals.items():#len(W_per_num_edge_removals[2])):
                     valid=False
         if valid:
             env.redefine_graph_structure(W_new,nodeid2coord_new,new_nodeids=True)
-            env.render(mode=None, fname='graph_e'+str(k)+'_i'+str(i))
-            #SimulateInteractiveMode(env)
-            env=copy.deepcopy(env0)#SimulateInteractiveMode(env)
-            #break
+            env.render(mode=None, fname='graph_e'+str(e)+'_i'+str(i))
+            SimulateInteractiveMode(env)
+            env=copy.deepcopy(env0)
+            break
 
