@@ -86,7 +86,7 @@ def RunInstance(args):
                     for j, coord in enumerate(s.nodes()):
                         nodeid2coord_new[j]=coord
                 else:
-                    if len(s.nodes())>1: # avoid duplicate subgraphs being registered
+                    if len(s.nodes())>1: # avoid duplicate subgraphs being registered; all selected edges must be on the main component
                         valid=False
             if valid:
                 env.redefine_graph_structure(W_new, nodeid2coord_new, new_nodeids=True)
@@ -110,7 +110,7 @@ def SaveSolvabilityData(args, edge_blocking=False):
     in_file=open("./datasets/__partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_databank_full","rb")
     databank_full=pickle.load(in_file)
     in_file.close()
-    in_file=open("./datasets/__partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_partial_graph_register","rb")
+    in_file=open("./datasets/__partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_partial_graph_register_trimmed","rb")
     partial_graph_register=pickle.load(in_file)
     in_file.close()
 
@@ -136,7 +136,9 @@ def SaveSolvabilityData(args, edge_blocking=False):
 
     for W_, hashint, hashstr in tqdm.tqdm(partial_graph_register[num_edges]):
         #env_data={'W':W_, 'hashint':hashint, 'databank_full':databank_full}
-        if hashint not in databank_full['U='+str(U)]: continue
+        if hashint not in databank_full['U='+str(U)]: 
+            print('Warning: hashint not in databank')
+            continue
         env=copy.deepcopy(env0)
         env_data=databank_full['U='+str(U)][hashint]
         env.redefine_graph_structure(env_data['W'],env_data['nodeid2coord'],new_nodeids=True)
@@ -170,11 +172,14 @@ def MergeDataFiles():
     out_file = open("./datasets/__partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_databank_full","wb")
     pickle.dump(merged_databank, out_file)
     out_file.close()
+
+    visited=set()
     for u in [1,2,3]: #HERE US A PROBLEM!!
         for e in range(11):
             for W_, hashint, hashstr in partial_graph_register_old[e]:
-                if hashint in merged_databank['U='+str(u)]:
+                if hashint in merged_databank['U='+str(u)] and hashint not in visited:
                     partial_graph_register_new[e].append((W_,hashint,hashstr))
+                    visited.add(hashint)
     out_file=open("./datasets/__partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_partial_graph_register_trimmed","wb")
     pickle.dump(partial_graph_register_new, out_file)
     out_file.close()
@@ -334,11 +339,16 @@ def TestInteractiveSimulation(U=[2],E=[8],edge_blocking=False):
         SimulateInteractiveMode(env)
 
 def RunSpecficInstance(U0=[(2,2)], hashint=1775, edge_blocking=False):
-    config=GetConfig(u=2)
+    config=GetConfig(u=len(U0))
     state_repr = 'etUt'
-    state_enc  = 'tensors'
+    state_enc  = 'nfm'
     databank_full, register_full, solvable = LoadData(edge_blocking = edge_blocking)
-    
+    e0U0lookup = tuple([(1,0)]+U0)
+
+    s = solvable['U='+str(len(U0))][hashint]
+    idx = databank_full['U='+str(len(U0))][hashint]['register'][e0U0lookup]
+    print('\n\nExample is registered as: '+('Solvable' if s[idx] else 'Unsolvable'))
+    print('--------------------------------------')
     env0 = GraphWorld(config, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
     env0.capture_on_edges = edge_blocking
     all_envs=[]
@@ -346,7 +356,6 @@ def RunSpecficInstance(U0=[(2,2)], hashint=1775, edge_blocking=False):
     
     u=len(U0)
     env0.sp.U = u
-    e0U0lookup = tuple([(1,0)]+U0)
     idx = databank_full['U='+str(u)][hashint]['register'][e0U0lookup]
     env_data = databank_full['U='+str(u)][hashint]
     #            for entry in env_data['databank']:
@@ -425,7 +434,7 @@ if __name__ == '__main__':
     args=parser.parse_args()
     
     ### Pipeline to create datasets of edge-removed graphs and unit paths
-    RunInstance(args)
+    #RunInstance(args)
     #TestSim()
     #MergeDataFiles()
     #SaveSolvabilityData(args, edge_blocking=True)
@@ -433,9 +442,9 @@ if __name__ == '__main__':
     ##SaveReachabilityData()
 
     ### Testing the data
-    #TestInteractiveSimulation(U=[1,2,3],E=[i for i in range(11)],edge_blocking=True)#i for i in range(11)])
-    #TestInteractiveSimulation(U=[3],E=[4],edge_blocking=False)#i for i in range(11)])
-    #RunSpecficInstance(U0=[(1,2),(1,2)], hashint=4007, edge_blocking=False)
+    #TestInteractiveSimulation(U=[1,2,3],E=[i for i in range(11)],edge_blocking=False)#i for i in range(11)])
+    TestInteractiveSimulation(U=[1],E=[0],edge_blocking=False)#i for i in range(11)])
+    #RunSpecficInstance(U0=[(1,1),(2,2)], hashint=1396, edge_blocking=False)
     #RunSpecficInstance(U0=[(0,0),(2,0),(2,1)], hashint=1059, edge_blocking=False)
     #CalculateStatistics(E=[i for i in range(11)], U=[1,2,3],plotting=False)
     #CalculateStatistics(E=[10], U=[2],plotting=False)

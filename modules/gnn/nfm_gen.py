@@ -7,24 +7,24 @@ class BasicNFM():
         self.name='BasicNFM'
     def init(self, eo):
         eo.F = 3
-        eo.gfm0 = np.zeros((eo.sp.V,eo.F))
-        eo.gfm0[:,0] = np.array([i for i in range(eo.sp.V)])
-        eo.gfm0[np.array(list(eo.sp.target_nodes)),1]=1 # set target nodes, fixed for the given graph
-        eo.gfm  = copy.deepcopy(eo.gfm0)
+        eo.nfm0 = np.zeros((eo.sp.V,eo.F))
+        eo.nfm0[:,0] = np.array([i for i in range(eo.sp.V)])
+        eo.nfm0[np.array(list(eo.sp.target_nodes)),1]=1 # set target nodes, fixed for the given graph
+        eo.nfm  = copy.deepcopy(eo.nfm0)
         eo.reset()
     def reset(self, eo):
-        eo.gfm = copy.deepcopy(eo.gfm0)
+        eo.nfm = copy.deepcopy(eo.nfm0)
         for u_index, u in enumerate(eo.state[1:]): 
-            eo.gfm[u,2]+=1         # f2: current presence of units
-            #self.gfm[u,3]=1         # f3: node previously visited by any unit
+            eo.nfm[u,2]+=1         # f2: current presence of units
+            #self.nfm[u,3]=1         # f3: node previously visited by any unit
         for p in eo.u_paths:
             if eo.local_t >= len(p)-1:
-                eo.gfm[p[-1],2] += 10
+                eo.nfm[p[-1],2] += 10
     def update(self, eo):
-        eo.gfm[:,2]=0
+        eo.nfm[:,2]=0
         for u_index, u in enumerate(eo.state[1:]): 
-            eo.gfm[u,2]+=1         # f2: current presence of units
-            #self.gfm[u,3]=1         # f3: node previously visited by any unit
+            eo.nfm[u,2]+=1         # f2: current presence of units
+            #self.nfm[u,3]=1         # f3: node previously visited by any unit
         for p in eo.u_paths:
             if eo.local_t >= len(p)-1:
-                eo.gfm[p[-1],2] += 10
+                eo.nfm[p[-1],2] += 10

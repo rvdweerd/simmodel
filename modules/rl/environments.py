@@ -29,6 +29,7 @@ class GraphWorld(gym.Env):
         self.optimization           = optimization_method
         self.fixed_initial_positions= fixed_initial_positions
         self.state_representation   = state_representation
+        self.state_encoding         = state_encoding
         self.state_encoding_dim, self.state_chunks, self.state_len = su.GetStateEncodingDimension(state_representation, self.sp.V, self.sp.U)
         self.render_fileprefix      = 'test_scenario_t='
         # Load relevant pre-saved optimization runs for the U trajectories
@@ -39,8 +40,8 @@ class GraphWorld(gym.Env):
         # Create a world_pool list of indices of pre-saved initial conditions and their rollouts of U positions
         self.all_worlds             = [ind for k,ind in self.register['labels'].items()]
         self.world_pool             = su.GetWorldPool(self.all_worlds, fixed_initial_positions, self.register)
-        self._encode                = self._encode_nodes if state_encoding == 'nodes' else self._encode_tensor
-        if state_encoding not in ['nodes', 'tensors']: assert False
+        self._encode                = self._encode_nodes if state_encoding == 'nodes' else self._encode_tensor if state_encoding == 'tensors' else self._encode_nfm
+        if state_encoding not in ['nodes', 'tensors', 'nfm']: assert False
 
         # Dynamics parameters
         self.current_entry          = 0    # which entry in the world pool is active
@@ -74,12 +75,13 @@ class GraphWorld(gym.Env):
         # 5  [.] ## off ## distance from nearest target node
         # 6  [.] ...
         self.nfm_calculator=BasicNFM()
-        self.nfm_calculator.init(self)
+        if self.state_encoding=='nfm':
+            self.nfm_calculator.init(self)
         # self.F = 3
-        # self.gfm0 = np.zeros((self.sp.V,self.F))
-        # self.gfm0[:,0] = np.array([i for i in range(self.sp.V)])
-        # self.gfm0[np.array(list(self.sp.target_nodes)),1]=1 # set target nodes, fixed for the given graph
-        # self.gfm  = copy.deepcopy(self.gfm0)
+        # self.nfm0 = np.zeros((self.sp.V,self.F))
+        # self.nfm0[:,0] = np.array([i for i in range(self.sp.V)])
+        # self.nfm0[np.array(list(self.sp.target_nodes)),1]=1 # set target nodes, fixed for the given graph
+        # self.nfm  = copy.deepcopy(self.nfm0)
         # self.reset()
 
     def redefine_graph_structure(self, W, in_nodeid2coord, new_nodeids=False):
@@ -164,6 +166,9 @@ class GraphWorld(gym.Env):
 
     def _encode_tensor(self, s):
         return self._state2vec_packed(s)
+
+    def _encode_nfm(self, s):
+        return self.nfm
 
     def _state2np_mat(self,s):
         if self.state_representation == 'etUt':
@@ -273,15 +278,16 @@ class GraphWorld(gym.Env):
         self.state0   = self.state
         
         # Initialize graph feature matrix
-        self.nfm_calculator.reset(self)
-        # self.gfm = copy.deepcopy(self.gfm0)
+        if self.state_encoding=='nfm':
+            self.nfm_calculator.reset(self)
+        # self.nfm = copy.deepcopy(self.nfm0)
         # for u_index, u in enumerate(self.state[1:]): 
-        #     self.gfm[u,2]+=1         # f2: current presence of units
-        #     #self.gfm[u,3]=1         # f3: node previously visited by any unit
+        #     self.nfm[u,2]+=1         # f2: current presence of units
+        #     #self.nfm[u,3]=1         # f3: node previously visited by any unit
         # for p in self.u_paths:
         #     if self.local_t >= len(p)-1:
-        #         self.gfm[p[-1],2] += 10
-        #self.gfm[self.state[0],4]=1 # f4: node previously visited by escaper
+        #         self.nfm[p[-1],2] += 10
+        #self.nfm[self.state[0],4]=1 # f4: node previously visited by escaper
 
         # Return initial state in appropriate form
         if self.state_representation == 'etUt':
@@ -322,35 +328,41 @@ class GraphWorld(gym.Env):
         
         # Check termination conditions
         done = False
-        if self.global_t >= self.max_timesteps: # max timesteps reached
+        if self.global_t >= self.max_timesteps: 
+            # max timesteps reached
             done=True
-        if next_node in new_Upositions: # captured
+        if next_node in new_Upositions: 
+            # captured: escaper shares node with pursuit unit
             done=True
             reward += -10
             info['Captured']=True
         elif self.capture_on_edges and is_edge_crossing(old_Upositions, new_Upositions, prev_node, next_node):
+            # captured: escaper and pursuit unit have crossed on an edge
             done=True
             reward += -10
             info['Captured']=True
-        elif next_node in self.sp.target_nodes: # goal reached
+        elif next_node in self.sp.target_nodes: 
+            # goal reached
             done = True
             reward += +10 
-        if self.optimization == 'dynamic' and not done: # update optimization paths for units
+        if self.optimization == 'dynamic' and not done: 
+            # update optimization paths for units
             self.u_paths = self.databank['labels'][self.register['labels'][self.state]]['paths']
             if len(self.u_paths) < 2:
                 assert False
             self.local_t = 0
 
         # Update feature matrix
-        self.nfm_calculator.update(self)
-        # self.gfm[:,2]=0
+        if self.state_encoding=='nfm':
+            self.nfm_calculator.update(self)
+        # self.nfm[:,2]=0
         # for u_index, u in enumerate(self.state[1:]): 
-        #     self.gfm[u,2]+=1         # f2: current presence of units
-        #     #self.gfm[u,2]=1         # f3: node previously visited by any unit
+        #     self.nfm[u,2]+=1         # f2: current presence of units
+        #     #self.nfm[u,2]=1         # f3: node previously visited by any unit
         # for p in self.u_paths:
         #     if self.local_t >= len(p)-1:
-        #         self.gfm[p[-1],2] += 10
-        #self.gfm[self.state[0],4]=1 # f4: node previously visited by escaper
+        #         self.nfm[p[-1],2] += 10
+        #self.nfm[self.state[0],4]=1 # f4: node previously visited by escaper
 
         # Return s',r',done,info (new state in appropriate form)
         if self.state_representation == 'etUt':
@@ -439,10 +451,10 @@ register(
 #         # 5  [.] ## off ## distance from nearest target node
 #         # 6  [.] ...
 #         self.F = 3
-#         self.gfm0 = np.zeros((self.sp.V,self.F))
-#         self.gfm0[:,0] = np.array([i for i in range(self.sp.V)])
-#         self.gfm0[np.array(list(self.sp.target_nodes)),1]=1 # set target nodes, fixed for the given graph
-#         self.gfm  = copy.deepcopy(self.gfm0)
+#         self.nfm0 = np.zeros((self.sp.V,self.F))
+#         self.nfm0[:,0] = np.array([i for i in range(self.sp.V)])
+#         self.nfm0[np.array(list(self.sp.target_nodes)),1]=1 # set target nodes, fixed for the given graph
+#         self.nfm  = copy.deepcopy(self.nfm0)
 #         self.redefine_graph_structure(W_,self.sp.nodeid2coord)
 #         #self.reset()
 

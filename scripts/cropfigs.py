@@ -17,7 +17,7 @@ for path in working_dir.glob("**/*.png"):
     # OR if you need absolute paths
     pathname=str(path.absolute())
     #if 'Entry=' in pathname and 'c_' not in pathname:
-    if '#example_' in pathname:
+    if 'example_3x3in' in pathname:
         dirname = os.path.dirname(pathname)
         fname = path.parts[-1]
         fstem = path.stem

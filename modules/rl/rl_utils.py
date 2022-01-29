@@ -23,7 +23,7 @@ def EvalArgs1(env):
 def EvalArgs2(env):
     # arguments of the call to the policy class that samples an action
     # this version is used for GNNs
-    return env.gfm, env.sp.W, env.neighbors[env.state[0]]
+    return env.nfm, env.sp.W, env.neighbors[env.state[0]]
 
 def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, logdir='./temp', has_Q_table=False, eval_arg_func=EvalArgs1, silent_mode=False):
     # Escaper chooses random neighboring nodes until temination
@@ -86,7 +86,7 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
                 plot_cache.append(plot)
             s_start=env.state
             #action,_ = policy.sample_action(s, env._availableActionsInCurrentState())
-            #action,_ = policy.sample_action(env.gfm, env.sp.W, env.neighbors[env.state[0]])
+            #action,_ = policy.sample_action(env.nfm, env.sp.W, env.neighbors[env.state[0]])
             action,_ = policy.sample_action(*eval_arg_func(env))
             action_probs = policy.get_action_probs()
             s,r,done,info = env.step(action)
