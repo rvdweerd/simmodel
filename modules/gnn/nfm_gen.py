@@ -11,7 +11,7 @@ class BasicNFM():
         eo.nfm0[:,0] = np.array([i for i in range(eo.sp.V)])
         eo.nfm0[np.array(list(eo.sp.target_nodes)),1]=1 # set target nodes, fixed for the given graph
         eo.nfm  = copy.deepcopy(eo.nfm0)
-        eo.reset()
+        #eo.reset()
     def reset(self, eo):
         eo.nfm = copy.deepcopy(eo.nfm0)
         for u_index, u in enumerate(eo.state[1:]): 

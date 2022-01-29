@@ -198,7 +198,8 @@ class GraphWorld(gym.Env):
         else:
             for i, chunk in enumerate(self.state_chunks):
                 for pos in chunk:
-                    out[i*self.sp.V + state[pos]] += 1
+                    if pos < len(state): #CHECK!! DONE TO DEAL WITH EMPTY U positions
+                        out[i*self.sp.V + state[pos]] += 1
         return out.astype(np.int64)
 
     def _ConvertDataFile(self, register_coords, databank_coords, iratios):
@@ -266,25 +267,52 @@ class GraphWorld(gym.Env):
         u_init_labels.sort()
         return tuple([e_init_label] + u_init_labels)
 
+    def _remove_world_pool(self):
+        assert len(self.world_pool)>0
+        assert self.world_pool == self.all_worlds
+        self.sp.U_=self.sp.U
+        self.sp.U=0
+        self.world_pool=[]
+        self.state_encoding_dim, self.state_chunks, self.state_len = su.GetStateEncodingDimension(self.state_representation, self.sp.V, self.sp.U)      
+        #self.current_entry=-1
+        self.iratio=-1
+        self.u_paths=[]
+        self.state=self._to_state((self.state[0]),[])
+        self.state0 =self.state
+        #self.reset()
+
+    def _restore_world_pool(self):
+        assert self.world_pool==[]
+        self.sp.U=self.sp.U_
+        self.state_encoding_dim, self.state_chunks, self.state_len = su.GetStateEncodingDimension(self.state_representation, self.sp.V, self.sp.U)      
+        self.world_pool = self.all_worlds
+        self.reset(self.current_entry)
+
     def reset(self, entry=None):
         # Reset time
-        if len(self.world_pool)==0:
-            return
         self.global_t = 0
         self.local_t = 0 # used if optimization is dynamic; lookup time for new paths is set to 0 after each step
-        if entry==None:
-            entry = random.choice(self.world_pool) 
-        self.current_entry=entry
-        data_sample = self.databank['labels'][entry]
-        self.iratio = self.iratios[entry]
-        
-        # Assign initial state
-        e_init_labels = data_sample['start_escape_route'] # (e0)
-        u_init_labels = data_sample['start_units'] # [(u1),(u2), ...]
-        self.u_paths  = data_sample['paths']
-        self.state    = self._to_state(e_init_labels,u_init_labels)
-        self.state0   = self.state
-        
+        if len(self.world_pool)==0:
+            self.current_entry=-1
+            self.iratio=-1
+            self.state=self._to_state((2),[])
+            self.state0 =self.state
+            pass
+            #return
+        else:    
+            if entry==None:
+                entry = random.choice(self.world_pool) 
+            self.current_entry=entry
+            data_sample = self.databank['labels'][entry]
+            self.iratio = self.iratios[entry]
+            
+            # Assign initial state
+            e_init_labels = data_sample['start_escape_route'] # (e0)
+            u_init_labels = data_sample['start_units'] # [(u1),(u2), ...]
+            self.u_paths  = data_sample['paths']
+            self.state    = self._to_state(e_init_labels,u_init_labels)
+            self.state0   = self.state
+            
         # Initialize graph feature matrix
         if self.state_encoding=='nfm':
             self.nfm_calculator.reset(self)
