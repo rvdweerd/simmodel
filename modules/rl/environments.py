@@ -246,6 +246,14 @@ class GraphWorld(gym.Env):
     def _availableActionsInCurrentState(self):
         return self.neighbors[self.state[0]]
 
+    def _to_coords_from_state(self):
+        e_init_coord = self.sp.labels2coord[self.state[0]]
+        u_init_coords = []
+        for u in self.state[1:]:
+            u_init_coords.append(self.sp.labels2coord[u])
+        u_init_coords.sort()
+        return tuple([e_init_coord] + u_init_coords)
+
     def _to_state_from_coords(self, e_init_coord, u_init_coords):
         e_init_label = self.sp.coord2labels[e_init_coord]
         u_init_labels = []

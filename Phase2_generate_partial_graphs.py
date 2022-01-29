@@ -296,7 +296,7 @@ def TestSim(e=6,u=2):
     env.reset(12)
     SimulateInteractiveMode(env)
 
-def TestInteractiveSimulation(U=[2],E=[8],edge_blocking=False):
+def TestInteractiveSimulation(U=[2],E=[8],edge_blocking=False,only_solvable=True, reject_u_duplicates=False):
     config=GetConfig(u=2)#only needed to find datafile
     state_repr = 'etUt'
     state_enc  = 'tensors'
@@ -306,6 +306,7 @@ def TestInteractiveSimulation(U=[2],E=[8],edge_blocking=False):
     env0.capture_on_edges = edge_blocking
     all_envs=[]
     hashint2env={}
+    env2hashint={}
     for u in U:
         env0.sp.U = u
         for e in E:
@@ -322,20 +323,30 @@ def TestInteractiveSimulation(U=[2],E=[8],edge_blocking=False):
                 env.redefine_graph_structure(env_data['W'],env_data['nodeid2coord'],new_nodeids=True)
                 env.reload_unit_paths(env_data['register'],env_data['databank'],env_data['iratios'])
                 s = solvable['U='+str(u)][hashint]
-                valids = s#np.logical_and(np.logical_not(s),r)
-                if valids.sum() > 0:
-
-                    env.world_pool = list(np.array(env.all_worlds)[valids])
+                valids = s #np.logical_and(np.logical_not(s),r)
+                # Filter out solvable intial conditions
+                if only_solvable and valids.sum() > 0: 
+                    env.world_pool = list(np.array(env.all_worlds)[valids]) # only use solvable puzzles
                     all_envs.append(env)
                     hashint2env[hashint]=len(all_envs)-1
+                    env2hashint[len(all_envs)-1]=hashint
+                else:
+                    env.world_pool = env.all_worlds
     while True:
         env_idx=random.randint(0,len(all_envs)-1)
         #env_idx=4834
         env=all_envs[env_idx]
-        s=env.reset()
-        print('env index',env_idx,'current entry',env.current_entry)
-        if has_duplicates(env.state[1:]):
+        env.reset()
+        u=env.sp.U
+        e0U0lookup = env._to_coords_from_state()
+        hashint=env2hashint[env_idx]
+        s = solvable['U='+str(u)][hashint]
+        idx = databank_full['U='+str(u)][hashint]['register'][e0U0lookup]
+        if reject_u_duplicates and has_duplicates(env.state[1:]):
             continue
+        print('\nenv index',env_idx,'current entry',env.current_entry,'edge_blocking:',edge_blocking)
+        print('Example is registered as: '+('Solvable' if s[idx] else 'Unsolvable'))
+        print('--------------')
         SimulateInteractiveMode(env)
 
 def RunSpecficInstance(U0=[(2,2)], hashint=1775, edge_blocking=False):
@@ -442,8 +453,8 @@ if __name__ == '__main__':
     ##SaveReachabilityData()
 
     ### Testing the data
-    #TestInteractiveSimulation(U=[1,2,3],E=[i for i in range(11)],edge_blocking=False)#i for i in range(11)])
-    TestInteractiveSimulation(U=[1],E=[0],edge_blocking=False)#i for i in range(11)])
+    TestInteractiveSimulation(U=[3],E=[i for i in range(11)],edge_blocking=True, only_solvable=True, reject_u_duplicates=True)#i for i in range(11)])
+    #TestInteractiveSimulation(U=[1],E=[0],edge_blocking=False)#i for i in range(11)])
     #RunSpecficInstance(U0=[(1,1),(2,2)], hashint=1396, edge_blocking=False)
     #RunSpecficInstance(U0=[(0,0),(2,0),(2,1)], hashint=1059, edge_blocking=False)
     #CalculateStatistics(E=[i for i in range(11)], U=[1,2,3],plotting=False)
