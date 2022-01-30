@@ -1,0 +1,9 @@
+hash 4056, 111111011000
+solvable, edgeblocking, reject_duplicates, 
+env index 592, entry 7: 
+  units walk inefficient routes, why?
+
+hash 3931, 111101011011
+non_solvable, edgeblocking, reject_duplicates
+env index 242, entry 81
+  units walk inefficient routes

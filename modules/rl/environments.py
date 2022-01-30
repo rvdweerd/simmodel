@@ -277,8 +277,20 @@ class GraphWorld(gym.Env):
         #self.current_entry=-1
         self.iratio=-1
         self.u_paths=[]
-        self.state=self._to_state((self.state[0]),[])
-        self.state0 =self.state
+        self.reset(self.current_entry)
+        # self.state=self._to_state((self.state[0]),[])
+        # self.state0 =self.state
+        # if self.state_representation == 'etUt':
+        #     self.obs = self._encode(self.state)
+        # elif self.state_representation == 'et':
+        #     self.obs = self._encode((self.state[0],))
+        # elif self.state_representation == 'etUte0U0':
+        #     self.obs = self._encode(self.state+self.state0)
+        # elif self.state_representation == 'ete0U0':
+        #     self.obs = self._encode(tuple([self.state[0]])+self.state0)
+        # else:
+        #     assert False
+
         #self.reset()
 
     def _restore_world_pool(self):
@@ -293,9 +305,9 @@ class GraphWorld(gym.Env):
         self.global_t = 0
         self.local_t = 0 # used if optimization is dynamic; lookup time for new paths is set to 0 after each step
         if len(self.world_pool)==0:
-            self.current_entry=-1
+            #self.current_entry=-1
             self.iratio=-1
-            self.state=self._to_state((2),[])
+            self.state=self._to_state((self.sp.coord2labels[(1,0)]),[])
             self.state0 =self.state
             pass
             #return
