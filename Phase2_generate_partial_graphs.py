@@ -296,6 +296,15 @@ def TestSim(e=6,u=2):
     env.reset(12)
     SimulateInteractiveMode(env)
 
+def  print_world_properties(env, env_idx, entry, hashint, hashstr, edge_blocking, solve_select, reject_u_duplicates, solvable_):
+    print('\nenv index',env_idx,', current entry',env.current_entry,'| edge_blocking:',edge_blocking, '| solvable:', solve_select,'| reject duplicates:',reject_u_duplicates)
+    print('> graph hash:', hashint,' /', hashstr, '| state_repr:',env.state_representation, '| state_encoding:',env.state_encoding,)
+    print('> state:', env.state)
+    print('> obs:\n',env.obs)
+    print('> example is registered as: '+('Solvable' if solvable_[entry] else 'Unsolvable'))
+    print('-----------------------------')
+
+
 def TestInteractiveSimulation(U=[2],E=[8], edge_blocking=False, solve_select='both', reject_u_duplicates=False):
     state_repr = 'et'
     state_enc  = 'tensors'
@@ -303,44 +312,27 @@ def TestInteractiveSimulation(U=[2],E=[8], edge_blocking=False, solve_select='bo
     all_envs, hashint2env, env2hashint, env2hashstr = GetWorldSet(state_repr, state_enc, U=U, E=E, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates)
     
     while True:
-        env_idx=random.randint(0,len(all_envs)-1)
-        env=all_envs[env_idx]
+        env_idx = random.randint(0,len(all_envs)-1)
+        env = all_envs[env_idx]
         env.reset()
         u=env.sp.U
         e0U0lookup = env._to_coords_from_state()
-        hashint=env2hashint[env_idx]
-        hashstr=env2hashstr[env_idx]
+        hashint = env2hashint[env_idx]
+        hashstr = env2hashstr[env_idx]
         s = solvable['U='+str(u)][hashint]
-        idx = databank_full['U='+str(u)][hashint]['register'][e0U0lookup]
+        entry = databank_full['U='+str(u)][hashint]['register'][e0U0lookup]
+        assert entry == env.current_entry
         if reject_u_duplicates and has_duplicates(env.state[1:]):
             continue
-        
-        print('\nenv index',env_idx,', current entry',env.current_entry,'| edge_blocking:',edge_blocking, '| solvable:', solve_select,'| reject duplicates:',reject_u_duplicates)
-        print('> hash:', hashint,' | bin: ',hashstr, '| state_repr:',env.state_representation, '| state_encoding:',env.state_encoding,)
-        print('> state:', env.state)
-        print('> obs:\n',env.obs)
-        print('> example is registered as: '+('Solvable' if s[idx] else 'Unsolvable'))
-        print('-----------------------------')
+
+        print_world_properties(env, env_idx, entry, hashint, hashstr, edge_blocking, solve_select, reject_u_duplicates, solvable_=s)
         
         env._remove_world_pool()
-        print('\nenv index',env_idx,', current entry',env.current_entry,'| edge_blocking:',edge_blocking, '| solvable:', solve_select,'| reject duplicates:',reject_u_duplicates)
-        print('> hash:', hashint,' | bin: ',hashstr, '| state_repr:',env.state_representation, '| state_encoding:',env.state_encoding,)
-        print('> state:', env.state)
-        print('> obs:\n',env.obs)
-        print('> example is registered as: '+('Solvable' if s[idx] else 'Unsolvable'))
-        print('-----------------------------')
-
-
+        print_world_properties(env, env_idx, entry, hashint, hashstr, edge_blocking, solve_select, reject_u_duplicates, solvable_=s)
         SimulateInteractiveMode(env, filesave_with_time_suffix=False)
 
         env._restore_world_pool()
-        print('\nenv index',env_idx,', current entry',env.current_entry,'| edge_blocking:',edge_blocking, '| solvable:', solve_select,'| reject duplicates:',reject_u_duplicates)
-        print('> hash:', hashint,' | bin: ',hashstr, '| state_repr:',env.state_representation, '| state_encoding:',env.state_encoding,)
-        print('> state:', env.state)
-        print('> obs:\n',env.obs)
-        print('> example is registered as: '+('Solvable' if s[idx] else 'Unsolvable'))
-        print('-----------------------------')
-
+        print_world_properties(env, env_idx, entry, hashint, hashstr, edge_blocking, solve_select, reject_u_duplicates, solvable_=s)
         SimulateInteractiveMode(env,filesave_with_time_suffix=False)
         
 def RunSpecficInstance(U0=[(2,2)], hashint=1775, edge_blocking=False):
@@ -352,8 +344,7 @@ def RunSpecficInstance(U0=[(2,2)], hashint=1775, edge_blocking=False):
 
     s = solvable['U='+str(len(U0))][hashint]
     idx = databank_full['U='+str(len(U0))][hashint]['register'][e0U0lookup]
-    print('\n\nExample is registered as: '+('Solvable' if s[idx] else 'Unsolvable'))
-    print('--------------------------------------')
+  
     env0 = GraphWorld(config, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
     env0.capture_on_edges = edge_blocking
     all_envs=[]
@@ -363,13 +354,12 @@ def RunSpecficInstance(U0=[(2,2)], hashint=1775, edge_blocking=False):
     env0.sp.U = u
     idx = databank_full['U='+str(u)][hashint]['register'][e0U0lookup]
     env_data = databank_full['U='+str(u)][hashint]
-    #            for entry in env_data['databank']:
-    #                if len(entry['paths']) < u:
-    #                    assert False
     env=copy.deepcopy(env0)
     env.redefine_graph_structure(env_data['W'],env_data['nodeid2coord'],new_nodeids=True)
     env.reload_unit_paths(env_data['register'],env_data['databank'],env_data['iratios'])
     env.reset(idx)
+
+    print_world_properties(env, 'n/a', idx, hashint, bin(hashint), edge_blocking, 'n/a', 'n/a', solvable_=s)
     SimulateInteractiveMode(env, filesave_with_time_suffix=False)
 
 def has_duplicates(arr):
@@ -506,9 +496,9 @@ if __name__ == '__main__':
 
     ### Testing the data: NOTE CHECK INSTANCE WITH IRENE
     #TestOptimOutcome(hashint=4056, env_idx=592, entry=7, U=[3], E=[i for i in range(11)], edge_blocking=True, solve_select='solvable', reject_duplicates=True)
-    RunSpecficInstance(U0=[(0,0),(0,2),(1,2)], hashint=4056, edge_blocking=True)
+    #RunSpecficInstance(U0=[(0,0),(0,2),(1,2)], hashint=4056, edge_blocking=True)
 
-    TestInteractiveSimulation(U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_u_duplicates=False)#i for i in range(11)])
+    TestInteractiveSimulation(U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_u_duplicates=False)
     #TestInteractiveSimulation(U=[1],E=[0],edge_blocking=False)#i for i in range(11)])
     #RunSpecficInstance(U0=[(1,1),(2,2)], hashint=1396, edge_blocking=False)
     #RunSpecficInstance(U0=[(0,0),(2,0),(2,1)], hashint=1059, edge_blocking=False)

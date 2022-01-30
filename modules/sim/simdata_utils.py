@@ -515,6 +515,7 @@ def SimulateInteractiveMode(env, filesave_with_time_suffix=False):
         while True:
             a=input('Action nr '+str(env.global_t+1)+'/max '+str(env.sp.T)+' (new node)?  > ')
             if a.isnumeric() and int(a) in n: break
+        print()
         a=n.index(int(a))
         s,r,done,_=env.step(int(a))
         s=env.state
