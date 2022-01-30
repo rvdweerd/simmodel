@@ -425,15 +425,16 @@ class GraphWorld(gym.Env):
             assert False
         return self.obs, reward, done, info
 
-    def render(self, mode=None, fname=None):#file_name=None):
+    def render(self, mode=None, fname=None, t_suffix=True):#file_name=None):
         e = self.state[0]
         p=self.state[1:]
         if fname == None:
             #file_name=self.render_fileprefix+'_t='+str(self.global_t)
             file_name=None
-        else:
+        elif t_suffix:
             file_name = fname+'_t='+str(self.global_t)
-        plot=PlotAgentsOnGraph_(self.sp, e, p, self.global_t, fig_show=False, fig_save=True, filename=file_name)
+        else: file_name = fname
+        plot=PlotAgentsOnGraph_(self.sp, e, p, self.global_t, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes))
         return plot
 
 register(

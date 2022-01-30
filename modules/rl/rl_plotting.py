@@ -14,7 +14,7 @@ def plot_traindata(episode_returns,losses,logdir='./temp'):
     plt.savefig(logdir+'/testplots_loss_curve.png')
     plt.clf()
 
-def PlotAgentsOnGraph_(sp, escape_pos, pursuers_pos, timestep, fig_show=False, fig_save=True, filename=None):
+def PlotAgentsOnGraph_(sp, escape_pos, pursuers_pos, timestep, fig_show=False, fig_save=True, filename=None, goal_reached=False):
     G=sp.G#.to_directed()
     labels=sp.labels
     pos=sp.pos
@@ -23,7 +23,10 @@ def PlotAgentsOnGraph_(sp, escape_pos, pursuers_pos, timestep, fig_show=False, f
     sizelist =  [1200 for _ in range(sp.V)]#400
     node_text = dict([(c,str(sp.coord2labels[c])) for c in sp.G.nodes])
     colorlist=["white"]*sp.V
-    colorlist[sp.labels2nodeids[escape_pos]]='#FF0000'
+    if goal_reached:
+        colorlist[sp.labels2nodeids[escape_pos]]='#66FF00'
+    else:
+        colorlist[sp.labels2nodeids[escape_pos]]='#FF0000'
     sizelist[sp.labels2nodeids[escape_pos]]=1200#600
     
     #node_text[sp.labels2coord[escape_pos]]='e'

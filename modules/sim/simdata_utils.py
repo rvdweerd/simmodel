@@ -14,7 +14,7 @@ import pickle
 from modules.sim.sim_graphs import SparseManhattanGraph, graph, CircGraph, TKGraph, MetroGraph
 from modules.rl.rl_plotting import PlotAgentsOnGraph
 from modules.optim.escape_route_generator_MC import mutiple_escape_routes
-from modules.optim.optimization_FIP_gurobipy import unit_ranges, optimization_alt
+from modules.optim.optimization_FIP_gurobipy import unit_ranges, optimization_alt, optimization
 
 class SimParameters(object):
     def __init__(self):
@@ -341,31 +341,23 @@ def ObtainSimulationInstance(sp, register, specific_start_units=None, cutoff=1e5
     #   new_registry_entry: new key for register entry
     #   new_databank_entry: list of unit paths, U entries, 
 
-    #start_time = time.time()
-    #ft = FrameTimer()
-    #time_marks=[]
     # Get random initial conditions (positions of pursuit units), not yet in dataset
     ulist = GetUnitsInitialConditions(sp, register, specific_start_units, cutoff)
     if ulist[0] == -1:
         return ulist, None, None, None, None
     register_entry = (tuple(ulist),len(register))
-    #time_marks.append(ft.mark())
 
     # Run optimization for instance
     start_escape_route = ulist[0]
     start_units = tuple(ulist[1:])
     routes_time_nodes, routes_time = mutiple_escape_routes(sp.G, sp.N, sp.L, sp.R, start_escape_route, sp.direction_north, start_units,sp.graph_type)
-    #time_marks.append(ft.mark())
 
     units_range_time = unit_ranges(start_units, sp.U, sp.G, sp.L)
-    #time_marks.append(ft.mark())
 
     routes_intercepted, units_places = optimization_alt(sp.G, sp.U, routes_time_nodes, units_range_time, sp.R, sp.V, sp.L+1, sp.labels, start_units, sp.nodeid2coord)   
-    #routes_intercepted, units_places = optimization(sp.G, sp.U, routes_time_nodes, units_range_time, sp.R, sp.V, sp.T, sp.labels)   
-    #time_marks.append(ft.mark())
+    #routes_intercepted_old, units_places_old = optimization(sp.G, sp.U, routes_time_nodes, units_range_time, sp.R, sp.V, sp.L+1, sp.labels)   
 
     interception_rate, num_intercepted = GetIR(sp.R, routes_intercepted)
-    #time_marks.append(ft.mark())
 
     # Display results and prepare data to return
     if print_InterceptRate:
@@ -380,7 +372,7 @@ def ObtainSimulationInstance(sp, register, specific_start_units=None, cutoff=1e5
         'start_units':        start_units,
         'paths':              paths
     }
-    #eval_time = time.time() - start_time # seconds
+
     return register_entry, sim_instance, interception_rate, None, None#eval_time, np.array(time_marks)
 
 def GetIR(R, routes_intercepted):
@@ -495,12 +487,12 @@ def SimulatePursuersPathways(conf, optimization_method='dynamic', fixed_initial_
             p.append(sp.coord2labels[pos])
         PlotAgentsOnGraph(sp, e, p, t)
 
-def SimulateInteractiveMode(env):    
+def SimulateInteractiveMode(env, filesave_with_time_suffix=False):    
     #s=env.reset()
     s=env.state
     done=False
     R=0
-    env.render(mode=None,fname="testrun")
+    env.render(mode=None, fname="testrun", t_suffix=filesave_with_time_suffix)
     while not done:
         print('e position:',env.state[0],env.sp.labels2coord[env.state[0]])
         print('u paths (node labels):',env.u_paths)
@@ -513,18 +505,21 @@ def SimulateInteractiveMode(env):
         print('\nu positions per time-step:')
         for t in range(env.sp.T):
             print(env._getUpositions(t))
+            if t < env.sp.T-1 and env._getUpositions(t) == env._getUpositions(t+1):
+                print('[., ., .]')
+                break
         print('------------')
-        print('Current state:')
-        print(s)
-        print('Available actions:\n',end='')
+        print('Current state:',s)
         n = env.neighbors[env.state[0]]
-        print(n)
+        print('Available actions: ',n)
         while True:
-            a=input('\nAction (new node)?\n> ')
-            if int(a) in n: break
+            a=input('Action nr '+str(env.global_t+1)+'/max '+str(env.sp.T)+' (new node)?  > ')
+            if a.isnumeric() and int(a) in n: break
         a=n.index(int(a))
         s,r,done,_=env.step(int(a))
         s=env.state
-        env.render(mode=None,fname="testrun")
+        env.render(mode=None, fname="testrun", t_suffix=filesave_with_time_suffix)
         R+=r
-    print('******************** done, reward='+str(R),'**********************\n\n---------------')
+    print('\n******************** done, reward='+str(R),'**********************')
+    input('> Press any key to continue')
+    print('\n')

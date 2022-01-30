@@ -8,7 +8,7 @@ from modules.rl.rl_utils import EvaluatePolicy
 from modules.rl.rl_policy import EpsilonGreedyPolicy
 from modules.rl.rl_algorithms import q_learning_exhaustive
 from modules.sim.graph_factory import get_all_edge_removals_symmetric, LoadData
-from modules.sim.simdata_utils import SimulateInteractiveMode
+from modules.sim.simdata_utils import SimulateInteractiveMode, ObtainSimulationInstance
 import numpy as np
 import networkx as nx
 import random
@@ -297,9 +297,137 @@ def TestSim(e=6,u=2):
     SimulateInteractiveMode(env)
 
 def TestInteractiveSimulation(U=[2],E=[8], edge_blocking=False, solve_select='both', reject_u_duplicates=False):
-    config=GetConfig(u=2)#only needed to find datafile
     state_repr = 'et'
     state_enc  = 'tensors'
+    databank_full, register_full, solvable = LoadData(edge_blocking = edge_blocking)
+    all_envs, hashint2env, env2hashint, env2hashstr = GetWorldSet(state_repr, state_enc, U=U, E=E, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates)
+    
+    while True:
+        env_idx=random.randint(0,len(all_envs)-1)
+        env=all_envs[env_idx]
+        env.reset()
+        u=env.sp.U
+        e0U0lookup = env._to_coords_from_state()
+        hashint=env2hashint[env_idx]
+        hashstr=env2hashstr[env_idx]
+        s = solvable['U='+str(u)][hashint]
+        idx = databank_full['U='+str(u)][hashint]['register'][e0U0lookup]
+        if reject_u_duplicates and has_duplicates(env.state[1:]):
+            continue
+        
+        print('\nenv index',env_idx,', current entry',env.current_entry,'| edge_blocking:',edge_blocking, '| solvable:', solve_select,'| reject duplicates:',reject_u_duplicates)
+        print('> hash:', hashint,' | bin: ',hashstr, '| state_repr:',env.state_representation, '| state_encoding:',env.state_encoding,)
+        print('> state:', env.state)
+        print('> obs:\n',env.obs)
+        print('> example is registered as: '+('Solvable' if s[idx] else 'Unsolvable'))
+        print('-----------------------------')
+        
+        env._remove_world_pool()
+        print('\nenv index',env_idx,', current entry',env.current_entry,'| edge_blocking:',edge_blocking, '| solvable:', solve_select,'| reject duplicates:',reject_u_duplicates)
+        print('> hash:', hashint,' | bin: ',hashstr, '| state_repr:',env.state_representation, '| state_encoding:',env.state_encoding,)
+        print('> state:', env.state)
+        print('> obs:\n',env.obs)
+        print('> example is registered as: '+('Solvable' if s[idx] else 'Unsolvable'))
+        print('-----------------------------')
+
+
+        SimulateInteractiveMode(env, filesave_with_time_suffix=False)
+
+        env._restore_world_pool()
+        print('\nenv index',env_idx,', current entry',env.current_entry,'| edge_blocking:',edge_blocking, '| solvable:', solve_select,'| reject duplicates:',reject_u_duplicates)
+        print('> hash:', hashint,' | bin: ',hashstr, '| state_repr:',env.state_representation, '| state_encoding:',env.state_encoding,)
+        print('> state:', env.state)
+        print('> obs:\n',env.obs)
+        print('> example is registered as: '+('Solvable' if s[idx] else 'Unsolvable'))
+        print('-----------------------------')
+
+        SimulateInteractiveMode(env,filesave_with_time_suffix=False)
+        
+def RunSpecficInstance(U0=[(2,2)], hashint=1775, edge_blocking=False):
+    config=GetConfig(u=len(U0))
+    state_repr = 'etUt'
+    state_enc  = 'nfm'
+    databank_full, register_full, solvable = LoadData(edge_blocking = edge_blocking)
+    e0U0lookup = tuple([(1,0)]+U0)
+
+    s = solvable['U='+str(len(U0))][hashint]
+    idx = databank_full['U='+str(len(U0))][hashint]['register'][e0U0lookup]
+    print('\n\nExample is registered as: '+('Solvable' if s[idx] else 'Unsolvable'))
+    print('--------------------------------------')
+    env0 = GraphWorld(config, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
+    env0.capture_on_edges = edge_blocking
+    all_envs=[]
+    hashint2env={}
+    
+    u=len(U0)
+    env0.sp.U = u
+    idx = databank_full['U='+str(u)][hashint]['register'][e0U0lookup]
+    env_data = databank_full['U='+str(u)][hashint]
+    #            for entry in env_data['databank']:
+    #                if len(entry['paths']) < u:
+    #                    assert False
+    env=copy.deepcopy(env0)
+    env.redefine_graph_structure(env_data['W'],env_data['nodeid2coord'],new_nodeids=True)
+    env.reload_unit_paths(env_data['register'],env_data['databank'],env_data['iratios'])
+    env.reset(idx)
+    SimulateInteractiveMode(env, filesave_with_time_suffix=False)
+
+def has_duplicates(arr):
+    dups=False
+    mem=set()
+    for i in arr:
+        if i in mem:
+            dups=True
+            break
+        mem.add(i)
+    return dups
+
+def CalculateStatistics(E=[i for i in range(11)], U=[1,2,3], edge_blocking=False, plotting=False):
+    config=GetConfig()
+    state_repr = 'etUt'
+    state_enc  = 'nodes'
+    databank_full, register_full, solvable = LoadData(edge_blocking=edge_blocking)
+    env0 = GraphWorld(config, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
+    env0.capture_on_edges = False
+
+    for e in E:
+        for u in U:
+            S=[]
+            R=[]
+            graphcount=0
+            env_all=[]
+            for W_, hashint, hashstr in register_full[e]:
+                s = solvable['U='+str(u)][hashint]
+                S+=list(s)
+                graphcount+=1
+                env_data = databank_full['U='+str(u)][hashint] # dict contains  'register':{(e0,U0):index}, 'databank':[], 'iratios':[]
+                env=copy.deepcopy(env0)
+                env.sp.U=u
+                env.redefine_graph_structure(env_data['W'],env_data['nodeid2coord'],new_nodeids=True)
+                env.reload_unit_paths(env_data['register'],env_data['databank'],env_data['iratios'])
+                valids = s#np.logical_and(s,r)
+                if True:#valids.sum() > 0:
+                    env.world_pool = list(np.array(env.all_worlds)[valids])
+                    env_all.append(env)
+            Total = len(S)
+            Solvable = np.array(S).sum()
+            print('---------------')
+            print('e=',e)
+            print('U=',u)
+            print('total # graphs    :',graphcount)
+            print('total # instances :',Total)
+            print('solvable          :',Solvable)
+            print('                     %: {:.1f}'.format(Solvable/Total*100))
+            if plotting:
+                while True:
+                    env_select=random.choice(env_all)
+                    env_select.reset()
+                    if len(set(env_select.state[1:])) == u:
+                        env_select.render(fname='example_3x3instance_e='+str(e)+'_u='+str(u))
+                        break
+
+def GetWorldSet(state_repr = 'et', state_enc  = 'tensors', U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_duplicates=True):
+    config=GetConfig(u=2)#only needed to find datafile
     databank_full, register_full, solvable = LoadData(edge_blocking = edge_blocking)
     
     env0 = GraphWorld(config, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
@@ -340,131 +468,21 @@ def TestInteractiveSimulation(U=[2],E=[8], edge_blocking=False, solve_select='bo
                     hashint2env[hashint]=len(all_envs)-1
                     env2hashint[len(all_envs)-1]=hashint
                     env2hashstr[len(all_envs)-1]=hashstr
-    while True:
-        env_idx=random.randint(0,len(all_envs)-1)
-        #env_idx=592
-        env=all_envs[env_idx]
-        #env.reset(7)
-        env.reset()
-        u=env.sp.U
-        e0U0lookup = env._to_coords_from_state()
-        hashint=env2hashint[env_idx]
-        hashstr=env2hashstr[env_idx]
-        s = solvable['U='+str(u)][hashint]
-        idx = databank_full['U='+str(u)][hashint]['register'][e0U0lookup]
-        if reject_u_duplicates and has_duplicates(env.state[1:]):
-            continue
-        
-        print('\nenv index',env_idx,', current entry',env.current_entry,'| edge_blocking:',edge_blocking, '| solvable:', solve_select,'| reject duplicates:',reject_u_duplicates)
-        print('> hash:', hashint,' | bin: ',hashstr, '| state_repr:',env.state_representation, '| state_encoding:',env.state_encoding,)
-        print('> state:', env.state)
-        print('> obs:\n',env.obs)
-        print('> example is registered as: '+('Solvable' if s[idx] else 'Unsolvable'))
-        print('-----------------------------')
-        
-        env._remove_world_pool()
-        print('\nenv index',env_idx,', current entry',env.current_entry,'| edge_blocking:',edge_blocking, '| solvable:', solve_select,'| reject duplicates:',reject_u_duplicates)
-        print('> hash:', hashint,' | bin: ',hashstr, '| state_repr:',env.state_representation, '| state_encoding:',env.state_encoding,)
-        print('> state:', env.state)
-        print('> obs:\n',env.obs)
-        print('> example is registered as: '+('Solvable' if s[idx] else 'Unsolvable'))
-        print('-----------------------------')
+    return all_envs, hashint2env, env2hashint, env2hashstr
 
+def TestOptimOutcome(hashint, env_idx, entry, U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_duplicates=True):
+    state_repr = 'et'
+    state_enc  = 'tensors'
+    all_envs, hashint2env, env2hashint, env2hashstr = GetWorldSet(state_repr, state_enc, U=U, E=E, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_duplicates)
+    env=all_envs[env_idx]
+    env.reset(entry)
+    s_coords = list(env._to_coords_from_state())
+    #register, databank, iratios = GetDatabankForPartialGraph(env.sp, 1,1)
+    reg_entry, sim_instance, iratio, eval_time, marktimes = ObtainSimulationInstance(env.sp, {}, specific_start_units=s_coords[1:], cutoff=1e5, print_InterceptRate=True, create_plot=False)
 
-        SimulateInteractiveMode(env)
+    k=0
+    #register, databank, iratios = GetDatabankForPartialGraph(env.sp, REQUIRED_DATASET_SIZE, UPDATE_EVERY)
 
-        env._restore_world_pool()
-        print('\nenv index',env_idx,', current entry',env.current_entry,'| edge_blocking:',edge_blocking, '| solvable:', solve_select,'| reject duplicates:',reject_u_duplicates)
-        print('> hash:', hashint,' | bin: ',hashstr, '| state_repr:',env.state_representation, '| state_encoding:',env.state_encoding,)
-        print('> state:', env.state)
-        print('> obs:\n',env.obs)
-        print('> example is registered as: '+('Solvable' if s[idx] else 'Unsolvable'))
-        print('-----------------------------')
-
-        SimulateInteractiveMode(env)
-        
-def RunSpecficInstance(U0=[(2,2)], hashint=1775, edge_blocking=False):
-    config=GetConfig(u=len(U0))
-    state_repr = 'etUt'
-    state_enc  = 'nfm'
-    databank_full, register_full, solvable = LoadData(edge_blocking = edge_blocking)
-    e0U0lookup = tuple([(1,0)]+U0)
-
-    s = solvable['U='+str(len(U0))][hashint]
-    idx = databank_full['U='+str(len(U0))][hashint]['register'][e0U0lookup]
-    print('\n\nExample is registered as: '+('Solvable' if s[idx] else 'Unsolvable'))
-    print('--------------------------------------')
-    env0 = GraphWorld(config, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
-    env0.capture_on_edges = edge_blocking
-    all_envs=[]
-    hashint2env={}
-    
-    u=len(U0)
-    env0.sp.U = u
-    idx = databank_full['U='+str(u)][hashint]['register'][e0U0lookup]
-    env_data = databank_full['U='+str(u)][hashint]
-    #            for entry in env_data['databank']:
-    #                if len(entry['paths']) < u:
-    #                    assert False
-    env=copy.deepcopy(env0)
-    env.redefine_graph_structure(env_data['W'],env_data['nodeid2coord'],new_nodeids=True)
-    env.reload_unit_paths(env_data['register'],env_data['databank'],env_data['iratios'])
-    env.reset(idx)
-    SimulateInteractiveMode(env)
-
-def has_duplicates(arr):
-    dups=False
-    mem=set()
-    for i in arr:
-        if i in mem:
-            dups=True
-            break
-        mem.add(i)
-    return dups
-
-def CalculateStatistics(E=[i for i in range(11)], U=[1,2,3],plotting=False):
-    config=GetConfig()
-    state_repr = 'etUt'
-    state_enc  = 'nodes'
-    databank_full, register_full, solvable = LoadData()
-    env0 = GraphWorld(config, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
-    env0.capture_on_edges = False
-
-    for e in E:
-        for u in U:
-            S=[]
-            R=[]
-            graphcount=0
-            env_all=[]
-            for W_, hashint, hashstr in register_full[e]:
-                s = solvable['U='+str(u)][hashint]
-                S+=list(s)
-                graphcount+=1
-                env_data = databank_full['U='+str(u)][hashint] # dict contains  'register':{(e0,U0):index}, 'databank':[], 'iratios':[]
-                env=copy.deepcopy(env0)
-                env.sp.U=u
-                env.redefine_graph_structure(env_data['W'],env_data['nodeid2coord'],new_nodeids=True)
-                env.reload_unit_paths(env_data['register'],env_data['databank'],env_data['iratios'])
-                valids = s#np.logical_and(s,r)
-                if True:#valids.sum() > 0:
-                    env.world_pool = list(np.array(env.all_worlds)[valids])
-                    env_all.append(env)
-            Total = len(S)
-            Solvable = np.array(S).sum()
-            print('---------------')
-            print('e=',e)
-            print('U=',u)
-            print('total # graphs    :',graphcount)
-            print('total # instances :',Total)
-            print('solvable          :',Solvable)
-            print('                     %: {:.1f}'.format(Solvable/Total*100))
-            if plotting:
-                while True:
-                    env_select=random.choice(env_all)
-                    env_select.reset()
-                    if len(set(env_select.state[1:])) == u:
-                        env_select.render(fname='example_3x3instance_e='+str(e)+'_u='+str(u))
-                        break
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)    
@@ -486,10 +504,13 @@ if __name__ == '__main__':
     #MergeDataFilesSolvability()
     ##SaveReachabilityData()
 
-    ### Testing the data
-    TestInteractiveSimulation(U=[3],E=[i for i in range(11)],edge_blocking=False, solve_select='solvable', reject_u_duplicates=False)#i for i in range(11)])
+    ### Testing the data: NOTE CHECK INSTANCE WITH IRENE
+    #TestOptimOutcome(hashint=4056, env_idx=592, entry=7, U=[3], E=[i for i in range(11)], edge_blocking=True, solve_select='solvable', reject_duplicates=True)
+    RunSpecficInstance(U0=[(0,0),(0,2),(1,2)], hashint=4056, edge_blocking=True)
+
+    TestInteractiveSimulation(U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_u_duplicates=False)#i for i in range(11)])
     #TestInteractiveSimulation(U=[1],E=[0],edge_blocking=False)#i for i in range(11)])
     #RunSpecficInstance(U0=[(1,1),(2,2)], hashint=1396, edge_blocking=False)
     #RunSpecficInstance(U0=[(0,0),(2,0),(2,1)], hashint=1059, edge_blocking=False)
-    #CalculateStatistics(E=[i for i in range(11)], U=[1,2,3],plotting=False)
+    #CalculateStatistics(E=[i for i in range(11)], U=[1,2,3], edge_blocking=False, plotting=False)
     #CalculateStatistics(E=[10], U=[2],plotting=False)
