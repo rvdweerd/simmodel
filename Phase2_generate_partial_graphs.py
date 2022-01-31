@@ -561,7 +561,7 @@ if __name__ == '__main__':
     #  Testing the data: Interactive simulations
     #
     ########
-    TestInteractiveSimulation(U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_u_duplicates=False)
+    #TestInteractiveSimulation(U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_u_duplicates=False)
     #TestInteractiveSimulation(U=[3],E=[6],edge_blocking=True, solve_select='solvable')#i for i in range(11)])
     #RunSpecficInstance(U0=[(1,1),(2,2)], hashint=1396, edge_blocking=False)
     #RunSpecficInstance(U0=[(0,0),(2,0),(2,1)], hashint=1059, edge_blocking=False)

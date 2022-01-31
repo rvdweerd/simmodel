@@ -24,8 +24,8 @@ def FindShortestPathToAnyTargetNode(G, labels2coord, source_node_label, target_n
 
 #world_name='Manhattan3x3_PauseFreezeWorld'
 #world_name='Manhattan3x3_WalkAround'
-#world_name='Manhattan5x5_FixedEscapeInit'
-world_name='MetroU3_e17tborder_FixedEscapeInit'
+world_name='Manhattan5x5_FixedEscapeInit'
+#world_name='MetroU3_e17tborder_FixedEscapeInit'
 #world_name='SparseManhattan5x5'
 
 state_repr='etUte0U0'

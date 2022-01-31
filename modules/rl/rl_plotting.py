@@ -22,7 +22,7 @@ def PlotAgentsOnGraph_(sp, escape_pos, pursuers_pos, timestep, fig_show=False, f
     colorlist = [1 for _ in range(sp.V)]
     node_borderlist = ["white"]*sp.V
     for n in sp.target_nodes:
-        node_borderlist[n] = "red"
+        node_borderlist[sp.labels2nodeids[n]] = "red"
     sizelist =  [1200 for _ in range(sp.V)] if size == 'large' else [400 for _ in range(sp.V)]
     node_text = dict([(c,str(sp.coord2labels[c])) for c in sp.G.nodes])
     colorlist=["white"]*sp.V
