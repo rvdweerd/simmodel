@@ -300,7 +300,7 @@ def print_world_properties(env, env_idx, entry, hashint, hashstr, edge_blocking,
     print('\nenv index',env_idx,', current entry',env.current_entry,'| edge_blocking:',edge_blocking, '| solvable:', solve_select,'| reject duplicates:',reject_u_duplicates)
     print('> graph hash:', hashint,' /', hashstr, '| state_repr:',env.state_representation, '| state_encoding:',env.state_encoding,)
     print('> state:', env.state)
-    print('> obs:\n',env.obs)
+    print('> obs:','\n'+str(env.obs))
     print('> example is registered as: '+('Solvable' if solvable_[entry] else 'Unsolvable'))
     print('-----------------------------')
 
@@ -337,8 +337,8 @@ def TestInteractiveGoalOnly(E=[1,2,3]):
    
 
 def TestInteractiveSimulation(U=[2],E=[8], edge_blocking=False, solve_select='both', reject_u_duplicates=False):
-    state_repr = 'et'
-    state_enc  = 'tensors'
+    state_repr = 'etUte0U0'
+    state_enc  = 'nfm'
     databank_full, register_full, solvable = LoadData(edge_blocking = edge_blocking)
     all_envs, hashint2env, env2hashint, env2hashstr = GetWorldSet(state_repr, state_enc, U=U, E=E, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates)
     
@@ -561,10 +561,10 @@ if __name__ == '__main__':
     #  Testing the data: Interactive simulations
     #
     ########
-    #TestInteractiveSimulation(U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_u_duplicates=False)
-    TestInteractiveSimulation(U=[3],E=[6],edge_blocking=True, solve_select='solvable')#i for i in range(11)])
+    TestInteractiveSimulation(U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_u_duplicates=False)
+    #TestInteractiveSimulation(U=[3],E=[6],edge_blocking=True, solve_select='solvable')#i for i in range(11)])
     #RunSpecficInstance(U0=[(1,1),(2,2)], hashint=1396, edge_blocking=False)
     #RunSpecficInstance(U0=[(0,0),(2,0),(2,1)], hashint=1059, edge_blocking=False)
     #CalculateStatistics(E=[i for i in range(11)], U=[1,2,3], edge_blocking=False, plotting=False)
     #CalculateStatistics(E=[10], U=[2],plotting=False)
-    #TestInteractiveGoalOnly(E=[i for i in range(11)])
+    TestInteractiveGoalOnly(E=[i for i in range(11)])

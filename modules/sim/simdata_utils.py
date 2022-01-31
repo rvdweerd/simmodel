@@ -286,6 +286,7 @@ def DefineSimParameters(config):
     if config['make_reflexive']:
         edgelist=[(e,e,{}) for e in sp.G.nodes()]
         sp.G.add_edges_from(edgelist)
+    sp.start_escape_route_node = sp.coord2labels[sp.start_escape_route]
     sp.W = nx.to_numpy_matrix(sp.G)        
     return sp
 
@@ -514,6 +515,7 @@ def SimulateInteractiveMode(env, filesave_with_time_suffix=False):
                 break
         print('------------')
         print('Current state:',s)
+        print('Current obs:','\n'+str(env.obs) if env.state_encoding=='nfm' else env.obs)
         n = env.neighbors[env.state[0]]
         print('Available actions: ',n)
         while True:

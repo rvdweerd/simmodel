@@ -82,7 +82,7 @@ class GraphWorld(gym.Env):
         # self.nfm0[:,0] = np.array([i for i in range(self.sp.V)])
         # self.nfm0[np.array(list(self.sp.target_nodes)),1]=1 # set target nodes, fixed for the given graph
         # self.nfm  = copy.deepcopy(self.nfm0)
-        # self.reset()
+        self.reset()
     
     def redefine_goal_nodes(self, goal_nodes):
         self.sp.target_nodes=goal_nodes
@@ -311,7 +311,7 @@ class GraphWorld(gym.Env):
         if len(self.world_pool)==0:
             #self.current_entry=-1
             self.iratio=-1
-            self.state=self._to_state((self.sp.coord2labels[(1,0)]),[])
+            self.state=self._to_state((self.sp.coord2labels[self.sp.start_escape_route]),[])
             self.state0 =self.state
             pass
             #return
