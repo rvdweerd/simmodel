@@ -330,7 +330,7 @@ class FrameTimer():
     def total(self):
         return (timeit.default_timer()-self.s0)*1 # s
 
-def ObtainSimulationInstance(sp, register, specific_start_units=None, cutoff=1e5, print_InterceptRate=True, create_plot=False):
+def ObtainSimulationInstance(sp, register, specific_start_units=None, cutoff=1e5, print_InterceptRate=True, create_plot=False, method='ALT'):
     # Input:
     #   sp:         simulation parameters
     #   register:   dict ((start_escape_route),(start_unit1),(start_unit2),..)  -> index of databank
@@ -354,9 +354,13 @@ def ObtainSimulationInstance(sp, register, specific_start_units=None, cutoff=1e5
 
     units_range_time = unit_ranges(start_units, sp.U, sp.G, sp.L)
 
-    routes_intercepted, units_places = optimization_alt(sp.G, sp.U, routes_time_nodes, units_range_time, sp.R, sp.V, sp.L+1, sp.labels, start_units, sp.nodeid2coord)   
-    #routes_intercepted_old, units_places_old = optimization(sp.G, sp.U, routes_time_nodes, units_range_time, sp.R, sp.V, sp.L+1, sp.labels)   
-
+    if method == 'ALT':
+        routes_intercepted, units_places = optimization_alt(sp.G, sp.U, routes_time_nodes, units_range_time, sp.R, sp.V, sp.L+1, sp.labels, start_units, sp.nodeid2coord)   
+    elif method == 'IMA':
+        routes_intercepted, units_places = optimization(sp.G, sp.U, routes_time_nodes, units_range_time, sp.R, sp.V, sp.L+1, sp.labels)   
+    else:
+        assert False
+        
     interception_rate, num_intercepted = GetIR(sp.R, routes_intercepted)
 
     # Display results and prepare data to return

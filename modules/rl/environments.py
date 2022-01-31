@@ -83,6 +83,10 @@ class GraphWorld(gym.Env):
         # self.nfm0[np.array(list(self.sp.target_nodes)),1]=1 # set target nodes, fixed for the given graph
         # self.nfm  = copy.deepcopy(self.nfm0)
         # self.reset()
+    
+    def redefine_goal_nodes(self, goal_nodes):
+        self.sp.target_nodes=goal_nodes
+        self.nfm_calculator.init(self)
 
     def redefine_graph_structure(self, W, in_nodeid2coord, new_nodeids=False):
         # W:          adjacency matrix (numpy array), based on some node ordering

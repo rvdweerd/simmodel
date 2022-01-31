@@ -20,6 +20,9 @@ def PlotAgentsOnGraph_(sp, escape_pos, pursuers_pos, timestep, fig_show=False, f
     pos=sp.pos
     plt.clf()
     colorlist = [1 for _ in range(sp.V)]
+    node_borderlist = ["white"]*sp.V
+    for n in sp.target_nodes:
+        node_borderlist[n] = "red"
     sizelist =  [1200 for _ in range(sp.V)]#400
     node_text = dict([(c,str(sp.coord2labels[c])) for c in sp.G.nodes])
     colorlist=["white"]*sp.V
@@ -56,7 +59,7 @@ def PlotAgentsOnGraph_(sp, escape_pos, pursuers_pos, timestep, fig_show=False, f
     #nx.draw_networkx(G, pos, **options)
     nx.draw_networkx_edges(G, pos, edge_color='grey', width=5, alpha=1.)#width=1
     nx.draw_networkx_labels(G,pos,font_size=12,labels=node_text, font_color='black')#fontsize=8
-    nx.draw_networkx_nodes(G, pos, node_size=sizelist, node_color=colorlist, alpha=1.)#alhpa=.6
+    nx.draw_networkx_nodes(G, pos, node_size=sizelist, node_color=colorlist, edgecolors=node_borderlist, alpha=1.)#alhpa=.6
     #nx.draw_networkx_nodes(G, pos, node_size=10, node_color="k")
     
     plt.axis('off')

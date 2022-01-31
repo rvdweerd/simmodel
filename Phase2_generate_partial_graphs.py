@@ -296,7 +296,7 @@ def TestSim(e=6,u=2):
     env.reset(12)
     SimulateInteractiveMode(env)
 
-def  print_world_properties(env, env_idx, entry, hashint, hashstr, edge_blocking, solve_select, reject_u_duplicates, solvable_):
+def print_world_properties(env, env_idx, entry, hashint, hashstr, edge_blocking, solve_select, reject_u_duplicates, solvable_):
     print('\nenv index',env_idx,', current entry',env.current_entry,'| edge_blocking:',edge_blocking, '| solvable:', solve_select,'| reject duplicates:',reject_u_duplicates)
     print('> graph hash:', hashint,' /', hashstr, '| state_repr:',env.state_representation, '| state_encoding:',env.state_encoding,)
     print('> state:', env.state)
@@ -304,6 +304,37 @@ def  print_world_properties(env, env_idx, entry, hashint, hashstr, edge_blocking
     print('> example is registered as: '+('Solvable' if solvable_[entry] else 'Unsolvable'))
     print('-----------------------------')
 
+def TestInteractiveGoalOnly(E=[1,2,3]):
+    state_repr = 'et'
+    state_enc  = 'nfm'
+    config=GetConfig(u=0)
+    databank_full, register_full, solvable = LoadData(edge_blocking = False)
+    
+    env = GraphWorld(config, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
+    
+    while True:
+        e=random.choice(E)
+        W, hashint, hashstr = random.choice(register_full[e])
+        env_data = databank_full['U=1'][hashint]
+        env.redefine_graph_structure(env_data['W'],env_data['nodeid2coord'],new_nodeids=True)
+        nodelist=list(env.sp.labels2coord.keys())
+        
+        sourcenode=env.sp.coord2labels[env.sp.start_escape_route]
+        nodelist.remove(sourcenode)
+        goal_nodes= [random.choice(nodelist)]
+        spath_coords = nx.dijkstra_path(env.sp.G, env.sp.start_escape_route, env.sp.labels2coord[goal_nodes[0]])
+        spath_nodes = [ env.sp.coord2labels[c] for c in spath_coords]
+        print('Shortest path',spath_nodes,'length:',len(spath_nodes)-1,'hops')
+
+        #goal_nodes= random.choices(nodelist,k=2)
+        env.redefine_goal_nodes(goal_nodes)
+        env.reset()
+        print('New goal nodes',goal_nodes)
+        print('nfm')
+        print(env.obs)
+        SimulateInteractiveMode(env,filesave_with_time_suffix=False)
+    
+   
 
 def TestInteractiveSimulation(U=[2],E=[8], edge_blocking=False, solve_select='both', reject_u_duplicates=False):
     state_repr = 'et'
@@ -466,10 +497,28 @@ def TestOptimOutcome(hashint, env_idx, entry, U=[1,2,3], E=[i for i in range(11)
     all_envs, hashint2env, env2hashint, env2hashstr = GetWorldSet(state_repr, state_enc, U=U, E=E, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_duplicates)
     env=all_envs[env_idx]
     env.reset(entry)
-    s_coords = list(env._to_coords_from_state())
+    s_coords_check = list(env._to_coords_from_state())
     #register, databank, iratios = GetDatabankForPartialGraph(env.sp, 1,1)
-    reg_entry, sim_instance, iratio, eval_time, marktimes = ObtainSimulationInstance(env.sp, {}, specific_start_units=s_coords[1:], cutoff=1e5, print_InterceptRate=True, create_plot=False)
-
+    variants = [
+        [(1,0), (0,0),(0,2),(1,2)], # ABC
+        [(1,0), (0,0),(1,2),(0,2)], # ACB
+        [(1,0), (0,2),(0,0),(1,2)], # BAC
+        [(1,0), (0,2),(1,2),(0,0)], # BCA
+        [(1,0), (1,2),(0,0),(0,2)], # CAB
+        [(1,0), (1,2),(0,2),(0,0)], # CBA
+    ]
+    assert s_coords_check in variants
+    env.sp.R=1000
+    env.render(fname='test_optim')
+    for method in ['IMA','ALT']:
+        print('Method:', method, 'R=', env.sp.R)    
+        for s_coords in variants:
+            reg_entry, sim_instance, iratio, eval_time, marktimes = ObtainSimulationInstance(env.sp, {}, specific_start_units=s_coords[1:], cutoff=1e5, print_InterceptRate=True, create_plot=False, method=method)
+            end_units=tuple([p[-1] for p in sim_instance['paths']])
+            print('variant    : ', s_coords)
+            print('start_units: ', sim_instance['start_units'])
+            print('end_units  : ', end_units)
+            print('paths      : ', sim_instance['paths'])
     k=0
     #register, databank, iratios = GetDatabankForPartialGraph(env.sp, REQUIRED_DATASET_SIZE, UPDATE_EVERY)
 
@@ -486,7 +535,11 @@ if __name__ == '__main__':
 
     args=parser.parse_args()
     
-    ### Pipeline to create datasets of edge-removed graphs and unit paths
+    ########
+    #
+    #  Pipeline to create datasets of edge-removed graphs and unit paths
+    #
+    ########
     #RunInstance(args)
     #TestSim()
     #MergeDataFiles()
@@ -494,13 +547,24 @@ if __name__ == '__main__':
     #MergeDataFilesSolvability()
     ##SaveReachabilityData()
 
-    ### Testing the data: NOTE CHECK INSTANCE WITH IRENE
+    ########
+    #
+    #  Testing the data: NOTE CHECK INSTANCE WITH IRENE
+    #
+    ########
     #TestOptimOutcome(hashint=4056, env_idx=592, entry=7, U=[3], E=[i for i in range(11)], edge_blocking=True, solve_select='solvable', reject_duplicates=True)
     #RunSpecficInstance(U0=[(0,0),(0,2),(1,2)], hashint=4056, edge_blocking=True)
 
-    TestInteractiveSimulation(U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_u_duplicates=False)
-    #TestInteractiveSimulation(U=[1],E=[0],edge_blocking=False)#i for i in range(11)])
+
+    ########
+    #
+    #  Testing the data: Interactive simulations
+    #
+    ########
+    #TestInteractiveSimulation(U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_u_duplicates=False)
+    TestInteractiveSimulation(U=[3],E=[6],edge_blocking=True, solve_select='solvable')#i for i in range(11)])
     #RunSpecficInstance(U0=[(1,1),(2,2)], hashint=1396, edge_blocking=False)
     #RunSpecficInstance(U0=[(0,0),(2,0),(2,1)], hashint=1059, edge_blocking=False)
     #CalculateStatistics(E=[i for i in range(11)], U=[1,2,3], edge_blocking=False, plotting=False)
     #CalculateStatistics(E=[10], U=[2],plotting=False)
+    #TestInteractiveGoalOnly(E=[i for i in range(11)])

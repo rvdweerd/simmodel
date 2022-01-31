@@ -9,7 +9,8 @@ class BasicNFM():
         eo.F = 3
         eo.nfm0 = np.zeros((eo.sp.V,eo.F))
         eo.nfm0[:,0] = np.array([i for i in range(eo.sp.V)])
-        eo.nfm0[np.array(list(eo.sp.target_nodes)),1]=1 # set target nodes, fixed for the given graph
+        if len(eo.sp.target_nodes) > 0:
+            eo.nfm0[np.array(list(eo.sp.target_nodes)),1]=1 # set target nodes, fixed for the given graph
         eo.nfm  = copy.deepcopy(eo.nfm0)
         #eo.reset()
     def reset(self, eo):
