@@ -10,8 +10,8 @@ from modules.rl.rl_policy import GNN_s2v_Policy
 from modules.rl.rl_custom_worlds import GetCustomWorld
 from modules.rl.rl_utils import EvaluatePolicy, EvalArgs2
 from modules.sim.simdata_utils import SimulateInteractiveMode
-from modules.sim.graph_factory import GetPartialGraphEnvironments_Manh3x3
-from modules.rl.environments import GraphWorld, GraphWorldFromDatabank
+#from modules.sim.graph_factory import GetPartialGraphEnvironments_Manh3x3
+from modules.rl.environments import GraphWorld#, GraphWorldFromDatabank
 import random
 import numpy as np
 import torch
@@ -21,33 +21,31 @@ from collections import namedtuple
 from pytorch_lightning import Trainer
 from modules.sim.graph_factory import LoadData
 import gym
-import modules.rl.environments
+#import modules.rl.environments
 
-databank_full, register_full, solvable, reachable = LoadData()
+databank_full, register_full, solvable = LoadData()
+
+world_name='SparseManhattan5x5'
 state_repr='etUt'
-state_enc='nodes'
-config={
-        'graph_type': "Manhattan",
-        'make_reflexive': True,
-        'N': 3,    # number of nodes along one side
-        'U': 2,    # number of pursuer units
-        'L': 4,    # Time steps
-        'T': 7,
-        'R': 100,  # Number of escape routes sampled 
-        'direction_north': False,       # Directional preference of escaper
-        'loadAllStartingPositions': False
-    }
-reg = register_full[2] # list of all (W,hashstr,hashint) combinations for 2 edge removals
-entry=0
-hashint=reg[entry][1]
-env_data = databank_full['U=2'][hashint] # dict contains  'register':{(e0,U0):index}, 'databank':[], 'iratios':[]
-env_data['W'] = reg[0][0]
-env = GraphWorldFromDatabank(config,env_data,optimization_method='static',state_representation=state_repr,state_encoding=state_enc)
+state_enc='nfm'
+env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
 
+import modules.sim.simdata_utils as su
+configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
+conf=configs['SparseManhattan5x5']
+conf['direction_north']=False
+conf['loadAllStartingPositions']=False
+conf['make_reflexive']=True
+kwargs = {'config':conf, 'optimization_method':'static', 'fixed_initial_positions':None, 'state_representation':state_repr, 'state_encoding':state_enc}
+#env = gym.make('GraphWorld-v0', **kwargs)
+#env = gym.make('GraphWorld-v0', config=conf, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
 
-#env2=gym.make('GraphWorldFromDB-v0', config=config, env_data=env_data)
+#env.redefine_goal_nodes([24])
+#env._remove_world_pool()
+#SimulateInteractiveMode(env)
+
 from pl_bolts.models.rl import DQN
-dqn = DQN('GraphWorldFromDB-v0', config=config, env_data=env_data)
+dqn = DQN(env ='GraphWorld-v0', **kwargs)
 trainer = Trainer()
 trainer.fit(dqn)
 

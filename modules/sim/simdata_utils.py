@@ -41,10 +41,28 @@ class SimParameters(object):
         self.most_eastern_x = None
         self.target_nodes = None
         self.loadAllStartingPositions = False
+        self.spath_to_target = None
+        self.spath_length = None
     def __str__(self):
         out = self.graph_type
         out += ', ('+str(self.N)+'x'+str(self.N)+') nodes, ...'
         return out
+    
+    def CalculateShortestPath(self):
+        if self.target_nodes == []:
+            return [],0
+        min_cost = 1e9
+        for target_node_label in self.target_nodes:
+            target_node_coord = self.labels2coord[target_node_label]
+            cost, path = nx.single_source_dijkstra(self.G, self.start_escape_route, target_node_coord, weight='weight')
+            if cost < min_cost:
+                best_path_coords = path
+                min_cost = cost
+        self.spath_to_target = []
+        for coord in best_path_coords:
+            self.spath_to_target.append(self.coord2labels[coord])
+        self.spath_length = int(min_cost)
+
 
 def GetStateEncodingDimension(state_representation, V, U):
     if state_representation == 'et':
@@ -213,6 +231,8 @@ def GetConfigs():
     }
     return configs
 
+
+
 def DefineSimParameters(config):
     sp = SimParameters()
     sp.graph_type = config['graph_type']
@@ -287,6 +307,7 @@ def DefineSimParameters(config):
         edgelist=[(e,e,{}) for e in sp.G.nodes()]
         sp.G.add_edges_from(edgelist)
     sp.start_escape_route_node = sp.coord2labels[sp.start_escape_route]
+    sp.CalculateShortestPath()
     sp.W = nx.to_numpy_matrix(sp.G)        
     return sp
 
@@ -514,7 +535,7 @@ def SimulateInteractiveMode(env, filesave_with_time_suffix=False):
                 print('[., ., .]')
                 break
         print('------------')
-        print('Current state:',s)
+        print('Current state:',s, 'spath to goal', env.sp.spath_to_target, '('+str(env.sp.spath_length)+' steps)')
         print('Current obs:','\n'+str(env.obs) if env.state_encoding=='nfm' else env.obs)
         n = env.neighbors[env.state[0]]
         print('Available actions: ',n)

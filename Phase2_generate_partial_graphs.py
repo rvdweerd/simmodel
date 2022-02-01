@@ -299,8 +299,8 @@ def TestSim(e=6,u=2):
 def print_world_properties(env, env_idx, entry, hashint, hashstr, edge_blocking, solve_select, reject_u_duplicates, solvable_):
     print('\nenv index',env_idx,', current entry',env.current_entry,'| edge_blocking:',edge_blocking, '| solvable:', solve_select,'| reject duplicates:',reject_u_duplicates)
     print('> graph hash:', hashint,' /', hashstr, '| state_repr:',env.state_representation, '| state_encoding:',env.state_encoding,)
-    print('> state:', env.state)
-    print('> obs:','\n'+str(env.obs))
+    print('> state:', env.state, 'spath to goal', env.sp.spath_to_target, '('+str(env.sp.spath_length)+' steps)')
+    #print('> obs:','\n'+str(env.obs))
     print('> example is registered as: '+('Solvable' if solvable_[entry] else 'Unsolvable'))
     print('-----------------------------')
 
@@ -317,19 +317,18 @@ def TestInteractiveGoalOnly(E=[1,2,3]):
         W, hashint, hashstr = random.choice(register_full[e])
         env_data = databank_full['U=1'][hashint]
         env.redefine_graph_structure(env_data['W'],env_data['nodeid2coord'],new_nodeids=True)
-        nodelist=list(env.sp.labels2coord.keys())
         
+        # select random target node(s)
+        nodelist=list(env.sp.labels2coord.keys())
         sourcenode=env.sp.coord2labels[env.sp.start_escape_route]
         nodelist.remove(sourcenode)
-        goal_nodes= [random.choice(nodelist)]
-        spath_coords = nx.dijkstra_path(env.sp.G, env.sp.start_escape_route, env.sp.labels2coord[goal_nodes[0]])
-        spath_nodes = [ env.sp.coord2labels[c] for c in spath_coords]
-        print('Shortest path',spath_nodes,'length:',len(spath_nodes)-1,'hops')
-
-        #goal_nodes= random.choices(nodelist,k=2)
+        #goal_nodes= [random.choice(nodelist)]
+        goal_nodes= random.choices(nodelist,k=2)
         env.redefine_goal_nodes(goal_nodes)
-        env.reset()
         print('New goal nodes',goal_nodes)
+        print('Shortest path', env.sp.spath_to_target, 'length:', env.sp.spath_length, 'hops')
+
+        env.reset()
         print('nfm')
         print(env.obs)
         SimulateInteractiveMode(env,filesave_with_time_suffix=False)
@@ -338,7 +337,7 @@ def TestInteractiveGoalOnly(E=[1,2,3]):
 
 def TestInteractiveSimulation(U=[2],E=[8], edge_blocking=False, solve_select='both', reject_u_duplicates=False):
     state_repr = 'etUte0U0'
-    state_enc  = 'nfm'
+    state_enc  = 'tensors'
     databank_full, register_full, solvable = LoadData(edge_blocking = edge_blocking)
     all_envs, hashint2env, env2hashint, env2hashstr = GetWorldSet(state_repr, state_enc, U=U, E=E, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates)
     
@@ -355,8 +354,6 @@ def TestInteractiveSimulation(U=[2],E=[8], edge_blocking=False, solve_select='bo
         assert entry == env.current_entry
         if reject_u_duplicates and has_duplicates(env.state[1:]):
             continue
-
-        print_world_properties(env, env_idx, entry, hashint, hashstr, edge_blocking, solve_select, reject_u_duplicates, solvable_=s)
         
         env._remove_world_pool()
         print_world_properties(env, env_idx, entry, hashint, hashstr, edge_blocking, solve_select, reject_u_duplicates, solvable_=s)
@@ -561,10 +558,10 @@ if __name__ == '__main__':
     #  Testing the data: Interactive simulations
     #
     ########
-    #TestInteractiveSimulation(U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_u_duplicates=False)
+    TestInteractiveSimulation(U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_u_duplicates=False)
     #TestInteractiveSimulation(U=[3],E=[6],edge_blocking=True, solve_select='solvable')#i for i in range(11)])
     #RunSpecficInstance(U0=[(1,1),(2,2)], hashint=1396, edge_blocking=False)
     #RunSpecficInstance(U0=[(0,0),(2,0),(2,1)], hashint=1059, edge_blocking=False)
     #CalculateStatistics(E=[i for i in range(11)], U=[1,2,3], edge_blocking=False, plotting=False)
     #CalculateStatistics(E=[10], U=[2],plotting=False)
-    TestInteractiveGoalOnly(E=[i for i in range(11)])
+    #TestInteractiveGoalOnly(E=[i for i in range(11)])

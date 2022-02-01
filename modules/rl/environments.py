@@ -62,7 +62,7 @@ class GraphWorld(gym.Env):
         # @property
         # def action_space(self):
         #     return spaces.Discrete(self.out_degree[self.state[0]])
-        self.action_space = spaces.Discrete(self.max_outdegree)
+        self.action_space = spaces.Discrete(self.max_outdegree)# + int(config['make_reflextive']))
         self.metadata = {'render.modes':['human']}
         self.max_episode_length = self.max_timesteps
 
@@ -86,6 +86,7 @@ class GraphWorld(gym.Env):
     
     def redefine_goal_nodes(self, goal_nodes):
         self.sp.target_nodes=goal_nodes
+        self.sp.CalculateShortestPath()
         self.nfm_calculator.init(self)
 
     def redefine_graph_structure(self, W, in_nodeid2coord, new_nodeids=False):
@@ -154,6 +155,7 @@ class GraphWorld(gym.Env):
         self.observation_space = spaces.Box(0., self.sp.U, shape=(self.state_encoding_dim,), dtype=np.float32)
         self.action_space = spaces.Discrete(self.max_outdegree)
         self.nfm_calculator.init(self)
+        self.sp.CalculateShortestPath()
         self.reset()
         self.state=(self.sp.coord2labels[self.sp.start_escape_route],)
 
@@ -166,12 +168,15 @@ class GraphWorld(gym.Env):
         self.reset()
 
     def _encode_nodes(self, s):
+        # used to return a tuple of node labels of E and U positions as observation
         return s
 
     def _encode_tensor(self, s):
+        # used to return a one-hot-coded tensor of E and Upositions as observation
         return self._state2vec_packed(s)
 
     def _encode_nfm(self, s):
+        # used to return the node feature matrix as observation
         return self.nfm
 
     def _state2np_mat(self,s):
@@ -511,8 +516,8 @@ register(
 #         self.redefine_graph_structure(W_,self.sp.nodeid2coord)
 #         #self.reset()
 
-register(
-    id='GraphWorldFromDB-v0',
-    entry_point='modules.rl.environments:GraphWorldFromDatabank'
-)
+# register(
+#     id='GraphWorldFromDB-v0',
+#     entry_point='modules.rl.environments:GraphWorldFromDatabank'
+# )
 

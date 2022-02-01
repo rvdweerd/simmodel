@@ -17,6 +17,7 @@ import torch.optim as optim
 from scipy.signal import medfilt
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
+        
 class QNet(nn.Module):
     """ The neural net that will parameterize the function Q(s, a)
     
@@ -43,7 +44,7 @@ class QNet(nn.Module):
         #nr_extra_layers_1 = config['num_extra_layers']
         
         # Build the learnable affine maps:
-        self.theta1a = nn.Linear(self.node_dim, self.emb_dim, True, dtype=torch.float32)
+        self.theta1a = nn.Linear(self.node_dim, self.emb_dim, True, dtype=torch.float32)#.to(device)
         self.theta1b = nn.Linear(self.emb_dim, self.emb_dim, True, dtype=torch.float32)
         #torch.nn.init.xavier_normal_(self.theta1.weight)
         self.theta2 = nn.Linear(self.emb_dim, self.emb_dim, True, dtype=torch.float32)
@@ -68,7 +69,7 @@ class QNet(nn.Module):
         
         # Graph embedding
         # Note: we first compute s1 and s3 once, as they are not dependent on mu
-        mu = torch.zeros(batch_size, num_nodes, self.emb_dim, device=device, dtype=torch.float32)
+        mu = torch.zeros(batch_size, num_nodes, self.emb_dim, dtype=torch.float32,device=device)
         #s1 = self.theta1a(xv)  # (batch_size, num_nodes, emb_dim)
         s1 = self.theta1b(F.relu(self.theta1a(xv)))  # (batch_size, num_nodes, emb_dim)
         #for layer in self.theta1_extras:
@@ -104,6 +105,17 @@ class QNet(nn.Module):
         print('------------------------------------------')
         assert total == sum(p.numel() for p in self.parameters() if p.requires_grad)
         return total
+
+class QNet_xW(QNet):
+    #def __init__(self, config):
+        #super(QNet_xW, self).__init__()
+    def forward(self, x):
+        if len(x)<32:
+            k=0
+        xv, W = torch.split(x,[2,25],dim=x.dim()-1)
+        #xv=xv.to(device)
+        #W=W.to(device)
+        return super(QNet_xW, self).forward(xv,W)
 
 
 class QFunction():
