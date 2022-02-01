@@ -10,7 +10,7 @@ from gym import spaces
 from gym import register
 import copy
 import networkx as nx
-from modules.gnn.nfm_gen import BasicNFM
+from modules.gnn.nfm_gen import BasicNFM_evisited, BasicNFM_ecurrent, BasicNFM_evis_curr
 
 def is_edge_crossing(old_Upositions, new_Upositions, prev_node, next_node):
     if prev_node in new_Upositions and next_node in old_Upositions:
@@ -74,7 +74,7 @@ class GraphWorld(gym.Env):
         # 4  [.] ## off ## 1 if node previously visited by escaper
         # 5  [.] ## off ## distance from nearest target node
         # 6  [.] ...
-        self.nfm_calculator=BasicNFM()
+        self.nfm_calculator=BasicNFM_evis_curr()
         if self.state_encoding=='nfm':
             self.nfm_calculator.init(self)
         # self.F = 3

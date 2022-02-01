@@ -63,6 +63,7 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
             printing(str(policy.model.policy))
             printing('#Trainable parameters: '+str(CalculateNumTrainableParameters(policy.model.policy)))
     printing('\n-------------------------------------------------------------------------------------------------------')   
+    if len(test_set)==0: test_set=[None]
     for i, entry in enumerate(test_set):
         s=env.reset(entry = entry) 
         policy.reset_hidden_states()
@@ -103,7 +104,7 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
             plot=env.render(fname=None)
             plot_cache.append(plot)
             for i_plt,p in enumerate(plot_cache):
-                fname=file_prefix+str(entry)+'_s0='+str(env.state0)+'_'+policy.__name__+'_R='+str(R)+'_t='+str(i_plt)
+                fname=file_prefix+str(env.current_entry)+'_s0='+str(env.state0)+'_'+policy.__name__+'_R='+str(R)+'_t='+str(i_plt)
                 p.savefig(fname+'.png')
         captures.append(int(info['Captured']))
         returns.append(R)

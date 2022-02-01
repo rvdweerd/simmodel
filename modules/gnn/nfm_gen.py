@@ -3,12 +3,12 @@ import numpy as np
 import copy
 import torch
 
-class BasicNFM():
+class BasicNFM_evisited():
     def __init__(self):
         self.name='BasicNFM'
         # Features:
-        # 1. visited by e
-        # 2. target node
+        # 0. visited by e
+        # 1. target node
     def init(self, eo):
         eo.F = 2
         eo.nfm0 = np.zeros((eo.sp.V,eo.F))
@@ -37,3 +37,48 @@ class BasicNFM():
         #    if eo.local_t >= len(p)-1:
         #        eo.nfm[p[-1],2] += 10
         eo.nfm[eo.state[0],0]=1
+
+class BasicNFM_ecurrent():
+    def __init__(self):
+        self.name='BasicNFM'
+        # Features:
+        # 0. current position e
+        # 1. target node
+    def init(self, eo):
+        eo.F = 2
+        eo.nfm0 = np.zeros((eo.sp.V,eo.F))
+        if len(eo.sp.target_nodes) > 0:
+            eo.nfm0[np.array(list(eo.sp.target_nodes)),1]=1 # set target nodes, fixed for the given graph
+        eo.nfm  = copy.deepcopy(eo.nfm0)
+
+    def reset(self, eo):
+        eo.nfm = copy.deepcopy(eo.nfm0)
+        eo.nfm[eo.sp.start_escape_route_node,0]=1
+
+    def update(self, eo):
+        eo.nfm[:,0]=0
+        eo.nfm[eo.state[0],0]=1
+
+class BasicNFM_evis_curr():
+    def __init__(self):
+        self.name='BasicNFM'
+        # Features:
+        # 0. current position e
+        # 1. visited e positions
+        # 2. target node
+    def init(self, eo):
+        eo.F = 3
+        eo.nfm0 = np.zeros((eo.sp.V,eo.F))
+        if len(eo.sp.target_nodes) > 0:
+            eo.nfm0[np.array(list(eo.sp.target_nodes)),2]=1 # set target nodes, fixed for the given graph
+        eo.nfm  = copy.deepcopy(eo.nfm0)
+
+    def reset(self, eo):
+        eo.nfm = copy.deepcopy(eo.nfm0)
+        eo.nfm[eo.sp.start_escape_route_node,0]=1
+        eo.nfm[eo.sp.start_escape_route_node,1]=1
+
+    def update(self, eo):
+        eo.nfm[:,0]=0
+        eo.nfm[eo.state[0],0]=1
+        eo.nfm[eo.state[0],1]=1
