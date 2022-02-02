@@ -11,6 +11,7 @@ from modules.rl.rl_policy import GNN_s2v_Policy
 from modules.rl.rl_custom_worlds import GetCustomWorld
 from modules.rl.rl_utils import EvaluatePolicy, EvalArgs2, GetFullCoverageSample
 from modules.sim.simdata_utils import SimulateInteractiveMode
+from modules.gnn.nfm_gen import NFM_ec_t, NFM_ev_t, NFM_ev_ec_t
 #from modules.sim.graph_factory import GetPartialGraphEnvironments_Manh3x3
 import random
 import numpy as np
@@ -22,39 +23,6 @@ from collections import namedtuple
 Experience = namedtuple('Experience', ( \
     'state', 'state_tsr', 'W', 'action', 'action_nodeselect', 'reward', 'done', 'next_state', 'next_state_tsr'))
 
-world_name='SparseManhattan5x5'
-state_repr='etUt'
-state_enc='nfm'
-env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
-env._remove_world_pool()
-env_all=[]
-for i in range(env.sp.V):
-    if i == env.sp.coord2labels[env.sp.start_escape_route]: continue
-    env.redefine_goal_nodes([i])
-    env.current_entry=i
-    env_all.append(copy.deepcopy(env)) #env_all[0].world_pool=[env_all[0].world_pool[4]]
-
-config={}
-config['node_dim']      = env_all[0].F
-config['num_nodes']     = env_all[0].sp.V
-config['emb_dim']       = 32        #128
-config['emb_iter_T']    = 2         #2
-#config['num_extra_layers']=0        #0
-config['num_episodes']  = 2500       #500
-config['memory_size']   = 2000      #200
-config['num_step_ql']   = 1         #1
-config['bsize']         = 64        #64
-config['gamma']         = .9        #.9
-config['lr_init']       = 1e-3      #1e-3
-config['lr_decay']      = 0.99999    #0.99999
-config['tau']           = 100       #inf                    # num grad steps for each target network update
-config['eps_0']         = 1.        #1.
-config['eps_min']       = 0.1#01       #0.05
-#config['eps_decay']     = 0.##     #
-epi_min=.9 # reach eps_min at % of episodes # .9
-config['eps_decay']     = 1 - np.exp(np.log(config['eps_min'])/(epi_min*config['num_episodes']))
-config['logdir']        = './results_Phase2/SPath'
-
 
 def Test(config):
     qnet=QNet(config).to(device)
@@ -63,10 +31,10 @@ def Test(config):
     y=qnet(xv,W)
     print(y)
 
-def evaluate(affix, info=False):
+def evaluate(logdir, info=False, config=None, env_all=None):
     #Test(config)
     
-    Q_func, Q_net, optimizer, lr_scheduler = init_model(config,fname='results_Phase2/SPath/'+affix+'/best_model.tar')
+    Q_func, Q_net, optimizer, lr_scheduler = init_model(config,fname=logdir+'/best_model.tar')
     #Q_func, Q_net, optimizer, lr_scheduler = init_model(config,fname='results_Phase2/CombOpt/'+affix+'/ep_350_length_7.0.tar')
     policy=GNN_s2v_Policy(Q_func)
     #policy.epsilon=0.
@@ -76,13 +44,15 @@ def evaluate(affix, info=False):
 
     
     for i,env in enumerate(tqdm.tqdm(env_all)):
-        l, returns, c = EvaluatePolicy(env, policy,env.world_pool, print_runs=False, save_plots=False, logdir='results_Phase2/CombOpt/'+affix, eval_arg_func=EvalArgs2, silent_mode=True)
-        if i%10==0:
+        l, returns, c = EvaluatePolicy(env, policy,env.world_pool, print_runs=False, save_plots=False, logdir=logdir, eval_arg_func=EvalArgs2, silent_mode=True)
+        num_worlds_requested = 10
+        once_every = len(env_all)//num_worlds_requested
+        if i % once_every ==0:
             plotlist = GetFullCoverageSample(returns, env.world_pool, bins=3, n=3)
-            EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir='results_Phase2/SPath/'+affix, eval_arg_func=EvalArgs2, silent_mode=False)
+            EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgs2, silent_mode=False, plot_each_timestep=False)
         R+=returns 
     
-    OF = open('results_Phase2/CombOpt/'+affix+'/Full_result.txt', 'w')
+    OF = open(logdir+'/Full_result.txt', 'w')
     def printing(text):
         print(text)
         OF.write(text + "\n")
@@ -94,7 +64,7 @@ def evaluate(affix, info=False):
     for k,v in config.items():
         printing(k+' '+str(v))
 
-def train(seeds=1, seednr0=42):
+def train(seeds=1, seednr0=42, config=None, env_all=None):
     # Storing metrics about training:
     found_solutions = dict()  # episode --> (W, solution)
     losses = []
@@ -290,8 +260,62 @@ def train(seeds=1, seednr0=42):
         plt.savefig(logdir+'/ratioplot.png')
         plt.clf()
 
-numseeds=1
-seed0=1000
-train(seeds=numseeds,seednr0=seed0)
-evaluate('SEED'+str(seed0))
-#evaluate('1A')
+import argparse
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)    
+
+    # Model hyperparameters
+    parser.add_argument('--emb_dim', default=32, type=int)
+    parser.add_argument('--emb_itT', default=2, type=int)
+    parser.add_argument('--num_epi', default=250, type=int)
+    parser.add_argument('--mem_size', default=2000, type=int)
+    args=parser.parse_args()
+
+    world_name='SparseManhattan5x5'
+    state_repr='etUt'
+    state_enc='nfm'
+    nfm_func = NFM_ev_ec_t()
+    scenario_name='1target-random'
+
+    env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
+    env.redefine_nfm(nfm_func)
+    env._remove_world_pool()
+    env_all=[]
+    for i in range(env.sp.V):
+        if i == env.sp.coord2labels[env.sp.start_escape_route]: continue
+        env.redefine_goal_nodes([i])
+        env.current_entry=i
+        env_all.append(copy.deepcopy(env)) 
+
+    config={}
+    config['node_dim']      = env_all[0].F
+    config['num_nodes']     = env_all[0].sp.V
+    config['emb_dim']       = args.emb_dim #32        #128
+    config['emb_iter_T']    = args.emb_itT #2
+    #config['num_extra_layers']=0        #0
+    config['num_episodes']  = args.num_epi #2500       #500
+    config['memory_size']   = args.mem_size #2000      #200
+    config['num_step_ql']   = 1         #1
+    config['bsize']         = 64        #64
+    config['gamma']         = .9        #.9
+    config['lr_init']       = 1e-3      #1e-3
+    config['lr_decay']      = 0.99999    #0.99999
+    config['tau']           = 100       #inf                    # num grad steps for each target network update
+    config['eps_0']         = 1.        #1.
+    config['eps_min']       = 0.1#01       #0.05
+    #config['eps_decay']     = 0.##     #
+    epi_min=.9 # reach eps_min at % of episodes # .9
+    config['eps_decay']     = 1 - np.exp(np.log(config['eps_min'])/(epi_min*config['num_episodes']))
+    config['logdir']        = './results_Phase2/SPath/'+ \
+                                world_name+'/'+ \
+                                scenario_name+'/'+ \
+                                nfm_func.name+ \
+                                '_emb'+str(config['emb_dim']) + \
+                                '_itT'+str(config['emb_iter_T']) + \
+                                '_epi'+str(config['num_episodes']) + \
+                                '_mem'+str(config['memory_size'])
+
+    numseeds=1
+    seed0=0
+    train(seeds=numseeds,seednr0=seed0, config=config, env_all=env_all)
+    evaluate(logdir=config['logdir']+'/SEED'+str(seed0), config=config, env_all=env_all)

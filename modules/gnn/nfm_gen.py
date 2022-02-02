@@ -3,9 +3,9 @@ import numpy as np
 import copy
 import torch
 
-class BasicNFM_evisited():
+class NFM_ev_t():
     def __init__(self):
-        self.name='BasicNFM'
+        self.name='nfm-ev-t'
         # Features:
         # 0. visited by e
         # 1. target node
@@ -38,9 +38,9 @@ class BasicNFM_evisited():
         #        eo.nfm[p[-1],2] += 10
         eo.nfm[eo.state[0],0]=1
 
-class BasicNFM_ecurrent():
+class NFM_ec_t():
     def __init__(self):
-        self.name='BasicNFM'
+        self.name='nfm-ec-t'
         # Features:
         # 0. current position e
         # 1. target node
@@ -59,9 +59,9 @@ class BasicNFM_ecurrent():
         eo.nfm[:,0]=0
         eo.nfm[eo.state[0],0]=1
 
-class BasicNFM_evis_curr():
+class NFM_ev_ec_t():
     def __init__(self):
-        self.name='BasicNFM'
+        self.name='nfm-ev-ec-t'
         # Features:
         # 0. current position e
         # 1. visited e positions

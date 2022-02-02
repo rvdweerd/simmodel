@@ -25,7 +25,7 @@ def EvalArgs2(env):
     # this version is used for GNNs
     return env.nfm, env.sp.W, env.neighbors[env.state[0]]
 
-def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, logdir='./temp', has_Q_table=False, eval_arg_func=EvalArgs1, silent_mode=False):
+def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, logdir='./temp', has_Q_table=False, eval_arg_func=EvalArgs1, silent_mode=False, plot_each_timestep=True):
     # Escaper chooses random neighboring nodes until temination
     # Inputs:
     #   test_set: list of indices to the databank
@@ -82,7 +82,7 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
             text_cache += ('\nRun '+str(i+1)+': dataset entry '+str(entry)+', Initial state '+str(env.state0))
             text_cache += ', Deterministic policy: '+str(policy.deterministic)+'\n'
         while not done:
-            if save_plots:
+            if save_plots and plot_each_timestep:
                 plot=env.render(fname=None)
                 plot_cache.append(plot)
             s_start=env.state
@@ -101,11 +101,17 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
             text_cache+=('  Done after '+str(count)+' steps, Captured: '+str(info['Captured'])+' Reward: '+str(R)+'\n')
             printing(text_cache)
         if save_plots:
-            plot=env.render(fname=None)
-            plot_cache.append(plot)
+            if plot_each_timestep:
+                plot=env.render(fname=None)
+                plot_cache.append(plot)
             for i_plt,p in enumerate(plot_cache):
                 fname=file_prefix+str(env.current_entry)+'_s0='+str(env.state0)+'_'+policy.__name__+'_R='+str(R)+'_t='+str(i_plt)
                 p.savefig(fname+'.png')
+            
+            fname=file_prefix+str(env.current_entry)+'_s0='+str(env.state0)+'_'+policy.__name__+'_R='+str(R)+'_epath'
+            env.render_epath(fname=fname)
+            #plot2 = env.render_epath(fname=None)
+            #plot2.savefig(fname+'.png')
         captures.append(int(info['Captured']))
         returns.append(R)
         lengths.append(count)

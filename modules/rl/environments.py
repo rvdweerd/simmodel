@@ -2,7 +2,7 @@
 import modules.sim.simdata_utils as su
 import random 
 #import time
-from modules.rl.rl_plotting import PlotAgentsOnGraph, PlotAgentsOnGraph_
+from modules.rl.rl_plotting import PlotAgentsOnGraph, PlotAgentsOnGraph_, PlotEPathOnGraph_
 import numpy as np
 #import matplotlib.pyplot as plt
 import gym
@@ -10,7 +10,7 @@ from gym import spaces
 from gym import register
 import copy
 import networkx as nx
-from modules.gnn.nfm_gen import BasicNFM_evisited, BasicNFM_ecurrent, BasicNFM_evis_curr
+from modules.gnn.nfm_gen import NFM_ec_t, NFM_ev_t, NFM_ev_ec_t
 
 def is_edge_crossing(old_Upositions, new_Upositions, prev_node, next_node):
     if prev_node in new_Upositions and next_node in old_Upositions:
@@ -46,6 +46,7 @@ class GraphWorld(gym.Env):
         # Dynamics parameters
         self.current_entry          = 0    # which entry in the world pool is active
         self.u_paths                = []
+        self.e_path                 = []   # nodes visited by e during rollout
         self.iratio                 = 0
         self.state0                 = ()
         self.state                  = ()   # current internal state in node labels: (e,U1,U2,...)
@@ -74,7 +75,7 @@ class GraphWorld(gym.Env):
         # 4  [.] ## off ## 1 if node previously visited by escaper
         # 5  [.] ## off ## distance from nearest target node
         # 6  [.] ...
-        self.nfm_calculator=BasicNFM_evis_curr()
+        self.nfm_calculator=NFM_ev_ec_t()
         if self.state_encoding=='nfm':
             self.nfm_calculator.init(self)
         # self.F = 3
@@ -84,6 +85,12 @@ class GraphWorld(gym.Env):
         # self.nfm  = copy.deepcopy(self.nfm0)
         self.reset()
     
+    def redefine_nfm(self, nfm_function):
+        assert  self.state_encoding=='nfm'
+        self.nfm_calculator = nfm_function
+        self.nfm_calculator.init(self)
+        self.reset()
+
     def redefine_goal_nodes(self, goal_nodes):
         self.sp.target_nodes=goal_nodes
         self.sp.CalculateShortestPath()
@@ -333,7 +340,9 @@ class GraphWorld(gym.Env):
             self.u_paths  = data_sample['paths']
             self.state    = self._to_state(e_init_labels,u_init_labels)
             self.state0   = self.state
-            
+        
+        self.e_path = [ self.state[0] ]
+    
         # Initialize graph feature matrix
         if self.state_encoding=='nfm':
             self.nfm_calculator.reset(self)
@@ -382,7 +391,8 @@ class GraphWorld(gym.Env):
         new_Upositions_sorted = list(np.sort(new_Upositions))
 
         self.state = tuple([next_node] + new_Upositions_sorted)
-        
+        self.e_path.append(self.state[0])
+
         # Check termination conditions
         done = False
         if self.global_t >= self.max_timesteps: 
@@ -436,88 +446,29 @@ class GraphWorld(gym.Env):
 
     def render(self, mode=None, fname=None, t_suffix=True):#file_name=None):
         e = self.state[0]
-        p=self.state[1:]
+        p = self.state[1:]
         if fname == None:
             #file_name=self.render_fileprefix+'_t='+str(self.global_t)
             file_name=None
         elif t_suffix:
             file_name = fname+'_t='+str(self.global_t)
         else: file_name = fname
-        plot=PlotAgentsOnGraph_(self.sp, e, p, self.global_t, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes))
+        plot = PlotAgentsOnGraph_(self.sp, e, p, self.global_t, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes))
+        return plot
+    
+    def render_epath(self, fname=None, t_suffix=True):
+        p = self.state[1:]
+        if fname == None:
+            #file_name=self.render_fileprefix+'_t='+str(self.global_t)
+            file_name=None
+        elif t_suffix:
+            file_name = fname+'_t='+str(self.global_t)
+        else: file_name = fname
+        plot = PlotEPathOnGraph_(self.sp, self.e_path, p, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes))
         return plot
 
 register(
     id='GraphWorld-v0',
     entry_point='modules.rl.environments:GraphWorld'
 )
-
-# class GraphWorldFromDatabank(GraphWorld):
-#     def __init__(self, config, env_data, optimization_method='static', fixed_initial_positions=None, state_representation='etUt', state_encoding='nodes'):
-#         #super().__init__('EpsGreedy')
-#         W_           =env_data['W']
-#         #hashint      =env_data['hashint']
-#         #databank_full=env_data['databank_full']
-        
-#         self.type                   ='GraphWorld'
-#         self.sp                     = su.DefineSimParameters(config)
-#         self.optimization           = optimization_method
-#         self.fixed_initial_positions= fixed_initial_positions
-#         self.state_representation   = state_representation
-#         self.state_encoding_dim, self.state_chunks, self.state_len = su.GetStateEncodingDimension(state_representation, self.sp.V, self.sp.U)
-#         self.render_fileprefix      = 'test_scenario_t='
-        
-#         # Load relevant optimization runs for the U trajectories from databank
-#         register_coords = env_data['register']
-#         databank_coords = env_data['databank']
-#         iratios  = env_data['iratios']
-#         self.register, self.databank, self.iratios = self._ConvertDataFile(register_coords, databank_coords, iratios) 
-
-#         # Create a world_pool list of indices of pre-saved initial conditions and their rollouts of U positions
-#         self.all_worlds             = [ind for k,ind in self.register['labels'].items()]
-#         self.world_pool             = su.GetWorldPool(self.all_worlds, fixed_initial_positions, self.register)
-#         self._encode                = self._encode_nodes if state_encoding == 'nodes' else self._encode_tensor
-#         if state_encoding not in ['nodes', 'tensors']: assert False
-
-#         # Dynamics parameters
-#         self.current_entry          = 0    # which entry in the world pool is active
-#         self.u_paths                = []
-#         self.iratio                 = 0
-#         self.state0                 = ()
-#         self.state                  = ()   # current internal state in node labels: (e,U1,U2,...)
-#         self.global_t               = 0
-#         self.local_t                = 0
-#         self.max_timesteps          = self.sp.T
-#         self.neighbors, self.in_degree, self.max_indegree, self.out_degree, self.max_outdegree = su.GetGraphData(self.sp)
-
-#         # Gym objects
-#         #self.observation_space = spaces.Discrete(self.sp.V) if state_encoding == 'nodes' else spaces.MultiBinary(self.state_encoding_dim)
-#         self.observation_space = spaces.Box(0., self.sp.U, shape=(self.state_encoding_dim,), dtype=np.float32)
-#         #self.observation_space = spaces.Tuple([spaces.Discrete(self.sp.V) for i in range(self.state_len)])             
-#         # @property
-#         # def action_space(self):
-#         #     return spaces.Discrete(self.out_degree[self.state[0]])
-#         self.action_space = spaces.Discrete(self.max_outdegree)
-#         self.metadata = {'render.modes':['human']}
-#         self.max_episode_length = self.max_timesteps
-
-#         # Graph feature matrix, (FxV) with F number of features, V number of nodes
-#         # 0  [.] node number
-#         # 1  [.] 1 if target node, 0 otherwise 
-#         # 2  [.] # of units present at node at current time
-#         # 3  [.] ## off ## 1 if node previously visited by unit
-#         # 4  [.] ## off ## 1 if node previously visited by escaper
-#         # 5  [.] ## off ## distance from nearest target node
-#         # 6  [.] ...
-#         self.F = 3
-#         self.nfm0 = np.zeros((self.sp.V,self.F))
-#         self.nfm0[:,0] = np.array([i for i in range(self.sp.V)])
-#         self.nfm0[np.array(list(self.sp.target_nodes)),1]=1 # set target nodes, fixed for the given graph
-#         self.nfm  = copy.deepcopy(self.nfm0)
-#         self.redefine_graph_structure(W_,self.sp.nodeid2coord)
-#         #self.reset()
-
-# register(
-#     id='GraphWorldFromDB-v0',
-#     entry_point='modules.rl.environments:GraphWorldFromDatabank'
-# )
 
