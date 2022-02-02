@@ -269,23 +269,39 @@ if __name__ == '__main__':
     parser.add_argument('--emb_itT', default=2, type=int)
     parser.add_argument('--num_epi', default=250, type=int)
     parser.add_argument('--mem_size', default=2000, type=int)
+    parser.add_argument('--nfm_func', default='NFM_ev_ec_t', type=str)
+    parser.add_argument('--scenario', default='1target-random', type=str)
     args=parser.parse_args()
 
     world_name='SparseManhattan5x5'
     state_repr='etUt'
     state_enc='nfm'
-    nfm_func = NFM_ev_ec_t()
-    scenario_name='1target-random'
+    scenario_name=args.scenario
 
     env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
+    nfm_funcs = {'NFM_ev_ec_t':NFM_ev_ec_t(),'NFM_ec_t':NFM_ec_t(),'NFM_ev_t':NFM_ev_t()}
+    nfm_func = nfm_funcs[args.nfm_func]
     env.redefine_nfm(nfm_func)
     env._remove_world_pool()
+    env.databank={}
+    env.register={}
     env_all=[]
-    for i in range(env.sp.V):
-        if i == env.sp.coord2labels[env.sp.start_escape_route]: continue
-        env.redefine_goal_nodes([i])
-        env.current_entry=i
-        env_all.append(copy.deepcopy(env)) 
+    if scenario_name=='1target_random':
+        for i in range(env.sp.V):
+            if i == env.sp.coord2labels[env.sp.start_escape_route]: continue
+            env.redefine_goal_nodes([i])
+            env.current_entry=i
+            env_all.append(copy.deepcopy(env))
+    else:
+        for i in range(env.sp.V):
+            for j in range(0, i):
+                if i == env.sp.coord2labels[env.sp.start_escape_route] or j == env.sp.coord2labels[env.sp.start_escape_route]:
+                    continue
+                if i==j:
+                    assert False
+                env.redefine_goal_nodes([i,j])
+                env.current_entry=i
+                env_all.append(copy.deepcopy(env))
 
     config={}
     config['node_dim']      = env_all[0].F
@@ -309,7 +325,7 @@ if __name__ == '__main__':
     config['logdir']        = './results_Phase2/SPath/'+ \
                                 world_name+'/'+ \
                                 scenario_name+'/'+ \
-                                nfm_func.name+ \
+                                nfm_func.name+'/'+ \
                                 '_emb'+str(config['emb_dim']) + \
                                 '_itT'+str(config['emb_iter_T']) + \
                                 '_epi'+str(config['num_episodes']) + \

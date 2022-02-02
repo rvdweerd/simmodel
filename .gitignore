@@ -1,6 +1,7 @@
 .vscode
 __pycache__
 results
+results_Phase1
 results_Phase2
 images
 models
@@ -8,3 +9,6 @@ sb3_ppo_tensorboard
 temp
 datasets/_partial_graphs
 datasets/__partial_graphs/_databank_full
+wandb
+tb_logs
+lightning_logs

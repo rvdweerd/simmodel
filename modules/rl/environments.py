@@ -134,16 +134,7 @@ class GraphWorld(gym.Env):
 
         self.sp.G = nx.from_numpy_matrix(W, create_using=nx.DiGraph())
         self.sp.G = nx.relabel_nodes(self.sp.G, in_nodeid2coord)
-        #self.sp.nodeid2coord = dict( (i, n) for i,n in enumerate(self.sp.G.nodes()) )
-        # CHECK IF self.sp.target_nodes are still consistent
-        #self.sp.coord2nodeid = dict( (n, i) for i,n in enumerate(self.sp.G.nodes()) )
-        #self.sp.coord2labels = self.sp.labels
-        #self.sp.labels2coord = dict( (v,k) for k,v in self.sp.coord2labels.items())
-        #for coord, nodeid in self.sp.coord2nodeid.items():
-        #    label = self.sp.coord2labels[coord]
-        #    self.sp.labels2nodeids[label]=nodeid
-        #    self.sp.nodeids2labels[nodeid]=label
-        
+     
         self.sp.target_nodes=[]
         for tc in target_coords:
             if tc in self.sp.coord2labels.keys():
@@ -294,20 +285,6 @@ class GraphWorld(gym.Env):
         self.iratio=-1
         self.u_paths=[]
         self.reset(self.current_entry)
-        # self.state=self._to_state((self.state[0]),[])
-        # self.state0 =self.state
-        # if self.state_representation == 'etUt':
-        #     self.obs = self._encode(self.state)
-        # elif self.state_representation == 'et':
-        #     self.obs = self._encode((self.state[0],))
-        # elif self.state_representation == 'etUte0U0':
-        #     self.obs = self._encode(self.state+self.state0)
-        # elif self.state_representation == 'ete0U0':
-        #     self.obs = self._encode(tuple([self.state[0]])+self.state0)
-        # else:
-        #     assert False
-
-        #self.reset()
 
     def _restore_world_pool(self):
         assert self.world_pool==[]
@@ -346,14 +323,6 @@ class GraphWorld(gym.Env):
         # Initialize graph feature matrix
         if self.state_encoding=='nfm':
             self.nfm_calculator.reset(self)
-        # self.nfm = copy.deepcopy(self.nfm0)
-        # for u_index, u in enumerate(self.state[1:]): 
-        #     self.nfm[u,2]+=1         # f2: current presence of units
-        #     #self.nfm[u,3]=1         # f3: node previously visited by any unit
-        # for p in self.u_paths:
-        #     if self.local_t >= len(p)-1:
-        #         self.nfm[p[-1],2] += 10
-        #self.nfm[self.state[0],4]=1 # f4: node previously visited by escaper
 
         # Return initial state in appropriate form
         if self.state_representation == 'etUt':
@@ -422,14 +391,6 @@ class GraphWorld(gym.Env):
         # Update feature matrix
         if self.state_encoding=='nfm':
             self.nfm_calculator.update(self)
-        # self.nfm[:,2]=0
-        # for u_index, u in enumerate(self.state[1:]): 
-        #     self.nfm[u,2]+=1         # f2: current presence of units
-        #     #self.nfm[u,2]=1         # f3: node previously visited by any unit
-        # for p in self.u_paths:
-        #     if self.local_t >= len(p)-1:
-        #         self.nfm[p[-1],2] += 10
-        #self.nfm[self.state[0],4]=1 # f4: node previously visited by escaper
 
         # Return s',r',done,info (new state in appropriate form)
         if self.state_representation == 'etUt':

@@ -1,15 +1,13 @@
 #!/bin/bash
-for emb in {32,64,128}
+for emb in {32,}
 do
-    for itt in {2,3}
+    for itt in {2,3,4}
     do
-        tmux new-session -d -s sub$emb$itt
-        tmux send-keys -t "sub$emb$itt" "conda activate rlcourse" Enter
-        tmux send-keys -t "sub$emb$itt" "cd ~/testing/sim" Enter
-        tmux send-keys -t "sub$emb$itt" "python Phase2_experiments_SPath_multiple.py --emb_dim $emb --emb_itT $itt --num_epi 2500 --mem_size 2000" Enter
-        tmux send-keys -t "sub$emb$itt" "python Phase2_experiments_SPath_multiple.py --emb_dim $emb --emb_itT $itt --num_epi 2500 --mem_size 5000" Enter
-        tmux send-keys -t "sub$emb$itt" "python Phase2_experiments_SPath_multiple.py --emb_dim $emb --emb_itT $itt --num_epi 5000 --mem_size 2000" Enter
-        tmux send-keys -t "sub$emb$itt" "python Phase2_experiments_SPath_multiple.py --emb_dim $emb --emb_itT $itt --num_epi 5000 --mem_size 5000" Enter          
+        tmux new-session -d -s sube$emb$itt
+        tmux send-keys -t "sube$emb$itt" "conda activate rlcourse" Enter
+        tmux send-keys -t "sube$emb$itt" "cd ~/testing/sim" Enter
+        tmux send-keys -t "sube$emb$itt" "python Phase2_experiments_SPath_multiple.py --emb_dim $emb --emb_itT $itt --num_epi 2500 --mem_size 2000 --nfm_func NFM_ec_t --scenario 2target-random" Enter
+        
     done
 done
 

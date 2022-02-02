@@ -110,9 +110,14 @@ class QNet_xW(QNet):
     #def __init__(self, config):
         #super(QNet_xW, self).__init__()
     def forward(self, x):
-        if len(x)<32:
-            k=0
-        xv, W = torch.split(x,[2,25],dim=x.dim()-1)
+        dims=x.dim()
+        n=x.shape[dims-2]
+        w=x.shape[-1]-n
+        # print('x_shape',x.shape)
+        # print('dims',x.dim())
+        # print('n',n)
+        # print('w',w)
+        xv, W = torch.split(x,[w,n],dim=dims-1)
         #xv=xv.to(device)
         #W=W.to(device)
         return super(QNet_xW, self).forward(xv,W)
