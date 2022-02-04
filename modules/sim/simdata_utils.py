@@ -15,12 +15,14 @@ from modules.sim.sim_graphs import SparseManhattanGraph, graph, CircGraph, TKGra
 from modules.rl.rl_plotting import PlotAgentsOnGraph
 from modules.optim.escape_route_generator_MC import mutiple_escape_routes
 from modules.optim.optimization_FIP_gurobipy import unit_ranges, optimization_alt, optimization
+from torch_geometric.utils.convert import from_networkx
 
 class SimParameters(object):
     def __init__(self):
         self.graph_type = None
         self.G = None 
-        self.W = None               # Adjacency matrix (numpy)
+        self.W = None               # Adjacency matrix (numpy)  (V,V) V=num nodes
+        self.EI= None               # Edge index (torch tensor) (2,E) E=num edges
         self.labels = None
         self.pos = None
         self.N = None
@@ -313,6 +315,13 @@ def DefineSimParameters(config):
     sp.start_escape_route_node = sp.coord2labels[sp.start_escape_route]
     sp.CalculateShortestPath()
     sp.W = nx.to_numpy_matrix(sp.G)        
+    # make sure all nodes have the same attributes
+    for key in sp.G.edges().keys():
+        if len(sp.G.edges[key]) == 0:
+            sp.G.edges[key]['N_pref']=-1
+            sp.G.edges[key]['weight']=-1
+    pyg_graph = from_networkx(sp.G)
+    sp.EI = pyg_graph.edge_index
     return sp
 
 def GetUnitsInitialConditions(sp, register, specific_start_units, cutoff):

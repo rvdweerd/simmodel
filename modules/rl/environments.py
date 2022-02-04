@@ -414,7 +414,7 @@ class GraphWorld(gym.Env):
             assert False
         return self.obs, reward, done, info
 
-    def render(self, mode=None, fname=None, t_suffix=True, size='large'):#file_name=None):
+    def render(self, mode=None, fname=None, t_suffix=True, size=None):#file_name=None):
         e = self.state[0]
         p = self.state[1:]
         if fname == None:
@@ -423,6 +423,11 @@ class GraphWorld(gym.Env):
         elif t_suffix:
             file_name = fname+'_t='+str(self.global_t)
         else: file_name = fname
+        if size == None:
+            if self.sp.V < 5:
+                size='large'
+            else:
+                size='small'
         plot = PlotAgentsOnGraph_(self.sp, e, p, self.global_t, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes), size=size)
         return plot
     
