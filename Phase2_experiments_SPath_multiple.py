@@ -371,16 +371,19 @@ if __name__ == '__main__':
     parser.add_argument('--optim_target', default='None', type=str)
     parser.add_argument('--tau', default=100, type=int)
     parser.add_argument('--nstep', default=1, type=int)
-    
     args=parser.parse_args()
 
-    world_name='SparseManhattan5x5'
-    state_repr='etUt'
-    state_enc='nfm'
     scenario_name=args.scenario
-
-    env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
     nfm_funcs = {'NFM_ev_ec_t':NFM_ev_ec_t(),'NFM_ec_t':NFM_ec_t(),'NFM_ev_t':NFM_ev_t(),'NFM_ev_ec_t_um_us':NFM_ev_ec_t_um_us()}
+    if 'target' in scenario_name:
+        world_name='SparseManhattan5x5'
+        state_repr='etUt'
+        state_enc='nfm'
+        env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
+    elif '3x3' in scenario_name:
+        pass
+    else:
+        assert False
     nfm_func = nfm_funcs[args.nfm_func]
     env.redefine_nfm(nfm_func)
     env_all=[]
@@ -432,6 +435,12 @@ if __name__ == '__main__':
             #env.databank['labels'][j]['paths']=patharr
         #SimulateInteractiveMode(env, entry=entry)
         env_all = [env]
+    elif scenario_name == 'toptargets-fixed_3U-random-dynamic':
+        env.reset()
+        #entry=env.current_entry
+        #print('entry',entry)
+        #SimulateInteractiveMode(env)#, entry=2200)
+        env_all = [env]
     else:
         assert False
 
@@ -468,7 +477,7 @@ if __name__ == '__main__':
                                 '_mem'+str(config['memory_size']) + \
                                 '_nstep'+str(config['num_step_ql'])
     numseeds=1
-    seed0=999999
+    seed0=0
     train(seeds=numseeds,seednr0=seed0, config=config, env_all=env_all)
     evaluate(logdir=config['logdir']+'/SEED'+str(seed0), config=config, env_all=env_all)
     #evaluate_spath_heuristic(logdir=rootdir+'/heur/spath', env_all=env_all)
