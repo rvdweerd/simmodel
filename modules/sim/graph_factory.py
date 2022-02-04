@@ -4,6 +4,7 @@ import random
 import networkx as nx
 import pickle
 from modules.rl.environments import GraphWorld#, GraphWorldFromDatabank
+import copy
 
 def rand_key(p):
     key1 = ""
@@ -172,3 +173,62 @@ def LoadData(edge_blocking=False):
 #                 env.reset()
 #                 all_envs.append(env)
 #     return all_envs
+
+def GetConfig(u=2):
+    config={
+        'graph_type': "Manhattan",
+        'make_reflexive': True,
+        'N': 3,    # number of nodes along one side
+        'U': u,    # number of pursuer units
+        'L': 4,    # Time steps
+        'T': 7,
+        'R': 100,  # Number of escape routes sampled 
+        'direction_north': False,       # Directional preference of escaper
+        'loadAllStartingPositions': False
+    }
+    return config
+
+def GetWorldSet(state_repr = 'et', state_enc  = 'tensors', U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_duplicates=True, nfm_func=None):
+    config=GetConfig(u=2)#only needed to find datafile
+    databank_full, register_full, solvable = LoadData(edge_blocking = edge_blocking)
+    
+    env0 = GraphWorld(config, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
+    env0.capture_on_edges = edge_blocking
+    all_envs=[]
+    hashint2env={}
+    env2hashint={}
+    env2hashstr={}
+    for u in U:
+        env0.sp.U = u
+        for e in E:
+            for W_, hashint, hashstr in register_full[e]:
+            #W_, hashint, hashstr = random.choice(register_full[4])
+            #for hashint, env_data in databank_full['U='+str(u)].items():
+                if hashint not in databank_full['U='+str(u)]:
+                    assert False
+                env_data = databank_full['U='+str(u)][hashint] # dict contains  'register':{(e0,U0):index}, 'databank':[], 'iratios':[]
+                for entry in env_data['databank']:
+                    if len(entry['paths']) < u:
+                        assert False
+                env=copy.deepcopy(env0)
+                env.redefine_graph_structure(env_data['W'],env_data['nodeid2coord'],new_nodeids=True)
+                env.reload_unit_paths(env_data['register'],env_data['databank'],env_data['iratios'])
+                env.redefine_nfm(nfm_func)
+                s = solvable['U='+str(u)][hashint]
+                valids = s #np.logical_and(np.logical_not(s),r)
+                # Filter out solvable intial conditions
+                if solve_select == 'both':
+                    env.world_pool = env.all_worlds
+                elif solve_select == 'solvable':
+                    env.world_pool = list(np.array(env.all_worlds)[valids]) # only use solvable puzzles
+                elif solve_select == 'non_solvable':
+                    env.world_pool = list(np.array(env.all_worlds)[np.logical_not(valids)]) # only use solvable puzzles    
+                else:
+                    assert False
+                if len(env.world_pool) > 0:
+                    env.all_worlds = env.world_pool
+                    all_envs.append(env)
+                    hashint2env[hashint]=len(all_envs)-1
+                    env2hashint[len(all_envs)-1]=hashint
+                    env2hashstr[len(all_envs)-1]=hashstr
+    return all_envs, hashint2env, env2hashint, env2hashstr

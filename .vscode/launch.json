@@ -23,8 +23,8 @@
 
                 "--emb_dim","32",
                 "--emb_itT","3",
-                "--num_epi","250",
-                "--mem_size","200",
+                "--num_epi","25",
+                "--mem_size","100",
                 "--nfm_func","NFM_ev_ec_t_um_us",
                 "--scenario","toptargets-fixed_3U-random-dynamic",
                 "--optim","returns",

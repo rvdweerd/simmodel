@@ -424,7 +424,7 @@ class GraphWorld(gym.Env):
             file_name = fname+'_t='+str(self.global_t)
         else: file_name = fname
         if size == None:
-            if self.sp.V < 5:
+            if self.sp.V < 10:
                 size='large'
             else:
                 size='small'

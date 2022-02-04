@@ -7,7 +7,7 @@ from modules.rl.environments import GraphWorld#, GraphWorldFromDatabank
 from modules.rl.rl_utils import EvaluatePolicy
 from modules.rl.rl_policy import EpsilonGreedyPolicy
 from modules.rl.rl_algorithms import q_learning_exhaustive
-from modules.sim.graph_factory import get_all_edge_removals_symmetric, LoadData
+from modules.sim.graph_factory import get_all_edge_removals_symmetric, LoadData, GetConfig, GetWorldSet
 from modules.sim.simdata_utils import SimulateInteractiveMode, ObtainSimulationInstance
 from modules.gnn.nfm_gen import NFM_ec_t, NFM_ev_t, NFM_ev_ec_t, NFM_ev_ec_t_um_us
 import numpy as np
@@ -261,19 +261,6 @@ def IsReachable(env):
             k=0
     return np.array(reachable)
 
-def GetConfig(u=2):
-    config={
-        'graph_type': "Manhattan",
-        'make_reflexive': True,
-        'N': 3,    # number of nodes along one side
-        'U': u,    # number of pursuer units
-        'L': 4,    # Time steps
-        'T': 7,
-        'R': 100,  # Number of escape routes sampled 
-        'direction_north': False,       # Directional preference of escaper
-        'loadAllStartingPositions': False
-    }
-    return config
 
 def TestSim(e=6,u=2):
     in_file=open("./datasets/__partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/_databanks_num_edg_rem="+str(e),"rb")
@@ -324,7 +311,7 @@ def TestInteractiveGoalOnly(E=[1,2,3]):
         sourcenode=env.sp.coord2labels[env.sp.start_escape_route]
         nodelist.remove(sourcenode)
         #goal_nodes= [random.choice(nodelist)]
-        goal_nodes= random.choices(nodelist,k=2)
+        goal_nodes= random.choices(nodelist,k=1)
         env.redefine_goal_nodes(goal_nodes)
         print('New goal nodes',goal_nodes)
         print('Shortest path', env.sp.spath_to_target, 'length:', env.sp.spath_length, 'hops')
@@ -333,8 +320,6 @@ def TestInteractiveGoalOnly(E=[1,2,3]):
         print('nfm')
         print(env.obs)
         SimulateInteractiveMode(env,filesave_with_time_suffix=False)
-    
-   
 
 def TestInteractiveSimulation(U=[2],E=[8], edge_blocking=False, solve_select='both', reject_u_duplicates=False):
     state_repr = 'etUte0U0'
@@ -447,51 +432,6 @@ def CalculateStatistics(E=[i for i in range(11)], U=[1,2,3], edge_blocking=False
                         env_select.render(fname='example_3x3instance_e='+str(e)+'_u='+str(u))
                         break
 
-def GetWorldSet(state_repr = 'et', state_enc  = 'tensors', U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_duplicates=True, nfm_func=None):
-    config=GetConfig(u=2)#only needed to find datafile
-    databank_full, register_full, solvable = LoadData(edge_blocking = edge_blocking)
-    
-    env0 = GraphWorld(config, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
-    env0.capture_on_edges = edge_blocking
-    all_envs=[]
-    hashint2env={}
-    env2hashint={}
-    env2hashstr={}
-    for u in U:
-        env0.sp.U = u
-        for e in E:
-            for W_, hashint, hashstr in register_full[e]:
-            #W_, hashint, hashstr = random.choice(register_full[4])
-            #for hashint, env_data in databank_full['U='+str(u)].items():
-                if hashint not in databank_full['U='+str(u)]:
-                    assert False
-                env_data = databank_full['U='+str(u)][hashint] # dict contains  'register':{(e0,U0):index}, 'databank':[], 'iratios':[]
-                for entry in env_data['databank']:
-                    if len(entry['paths']) < u:
-                        assert False
-                env=copy.deepcopy(env0)
-                env.redefine_graph_structure(env_data['W'],env_data['nodeid2coord'],new_nodeids=True)
-                env.reload_unit_paths(env_data['register'],env_data['databank'],env_data['iratios'])
-                env.redefine_nfm(nfm_func)
-                s = solvable['U='+str(u)][hashint]
-                valids = s #np.logical_and(np.logical_not(s),r)
-                # Filter out solvable intial conditions
-                if solve_select == 'both':
-                    env.world_pool = env.all_worlds
-                elif solve_select == 'solvable':
-                    env.world_pool = list(np.array(env.all_worlds)[valids]) # only use solvable puzzles
-                elif solve_select == 'non_solvable':
-                    env.world_pool = list(np.array(env.all_worlds)[np.logical_not(valids)]) # only use solvable puzzles    
-                else:
-                    assert False
-                if len(env.world_pool) > 0:
-                    env.all_worlds = env.world_pool
-                    all_envs.append(env)
-                    hashint2env[hashint]=len(all_envs)-1
-                    env2hashint[len(all_envs)-1]=hashint
-                    env2hashstr[len(all_envs)-1]=hashstr
-    return all_envs, hashint2env, env2hashint, env2hashstr
-
 def TestOptimOutcome(hashint, env_idx, entry, U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_duplicates=True):
     state_repr = 'et'
     state_enc  = 'tensors'
@@ -544,9 +484,9 @@ if __name__ == '__main__':
     #RunInstance(args)
     #TestSim()
     #MergeDataFiles()
-    SaveSolvabilityData(args, edge_blocking=True)
+    #SaveSolvabilityData(args, edge_blocking=True)
     #MergeDataFilesSolvability()
-    ##SaveReachabilityData()
+    #SaveReachabilityData()
 
     ########
     #
@@ -556,16 +496,15 @@ if __name__ == '__main__':
     #TestOptimOutcome(hashint=4056, env_idx=592, entry=7, U=[3], E=[i for i in range(11)], edge_blocking=True, solve_select='solvable', reject_duplicates=True)
     #RunSpecficInstance(U0=[(0,0),(0,2),(1,2)], hashint=4056, edge_blocking=True)
 
-
     ########
     #
     #  Testing the data: Interactive simulations
     #
     ########
-    TestInteractiveSimulation(U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_u_duplicates=False)
+    #TestInteractiveSimulation(U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_u_duplicates=False)
     #TestInteractiveSimulation(U=[3],E=[5],edge_blocking=True, solve_select='solvable')#i for i in range(11)])
     #RunSpecficInstance(U0=[(1,1),(2,2)], hashint=1396, edge_blocking=False)
     #RunSpecficInstance(U0=[(2,0),(2,0),(2,0)], hashint=95, edge_blocking=False)
     #CalculateStatistics(E=[i for i in range(11)], U=[1,2,3], edge_blocking=False, plotting=False)
     #CalculateStatistics(E=[10], U=[2],plotting=False)
-    #TestInteractiveGoalOnly(E=[i for i in range(11)])
+    TestInteractiveGoalOnly(E=[i for i in range(11)])
