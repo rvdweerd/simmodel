@@ -173,7 +173,9 @@ def train(seeds=1, seednr0=42, config=None, env_all=None):
         current_min_Ratio = float('+inf')
         current_max_Return= float('-inf')
         N_STEP_QL = config['num_step_ql']
-
+        GAMMA=config['gamma']
+        GAMMA_ARR = np.array([GAMMA**i for i in range(N_STEP_QL)])
+        
         for episode in range(config['num_episodes']):
             # sample a new graph
             # current state (tuple and tensor)
@@ -234,28 +236,27 @@ def train(seeds=1, seednr0=42, config=None, env_all=None):
                 dones.append(done)
                 actions.append(action)
                 actions_nodeselect.append(action_nodeselect)
-                
                 # store our experience in memory, using n-step Q-learning:
                 if len(actions) >= N_STEP_QL:
                     memory.remember(Experience(state          = states[-(N_STEP_QL+1)],
-                                            state_tsr      = states_tsrs[-(N_STEP_QL+1)],
-                                            W              = env.sp.W,
-                                            action         = actions[-N_STEP_QL],
-                                            action_nodeselect=actions_nodeselect[-N_STEP_QL],
-                                            done           = dones[-N_STEP_QL], # CHECK!
-                                            reward         = sum(rewards[-N_STEP_QL:]),
-                                            next_state     = next_state,
-                                            next_state_tsr = next_state_tsr))
+                                               state_tsr      = states_tsrs[-(N_STEP_QL+1)],
+                                               W              = env.sp.W,
+                                               action         = actions[-N_STEP_QL],
+                                               action_nodeselect=actions_nodeselect[-N_STEP_QL],
+                                               done           = dones[-1], # CHECK!
+                                               reward         = sum(GAMMA_ARR * np.array(rewards[-N_STEP_QL:])),
+                                               next_state     = next_state,
+                                               next_state_tsr = next_state_tsr))
                     
                 if done:
-                    for n in range(1, N_STEP_QL+1):
+                    for n in range(1, min(N_STEP_QL, len(states))):
                         memory.remember(Experience(state=states[-(n+1)],
                                                 state_tsr=states_tsrs[-(n+1)],
                                                 W = env.sp.W, 
                                                 action=actions[-n],
                                                 action_nodeselect=actions_nodeselect[-n], 
-                                                done=dones[-n],
-                                                reward=sum(rewards[-n:]), 
+                                                done=True,
+                                                reward=sum(GAMMA_ARR[:n] * np.array(rewards[-n:])), 
                                                 next_state=next_state,
                                                 next_state_tsr=next_state_tsr))
                 
@@ -284,7 +285,7 @@ def train(seeds=1, seednr0=42, config=None, env_all=None):
                                 _, _, best_reward = Q_func_target.get_best_action(experience.next_state_tsr, 
                                                                         experience.W,
                                                                         env.neighbors[experience.next_state[0]])
-                            target += config['gamma'] * best_reward
+                            target += (GAMMA ** N_STEP_QL) * best_reward
                         batch_targets.append(target)
                         
                     # print('batch targets: {}'.format(batch_targets))
@@ -369,6 +370,7 @@ if __name__ == '__main__':
     parser.add_argument('--scenario', default='None', type=str)
     parser.add_argument('--optim_target', default='None', type=str)
     parser.add_argument('--tau', default=100, type=int)
+    parser.add_argument('--nstep', default=1, type=int)
     
     args=parser.parse_args()
 
@@ -444,7 +446,7 @@ if __name__ == '__main__':
     #config['num_extra_layers']=0        #0
     config['num_episodes']  = args.num_epi #2500       #500
     config['memory_size']   = args.mem_size #2000      #200
-    config['num_step_ql']   = 1         #1
+    config['num_step_ql']   = args.nstep  #1
     config['bsize']         = 64        #64
     config['gamma']         = .9        #.9
     config['lr_init']       = 1e-3      #1e-3
@@ -463,8 +465,8 @@ if __name__ == '__main__':
                                 '_emb'+str(config['emb_dim']) + \
                                 '_itT'+str(config['emb_iter_T']) + \
                                 '_epi'+str(config['num_episodes']) + \
-                                '_mem'+str(config['memory_size'])
-
+                                '_mem'+str(config['memory_size']) + \
+                                '_nstep'+str(config['num_step_ql'])
     numseeds=1
     seed0=999999
     train(seeds=numseeds,seednr0=seed0, config=config, env_all=env_all)
