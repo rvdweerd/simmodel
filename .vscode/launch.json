@@ -17,12 +17,20 @@
 //                "--train","False",
 //                "--eval","False",
 //                "--num_seeds","1",
-//                  "--num_edges","6",
-//                  "--U","2"  
-                "--emb_dim","128",
-                "--emb_itT","2",
-                "--num_epi","2500",
-                "--mem_size","2000"
+                
+                // "--num_edges","4",
+                // "--U","2",  
+
+                "--emb_dim","16",
+                "--emb_itT","3",
+                "--num_epi","250",
+                "--mem_size","200",
+                "--nfm_func","NFM_ec_t",
+                "--scenario","1target-fixed24",
+                "--optim","ratio",
+                "--tau","5",
+
+//                "--scenario","toptargets-fixed_3U-random-static",
             ],
             //"cwd" : "${workspaceFolder}" //{fileDirname} {workspaceFolder}
 //            "pipeArgs": [

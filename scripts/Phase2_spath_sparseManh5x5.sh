@@ -1,16 +1,39 @@
 #!/bin/bash
-for emb in {32,}
+
+# ## BATCH
+emb=32
+numepi=500 #2500
+mem=100 #2000
+tau=5
+scen="1target-fixed24"
+optim='ratios'
+for nfm in {"NFM_ec_t",}
 do
-    for itt in {2,3,4}
+    for itt in {6,7,8}
     do
-        tmux new-session -d -s sube$emb$itt
-        tmux send-keys -t "sube$emb$itt" "conda activate rlcourse" Enter
-        tmux send-keys -t "sube$emb$itt" "cd ~/testing/sim" Enter
-        tmux send-keys -t "sube$emb$itt" "python Phase2_experiments_SPath_multiple.py --emb_dim $emb --emb_itT $itt --num_epi 2500 --mem_size 2000 --nfm_func NFM_ec_t --scenario 2target-random" Enter
+        tmux new-session -d -s sub$nfm$itt
+        tmux send-keys -t "sub$nfm$itt" "conda activate rlcourse" Enter
+        tmux send-keys -t "sub$nfm$itt" "cd ~/testing/sim" Enter
+        tmux send-keys -t "sub$nfm$itt" "python Phase2_experiments_SPath_multiple.py --emb_dim $emb --emb_itT $itt --num_epi $numepi --mem_size $mem --nfm_func $nfm --scenario $scen --optim_target $optim --tau $tau" Enter
         
     done
 done
 
+
+# SINGLE
+# sessname="singlerun2"
+# emb=32
+# itt=6
+# tau = 100
+# numepi=2500
+# mem=2000
+# nfm="NFM_ev_ec_t_um_us"
+# scen="toptargets-fixed_3U-random-static"
+# optim='returns'
+# tmux new-session -d -s $sessname
+# tmux send-keys -t "$sessname" "conda activate rlcourse" Enter
+# tmux send-keys -t "$sessname" "cd ~/testing/sim" Enter
+# tmux send-keys -t "$sessname" "python Phase2_experiments_SPath_multiple.py --emb_dim $emb --emb_itT $itt --num_epi $numepi --mem_size $mem --nfm_func $nfm --scenario $scen --optim_target $optim" Enter
 
 # # 
 # ###################

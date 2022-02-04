@@ -85,8 +85,10 @@ class GraphWorld(gym.Env):
         # self.nfm  = copy.deepcopy(self.nfm0)
         self.reset()
     
-    def redefine_nfm(self, nfm_function):
-        assert  self.state_encoding=='nfm'
+    def redefine_nfm(self, nfm_function=None):
+        if nfm_function == None:
+            return
+        #assert  self.state_encoding=='nfm'
         self.nfm_calculator = nfm_function
         self.nfm_calculator.init(self)
         self.reset()
@@ -140,6 +142,7 @@ class GraphWorld(gym.Env):
             if tc in self.sp.coord2labels.keys():
                 self.sp.target_nodes.append(self.sp.coord2labels[tc])
         
+        self.sp.start_escape_route_node = self.sp.coord2labels[self.sp.start_escape_route]
         self.state_encoding_dim, self.state_chunks, self.state_len = su.GetStateEncodingDimension(self.state_representation, self.sp.V, self.sp.U)      
         self.sp.W = W
         self.neighbors, self.in_degree, self.max_indegree, self.out_degree, self.max_outdegree = su.GetGraphData(self.sp)
@@ -311,6 +314,12 @@ class GraphWorld(gym.Env):
             data_sample = self.databank['labels'][entry]
             self.iratio = self.iratios[entry]
             
+            # Reassign initial positions
+            if data_sample['start_escape_route'] != self.sp.start_escape_route_node:
+                self.sp.start_escape_route = self.databank['coords'][entry]['start_escape_route']
+                self.sp.start_escape_route_node = data_sample['start_escape_route']
+                self.sp.CalculateShortestPath()
+
             # Assign initial state
             e_init_labels = data_sample['start_escape_route'] # (e0)
             u_init_labels = data_sample['start_units'] # [(u1),(u2), ...]
@@ -405,7 +414,7 @@ class GraphWorld(gym.Env):
             assert False
         return self.obs, reward, done, info
 
-    def render(self, mode=None, fname=None, t_suffix=True):#file_name=None):
+    def render(self, mode=None, fname=None, t_suffix=True, size='large'):#file_name=None):
         e = self.state[0]
         p = self.state[1:]
         if fname == None:
@@ -414,7 +423,7 @@ class GraphWorld(gym.Env):
         elif t_suffix:
             file_name = fname+'_t='+str(self.global_t)
         else: file_name = fname
-        plot = PlotAgentsOnGraph_(self.sp, e, p, self.global_t, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes))
+        plot = PlotAgentsOnGraph_(self.sp, e, p, self.global_t, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes), size=size)
         return plot
     
     def render_epath(self, fname=None, t_suffix=True):

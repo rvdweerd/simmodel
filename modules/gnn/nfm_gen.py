@@ -53,9 +53,9 @@ class NFM_ev_ec_t_um_us():
         for path_index, path in enumerate(eo.u_paths): 
             if eo.local_t >= len(path)-1: #unit has settled
                 assert path[-1] in eo.state
-                eo.nfm[path[-1],4] = 1
+                eo.nfm[path[-1],4] += 1
             else:
-                eo.nfm[path[eo.local_t],3] = 1
+                eo.nfm[path[eo.local_t],3] += 1
 
     def update(self, eo):
         eo.nfm[eo.state[0],0]=1
@@ -67,17 +67,20 @@ class NFM_ev_ec_t_um_us():
         for path_index, path in enumerate(eo.u_paths): 
             if eo.local_t >= len(path)-1: #unit has settled
                 assert path[-1] in eo.state
-                eo.nfm[path[-1],4] = 1
+                eo.nfm[path[-1],4] += 1
             else:
-                eo.nfm[path[eo.local_t],3] = 1
+                eo.nfm[path[eo.local_t],3] += 1
 
 class NFM_ev_ec_t_um_us_xW(NFM_ev_ec_t_um_us):
     def __init__(self):
         self.name='nfm-ev-ec-t-um-us_xW'
+        # Inherited, concats Adj matrix W to the output (used in bolts dqn)
         # Features:
         # 0. visited by e
-        # 1. target node
-        # output is concatenated with adjacency matrix W
+        # 1. current e
+        # 2. target node
+        # 3. u positions (on the move)
+        # 4. u positions (when settled)
     def init(self, eo):
         eo.F = 5
         eo.nfm0 = torch.concat((torch.zeros((eo.sp.V,eo.F),dtype=torch.float32),torch.tensor(eo.sp.W, dtype=torch.float32)),dim=1)

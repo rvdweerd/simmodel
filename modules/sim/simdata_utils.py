@@ -37,6 +37,7 @@ class SimParameters(object):
         self.T = None
         self.direction_north = None
         self.start_escape_route = None
+        self.start_escape_route_node = None
         self.most_northern_y = None
         self.most_eastern_x = None
         self.target_nodes = None
@@ -50,18 +51,21 @@ class SimParameters(object):
     
     def CalculateShortestPath(self):
         if self.target_nodes == []:
-            return [],0
-        min_cost = 1e9
-        for target_node_label in self.target_nodes:
-            target_node_coord = self.labels2coord[target_node_label]
-            cost, path = nx.single_source_dijkstra(self.G, self.start_escape_route, target_node_coord, weight='weight')
-            if cost < min_cost:
-                best_path_coords = path
-                min_cost = cost
-        self.spath_to_target = []
-        for coord in best_path_coords:
-            self.spath_to_target.append(self.coord2labels[coord])
-        self.spath_length = int(min_cost)
+            self.spath_to_target=[]
+            self.spath_length=0
+        else:
+            min_cost = 1e9
+            for target_node_label in self.target_nodes:
+                target_node_coord = self.labels2coord[target_node_label]
+                cost, path = nx.single_source_dijkstra(self.G, self.start_escape_route, target_node_coord, weight='weight')
+                if cost < min_cost:
+                    best_path_coords = path
+                    min_cost = cost
+            self.spath_to_target = []
+            for coord in best_path_coords:
+                self.spath_to_target.append(self.coord2labels[coord])
+            self.spath_length = int(min_cost)
+        return self.spath_to_target, self.spath_length
 
 
 def GetStateEncodingDimension(state_representation, V, U):
@@ -513,8 +517,9 @@ def SimulatePursuersPathways(conf, optimization_method='dynamic', fixed_initial_
             p.append(sp.coord2labels[pos])
         PlotAgentsOnGraph(sp, e, p, t)
 
-def SimulateInteractiveMode(env, filesave_with_time_suffix=False):    
-    #s=env.reset()
+def SimulateInteractiveMode(env, filesave_with_time_suffix=False, entry=None):
+    if entry is not None:
+        env.reset(entry)
     s=env.state
     done=False
     R=0

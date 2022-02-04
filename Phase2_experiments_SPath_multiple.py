@@ -7,11 +7,12 @@ from tkinter import W
 import matplotlib.pyplot as plt
 from modules.dqn.dqn_utils import seed_everything
 from modules.gnn.comb_opt import QNet, QFunction, init_model, checkpoint_model, Memory
-from modules.rl.rl_policy import GNN_s2v_Policy
+from modules.rl.rl_policy import GNN_s2v_Policy, ShortestPathPolicy, EpsilonGreedyPolicy
 from modules.rl.rl_custom_worlds import GetCustomWorld
-from modules.rl.rl_utils import EvaluatePolicy, EvalArgs2, GetFullCoverageSample
+from modules.rl.rl_algorithms import q_learning_exhaustive
+from modules.rl.rl_utils import EvaluatePolicy, EvalArgs1, EvalArgs2, GetFullCoverageSample
 from modules.sim.simdata_utils import SimulateInteractiveMode
-from modules.gnn.nfm_gen import NFM_ec_t, NFM_ev_t, NFM_ev_ec_t
+from modules.gnn.nfm_gen import NFM_ec_t, NFM_ev_t, NFM_ev_ec_t, NFM_ev_ec_t_um_us
 #from modules.sim.graph_factory import GetPartialGraphEnvironments_Manh3x3
 import random
 import numpy as np
@@ -31,6 +32,90 @@ def Test(config):
     y=qnet(xv,W)
     print(y)
 
+def evaluate_tabular(logdir, env_all):
+    num_seeds   = 1
+    eps_0       = 1.
+    eps_min     = 0.1
+    num_iter    = 1000
+    gamma       = .9
+    alpha_0     = .2
+    alpha_decay = 0.
+    initial_Q_values = 10.
+
+
+    R=[]
+    for i,env in enumerate(tqdm.tqdm(env_all)):
+        if len(env.world_pool)==0:
+            env.world_pool=[None]
+        # Learn the policy
+        metrics_episode_returns = {}
+        metrics_episode_lengths = {}
+        metrics_avgperstep = {}
+        Q_tables = {}
+        policy = EpsilonGreedyPolicy(env, eps_0, eps_min, initial_Q_values)
+        algos  = [q_learning_exhaustive]#,sarsa,expected_sarsa]
+        for algo in algos:
+            metrics_all = np.zeros((num_seeds,2,num_iter*len(env.world_pool)))
+            for s in range(num_seeds):
+                #seed_everthing(seed=s)
+                policy.reset_epsilon()
+                Q_table, metrics_singleseed, policy, _ = algo(env, policy, num_iter, discount_factor=gamma, alpha_0=alpha_0, alpha_decay=alpha_decay,print_episodes=False)
+                metrics_all[s] = metrics_singleseed
+                print('entries in Q table:',len(Q_table))
+            
+            Q_tables[algo.__name__] = Q_table
+            metrics_episode_returns[algo.__name__] = metrics_all[:, 0, :]
+            metrics_episode_lengths[algo.__name__] = metrics_all[:, 1, :]
+            metrics_avgperstep[algo.__name__] = np.sum(
+                metrics_episode_returns[algo.__name__], axis=0)/np.sum(metrics_episode_lengths[algo.__name__], axis=0)
+            performance_metrics = { 'e_returns': metrics_episode_returns, 'e_lengths':metrics_episode_lengths, 'rps':metrics_avgperstep}
+            
+            policy.epsilon=0.
+            l, returns, c = EvaluatePolicy(env, policy,env.world_pool, print_runs=False, save_plots=False, logdir=logdir, eval_arg_func=EvalArgs1, silent_mode=True)
+            if i%27==0:
+                if len(env.world_pool)==0:
+                    plotlist=[]
+                else:
+                    plotlist = GetFullCoverageSample(returns, env.world_pool, bins=1, n=1)
+                EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgs1, silent_mode=False, plot_each_timestep=False)
+            R+=returns         
+    
+    OF = open(logdir+'/Full_result.txt', 'w')
+    def printing(text):
+        print(text)
+        OF.write(text + "\n")
+    printing('Total unique graphs evaluated: '+str(len(env_all)))
+    printing('Total instances evaluated: '+str(len(R))+' Avg reward: {:.2f}'.format(np.mean(R)))
+    possol=np.sum(np.array(R)>0)
+    printing('Number of >0 solutions: '+str(possol)+' ({:.1f}'.format(possol/len(R)*100)+'%)')
+    printing('---------------------------------------')
+    for k,v in config.items():
+        printing(k+' '+str(v))
+
+def evaluate_spath_heuristic(logdir, env_all):
+    R=[]
+    for i,env in enumerate(tqdm.tqdm(env_all)):
+        policy=ShortestPathPolicy(env,weights='equal')
+        l, returns, c = EvaluatePolicy(env, policy,env.world_pool, print_runs=False, save_plots=False, logdir=logdir, eval_arg_func=EvalArgs1, silent_mode=True)
+        num_worlds_requested = 10
+        once_every = max(1,len(env_all)//num_worlds_requested)
+        if i % once_every ==0:
+            plotlist = GetFullCoverageSample(returns, env.world_pool, bins=10, n=15)
+            EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgs1, silent_mode=False, plot_each_timestep=False)
+        R+=returns 
+    
+    OF = open(logdir+'/Full_result.txt', 'w')
+    def printing(text):
+        print(text)
+        OF.write(text + "\n")
+    printing('Total unique graphs evaluated: '+str(len(env_all)))
+    printing('Total instances evaluated: '+str(len(R))+' Avg reward: {:.2f}'.format(np.mean(R)))
+    possol=np.sum(np.array(R)>0)
+    printing('Number of >0 solutions: '+str(possol)+' ({:.1f}'.format(possol/len(R)*100)+'%)')
+    printing('---------------------------------------')
+    for k,v in config.items():
+        printing(k+' '+str(v))
+
 def evaluate(logdir, info=False, config=None, env_all=None):
     #Test(config)
     
@@ -46,9 +131,9 @@ def evaluate(logdir, info=False, config=None, env_all=None):
     for i,env in enumerate(tqdm.tqdm(env_all)):
         l, returns, c = EvaluatePolicy(env, policy,env.world_pool, print_runs=False, save_plots=False, logdir=logdir, eval_arg_func=EvalArgs2, silent_mode=True)
         num_worlds_requested = 10
-        once_every = len(env_all)//num_worlds_requested
+        once_every = max(1,len(env_all)//num_worlds_requested)
         if i % once_every ==0:
-            plotlist = GetFullCoverageSample(returns, env.world_pool, bins=3, n=3)
+            plotlist = GetFullCoverageSample(returns, env.world_pool, bins=10, n=15)
             EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgs2, silent_mode=False, plot_each_timestep=False)
         R+=returns 
     
@@ -85,7 +170,8 @@ def train(seeds=1, seednr0=42, config=None, env_all=None):
         memory = Memory(config['memory_size'])
 
         # keep track of mean ratio of estimated MVC / real MVC
-        current_min_R = float('+inf')
+        current_min_Ratio = float('+inf')
+        current_max_Return= float('-inf')
         N_STEP_QL = config['num_step_ql']
 
         for episode in range(config['num_episodes']):
@@ -219,11 +305,21 @@ def train(seeds=1, seednr0=42, config=None, env_all=None):
             """ Save model when we reach a new low average path length
             """
             #med_length = np.median(path_length_ratios[-100:])
-            mean_R = int(np.mean(path_length_ratios[-10:])*100)/100
-            if mean_R <= current_min_R:
-                save_best_only = (mean_R == current_min_R)
-                current_min_R = mean_R
-                checkpoint_model(Q_net, optimizer, lr_scheduler, loss, episode, mean_R, logdir, best_only=save_best_only)
+            if (len(total_rewards)+1) % 5 == 0: # check every 5 episodes
+                if config['optim_target']=='returns': # we seek to maximize the returns per episode
+                    mean_Return = int(np.mean(total_rewards[-10:])*100)/100
+                    if mean_Return >= current_max_Return:
+                        save_best_only = (mean_Return == current_max_Return)
+                        current_max_Return = mean_Return
+                        checkpoint_model(Q_net, optimizer, lr_scheduler, loss, episode, mean_Return, logdir, best_only=save_best_only)                
+                elif config['optim_target']=='ratios': # we seek to minimize the path lenths per episode w.r.t. shortest path to nearest target
+                    mean_Ratio = int(np.mean(path_length_ratios[-10:])*100)/100
+                    if mean_Ratio <= current_min_Ratio:
+                        save_best_only = (mean_Ratio == current_min_Ratio)
+                        current_min_Ratio = mean_Ratio
+                        checkpoint_model(Q_net, optimizer, lr_scheduler, loss, episode, mean_Ratio, logdir, best_only=save_best_only)
+                else:
+                    assert False
 
             writer.add_scalar("1a. epsilon", epsilon, episode)
             writer.add_scalar("1b. lr", optimizer.param_groups[0]['lr'], episode)
@@ -235,7 +331,7 @@ def train(seeds=1, seednr0=42, config=None, env_all=None):
 
             if episode % 10 == 0:
                 print('Ep %d. Loss = %.3f / median R=%.2f/last=%.2f / median Ratio=%.2f / eps=%.4f / lr=%.4f / mem=%d / target %s walk %s.' % (
-                    episode, (-1 if loss is None else loss), np.mean(total_rewards[-10:]), total_rewards[-1], mean_R, epsilon,
+                    episode, (-1 if loss is None else loss), np.mean(total_rewards[-10:]), total_rewards[-1], np.mean(path_length_ratios[-10:]), epsilon,
                     Q_func.optimizer.param_groups[0]['lr'], len(memory), str(env.sp.target_nodes), str(actions_nodeselect)))
                 #print(path_length_ratios[-50:])
                 #found_solutions[episode] = (W.clone(), [n for n in solution])
@@ -270,7 +366,10 @@ if __name__ == '__main__':
     parser.add_argument('--num_epi', default=250, type=int)
     parser.add_argument('--mem_size', default=2000, type=int)
     parser.add_argument('--nfm_func', default='NFM_ev_ec_t', type=str)
-    parser.add_argument('--scenario', default='1target-random', type=str)
+    parser.add_argument('--scenario', default='None', type=str)
+    parser.add_argument('--optim_target', default='None', type=str)
+    parser.add_argument('--tau', default=100, type=int)
+    
     args=parser.parse_args()
 
     world_name='SparseManhattan5x5'
@@ -279,20 +378,32 @@ if __name__ == '__main__':
     scenario_name=args.scenario
 
     env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
-    nfm_funcs = {'NFM_ev_ec_t':NFM_ev_ec_t(),'NFM_ec_t':NFM_ec_t(),'NFM_ev_t':NFM_ev_t()}
+    nfm_funcs = {'NFM_ev_ec_t':NFM_ev_ec_t(),'NFM_ec_t':NFM_ec_t(),'NFM_ev_t':NFM_ev_t(),'NFM_ev_ec_t_um_us':NFM_ev_ec_t_um_us()}
     nfm_func = nfm_funcs[args.nfm_func]
     env.redefine_nfm(nfm_func)
-    env._remove_world_pool()
-    env.databank={}
-    env.register={}
     env_all=[]
-    if scenario_name=='1target_random':
+    if scenario_name=='1target-fixed24':
+        env._remove_world_pool()
+        env.databank={}
+        env.register={}
+        env.redefine_goal_nodes([24])
+        env.current_entry=1
+        env_all.append(copy.deepcopy(env))
+        #SimulateInteractiveMode(env)
+    elif scenario_name=='1target-random':
+        env._remove_world_pool()
+        env.databank={}
+        env.register={}
         for i in range(env.sp.V):
-            if i == env.sp.coord2labels[env.sp.start_escape_route]: continue
+            if i == env.sp.coord2labels[env.sp.start_escape_route]: 
+                continue
             env.redefine_goal_nodes([i])
             env.current_entry=i
             env_all.append(copy.deepcopy(env))
-    else:
+    elif scenario_name=='2target-random':
+        env._remove_world_pool()
+        env.databank={}
+        env.register={}        
         for i in range(env.sp.V):
             for j in range(0, i):
                 if i == env.sp.coord2labels[env.sp.start_escape_route] or j == env.sp.coord2labels[env.sp.start_escape_route]:
@@ -302,12 +413,34 @@ if __name__ == '__main__':
                 env.redefine_goal_nodes([i,j])
                 env.current_entry=i
                 env_all.append(copy.deepcopy(env))
+    elif scenario_name == 'toptargets-fixed_3U-random-static':
+        env.reset()
+        #entry=env.current_entry
+        #print('entry',entry)
+        #SimulateInteractiveMode(env)#, entry=2200)
+        # We clip the unit paths to the first position (no movement)
+        for i in range(len(env.databank['coords'])):
+            patharr=env.databank['coords'][i]['paths']
+            for j in range(len(patharr)):
+                patharr[j] = [patharr[j][0]]
+            #env.databank['coords'][j]['paths']=patharr
+            patharr=env.databank['labels'][i]['paths']
+            for j in range(len(patharr)):
+                patharr[j] = [patharr[j][0]]
+            #env.databank['labels'][j]['paths']=patharr
+        #SimulateInteractiveMode(env, entry=entry)
+        env_all = [env]
+    else:
+        assert False
 
     config={}
     config['node_dim']      = env_all[0].F
     config['num_nodes']     = env_all[0].sp.V
+    config['scenario_name'] = args.scenario
+    config['nfm_func']      = args.nfm_func
     config['emb_dim']       = args.emb_dim #32        #128
     config['emb_iter_T']    = args.emb_itT #2
+    config['optim_target']  = args.optim_target
     #config['num_extra_layers']=0        #0
     config['num_episodes']  = args.num_epi #2500       #500
     config['memory_size']   = args.mem_size #2000      #200
@@ -316,15 +449,16 @@ if __name__ == '__main__':
     config['gamma']         = .9        #.9
     config['lr_init']       = 1e-3      #1e-3
     config['lr_decay']      = 0.99999    #0.99999
-    config['tau']           = 100       #inf                    # num grad steps for each target network update
+    config['tau']           = args.tau       #100                     # num grad steps for each target network update
     config['eps_0']         = 1.        #1.
     config['eps_min']       = 0.1#01       #0.05
     #config['eps_decay']     = 0.##     #
     epi_min=.9 # reach eps_min at % of episodes # .9
     config['eps_decay']     = 1 - np.exp(np.log(config['eps_min'])/(epi_min*config['num_episodes']))
-    config['logdir']        = './results_Phase2/SPath/'+ \
+    rootdir='./results_Phase2/SPath/'+ \
                                 world_name+'/'+ \
-                                scenario_name+'/'+ \
+                                scenario_name
+    config['logdir']        = rootdir + '/' + \
                                 nfm_func.name+'/'+ \
                                 '_emb'+str(config['emb_dim']) + \
                                 '_itT'+str(config['emb_iter_T']) + \
@@ -332,6 +466,8 @@ if __name__ == '__main__':
                                 '_mem'+str(config['memory_size'])
 
     numseeds=1
-    seed0=0
+    seed0=999999
     train(seeds=numseeds,seednr0=seed0, config=config, env_all=env_all)
     evaluate(logdir=config['logdir']+'/SEED'+str(seed0), config=config, env_all=env_all)
+    #evaluate_spath_heuristic(logdir=rootdir+'/heur/spath', env_all=env_all)
+    #evaluate_tabular(logdir=rootdir+'/tabular', env_all=env_all)
