@@ -152,7 +152,8 @@ class QFunction():
         """ Computes the best (greedy) action to take from a given state
             Returns a tuple containing the ID of the next node and the corresponding estimated reward
         """
-        W = torch.tensor(W,dtype=torch.float32,device=device)
+        #W = torch.tensor(W,dtype=torch.float32,device=device)
+        W=W.to(device)
         estimated_rewards = self.predict(state_tsr, W)  # size (nr_nodes,)
         reachable_rewards = estimated_rewards[reachable_nodes]
         #sorted_reward_idx = estimated_rewards.argsort(descending=True)
@@ -336,29 +337,36 @@ def train(seeds=1, seednr0=42, config=None, env_all=None):
                 dones.append(done)
                 actions.append(action)
                 actions_nodeselect.append(action_nodeselect)
+                
+                Psize = 8 - env.sp.V # ensure W always same shape to enable batching
+                #padW=nn.ZeroPad2d((0,Psize,0,Psize))
+                #W1=pad(env.sp.W)
+                #W2=pad(env.sp.W)
+                #W3=nn.functional.pad(env.sp.W,(0,Psize,0,Psize))
+
                 # store our experience in memory, using n-step Q-learning:
                 if len(actions) >= N_STEP_QL:
                     memory.remember(Experience(state          = states[-(N_STEP_QL+1)],
-                                               state_tsr      = states_tsrs[-(N_STEP_QL+1)],
-                                               W              = env.sp.W,
+                                               state_tsr      = nn.functional.pad(states_tsrs[-(N_STEP_QL+1)],(0,0,0,Psize)),
+                                               W              = nn.functional.pad(env.sp.W,(0,Psize,0,Psize)),
                                                action         = actions[-N_STEP_QL],
                                                action_nodeselect=actions_nodeselect[-N_STEP_QL],
                                                done           = dones[-1], # CHECK!
                                                reward         = sum(GAMMA_ARR * np.array(rewards[-N_STEP_QL:])),
                                                next_state     = next_state,
-                                               next_state_tsr = next_state_tsr))
+                                               next_state_tsr = nn.functional.pad(next_state_tsr,(0,0,0,Psize)) ))
                     
                 if done:
                     for n in range(1, min(N_STEP_QL, len(states))):
-                        memory.remember(Experience(state=states[-(n+1)],
-                                                state_tsr=states_tsrs[-(n+1)],
-                                                W = env.sp.W, 
-                                                action=actions[-n],
-                                                action_nodeselect=actions_nodeselect[-n], 
-                                                done=True,
-                                                reward=sum(GAMMA_ARR[:n] * np.array(rewards[-n:])), 
-                                                next_state=next_state,
-                                                next_state_tsr=next_state_tsr))
+                        memory.remember(Experience( state       = states[-(n+1)],
+                                                    state_tsr   = nn.functional.pad(states_tsrs[-(n+1)],(0,0,0,Psize)),
+                                                    W           = nn.functional.pad(env.sp.W,(0,Psize,0,Psize)), 
+                                                    action      = actions[-n],
+                                                    action_nodeselect=actions_nodeselect[-n], 
+                                                    done=True,
+                                                    reward      = sum(GAMMA_ARR[:n] * np.array(rewards[-n:])), 
+                                                    next_state  = next_state,
+                                                    next_state_tsr=nn.functional.pad(next_state_tsr,(0,0,0,Psize)) ))
                 
                 # update state and current solution
                 current_state = next_state
@@ -374,10 +382,6 @@ def train(seeds=1, seednr0=42, config=None, env_all=None):
                     batch_actions = [e.action_nodeselect for e in experiences] #CHECK!
                     batch_targets = []
                     
-                    TODO
-                    a=torch.randn(3,3)
-                    pad=nn.ZeroPad2d((0,2,0,2))
-                    pad(a)
 #                   Q_target=copy.deepcopy(policy.model)
 #                   Q_target.load_state_dict(policy.model.state_dict())
      
@@ -546,10 +550,11 @@ def evaluate_spath_heuristic(logdir, config, env_all):
     for k,v in config.items():
         printing(k+' '+str(v))
 
-def evaluate(logdir, info=False, config=None, env_all=None):
+def evaluate(logdir, info=False, config=None, env_all=None, eval_subdir='.'):
     #Test(config)
     
     Q_func, Q_net, optimizer, lr_scheduler = init_model(config,fname=logdir+'/best_model.tar')
+    logdir=logdir+'/'+eval_subdir
     #Q_func, Q_net, optimizer, lr_scheduler = init_model(config,fname='results_Phase2/CombOpt/'+affix+'/ep_350_length_7.0.tar')
     policy=GNN_s2v_Policy(Q_func)
     #policy.epsilon=0.

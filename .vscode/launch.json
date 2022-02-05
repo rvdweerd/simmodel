@@ -18,12 +18,12 @@
 //                "--eval","False",
 //                "--num_seeds","1",
                 
-                // "--num_edges","4",
-                // "--U","2",  
+                //  "--num_edges","5",
+                //  "--U","1",  
 
                 "--emb_dim","32",
                 "--emb_itT","3",
-                "--num_epi","25",
+                "--num_epi","100",
                 "--mem_size","100",
                 "--nfm_func","NFM_ev_ec_t_um_us",
                 "--scenario","toptargets-fixed_3U-random-dynamic",

@@ -2,9 +2,10 @@
 import modules.sim.simdata_utils as su
 import random 
 #import time
-from modules.rl.rl_plotting import PlotAgentsOnGraph, PlotAgentsOnGraph_, PlotEPathOnGraph_
+from modules.rl.rl_plotting import PlotAgentsOnGraph, PlotAgentsOnGraph_, PlotEPathOnGraph_, PlotEUPathsOnGraph_
 import numpy as np
 #import matplotlib.pyplot as plt
+import torch
 import gym
 from gym import spaces
 from gym import register
@@ -47,6 +48,7 @@ class GraphWorld(gym.Env):
         self.current_entry          = 0    # which entry in the world pool is active
         self.u_paths                = []
         self.e_path                 = []   # nodes visited by e during rollout
+        self.u_paths_taken          = [ [] for i in range(self.sp.U)]
         self.iratio                 = 0
         self.state0                 = ()
         self.state                  = ()   # current internal state in node labels: (e,U1,U2,...)
@@ -144,7 +146,7 @@ class GraphWorld(gym.Env):
         
         self.sp.start_escape_route_node = self.sp.coord2labels[self.sp.start_escape_route]
         self.state_encoding_dim, self.state_chunks, self.state_len = su.GetStateEncodingDimension(self.state_representation, self.sp.V, self.sp.U)      
-        self.sp.W = W
+        self.sp.W = torch.tensor(W, dtype=torch.float32)
         self.neighbors, self.in_degree, self.max_indegree, self.out_degree, self.max_outdegree = su.GetGraphData(self.sp)
         self.current_entry          = 0    # which entry in the world pool is active
         self.u_paths                = []
@@ -328,6 +330,8 @@ class GraphWorld(gym.Env):
             self.state0   = self.state
         
         self.e_path = [ self.state[0] ]
+        for i,u in enumerate(self.state[1:]):
+            self.u_paths_taken[i] = [u]
     
         # Initialize graph feature matrix
         if self.state_encoding=='nfm':
@@ -370,6 +374,8 @@ class GraphWorld(gym.Env):
 
         self.state = tuple([next_node] + new_Upositions_sorted)
         self.e_path.append(self.state[0])
+        for i,u in enumerate(new_Upositions):
+            self.u_paths_taken[i].append(u)
 
         # Check termination conditions
         done = False
@@ -441,6 +447,18 @@ class GraphWorld(gym.Env):
         else: file_name = fname
         plot = PlotEPathOnGraph_(self.sp, self.e_path, p, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes))
         return plot
+
+    def render_eupaths(self, mode=None, fname=None, t_suffix=True):
+        if fname == None:
+            #file_name=self.render_fileprefix+'_t='+str(self.global_t)
+            file_name=None
+        elif t_suffix:
+            file_name = fname+'_t='+str(self.global_t)
+        else: file_name = fname
+        plot = PlotEUPathsOnGraph_(self.sp, self.e_path, self.u_paths_taken, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes))
+        return plot
+
+
 
 register(
     id='GraphWorld-v0',

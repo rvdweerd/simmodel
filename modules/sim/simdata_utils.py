@@ -8,6 +8,7 @@ import numpy as np
 from datetime import datetime
 #import plotly.graph_objects as go
 import random
+import torch
 from pathlib import Path
 import os
 import pickle
@@ -314,7 +315,7 @@ def DefineSimParameters(config):
         sp.G.add_edges_from(edgelist)
     sp.start_escape_route_node = sp.coord2labels[sp.start_escape_route]
     sp.CalculateShortestPath()
-    sp.W = nx.to_numpy_matrix(sp.G)        
+    sp.W = torch.tensor(nx.to_numpy_matrix(sp.G),dtype=torch.float32)
     # make sure all nodes have the same attributes
     for key in sp.G.edges().keys():
         if len(sp.G.edges[key]) == 0:
@@ -563,5 +564,7 @@ def SimulateInteractiveMode(env, filesave_with_time_suffix=False, entry=None):
         env.render(mode=None, fname="testrun", t_suffix=filesave_with_time_suffix)
         R+=r
     print('\n******************** done, reward='+str(R),'**********************')
+    input('> Press any key to continue')
+    env.render_eupaths(mode=None, fname="testrun", t_suffix=filesave_with_time_suffix)
     input('> Press any key to continue')
     print('\n')

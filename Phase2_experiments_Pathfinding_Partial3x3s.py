@@ -8,6 +8,7 @@ import numpy as np
 import torch
 import argparse
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+from Phase2_generate_partial_graphs import print_world_properties
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)    
@@ -24,7 +25,7 @@ if __name__ == '__main__':
     args=parser.parse_args()
 
     #scenario_name=args.scenario
-    scenario_name = 'Train_U2_E5_Test_U2_E3467'
+    scenario_name = 'Train_U2E45_TestU2E36'
     world_name = 'SubGraphsManhattan3x3'
     state_repr = 'etUte0U0'
     state_enc  = 'nfm'
@@ -34,14 +35,22 @@ if __name__ == '__main__':
     Utrain=[2]
     Etrain=[5]
     Utest=[2]
-    Etest=[3,4,6,7]
+    Etest=[3,6]
     edge_blocking = True
     solve_select = 'solvable' # only solvable worlds (so best achievable performance is 100%)
     reject_u_duplicates = False
     
-    #databank_full, register_full, solvable = LoadData(edge_blocking = True)
-    env_all_train, _, _, _ = GetWorldSet(state_repr, state_enc, U=Utrain, E=Etrain, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func)
+    databank_full, register_full, solvable = LoadData(edge_blocking = True)
+    env_all_train, hashint2env, env2hashint, env2hashstr = GetWorldSet(state_repr, state_enc, U=Utrain, E=Etrain, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func)
     env_all_test, _, _, _  = GetWorldSet(state_repr, state_enc, U=Utest, E=Etest, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func)
+    env_idx=0
+    env=env_all_train[env_idx]
+    entry=env.current_entry
+    hashint=env2hashint[env_idx]
+    hashstr=env2hashstr[env_idx]
+    u=env.sp.U
+    s= solvable['U='+str(u)][hashint]
+    print_world_properties(env, env_idx, entry, hashint, hashstr, edge_blocking, solve_select, reject_u_duplicates, solvable_=s)    
     SimulateInteractiveMode(env_all_train[0])
     
     config={}
@@ -78,7 +87,7 @@ if __name__ == '__main__':
     numseeds=1
     seed0=0
     train(seeds=numseeds, seednr0=seed0, config=config, env_all=env_all_train)
-    evaluate(logdir=config['logdir']+'/SEED/traineval'+str(seed0), config=config, env_all=env_all_train)
-    evaluate(logdir=config['logdir']+'/SEED/testeval' +str(seed0), config=config, env_all=env_all_test)
+    evaluate(logdir=config['logdir']+'/SEED'+str(seed0), config=config, env_all=env_all_train, eval_subdir='traineval')
+    evaluate(logdir=config['logdir']+'/SEED'+str(seed0), config=config, env_all=env_all_test, eval_subdir='testeval' )
     #evaluate_spath_heuristic(logdir=rootdir+'/heur/spath', config, env_all=env_all)
     #evaluate_tabular(logdir=rootdir+'/tabular', config, env_all=env_all)

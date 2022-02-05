@@ -129,41 +129,15 @@ def PlotEPathOnGraph_(sp, epath, pursuers_pos, fig_show, fig_save, filename, goa
             if ((tnode,snode)) in edgelist_not_taken:
                 edgelist_not_taken.remove((tnode,snode))
             edgelist_taken.append((snode,tnode))
-            #idx1 = list(G.edges).index((snode,tnode))
-            #idx2 = list(G.edges).index((tnode,snode))
-            #edgecols[idx1]='white'
-            #edgecols[idx2]='white'
-        #for i in range(len(epath)-1):
-            #snode=sp.labels2coord[epath[i]]
-            #tnode=sp.labels2coord[epath[i+1]]
-            #idx1 = list(G.edges).index((snode,tnode))
-            ##idx2 = list(G.edges).index((tnode,snode))
-            #edgecols[idx1]='red'
-            #edgewidths[idx1]=5.
-            ##edgecols[idx2]='red'
-    #nx.draw_networkx_edges(G, pos, edge_color=edgecols, width=edgewidths if size == 'large' else edgewidths, alpha=1.)#width=1
     nx.draw_networkx_edges(G, pos, edgelist=edgelist_not_taken, edge_color='grey', width=3. if size == 'large' else 1., alpha=1.)#width=1
     nx.draw_networkx_edges(G, pos, edgelist=edgelist_taken, edge_color='red', width=12. if size == 'large' else 5., alpha=1.)#width=1
     nx.draw_networkx_labels(G,pos, font_size = 12 if size == 'large' else 8, labels=node_text, font_color='black')#fontsize=8
     nx.draw_networkx_nodes(G, pos, node_size=sizelist, node_color=colorlist, edgecolors=node_borderlist, alpha=1.)#alhpa=.6
-    #nx.draw_networkx_nodes(G, pos, node_size=10, node_color="k")
     
     plt.axis('off')
     plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, hspace = -0.5, wspace = 0)
     ax = plt.gca()
-    
-    # plt.imshow([[0.,100.],[0.,100.]],
-    #     cmap=plt.cm.Greens,
-    #     interpolation='bicubic',
-    #     vmin=0,vmax=255,
-    #     aspect='equal'
-    # )
-    # rect = Rectangle((10,10),30,30,linewidth=5.,edgecolor='r',facecolor='none')
-    # # Add the patch to the Axes
-    # ax.add_patch(rect)
-
     ax.set_aspect('equal')
-
 
     if filename == None:
         pass
@@ -177,6 +151,79 @@ def PlotEPathOnGraph_(sp, epath, pursuers_pos, fig_show, fig_save, filename, goa
 
     return out
 
+def PlotEUPathsOnGraph_(sp, epath, u_paths, fig_show, fig_save, filename, goal_reached, size='small'):
+    G=sp.G#.to_directed()
+    labels=sp.labels
+    pos=sp.pos
+    plt.clf()
+    colorlist = [1 for _ in range(sp.V)]
+    node_borderlist = ["white"]*sp.V
+    for n in sp.target_nodes:
+        node_borderlist[sp.labels2nodeids[n]] = "red"
+    sizelist =  [1200 for _ in range(sp.V)] if size == 'large' else [400 for _ in range(sp.V)]
+    node_text = dict([(c,str(sp.coord2labels[c])) for c in sp.G.nodes])
+    colorlist=["white"]*sp.V
+    if goal_reached:
+        colorlist[sp.labels2nodeids[epath[-1]]]='#66FF00'
+    else:
+        colorlist[sp.labels2nodeids[epath[-1]]]='#FF0000'
+    sizelist[sp.labels2nodeids[epath[-1]]] = 1200 if size == 'large' else 600
+    
+    #node_text[sp.labels2coord[escape_pos]]='e'
+    for i,u_path in enumerate(u_paths):
+        colorlist[sp.labels2nodeids[u_path[-1]]]='#0000FF'
+        sizelist[sp.labels2nodeids[u_path[-1]]] = 1200 if size == 'large' else 600
+        #fontcolors[sp.labels2nodeids[P_pos]]='white'
+        #node_text[sp.labels2coord[P_pos]]='u'+str(i)
+
+    edgelist_not_taken=list(G.edges())
+    edgelist_takenE=[]
+    edgelist_takenU=[]
+    #edgecols = ['grey']*len(G.edges)
+    #edgewidths = [1.]*len(G.edges)
+    for u_path in u_paths:
+        if len(u_path) > 1:
+            for i in range(len(u_path)-1):
+                snode=sp.labels2coord[u_path[i]]
+                tnode=sp.labels2coord[u_path[i+1]]
+                # if ((snode,tnode)) in edgelist_not_taken:
+                #     edgelist_not_taken.remove((snode,tnode))
+                # if ((tnode,snode)) in edgelist_not_taken:
+                #     edgelist_not_taken.remove((tnode,snode))
+                edgelist_takenU.append((snode,tnode))
+
+    if len(epath) > 1:
+        for i in range(len(epath)-1):
+            snode=sp.labels2coord[epath[i]]
+            tnode=sp.labels2coord[epath[i+1]]
+            if ((snode,tnode)) in edgelist_not_taken:
+                edgelist_not_taken.remove((snode,tnode))
+            if ((tnode,snode)) in edgelist_not_taken:
+                edgelist_not_taken.remove((tnode,snode))
+            edgelist_takenE.append((snode,tnode))
+
+    nx.draw_networkx_edges(G, pos, edgelist=edgelist_not_taken, edge_color='grey', width=3. if size == 'large' else 1., alpha=1.)#width=1
+    nx.draw_networkx_edges(G, pos, edgelist=edgelist_takenE, edge_color='red', width=12. if size == 'large' else 5., alpha=1.)#width=1
+    nx.draw_networkx_edges(G, pos, edgelist=edgelist_takenU, edge_color='blue', width=12. if size == 'large' else 5., alpha=1.)#width=1
+    nx.draw_networkx_labels(G,pos, font_size = 12 if size == 'large' else 8, labels=node_text, font_color='black')#fontsize=8
+    nx.draw_networkx_nodes(G, pos, node_size=sizelist, node_color=colorlist, edgecolors=node_borderlist, alpha=1.)#alhpa=.6
+    
+    plt.axis('off')
+    plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, hspace = -0.5, wspace = 0)
+    ax = plt.gca()
+    ax.set_aspect('equal')
+
+    if filename == None:
+        pass
+        #plt.savefig('test_t='+str(timestep)+'.png')
+    else:
+        plt.savefig(filename+'.png')
+    out=plt.gcf()
+    #plt.clf()
+    plt.close()
+    #plt.figure()
+
+    return out
 
 
 def PlotAgentsOnGraph(sp, escape_pos, pursuers_pos, timestep, fig_show=False, fig_save=True):

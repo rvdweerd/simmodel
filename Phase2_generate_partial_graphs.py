@@ -331,6 +331,7 @@ def TestInteractiveSimulation(U=[2],E=[8], edge_blocking=False, solve_select='bo
     
     while True:
         env_idx = random.randint(0,len(all_envs)-1)
+        #env_idx = hashint2env[127]
         env = all_envs[env_idx]
         env.reset()
         u=env.sp.U
@@ -502,9 +503,13 @@ if __name__ == '__main__':
     #
     ########
     #TestInteractiveSimulation(U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_u_duplicates=False)
-    #TestInteractiveSimulation(U=[3],E=[5],edge_blocking=True, solve_select='solvable')#i for i in range(11)])
-    #RunSpecficInstance(U0=[(1,1),(2,2)], hashint=1396, edge_blocking=False)
+    TestInteractiveSimulation(U=[2],E=[5],edge_blocking=True, solve_select='solvable')#i for i in range(11)])
+    #RunSpecficInstance(U0=[(2,1),(2,1)], hashint=127, edge_blocking=False)
+    #RunSpecficInstance(U0=[(1,1),(1,1)], hashint=4808, edge_blocking=False)
+    #RunSpecficInstance(U0=[(0,1)], hashint=2560, edge_blocking=False)
+    #RunSpecficInstance(U0=[(1,1)], hashint=80, edge_blocking=False)
+    #RunSpecficInstance(U0=[(2,1)], hashint=3, edge_blocking=False)
     #RunSpecficInstance(U0=[(2,0),(2,0),(2,0)], hashint=95, edge_blocking=False)
     #CalculateStatistics(E=[i for i in range(11)], U=[1,2,3], edge_blocking=False, plotting=False)
     #CalculateStatistics(E=[10], U=[2],plotting=False)
-    TestInteractiveGoalOnly(E=[i for i in range(11)])
+    #TestInteractiveGoalOnly(E=[i for i in range(11)])
