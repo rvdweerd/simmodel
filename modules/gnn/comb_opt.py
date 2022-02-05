@@ -24,7 +24,7 @@ import copy
 from torch.utils.tensorboard import SummaryWriter
 from collections import namedtuple
 Experience = namedtuple('Experience', ( \
-    'state', 'state_tsr', 'W', 'action', 'action_nodeselect', 'reward', 'done', 'next_state', 'next_state_tsr'))
+    'state', 'state_tsr', 'W', 'action', 'action_nodeselect', 'reward', 'done', 'next_state', 'next_state_tsr', 'next_state_neighbors'))
 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -153,14 +153,17 @@ class QFunction():
             Returns a tuple containing the ID of the next node and the corresponding estimated reward
         """
         #W = torch.tensor(W,dtype=torch.float32,device=device)
+        state_tsr=state_tsr.to(device)
         W=W.to(device)
+        self.model.eval()
         estimated_rewards = self.predict(state_tsr, W)  # size (nr_nodes,)
-        reachable_rewards = estimated_rewards[reachable_nodes]
+        self.model.train()
+        reachable_rewards = estimated_rewards.detach().cpu().numpy()[reachable_nodes]
         #sorted_reward_idx = estimated_rewards.argsort(descending=True)
         #print(reachable_rewards)
         #print(state_tsr)
         #print(W)
-        action = torch.argmax(reachable_rewards).detach().item()
+        action = np.argmax(reachable_rewards)
         action_nodeselect = reachable_nodes[action]
         best_reward = reachable_rewards[action]
         return action, action_nodeselect, best_reward
@@ -179,10 +182,11 @@ class QFunction():
         self.optimizer.zero_grad()
         
         # the rewards estimated by Q for the given actions
-        estimated_rewards = self.model(xv, Ws_tsr)[range(len(actions)), actions]
-        
+        #estimated_rewards = self.model(xv, Ws_tsr)[range(len(actions)), actions]
+        estimated_rewards = torch.gather(self.model(xv, Ws_tsr), 1, torch.tensor(actions,dtype=torch.int64,device=device)[:,None]).squeeze()
+
         loss = self.loss_fn(estimated_rewards, torch.tensor(targets, device=device))
-        loss_val = loss.item()
+        loss_val = loss.detach().cpu().item()
         # check grads: self.model.theta4.weight.grad
         loss.backward()
         self.optimizer.step()        
@@ -285,7 +289,7 @@ def train(seeds=1, seednr0=42, config=None, env_all=None):
             env.reset()
             current_state = env.state
             done=False   
-            current_state_tsr = torch.tensor(env.nfm, dtype=torch.float32, device=device) 
+            current_state_tsr = torch.tensor(env.nfm, dtype=torch.float32)#, device=device) 
             # Note: nfm = Graph Feature Matrix (FxV), columns are the node features, managed by the environment
             # It's currently defined (for each node) as:
             #   [.] node number
@@ -328,7 +332,7 @@ def train(seeds=1, seednr0=42, config=None, env_all=None):
                 
                 _, reward, done, info = env.step(action)
                 next_state = env.state
-                next_state_tsr = torch.tensor(env.nfm, dtype=torch.float32, device=device)
+                next_state_tsr = torch.tensor(env.nfm, dtype=torch.float32)#, device=device)
                 
                 # store rewards and states obtained along this episode:
                 states.append(next_state)
@@ -338,7 +342,8 @@ def train(seeds=1, seednr0=42, config=None, env_all=None):
                 actions.append(action)
                 actions_nodeselect.append(action_nodeselect)
                 
-                Psize = 8 - env.sp.V # ensure W always same shape to enable batching
+                Psize = 9 - env.sp.V # ensure W always same shape to enable batching
+                assert env.sp.V == env.sp.W.shape[0]
                 #padW=nn.ZeroPad2d((0,Psize,0,Psize))
                 #W1=pad(env.sp.W)
                 #W2=pad(env.sp.W)
@@ -354,7 +359,8 @@ def train(seeds=1, seednr0=42, config=None, env_all=None):
                                                done           = dones[-1], # CHECK!
                                                reward         = sum(GAMMA_ARR * np.array(rewards[-N_STEP_QL:])),
                                                next_state     = next_state,
-                                               next_state_tsr = nn.functional.pad(next_state_tsr,(0,0,0,Psize)) ))
+                                               next_state_tsr = nn.functional.pad(next_state_tsr,(0,0,0,Psize)),
+                                               next_state_neighbors= env.neighbors[next_state[0]] ))
                     
                 if done:
                     for n in range(1, min(N_STEP_QL, len(states))):
@@ -366,7 +372,8 @@ def train(seeds=1, seednr0=42, config=None, env_all=None):
                                                     done=True,
                                                     reward      = sum(GAMMA_ARR[:n] * np.array(rewards[-n:])), 
                                                     next_state  = next_state,
-                                                    next_state_tsr=nn.functional.pad(next_state_tsr,(0,0,0,Psize)) ))
+                                                    next_state_tsr=nn.functional.pad(next_state_tsr,(0,0,0,Psize)),
+                                                    next_state_neighbors= env.neighbors[next_state[0]] ))
                 
                 # update state and current solution
                 current_state = next_state
@@ -378,7 +385,7 @@ def train(seeds=1, seednr0=42, config=None, env_all=None):
                     experiences = memory.sample_batch(config['bsize'])
                     
                     batch_states_tsrs = [e.state_tsr for e in experiences]
-                    batch_Ws = [torch.tensor(e.W,dtype=torch.float32,device=device) for e in experiences]
+                    batch_Ws = [ e.W for e in experiences]
                     batch_actions = [e.action_nodeselect for e in experiences] #CHECK!
                     batch_targets = []
                     
@@ -392,8 +399,8 @@ def train(seeds=1, seednr0=42, config=None, env_all=None):
                             with torch.no_grad():
                                 _, _, best_reward = Q_func_target.get_best_action(experience.next_state_tsr, 
                                                                         experience.W,
-                                                                        env.neighbors[experience.next_state[0]])
-                            target += (GAMMA ** N_STEP_QL) * best_reward
+                                                                        experience.next_state_neighbors )
+                            target += (GAMMA ** N_STEP_QL) * best_reward#.detach().cpu()#.item()
                         batch_targets.append(target)
                         
                     # print('batch targets: {}'.format(batch_targets))
@@ -552,7 +559,8 @@ def evaluate_spath_heuristic(logdir, config, env_all):
 
 def evaluate(logdir, info=False, config=None, env_all=None, eval_subdir='.'):
     #Test(config)
-    
+    if env_all==None or len(env_all)==0:
+        return
     Q_func, Q_net, optimizer, lr_scheduler = init_model(config,fname=logdir+'/best_model.tar')
     logdir=logdir+'/'+eval_subdir
     #Q_func, Q_net, optimizer, lr_scheduler = init_model(config,fname='results_Phase2/CombOpt/'+affix+'/ep_350_length_7.0.tar')
@@ -567,7 +575,7 @@ def evaluate(logdir, info=False, config=None, env_all=None, eval_subdir='.'):
         num_worlds_requested = 10
         once_every = max(1,len(env_all)//num_worlds_requested)
         if i % once_every ==0:
-            plotlist = GetFullCoverageSample(returns, env.world_pool, bins=10, n=15)
+            plotlist = GetFullCoverageSample(returns, env.world_pool, bins=3, n=3)
             EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgs2, silent_mode=False, plot_each_timestep=False)
         R+=returns 
     
@@ -578,7 +586,9 @@ def evaluate(logdir, info=False, config=None, env_all=None, eval_subdir='.'):
     printing('Total unique graphs evaluated: '+str(len(env_all)))
     printing('Total instances evaluated: '+str(len(R))+' Avg reward: {:.2f}'.format(np.mean(R)))
     possol=np.sum(np.array(R)>0)
-    printing('Number of >0 solutions: '+str(possol)+' ({:.1f}'.format(possol/len(R)*100)+'%)')
+    success_rate = possol/len(R)
+    printing('Number of >0 solutions: '+str(possol)+' ({:.1f}'.format(success_rate*100)+'%)')
     printing('---------------------------------------')
     for k,v in config.items():
         printing(k+' '+str(v))
+    return success_rate

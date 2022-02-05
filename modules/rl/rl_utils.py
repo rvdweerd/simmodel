@@ -36,8 +36,12 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
     #if print_runs or save_plots:
     Path(logdir).mkdir(parents=True, exist_ok=True)
     Path(logdir+'/runs').mkdir(parents=True, exist_ok=True)
-    file_prefix=logdir+'/runs/Entry='
-    OutputFile= logdir+'/Log_n='+str(len(test_set))+'.txt'
+    if env.sp.hashint != -1:
+        hint=str(env.sp.hashint)+'_'
+    else:
+        hint=''
+    file_prefix=logdir+'/runs/'+hint+'Entry='
+    OutputFile= logdir+'/runs/'+hint+'Log_n='+str(len(test_set))+'.txt'
     if silent_mode:
         def printing(text):
             pass
@@ -108,8 +112,8 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
                 fname=file_prefix+str(env.current_entry)+'_s0='+str(env.state0)+'_'+policy.__name__+'_R='+str(R)+'_t='+str(i_plt)
                 p.savefig(fname+'.png')
             
-            fname=file_prefix+str(env.current_entry)+'_s0='+str(env.state0)+'_'+policy.__name__+'_R='+str(R)+'_epath'
-            env.render_epath(fname=fname)
+            fname=file_prefix+str(env.current_entry)+'_s0='+str(env.state0)+'_'+policy.__name__+'_R='+str(R)+'_eupaths'
+            env.render_eupaths(fname=fname)
             #plot2 = env.render_epath(fname=None)
             #plot2.savefig(fname+'.png')
         captures.append(int(info['Captured']))

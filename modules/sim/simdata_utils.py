@@ -24,6 +24,7 @@ class SimParameters(object):
         self.G = None 
         self.W = None               # Adjacency matrix (numpy)  (V,V) V=num nodes
         self.EI= None               # Edge index (torch tensor) (2,E) E=num edges
+        self.hashint = -1           # hash for M3x3 experiments, to identify edge removals
         self.labels = None
         self.pos = None
         self.N = None

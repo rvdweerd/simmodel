@@ -51,7 +51,7 @@ from pytorch_lightning.loggers import WandbLogger, TensorBoardLogger
 from pl_bolts.models.rl import DQN
 
 tblogger = TensorBoardLogger("tb_logs", name="my_model")
-wblogger = WandbLogger(project="SPath", log_model="all")
+wblogger = WandbLogger(project="Pathfinding", log_model="all")
 
 
 dqn = DQN(env ='GraphWorld-v0', **kwargs)

@@ -41,6 +41,7 @@ class GraphWorld(gym.Env):
         # Create a world_pool list of indices of pre-saved initial conditions and their rollouts of U positions
         self.all_worlds             = [ind for k,ind in self.register['labels'].items()]
         self.world_pool             = su.GetWorldPool(self.all_worlds, fixed_initial_positions, self.register)
+        self.world_pool_solvable    = {} # filled in later uses when available
         self._encode                = self._encode_nodes if state_encoding == 'nodes' else self._encode_tensor if state_encoding == 'tensors' else self._encode_nfm
         if state_encoding not in ['nodes', 'tensors', 'nfm']: assert False
 
@@ -134,7 +135,6 @@ class GraphWorld(gym.Env):
         self.iratios = []
         self.all_worlds = []
         self.world_pool = []
-        self.u_paths=[]
 
         self.sp.G = nx.from_numpy_matrix(W, create_using=nx.DiGraph())
         self.sp.G = nx.relabel_nodes(self.sp.G, in_nodeid2coord)
@@ -150,6 +150,7 @@ class GraphWorld(gym.Env):
         self.neighbors, self.in_degree, self.max_indegree, self.out_degree, self.max_outdegree = su.GetGraphData(self.sp)
         self.current_entry          = 0    # which entry in the world pool is active
         self.u_paths                = []
+        self.u_paths_taken          = [ [] for i in range(self.sp.U)]
         self.iratio                 = 0
         self.state0                 = ()
         self.state                  = ()   # current internal state in node labels: (e,U1,U2,...)
@@ -284,6 +285,7 @@ class GraphWorld(gym.Env):
         assert self.world_pool == self.all_worlds
         self.sp.U_=self.sp.U
         self.sp.U=0
+        self.u_paths_taken =[]
         self.world_pool=[]
         self.state_encoding_dim, self.state_chunks, self.state_len = su.GetStateEncodingDimension(self.state_representation, self.sp.V, self.sp.U)      
         #self.current_entry=-1
@@ -294,6 +296,7 @@ class GraphWorld(gym.Env):
     def _restore_world_pool(self):
         assert self.world_pool==[]
         self.sp.U=self.sp.U_
+        self.u_paths_taken = [ [] for i in range(self.sp.U)]
         self.state_encoding_dim, self.state_chunks, self.state_len = su.GetStateEncodingDimension(self.state_representation, self.sp.V, self.sp.U)      
         self.world_pool = self.all_worlds
         self.reset(self.current_entry)

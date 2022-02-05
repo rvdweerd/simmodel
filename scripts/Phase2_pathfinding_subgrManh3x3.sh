@@ -1,15 +1,42 @@
 #!/bin/bash
-for e in {0..10}
+
+# ## BATCH
+emb=64
+numepi=2500 #2500
+mem=2000 #2000
+tau=100
+nstep=2
+etrain="4,5"
+utrain="2"
+scen="Train_U$utrain""E$etrain"
+optim='returns'
+for nfm in {"NFM_ev_ec_t_um_us",}
 do
-    for u in {1..3}
+    for itt in {3,}
     do
-        tmux new-session -d -s sub2$e$u
-        tmux send-keys -t "sub2$e$u" "conda activate rlcourse" Enter
-        tmux send-keys -t "sub2$e$u" "cd ~/testing/sim" Enter
-        tmux send-keys -t "sub2$e$u" "python Phase2_generate_partial_graphs.py --num_edges $e --U $u" Enter  
+        tmux new-session -d -s sub$nfm$itt
+        tmux send-keys -t "sub$nfm$itt" "conda activate rlcourse" Enter
+        tmux send-keys -t "sub$nfm$itt" "cd ~/testing/sim" Enter
+        tmux send-keys -t "sub$nfm$itt" "python Phase2_experiments_Pathfinding_Partial3x3s.py --emb_dim $emb --emb_itT $itt --num_epi $numepi --mem_size $mem --nfm_func $nfm --scenario $scen --optim_target $optim --tau $tau --nstep $nstep --Etrain $etrain --Utrain $utrain" Enter
     done
 done
 
+
+# #SINGLE
+# sessname="singlerun3"
+# emb=64
+# itt=4
+# nstep=3
+# tau=100
+# numepi=2500
+# mem=2000
+# nfm="NFM_ev_ec_t_um_us"
+# scen="toptargets-fixed_3U-random-static"
+# optim='returns'
+# tmux new-session -d -s $sessname
+# tmux send-keys -t "$sessname" "conda activate rlcourse" Enter
+# tmux send-keys -t "$sessname" "cd ~/testing/sim" Enter
+# tmux send-keys -t "$sessname" "python Phase2_experiments_SPath_multiple.py --emb_dim $emb --emb_itT $itt --num_epi $numepi --mem_size $mem --nfm_func $nfm --scenario $scen --optim_target $optim --tau $tau --nstep $nstep" Enter
 
 # # 
 # ###################

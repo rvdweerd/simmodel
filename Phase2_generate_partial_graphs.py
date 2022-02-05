@@ -144,9 +144,9 @@ def SaveSolvabilityData(args, edge_blocking=False):
         env_data=databank_full['U='+str(U)][hashint]
         env.redefine_graph_structure(env_data['W'],env_data['nodeid2coord'],new_nodeids=True)
         env.reload_unit_paths(env_data['register'],env_data['databank'],env_data['iratios'])
-        solvable=IsSolvable(env)
-        solvable_dict['U='+str(U)][hashint]=solvable
-    out_file = open("./datasets/__partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/solvable_U="+str(U)+"_e="+str(num_edges),"wb")
+        solvable, lengths, returns, captures = IsSolvable(env)
+        solvable_dict['U='+str(U)][hashint]={'solvable':solvable, 'lengths': lengths, 'returns':returns, 'captures':captures}
+    out_file = open("./datasets/__partial_graphs/Manhattan_N=3,L=4,R=100,Ndir=False/ebFalse_solvable_U="+str(U)+"_e="+str(num_edges),"wb")
     pickle.dump(solvable_dict, out_file)
     out_file.close()
     #SimulateInteractiveMode(env)
@@ -242,8 +242,8 @@ def IsSolvable(env):
 
     # Evaluate the learned policy
     policy.epsilon=0.
-    _, returns, _ = EvaluatePolicy(env,policy,env.world_pool,print_runs=False, save_plots=False, logdir=logdir, has_Q_table=True)
-    return np.array(returns)>0
+    lengths, returns, captures = EvaluatePolicy(env,policy,env.world_pool,print_runs=False, save_plots=False, logdir=logdir, has_Q_table=True)
+    return np.array(returns)>0, lengths, returns, captures
 
 def IsReachable(env):
     # Checks if E is reachable by Pursuers on the given graph instance
@@ -485,7 +485,7 @@ if __name__ == '__main__':
     #RunInstance(args)
     #TestSim()
     #MergeDataFiles()
-    #SaveSolvabilityData(args, edge_blocking=True)
+    SaveSolvabilityData(args, edge_blocking=False)
     #MergeDataFilesSolvability()
     #SaveReachabilityData()
 
@@ -503,7 +503,7 @@ if __name__ == '__main__':
     #
     ########
     #TestInteractiveSimulation(U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_u_duplicates=False)
-    TestInteractiveSimulation(U=[2],E=[5],edge_blocking=True, solve_select='solvable')#i for i in range(11)])
+    #TestInteractiveSimulation(U=[2],E=[5],edge_blocking=True, solve_select='solvable')#i for i in range(11)])
     #RunSpecficInstance(U0=[(2,1),(2,1)], hashint=127, edge_blocking=False)
     #RunSpecficInstance(U0=[(1,1),(1,1)], hashint=4808, edge_blocking=False)
     #RunSpecficInstance(U0=[(0,1)], hashint=2560, edge_blocking=False)

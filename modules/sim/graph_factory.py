@@ -215,6 +215,8 @@ def GetWorldSet(state_repr = 'et', state_enc  = 'tensors', U=[1,2,3], E=[i for i
                 env.reload_unit_paths(env_data['register'],env_data['databank'],env_data['iratios'])
                 env.redefine_nfm(nfm_func)
                 s = solvable['U='+str(u)][hashint]
+                env.sp.hashint = hashint
+                env.world_pool_solvable = s
                 valids = s #np.logical_and(np.logical_not(s),r)
                 # Filter out solvable intial conditions
                 if solve_select == 'both':
@@ -227,6 +229,7 @@ def GetWorldSet(state_repr = 'et', state_enc  = 'tensors', U=[1,2,3], E=[i for i
                     assert False
                 if len(env.world_pool) > 0:
                     env.all_worlds = env.world_pool
+                    env.reset()
                     all_envs.append(env)
                     hashint2env[hashint]=len(all_envs)-1
                     env2hashint[len(all_envs)-1]=hashint
