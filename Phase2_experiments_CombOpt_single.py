@@ -23,7 +23,7 @@ env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, sta
 seed_everything(420) # other seeds require more steps (1000)
 config={}
 config['node_dim']      = env.F
-config['num_nodes']     = env.sp.V
+config['max_num_nodes']     = env.sp.V
 config['emb_dim']       = 32#32
 config['emb_iter_T']    = 3#3
 config['num_extra_layers']=1#1

@@ -71,6 +71,41 @@ class NFM_ev_ec_t_um_us():
             else:
                 eo.nfm[path[eo.local_t],3] += 1
 
+class NFM_ev_ec_t_u():
+    def __init__(self):
+        self.name='nfm-ev-ec-t-u'
+        # Features:
+        # 0. visited by e
+        # 1. current e
+        # 2. target node
+        # 3. u positions
+    
+    def init(self, eo):
+        eo.F = 4
+        eo.nfm0 = np.zeros((eo.sp.V,eo.F))
+        # Set target nodes
+        if len(eo.sp.target_nodes) > 0:
+            eo.nfm0[np.array(list(eo.sp.target_nodes)),2] = 1
+        eo.nfm  = copy.deepcopy(eo.nfm0)
+        
+    def reset(self, eo):
+        eo.nfm = copy.deepcopy(eo.nfm0)
+        # Set e position
+        eo.nfm[eo.sp.start_escape_route_node, 0]=1
+        eo.nfm[eo.sp.start_escape_route_node, 1]=1
+        # Set u positions
+        for u in eo.state[1:]:
+            eo.nfm[u,3] += 1
+
+    def update(self, eo):
+        eo.nfm[eo.state[0],0]=1
+        eo.nfm[:,1]=0
+        eo.nfm[eo.state[0],1]=1   
+        # Set u positions
+        eo.nfm[:,3] = 0     
+        for u in eo.state[1:]:
+            eo.nfm[u,3] += 1
+
 class NFM_ev_ec_t_um_us_xW(NFM_ev_ec_t_um_us):
     def __init__(self):
         self.name='nfm-ev-ec-t-um-us_xW'

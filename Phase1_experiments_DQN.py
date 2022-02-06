@@ -39,8 +39,10 @@ def Run_DQN_Experiment(args):
     world_name_in = args.world_name
     state_repr_in = args.state_repr
     num_seeds     = args.num_seeds
+    edge_blocking = args.edge_blocking
     TRAIN         = args.train
     EVALUATE      = args.eval
+
     if world_name_in == 'all':
         world_names = ALL_WORLDS
     else:
@@ -55,7 +57,7 @@ def Run_DQN_Experiment(args):
         for world_name in world_names:    
             # Setup
             #env=GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc='tensors')
-            exp_rootdir='./results/testing/DQN/'+world_name+'/'+state_repr+'/'
+            exp_rootdir='./results/testing/DQN/'+world_name+'/'+'eblock'+str(edge_blocking)+'/'+state_repr+'/'
             # Load hyperparameters
             hp=GetHyperParams_DQN(world_name)
             dims_hidden_layers  = hp['dims_hidden_layers'][state_repr]
@@ -72,6 +74,7 @@ def Run_DQN_Experiment(args):
 
             # Train and evaluate
             env=GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc='tensors')
+            env.capture_on_edges = edge_blocking
             dim_in = env.state_encoding_dim
             dim_out = env.max_outdegree
             if TRAIN:
@@ -95,7 +98,7 @@ def Run_DQN_Experiment(args):
 
                     policy.model=best_model.to(device)
                     policy.epsilon=0.
-                    lengths, returns, captures = EvaluatePolicy(env, policy, env.world_pool, print_runs=False, save_plots=False, logdir=exp_rootdir)    
+                    lengths, returns, captures, solves = EvaluatePolicy(env, policy, env.world_pool, print_runs=False, save_plots=False, logdir=exp_rootdir)    
                     # Results admin
                     len_seeds.append(np.mean(lengths))
                     ret_seeds.append(np.mean(returns))
@@ -127,7 +130,7 @@ def Run_DQN_Experiment(args):
                 qnet_best.load_state_dict(torch.load(exp_rootdir+'Model_best'))
                 policy = EpsilonGreedyPolicyDQN(qnet_best, env, eps_0=eps_0, eps_min=eps_min, eps_cutoff=cutoff)
                 policy.epsilon=0.
-                lengths, returns, captures = EvaluatePolicy(env, policy, env.world_pool, print_runs=False, save_plots=False, logdir=exp_rootdir)
+                lengths, returns, captures, solves = EvaluatePolicy(env, policy, env.world_pool, print_runs=False, save_plots=False, logdir=exp_rootdir)
                 plotlist = GetFullCoverageSample(returns, env.world_pool, bins=10, n=10)
                 EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=exp_rootdir)
 
@@ -160,6 +163,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_seeds', default=1, type=int)
     parser.add_argument('--train', type=lambda s: s.lower() in ['true', 't', 'yes', '1'], default='True')
     parser.add_argument('--eval', type=lambda s: s.lower() in ['true', 't', 'yes', '1'], default='True')
+    parser.add_argument('--edge_blocking', type=lambda s: s.lower() in ['true', 't', 'yes', '1'], default='True')    
 
     args=parser.parse_args()
     Run_DQN_Experiment(args)

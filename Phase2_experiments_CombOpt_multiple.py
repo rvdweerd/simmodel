@@ -30,7 +30,7 @@ env_all = GetPartialGraphEnvironments_Manh3x3(state_repr=state_repr, state_enc=s
 
 config={}
 config['node_dim']      = env_all[0].F
-config['num_nodes']     = env_all[0].sp.V
+config['max_num_nodes']     = env_all[0].sp.V
 config['emb_dim']       = 128        #128
 config['emb_iter_T']    = 2         #2
 #config['num_extra_layers']=0        #0

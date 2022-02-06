@@ -81,7 +81,7 @@ if __name__ == '__main__':
 
     config={}
     config['node_dim']      = env_all[0].F
-    config['num_nodes']     = env_all[0].sp.V
+    config['max_num_nodes']     = env_all[0].sp.V
     config['scenario_name'] = args.scenario
     config['nfm_func']      = args.nfm_func
     config['emb_dim']       = args.emb_dim

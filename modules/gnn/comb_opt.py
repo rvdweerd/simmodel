@@ -43,7 +43,7 @@ class QNet(nn.Module):
         super(QNet, self).__init__()
         self.emb_dim = config['emb_dim']
         self.T = config['emb_iter_T']
-        
+
         # We use 5 dimensions for representing the nodes' states:
         # * A binary variable indicating whether the node has been visited
         # * A binary variable indicating whether the node is the first of the visited sequence
@@ -342,7 +342,7 @@ def train(seeds=1, seednr0=42, config=None, env_all=None):
                 actions.append(action)
                 actions_nodeselect.append(action_nodeselect)
                 
-                Psize = 9 - env.sp.V # ensure W always same shape to enable batching
+                Psize = config['max_num_nodes'] - env.sp.V # Padding size to ensure W always same shape to enable batching
                 assert env.sp.V == env.sp.W.shape[0]
                 #padW=nn.ZeroPad2d((0,Psize,0,Psize))
                 #W1=pad(env.sp.W)
@@ -356,7 +356,7 @@ def train(seeds=1, seednr0=42, config=None, env_all=None):
                                                W              = nn.functional.pad(env.sp.W,(0,Psize,0,Psize)),
                                                action         = actions[-N_STEP_QL],
                                                action_nodeselect=actions_nodeselect[-N_STEP_QL],
-                                               done           = dones[-1], # CHECK!
+                                               done           = dones[-1], 
                                                reward         = sum(GAMMA_ARR * np.array(rewards[-N_STEP_QL:])),
                                                next_state     = next_state,
                                                next_state_tsr = nn.functional.pad(next_state_tsr,(0,0,0,Psize)),
