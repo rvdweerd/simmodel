@@ -333,7 +333,8 @@ class GraphWorld(gym.Env):
             self.state0   = self.state
         
         self.e_path = [ self.state[0] ]
-        for i,u in enumerate(self.state[1:]):
+        new_Upositions = self._getUpositions(self.local_t)
+        for i,u in enumerate(new_Upositions):
             self.u_paths_taken[i] = [u]
     
         # Initialize graph feature matrix
@@ -451,14 +452,14 @@ class GraphWorld(gym.Env):
         plot = PlotEPathOnGraph_(self.sp, self.e_path, p, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes))
         return plot
 
-    def render_eupaths(self, mode=None, fname=None, t_suffix=True):
+    def render_eupaths(self, mode=None, fname=None, t_suffix=True, last_step_only=False):
         if fname == None:
             #file_name=self.render_fileprefix+'_t='+str(self.global_t)
             file_name=None
         elif t_suffix:
             file_name = fname+'_t='+str(self.global_t)
         else: file_name = fname
-        plot = PlotEUPathsOnGraph_(self.sp, self.e_path, self.u_paths_taken, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes))
+        plot = PlotEUPathsOnGraph_(self.sp, self.e_path, self.u_paths_taken, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes), last_step_only=last_step_only)
         return plot
 
 

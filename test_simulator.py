@@ -31,11 +31,11 @@ while True:
     goal_nodes= random.choices(nodelist,k=1)
     env.redefine_goal_nodes(goal_nodes)
     print('Shortest path', env.sp.spath_to_target,'length:', env.sp.spath_length,'hops')
-    env._remove_world_pool()
+    #env._remove_world_pool()
     #env.reset()
-    SimulateInteractiveMode(env)
+    #SimulateInteractiveMode(env)
 
-    env._restore_world_pool()
+    #env._restore_world_pool()
     #env.reset()
     SimulateInteractiveMode(env)
 

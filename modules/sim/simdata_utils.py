@@ -321,7 +321,7 @@ def DefineSimParameters(config):
     for key in sp.G.edges().keys():
         if len(sp.G.edges[key]) == 0:
             sp.G.edges[key]['N_pref']=-1
-            sp.G.edges[key]['weight']=-1
+            sp.G.edges[key]['weight']=1
     pyg_graph = from_networkx(sp.G)
     sp.EI = pyg_graph.edge_index
     return sp
@@ -531,6 +531,9 @@ def SimulatePursuersPathways(conf, optimization_method='dynamic', fixed_initial_
 def SimulateInteractiveMode(env, filesave_with_time_suffix=False, entry=None):
     if entry is not None:
         env.reset(entry)
+    else:
+        env.reset()
+    print('ENTRY:',env.current_entry)
     s=env.state
     done=False
     R=0
@@ -562,7 +565,7 @@ def SimulateInteractiveMode(env, filesave_with_time_suffix=False, entry=None):
         a=n.index(int(a))
         s,r,done,_=env.step(int(a))
         s=env.state
-        env.render(mode=None, fname="testrun", t_suffix=filesave_with_time_suffix)
+        env.render_eupaths(mode=None, fname="testrun", t_suffix=filesave_with_time_suffix, last_step_only=True)
         R+=r
     print('\n******************** done, reward='+str(R),'**********************')
     input('> Press any key to continue')

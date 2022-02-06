@@ -80,7 +80,7 @@ if __name__ == '__main__':
                                 scenario_name
     config['logdir']        = rootdir + '/' +\
                                 nfm_func.name+'/'+ \
-                                '_emb'+str(config['emb_dim']) + \
+                                'emb'+str(config['emb_dim']) + \
                                 '_itT'+str(config['emb_iter_T']) + \
                                 '_epi'+str(config['num_episodes']) + \
                                 '_mem'+str(config['memory_size']) + \
@@ -104,10 +104,10 @@ if __name__ == '__main__':
         success_vec=[]
         for e in Etest:
             env_all_test, _, _, _  = GetWorldSet(state_repr, state_enc, U=[u], E=[e], edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func)
-            success_rate = evaluate(logdir=config['logdir']+'/SEED'+str(seed0), config=config, env_all=env_all_test, eval_subdir='testeval/runs'+'E'+str(e)+'U'+str(u))
+            success_rate = evaluate(logdir=config['logdir']+'/SEED'+str(seed0), config=config, env_all=env_all_test, eval_subdir='testeval/runs/'+'E'+str(e)+'U'+str(u))
             success_vec.append(success_rate)
         success_matrix.append(success_vec)
-    OF = open(config['logdir']+'/testeval/success_matrix.txt', 'w')
+    OF = open(config['logdir']+'/SEED'+str(seed0)+'/testeval/success_matrix.txt', 'w')
     def printing(text):
         print(text)
         OF.write(text + "\n")    

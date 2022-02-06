@@ -6,18 +6,20 @@ numepi=2500 #2500
 mem=2000 #2000
 tau=100
 nstep=2
-etrain="4,5"
-utrain="2"
-scen="Train_U$utrain""E$etrain"
+etrain="0,1,2,3,4,5,6,7,8,9"
+etrain_="0123456789"
+utrain="1,2,3"
+utrain_="123"
+scen="Train_U$utrain_""E$etrain_"
 optim='returns'
 for nfm in {"NFM_ev_ec_t_um_us",}
 do
     for itt in {3,}
     do
-        tmux new-session -d -s sub$nfm$itt
-        tmux send-keys -t "sub$nfm$itt" "conda activate rlcourse" Enter
-        tmux send-keys -t "sub$nfm$itt" "cd ~/testing/sim" Enter
-        tmux send-keys -t "sub$nfm$itt" "python Phase2_experiments_Pathfinding_Partial3x3s.py --emb_dim $emb --emb_itT $itt --num_epi $numepi --mem_size $mem --nfm_func $nfm --scenario $scen --optim_target $optim --tau $tau --nstep $nstep --Etrain $etrain --Utrain $utrain" Enter
+        tmux new-session -d -s sub2$nfm$itt
+        tmux send-keys -t "sub2$nfm$itt" "conda activate rlcourse" Enter
+        tmux send-keys -t "sub2$nfm$itt" "cd ~/testing/sim" Enter
+        tmux send-keys -t "sub2$nfm$itt" "python Phase2_experiments_Pathfinding_Partial3x3s.py --emb_dim $emb --emb_itT $itt --num_epi $numepi --mem_size $mem --nfm_func $nfm --scenario $scen --optim_target $optim --tau $tau --nstep $nstep --Etrain $etrain --Utrain $utrain" Enter
     done
 done
 

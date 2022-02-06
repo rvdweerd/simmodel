@@ -151,7 +151,7 @@ def PlotEPathOnGraph_(sp, epath, pursuers_pos, fig_show, fig_save, filename, goa
 
     return out
 
-def PlotEUPathsOnGraph_(sp, epath, u_paths, fig_show, fig_save, filename, goal_reached, size='small'):
+def PlotEUPathsOnGraph_(sp, epath, u_paths, fig_show, fig_save, filename, goal_reached, size='small', last_step_only=False):
     G=sp.G#.to_directed()
     labels=sp.labels
     pos=sp.pos
@@ -169,31 +169,23 @@ def PlotEUPathsOnGraph_(sp, epath, u_paths, fig_show, fig_save, filename, goal_r
         colorlist[sp.labels2nodeids[epath[-1]]]='#FF0000'
     sizelist[sp.labels2nodeids[epath[-1]]] = 1200 if size == 'large' else 600
     
-    #node_text[sp.labels2coord[escape_pos]]='e'
     for i,u_path in enumerate(u_paths):
         colorlist[sp.labels2nodeids[u_path[-1]]]='#0000FF'
         sizelist[sp.labels2nodeids[u_path[-1]]] = 1200 if size == 'large' else 600
-        #fontcolors[sp.labels2nodeids[P_pos]]='white'
-        #node_text[sp.labels2coord[P_pos]]='u'+str(i)
 
     edgelist_not_taken=list(G.edges())
     edgelist_takenE=[]
     edgelist_takenU=[]
-    #edgecols = ['grey']*len(G.edges)
-    #edgewidths = [1.]*len(G.edges)
+
     for u_path in u_paths:
         if len(u_path) > 1:
-            for i in range(len(u_path)-1):
+            for i in range(len(u_path)-2,len(u_path)-1) if last_step_only else range(len(u_path)-1):
                 snode=sp.labels2coord[u_path[i]]
                 tnode=sp.labels2coord[u_path[i+1]]
-                # if ((snode,tnode)) in edgelist_not_taken:
-                #     edgelist_not_taken.remove((snode,tnode))
-                # if ((tnode,snode)) in edgelist_not_taken:
-                #     edgelist_not_taken.remove((tnode,snode))
                 edgelist_takenU.append((snode,tnode))
 
     if len(epath) > 1:
-        for i in range(len(epath)-1):
+        for i in range(len(epath)-2,len(epath)-1) if last_step_only else range(len(epath)-1) :
             snode=sp.labels2coord[epath[i]]
             tnode=sp.labels2coord[epath[i+1]]
             if ((snode,tnode)) in edgelist_not_taken:
