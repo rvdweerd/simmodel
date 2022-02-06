@@ -356,7 +356,7 @@ class GraphWorld(gym.Env):
 
     def step(self, action_idx):
         # Take a step
-        info = {'Captured':False, 'u_positions':self.state[1:], 'Misc':None}
+        info = {'Solved':False, 'Captured':False, 'u_positions':self.state[1:], 'Misc':None}
         prev_node=self.state[0]
         if action_idx >= len(self.neighbors[self.state[0]]): # account for invalid action choices
             next_node = self.state[0]
@@ -399,7 +399,8 @@ class GraphWorld(gym.Env):
         elif next_node in self.sp.target_nodes: 
             # goal reached
             done = True
-            reward += +10 
+            reward += +10
+            info['Solved']=True
         if self.optimization == 'dynamic' and not done: 
             # update optimization paths for units
             self.u_paths = self.databank['labels'][self.register['labels'][self.state]]['paths']
@@ -434,14 +435,14 @@ class GraphWorld(gym.Env):
             file_name = fname+'_t='+str(self.global_t)
         else: file_name = fname
         if size == None:
-            if self.sp.V < 10:
+            if self.sp.V < 1:
                 size='large'
             else:
                 size='small'
         plot = PlotAgentsOnGraph_(self.sp, e, p, self.global_t, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes), size=size)
         return plot
     
-    def render_epath(self, fname=None, t_suffix=True):
+    def render_epath(self, fname=None, t_suffix=True, size=None):
         p = self.state[1:]
         if fname == None:
             #file_name=self.render_fileprefix+'_t='+str(self.global_t)
@@ -449,17 +450,27 @@ class GraphWorld(gym.Env):
         elif t_suffix:
             file_name = fname+'_t='+str(self.global_t)
         else: file_name = fname
-        plot = PlotEPathOnGraph_(self.sp, self.e_path, p, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes))
+        if size == None:
+            if self.sp.V < 1:
+                size='large'
+            else:
+                size='small'
+        plot = PlotEPathOnGraph_(self.sp, self.e_path, p, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes), size=size)
         return plot
 
-    def render_eupaths(self, mode=None, fname=None, t_suffix=True, last_step_only=False):
+    def render_eupaths(self, mode=None, fname=None, t_suffix=True, size=None, last_step_only=False):
         if fname == None:
             #file_name=self.render_fileprefix+'_t='+str(self.global_t)
             file_name=None
         elif t_suffix:
             file_name = fname+'_t='+str(self.global_t)
         else: file_name = fname
-        plot = PlotEUPathsOnGraph_(self.sp, self.e_path, self.u_paths_taken, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes), last_step_only=last_step_only)
+        if size == None:
+            if self.sp.V < 1:
+                size='large'
+            else:
+                size='small'
+        plot = PlotEUPathsOnGraph_(self.sp, self.e_path, self.u_paths_taken, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes), size=size, last_step_only=last_step_only)
         return plot
 
 

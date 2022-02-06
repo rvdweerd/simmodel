@@ -33,6 +33,7 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
     iratios_sampled=[]
     lengths=[]
     returns=[]
+    solves=[]
     #if print_runs or save_plots:
     Path(logdir).mkdir(parents=True, exist_ok=True)
     Path(logdir+'/runs').mkdir(parents=True, exist_ok=True)
@@ -80,14 +81,14 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
         if len(env.sp.target_nodes)>0 and env.state[0] in env.sp.target_nodes:
             done = True
             R=10
-            info = {'Captured':False}
+            info = {'Captured':False, 'Solved':True}
         if print_runs:
             #printing('\nRun '+str(i+1)+': dataset entry '+str(entry)+', Initial state '+str(env.state0))
             text_cache += ('\nRun '+str(i+1)+': dataset entry '+str(entry)+', Initial state '+str(env.state0))
             text_cache += ', Deterministic policy: '+str(policy.deterministic)+'\n'
         while not done:
             if save_plots and plot_each_timestep:
-                plot=env.render(fname=None)
+                plot=env.render_eupaths(fname=None, last_step_only=True)
                 plot_cache.append(plot)
             s_start=env.state
             #action,_ = policy.sample_action(s, env._availableActionsInCurrentState())
@@ -106,17 +107,18 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
             printing(text_cache)
         if save_plots:
             if plot_each_timestep:
-                plot=env.render(fname=None)
+                plot=env.render_eupaths(fname=None, last_step_only=True)
                 plot_cache.append(plot)
             for i_plt,p in enumerate(plot_cache):
                 fname=file_prefix+str(env.current_entry)+'_s0='+str(env.state0)+'_'+policy.__name__+'_R='+str(R)+'_t='+str(i_plt)
                 p.savefig(fname+'.png')
             
-            fname=file_prefix+str(env.current_entry)+'_s0='+str(env.state0)+'_'+policy.__name__+'_R='+str(R)+'_eupaths'
+            fname=file_prefix+str(env.current_entry)+'_s0='+str(env.state0)+'_'+policy.__name__+'_R='+str(R)+'_fulleupaths'
             env.render_eupaths(fname=fname)
             #plot2 = env.render_epath(fname=None)
             #plot2.savefig(fname+'.png')
         captures.append(int(info['Captured']))
+        solves.append(int(info['Solved']))
         returns.append(R)
         lengths.append(count)
     printing('\nAggregated test results.')
@@ -126,8 +128,9 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
     printing('Observed escape ratio: {:.3f}'.format(1-np.mean(captures)))
     if len(returns) <20 or print_runs:
         printing('   Captures:'+str(np.array(captures)))
-    goal_ratio=(np.array(returns)>0).sum()/len(returns)
-    printing('Goal reached ratio: {:.3f}'.format(goal_ratio))
+    num_solves=np.sum(solves)
+    solve_ratio=(num_solves/len(solves))
+    printing('Goal reached: {:.0f}'.format(num_solves)+'/{:.0f}'.format(len(solves))+', solve ratio: {:.3f}'.format(solve_ratio))
     printing('Average episode length: {:.2f}'.format(np.mean(lengths))+' +/- {:.2f}'.format(np.std(lengths)))
     if len(returns) <20 or print_runs:
         printing('   Lengths :'+str(np.array(lengths) ))
@@ -137,7 +140,7 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
     printing('\nEscape ratio at data generation: last {:.3f}'.format(1-env.iratio)+', avg at generation {:.3f}'.format(1-sum(env.iratios)/len(env.iratios))+\
         ', avg sampled {:.3f}'.format(1-sum(iratios_sampled)/len(iratios_sampled)))
     printing('-------------------------------------------------------------------------------------------------------')
-    return (lengths, returns, captures)
+    return (lengths, returns, captures, solves)
 
 def GetInitialStatesList(env, min_y_coord):
     # Get pointers to all initial conditions with Units above min_y_coord

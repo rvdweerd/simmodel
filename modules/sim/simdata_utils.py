@@ -528,7 +528,7 @@ def SimulatePursuersPathways(conf, optimization_method='dynamic', fixed_initial_
             p.append(sp.coord2labels[pos])
         PlotAgentsOnGraph(sp, e, p, t)
 
-def SimulateInteractiveMode(env, filesave_with_time_suffix=False, entry=None):
+def SimulateInteractiveMode(env, filesave_with_time_suffix=True, entry=None):
     if entry is not None:
         env.reset(entry)
     else:
@@ -569,6 +569,6 @@ def SimulateInteractiveMode(env, filesave_with_time_suffix=False, entry=None):
         R+=r
     print('\n******************** done, reward='+str(R),'**********************')
     input('> Press any key to continue')
-    env.render_eupaths(mode=None, fname="testrun", t_suffix=filesave_with_time_suffix)
+    env.render_eupaths(mode=None, fname="testrun_tot", t_suffix=filesave_with_time_suffix)
     input('> Press any key to continue')
     print('\n')

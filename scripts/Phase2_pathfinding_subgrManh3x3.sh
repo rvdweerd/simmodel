@@ -14,12 +14,12 @@ scen="Train_U$utrain_""E$etrain_"
 optim='returns'
 for nfm in {"NFM_ev_ec_t_um_us",}
 do
-    for itt in {3,}
+    for itt in {7,}
     do
-        tmux new-session -d -s sub2$nfm$itt
-        tmux send-keys -t "sub2$nfm$itt" "conda activate rlcourse" Enter
-        tmux send-keys -t "sub2$nfm$itt" "cd ~/testing/sim" Enter
-        tmux send-keys -t "sub2$nfm$itt" "python Phase2_experiments_Pathfinding_Partial3x3s.py --emb_dim $emb --emb_itT $itt --num_epi $numepi --mem_size $mem --nfm_func $nfm --scenario $scen --optim_target $optim --tau $tau --nstep $nstep --Etrain $etrain --Utrain $utrain" Enter
+        tmux new-session -d -s sub$nfm$itt
+        tmux send-keys -t "sub$nfm$itt" "conda activate rlcourse" Enter
+        tmux send-keys -t "sub$nfm$itt" "cd ~/testing/sim" Enter
+        tmux send-keys -t "sub$nfm$itt" "python Phase2_experiments_Pathfinding_Partial3x3s.py --emb_dim $emb --emb_itT $itt --num_epi $numepi --mem_size $mem --nfm_func $nfm --scenario $scen --optim_target $optim --tau $tau --nstep $nstep --Etrain $etrain --Utrain $utrain" Enter
     done
 done
 

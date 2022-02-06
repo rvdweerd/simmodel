@@ -535,24 +535,28 @@ def evaluate_tabular(logdir, config, env_all):
 
 def evaluate_spath_heuristic(logdir, config, env_all):
     R=[]
+    S=[]
     for i,env in enumerate(tqdm.tqdm(env_all)):
         policy=ShortestPathPolicy(env,weights='equal')
-        l, returns, c = EvaluatePolicy(env, policy,env.world_pool, print_runs=False, save_plots=False, logdir=logdir, eval_arg_func=EvalArgs1, silent_mode=True)
+        env._encode = env._encode_tensor
+        l, returns, c, solves = EvaluatePolicy(env, policy,env.world_pool, print_runs=False, save_plots=False, logdir=logdir, eval_arg_func=EvalArgs1, silent_mode=True)
         num_worlds_requested = 10
         once_every = max(1,len(env_all)//num_worlds_requested)
         if i % once_every ==0:
             plotlist = GetFullCoverageSample(returns, env.world_pool, bins=10, n=15)
             EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgs1, silent_mode=False, plot_each_timestep=False)
         R+=returns 
+        S+=solves
     
     OF = open(logdir+'/Full_result.txt', 'w')
     def printing(text):
         print(text)
         OF.write(text + "\n")
     printing('Total unique graphs evaluated: '+str(len(env_all)))
-    printing('Total instances evaluated: '+str(len(R))+' Avg reward: {:.2f}'.format(np.mean(R)))
-    possol=np.sum(np.array(R)>0)
-    printing('Number of >0 solutions: '+str(possol)+' ({:.1f}'.format(possol/len(R)*100)+'%)')
+    printing('Total instances evaluated: '+str(len(R))+' Avg reward: {:.2f}'.format(np.mean(R)))    
+    num_solved=np.sum(S)
+    success_rate = num_solved/len(S)
+    printing('Goal reached: '+str(num_solved)+' ({:.1f}'.format(success_rate*100)+'%)')
     printing('---------------------------------------')
     for k,v in config.items():
         printing(k+' '+str(v))
@@ -562,22 +566,25 @@ def evaluate(logdir, info=False, config=None, env_all=None, eval_subdir='.'):
     if env_all==None or len(env_all)==0:
         return
     Q_func, Q_net, optimizer, lr_scheduler = init_model(config,fname=logdir+'/best_model.tar')
+    #Q_func.model.T = 5 ## DANGEROUS, BE CAREFUL
     logdir=logdir+'/'+eval_subdir
     #Q_func, Q_net, optimizer, lr_scheduler = init_model(config,fname='results_Phase2/CombOpt/'+affix+'/ep_350_length_7.0.tar')
     policy=GNN_s2v_Policy(Q_func)
     #policy.epsilon=0.
-    #e=415
-    #EvaluatePolicy(env_all[e], policy,env_all[e].world_pool, print_runs=False, save_plots=True, logdir='results_Phase2/CombOpt', eval_arg_func=EvalArgs2, silent_mode=False)
+    #e=50 # Evaluate a specific entry
+    #EvaluatePolicy(env_all[0], policy,[e], print_runs=False, save_plots=False, logdir='results_Phase2/CombOpt', eval_arg_func=EvalArgs2, silent_mode=True)
+    #assert False
     R=[]
-   
+    S=[]
     for i,env in enumerate(tqdm.tqdm(env_all)):
-        l, returns, c = EvaluatePolicy(env, policy,env.world_pool, print_runs=False, save_plots=False, logdir=logdir, eval_arg_func=EvalArgs2, silent_mode=True)
+        l, returns, c, solves = EvaluatePolicy(env, policy,env.world_pool, print_runs=False, save_plots=False, logdir=logdir, eval_arg_func=EvalArgs2, silent_mode=True)
         num_worlds_requested = 10
         once_every = max(1,len(env_all)//num_worlds_requested)
         if i % once_every ==0:
-            plotlist = GetFullCoverageSample(returns, env.world_pool, bins=3, n=3)
-            EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgs2, silent_mode=False, plot_each_timestep=False)
+            plotlist = GetFullCoverageSample(returns, env.world_pool, bins=10, n=10)
+            EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgs2, silent_mode=False, plot_each_timestep=True)
         R+=returns 
+        S+=solves
     
     OF = open(logdir+'/Full_result.txt', 'w')
     def printing(text):
@@ -585,9 +592,9 @@ def evaluate(logdir, info=False, config=None, env_all=None, eval_subdir='.'):
         OF.write(text + "\n")
     printing('Total unique graphs evaluated: '+str(len(env_all)))
     printing('Total instances evaluated: '+str(len(R))+' Avg reward: {:.2f}'.format(np.mean(R)))
-    possol=np.sum(np.array(R)>0)
-    success_rate = possol/len(R)
-    printing('Number of >0 solutions: '+str(possol)+' ({:.1f}'.format(success_rate*100)+'%)')
+    num_solved=np.sum(S)
+    success_rate = num_solved/len(S)
+    printing('Goal reached: '+str(num_solved)+' ({:.1f}'.format(success_rate*100)+'%)')
     printing('---------------------------------------')
     for k,v in config.items():
         printing(k+' '+str(v))

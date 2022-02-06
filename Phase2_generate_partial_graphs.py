@@ -485,7 +485,7 @@ if __name__ == '__main__':
     #RunInstance(args)
     #TestSim()
     #MergeDataFiles()
-    SaveSolvabilityData(args, edge_blocking=False)
+    #SaveSolvabilityData(args, edge_blocking=False)
     #MergeDataFilesSolvability()
     #SaveReachabilityData()
 
@@ -502,7 +502,7 @@ if __name__ == '__main__':
     #  Testing the data: Interactive simulations
     #
     ########
-    #TestInteractiveSimulation(U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_u_duplicates=False)
+    TestInteractiveSimulation(U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_u_duplicates=False)
     #TestInteractiveSimulation(U=[2],E=[5],edge_blocking=True, solve_select='solvable')#i for i in range(11)])
     #RunSpecficInstance(U0=[(2,1),(2,1)], hashint=127, edge_blocking=False)
     #RunSpecficInstance(U0=[(1,1),(1,1)], hashint=4808, edge_blocking=False)

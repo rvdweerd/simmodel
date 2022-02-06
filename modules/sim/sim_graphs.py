@@ -295,6 +295,18 @@ def MetroGraph():
     G.add_edges_from(edgelist_coord)
     G=G.to_directed()
     pos = dict( (n,n) for n in G.nodes() )
+    # some adjustments to improve plotting 
+    pos[(10,4)]=(10,3.5)        # node 6
+    pos[(14,5)]=(14,3)          # node 7
+    pos[(0,6)]=(0,4)            # node 10
+    pos[(5.5,7)]=(5.5,5)        # node 12
+    pos[(9,8)]=(7,9)            # node 13
+    pos[(13.5,7.5)]=(13.5,6.5)  # node 14
+    pos[(10,9)]=(10.5,8)        # node 17
+    pos[(3,16)]=(3,15)          # node 27
+    pos[(9.5,15.5)]=(9.5,16.5)  # node 28
+    pos[(16,2.5)]=(18,1.5)      # node 32
+    
     labels = dict([(v,k) for k,v in nodes.items()])
 
     return G, labels, pos

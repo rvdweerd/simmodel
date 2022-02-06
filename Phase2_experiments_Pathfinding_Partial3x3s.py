@@ -44,6 +44,7 @@ if __name__ == '__main__':
 
     databank_full, register_full, solvable = LoadData(edge_blocking = True)
     env_all_train, hashint2env, env2hashint, env2hashstr = GetWorldSet(state_repr, state_enc, U=Utrain, E=Etrain, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func)
+    
     # env_idx=0
     # env=env_all_train[env_idx]
     # entry=env.current_entry
@@ -55,8 +56,8 @@ if __name__ == '__main__':
     # SimulateInteractiveMode(env_all_train[0])
 
     config={}
-    config['node_dim']      = env_all_train[0].F
-    config['num_nodes']     = env_all_train[0].sp.V
+    config['node_dim']      = 5#env_all_train[0].F
+    config['num_nodes']     = 9#env_all_train[0].sp.V
     config['scenario_name'] = args.scenario
     config['nfm_func']      = args.nfm_func
     config['emb_dim']       = args.emb_dim
@@ -66,7 +67,7 @@ if __name__ == '__main__':
     config['num_episodes']  = args.num_epi 
     config['memory_size']   = args.mem_size 
     config['num_step_ql']   = args.nstep  
-    config['bsize']         = 12        
+    config['bsize']         = 32        
     config['gamma']         = .9        
     config['lr_init']       = 1e-3      
     config['lr_decay']      = 0.99999    
@@ -87,18 +88,49 @@ if __name__ == '__main__':
                                 '_nstep'+str(config['num_step_ql'])
     numseeds=1
     seed0=0
-    
-    # Train
+
+    #
+    #   Evaluate learned model on another (out of distribution) graph
+    #
+    world_names=[
+#        'Manhattan5x5_FixedEscapeInit',
+#        'Manhattan5x5_VariableEscapeInit',
+        'MetroU3_e17tborder_FixedEscapeInit',
+#        'SparseManhattan5x5',
+    ]
+    state_repr='etUte0U0'
+    state_enc='nfm'
+    for world_name in world_names:
+        custom_env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
+        custom_env.redefine_nfm(nfm_func)
+        evaluate(logdir=config['logdir']+'/SEED'+str(seed0), config=config, env_all=[custom_env], eval_subdir=world_name+'_eval')
+        #evaluate_spath_heuristic(logdir=config['logdir']+'/SEED'+str(seed0)+'/'+world_name+'_eval/heuristics', config=config, env_all=[custom_env])
+        #SimulateInteractiveMode(custom_env, filesave_with_time_suffix=False)
+
+    assert False
+
+
+    # Evaluate with simple shortest path heuristic to get low mark on performance 
+    evaluate_spath_heuristic(logdir=rootdir+'/heur/spath', config=config, env_all=env_all_train)
+
+    #
+    #   Train the model on selected subset of graphs
+    #
     train(seeds=numseeds, seednr0=seed0, config=config, env_all=env_all_train)
+
+    #
+    #   Evaluation
+    #
     # Evaluate on the full training set
     evaluate(logdir=config['logdir']+'/SEED'+str(seed0), config=config, env_all=env_all_train, eval_subdir='traineval')
     
+    # Evaluate on the full evaluation set
     Etest=[0,1,2,3,4,5,6,7,8,9,10]
     Utest=[1,2,3]
-    # Evaluate on the full evaluation set
     env_all_test, _, _, _  = GetWorldSet(state_repr, state_enc, U=Utest, E=Etest, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func)
     evaluate(logdir=config['logdir']+'/SEED'+str(seed0), config=config, env_all=env_all_test, eval_subdir='testeval')
-    # Evaluate on each segment of the evaluation set
+    
+    # Evaluate on each individual segment of the evaluation set
     success_matrix=[]
     for u in Utest:
         success_vec=[]
@@ -115,5 +147,3 @@ if __name__ == '__main__':
     printing(str(success_matrix))
     OF.close()
 
-    evaluate_spath_heuristic(logdir=rootdir+'/heur/spath', config=config, env_all=env_all_train)
-    evaluate_tabular(logdir=rootdir+'/tabular', config=config, env_all=env_all_train)

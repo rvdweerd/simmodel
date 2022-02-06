@@ -195,8 +195,8 @@ def PlotEUPathsOnGraph_(sp, epath, u_paths, fig_show, fig_save, filename, goal_r
             edgelist_takenE.append((snode,tnode))
 
     nx.draw_networkx_edges(G, pos, edgelist=edgelist_not_taken, edge_color='grey', width=3. if size == 'large' else 1., alpha=1.)#width=1
-    nx.draw_networkx_edges(G, pos, edgelist=edgelist_takenE, edge_color='red', width=12. if size == 'large' else 5., alpha=1.)#width=1
-    nx.draw_networkx_edges(G, pos, edgelist=edgelist_takenU, edge_color='blue', width=12. if size == 'large' else 5., alpha=1.)#width=1
+    nx.draw_networkx_edges(G, pos, edgelist=edgelist_takenE, edge_color='red', arrowsize=25, width=12. if size == 'large' else 5., alpha=1.)#width=1
+    nx.draw_networkx_edges(G, pos, edgelist=edgelist_takenU, edge_color='blue', arrowsize=20, width=10. if size == 'large' else 3., alpha=1.)#width=1
     nx.draw_networkx_labels(G,pos, font_size = 12 if size == 'large' else 8, labels=node_text, font_color='black')#fontsize=8
     nx.draw_networkx_nodes(G, pos, node_size=sizelist, node_color=colorlist, edgecolors=node_borderlist, alpha=1.)#alhpa=.6
     
