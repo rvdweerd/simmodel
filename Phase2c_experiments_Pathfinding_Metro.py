@@ -24,6 +24,8 @@ if __name__ == '__main__':
     parser.add_argument('--edge_blocking', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
     parser.add_argument('--train', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
     parser.add_argument('--eval', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])   
+    parser.add_argument('--num_seeds', default=5, type=int)
+    parser.add_argument('--seed0', default=10, type=int)
     args=parser.parse_args()
 
     nfm_funcs = {
@@ -47,7 +49,9 @@ if __name__ == '__main__':
     custom_env.capture_on_edges = edge_blocking
     env_all_train=[ custom_env ]
 
-    config={}
+    config = {}
+    numseeds = args.num_seeds
+    seed0 = args.seed0
     config['node_dim']      = env_all_train[0].F
     config['max_num_nodes'] = env_all_train[0].sp.V
     config['scenario_name'] = scenario_name
@@ -72,29 +76,51 @@ if __name__ == '__main__':
                                 world_name+'/'+ \
                                 scenario_name
     config['logdir']        = rootdir + '/' +\
+                                'eblock'+str(edge_blocking) +'/'+\
                                 nfm_func.name+'/'+ \
                                 'emb'+str(config['emb_dim']) + \
                                 '_itT'+str(config['emb_iter_T']) + \
                                 '_epi'+str(config['num_episodes']) + \
                                 '_mem'+str(config['memory_size']) + \
-                                '_nstep'+str(config['num_step_ql']) + \
-                                '_eblock'+str(edge_blocking) 
-    numseeds=1
-    seed0=0
+                                '_nstep'+str(config['num_step_ql']) \
+                                 
 
     # Evaluate with simple shortest path heuristic to get low mark on performance 
-    evaluate_spath_heuristic(logdir=rootdir+'/heur/ebblock'+str(edge_blocking)+'/spath', config=config, env_all=env_all_train)
+    #evaluate_spath_heuristic(logdir=rootdir+'/ebblock'+str(edge_blocking)+'heur/spath', config=config, env_all=env_all_train)
 
     #
     #   Train the model on selected subset of graphs
     #
     if args.train:
-        train(seeds=numseeds, seednr0=seed0, config=config, env_all=env_all_train)
+        for seed in range(seed0, seed0+numseeds):
+            train(seed=seed, config=config, env_all=env_all_train)
 
     #
     #   Evaluation
     #
     # Evaluate on the full training set
     if args.eval:
-        evaluate(logdir=config['logdir']+'/SEED'+str(seed0), config=config, env_all=env_all_train, eval_subdir='traineval')
-    
+        env_all_test=env_all_train
+        evalName='trainseteval'
+        evalResults={ evalName:{'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} }
+        for seed in range(seed0, seed0+numseeds):
+            result = evaluate(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=env_all_test, eval_subdir=evalName)
+            num_unique_graphs, num_graph_instances, avg_return, success_rate = result
+            evalResults[evalName]['num_graphs.........'].append(num_unique_graphs)
+            evalResults[evalName]['num_graph_instances'].append(num_graph_instances)
+            evalResults[evalName]['avg_return.........'].append(avg_return)
+            evalResults[evalName]['success_rate.......'].append(success_rate)
+
+        for ename, results in evalResults.items():
+            OF = open(config['logdir']+'/Results_over_seeds_'+ename+'.txt', 'w')
+            def printing(text):
+                print(text)
+                OF.write(text + "\n")
+            np.set_printoptions(formatter={'float':"{0:0.3f}".format})
+            printing('Results over seeds for evaluation on '+ename+'\n')
+            for category,values in results.items():
+                printing(category)
+                printing('  avg over seeds: '+str(np.mean(values)))
+                printing('  std over seeds: '+str(np.std(values)))
+                printing('  per seed: '+str(np.array(values))+'\n')
+            

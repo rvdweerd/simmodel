@@ -24,11 +24,11 @@ run_world_names = [
     #'Manhattan5x5_DuplicateSetB',
     #'Manhattan5x5_FixedEscapeInit',
     #'Manhattan5x5_VariableEscapeInit',
-    #'MetroU3_e17tborder_FixedEscapeInit',
+    'MetroU3_e17tborder_FixedEscapeInit',
     #'MetroU3_e17t31_FixedEscapeInit', 
     #'MetroU3_e17t0_FixedEscapeInit', 
     #'MetroU3_e17tborder_VariableEscapeInit'
-    'SparseManhattan5x5'
+    #'SparseManhattan5x5'
 ]
 #worlds = CreateWorlds(run_world_names, make_reflexive=True, state_repr='et'      , state_enc='nodes')
 #worlds = CreateWorlds(run_world_names, make_reflexive=True, state_repr='etUt'    , state_enc='nodes')
@@ -65,8 +65,8 @@ for env, world_name in zip(worlds, run_world_names):
 
     # Evaluate the learned policy
     policy.epsilon=0.
-    logdir = 'results/TabQL/'+world_name+'/'+env.state_representation
-    _, returns, _ = EvaluatePolicy(env,policy,env.world_pool,print_runs=False, save_plots=False, logdir=logdir, has_Q_table=True)
+    logdir = 'results/testing/TabQL/'+world_name+'/'+env.state_representation
+    _, returns, _, _ = EvaluatePolicy(env,policy,env.world_pool,print_runs=False, save_plots=False, logdir=logdir, has_Q_table=True)
     plotlist = GetFullCoverageSample(returns, env.world_pool, bins=10, n=10)
     EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=logdir, has_Q_table=True)
     saveinfo = {"Q":policy.Q}

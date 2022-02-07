@@ -9,17 +9,20 @@ nstep=2
 optim="returns"
 train="True"
 eval="True"
-itt=7
-
+numseeds=6
+seed0=0
+nfm="NFM_ev_ec_t_u"
 #for nfm in {"NFM_ev_ec_t_um_us",}
-for nfm in {"NFM_ev_ec_t_u","NFM_ev_ec_t_um_us"}
+#for nfm in {"NFM_ev_ec_t_u","NFM_ev_ec_t_um_us"}
+#itt=7
+for itt in {7,}
 do
-    for edgeblock in {"True","False"}
+    for edgeblock in {"False",} #"False"}
     do
-        tmux new-session -d -s sub$nfm$edgeblock
-        tmux send-keys -t "sub$nfm$edgeblock" "conda activate rlcourse" Enter
-        tmux send-keys -t "sub$nfm$edgeblock" "cd ~/testing/sim" Enter
-        tmux send-keys -t "sub$nfm$edgeblock" "python Phase2c_experiments_Pathfinding_Metro.py --emb_dim $emb --emb_itT $itt --num_epi $numepi --mem_size $mem --nfm_func $nfm --optim_target $optim --tau $tau --nstep $nstep --edge_blocking $edgeblock --train $train --eval $eval" Enter
+        tmux new-session -d -s sub$itt$edgeblock
+        tmux send-keys -t "sub$itt$edgeblock" "conda activate rlcourse" Enter
+        tmux send-keys -t "sub$itt$edgeblock" "cd ~/testing/sim" Enter
+        tmux send-keys -t "sub$itt$edgeblock" "python Phase2c_experiments_Pathfinding_Metro.py --emb_dim $emb --emb_itT $itt --num_epi $numepi --mem_size $mem --nfm_func $nfm --optim_target $optim --tau $tau --nstep $nstep --edge_blocking $edgeblock --train $train --eval $eval --num_seeds $numseeds --seed0 $seed0" Enter
     done
 done
 

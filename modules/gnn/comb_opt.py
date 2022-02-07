@@ -254,224 +254,223 @@ class Memory(object):
         return min(self.nr_inserts, self.capacity)
 
 
-def train(seeds=1, seednr0=42, config=None, env_all=None):
+def train(seed=0, config=None, env_all=None):
     # Storing metrics about training:
     found_solutions = dict()  # episode --> (W, solution)
     losses = []
     path_length_ratios = []
     total_rewards=[]
     grad_update_count=0
-    for seed in range(seeds):
-        seed_everything(seed+seednr0) # 
-        # Create module, optimizer, LR scheduler, and Q-function
-        Q_func, Q_net, optimizer, lr_scheduler = init_model(config)
-        Q_func_target, _, _, _ = init_model(config)
-        #Q_func_target=Q_func
+    
+    seed_everything(seed) # 
+    # Create module, optimizer, LR scheduler, and Q-function
+    Q_func, Q_net, optimizer, lr_scheduler = init_model(config)
+    Q_func_target, _, _, _ = init_model(config)
+    #Q_func_target=Q_func
 
-        logdir=config['logdir']+'/SEED'+str(seed+seednr0)
-        writer=writer = SummaryWriter(log_dir=logdir)
+    logdir=config['logdir']+'/SEED'+str(seed)
+    writer=writer = SummaryWriter(log_dir=logdir)
 
-        # Create memory
-        memory = Memory(config['memory_size'])
+    # Create memory
+    memory = Memory(config['memory_size'])
 
-        # keep track of mean ratio of estimated MVC / real MVC
-        current_min_Ratio = float('+inf')
-        current_max_Return= float('-inf')
-        N_STEP_QL = config['num_step_ql']
-        GAMMA=config['gamma']
-        GAMMA_ARR = np.array([GAMMA**i for i in range(N_STEP_QL)])
+    # keep track of mean ratio of estimated MVC / real MVC
+    current_min_Ratio = float('+inf')
+    current_max_Return= float('-inf')
+    N_STEP_QL = config['num_step_ql']
+    GAMMA=config['gamma']
+    GAMMA_ARR = np.array([GAMMA**i for i in range(N_STEP_QL)])
+    
+    for episode in range(config['num_episodes']):
+        # sample a new graph
+        # current state (tuple and tensor)
+        env=random.choice(env_all)
+        #env=env_all[-1]
+        env.reset()
+        current_state = env.state
+        done=False   
+        current_state_tsr = torch.tensor(env.nfm, dtype=torch.float32)#, device=device) 
+        # Note: nfm = Graph Feature Matrix (FxV), columns are the node features, managed by the environment
+        # It's currently defined (for each node) as:
+        #   [.] node number
+        #   [.] 1 if target node, 0 otherwise 
+        #   [.] # of units present at node at current time
+
+        # Keep track of some variables for insertion in replay memory:
+        states = [current_state]
+        states_tsrs = [current_state_tsr]  # we also keep the state tensors here (for efficiency)
+        rewards = []
+        dones = []
+        actions = []
+        actions_nodeselect = []
+
+        # current value of epsilon
+        epsilon = max(config['eps_min'], config['eps_0']*((1-config['eps_decay'])**episode))
         
-        for episode in range(config['num_episodes']):
-            # sample a new graph
-            # current state (tuple and tensor)
-            env=random.choice(env_all)
-            #env=env_all[-1]
-            env.reset()
-            current_state = env.state
-            done=False   
-            current_state_tsr = torch.tensor(env.nfm, dtype=torch.float32)#, device=device) 
-            # Note: nfm = Graph Feature Matrix (FxV), columns are the node features, managed by the environment
-            # It's currently defined (for each node) as:
-            #   [.] node number
-            #   [.] 1 if target node, 0 otherwise 
-            #   [.] # of units present at node at current time
-
-            # Keep track of some variables for insertion in replay memory:
-            states = [current_state]
-            states_tsrs = [current_state_tsr]  # we also keep the state tensors here (for efficiency)
-            rewards = []
-            dones = []
-            actions = []
-            actions_nodeselect = []
-
-            # current value of epsilon
-            epsilon = max(config['eps_min'], config['eps_0']*((1-config['eps_decay'])**episode))
+        nr_explores = 0
+        t = -1
+        while not done:
+            t += 1  # time step of this episode
             
-            nr_explores = 0
-            t = -1
-            while not done:
-                t += 1  # time step of this episode
-                
-                if epsilon >= random.random():
-                    # explore
-                    action = random.randint(0,env.out_degree[env.state[0]]-1)
-                    #print(env.neighbors[env.state[0]],action)
-                    action_nodeselect = env.neighbors[env.state[0]][action]
-                    nr_explores += 1
-                    if episode % 50 == 0:
-                        pass
-                        #print('Ep {} explore | current sol: {} | sol: {}'.format(episode, solution, solutions),'nextnode',next_node)
-                else:
-                    # exploit
-                    #with torch.no_grad(): #(already dealt with inside function)
-                    reachable_nodes=env.neighbors[env.state[0]]
-                    action, action_nodeselect, _ = Q_func.get_best_action(current_state_tsr.to(dtype=torch.float32), env.sp.W, reachable_nodes)
-                    if episode % 50 == 0:
-                        pass
-                        #print('Ep {} exploit | current sol: {} / next est reward: {} | sol: {}'.format(episode, solution, est_reward,solutions),'nextnode',next_node)
-                
-                _, reward, done, info = env.step(action)
-                next_state = env.state
-                next_state_tsr = torch.tensor(env.nfm, dtype=torch.float32)#, device=device)
-                
-                # store rewards and states obtained along this episode:
-                states.append(next_state)
-                states_tsrs.append(next_state_tsr)
-                rewards.append(reward)
-                dones.append(done)
-                actions.append(action)
-                actions_nodeselect.append(action_nodeselect)
-                
-                Psize = config['max_num_nodes'] - env.sp.V # Padding size to ensure W always same shape to enable batching
-                assert env.sp.V == env.sp.W.shape[0]
-                #padW=nn.ZeroPad2d((0,Psize,0,Psize))
-                #W1=pad(env.sp.W)
-                #W2=pad(env.sp.W)
-                #W3=nn.functional.pad(env.sp.W,(0,Psize,0,Psize))
+            if epsilon >= random.random():
+                # explore
+                action = random.randint(0,env.out_degree[env.state[0]]-1)
+                #print(env.neighbors[env.state[0]],action)
+                action_nodeselect = env.neighbors[env.state[0]][action]
+                nr_explores += 1
+                if episode % 50 == 0:
+                    pass
+                    #print('Ep {} explore | current sol: {} | sol: {}'.format(episode, solution, solutions),'nextnode',next_node)
+            else:
+                # exploit
+                #with torch.no_grad(): #(already dealt with inside function)
+                reachable_nodes=env.neighbors[env.state[0]]
+                action, action_nodeselect, _ = Q_func.get_best_action(current_state_tsr.to(dtype=torch.float32), env.sp.W, reachable_nodes)
+                if episode % 50 == 0:
+                    pass
+                    #print('Ep {} exploit | current sol: {} / next est reward: {} | sol: {}'.format(episode, solution, est_reward,solutions),'nextnode',next_node)
+            
+            _, reward, done, info = env.step(action)
+            next_state = env.state
+            next_state_tsr = torch.tensor(env.nfm, dtype=torch.float32)#, device=device)
+            
+            # store rewards and states obtained along this episode:
+            states.append(next_state)
+            states_tsrs.append(next_state_tsr)
+            rewards.append(reward)
+            dones.append(done)
+            actions.append(action)
+            actions_nodeselect.append(action_nodeselect)
+            
+            Psize = config['max_num_nodes'] - env.sp.V # Padding size to ensure W always same shape to enable batching
+            assert env.sp.V == env.sp.W.shape[0]
+            #padW=nn.ZeroPad2d((0,Psize,0,Psize))
+            #W1=pad(env.sp.W)
+            #W2=pad(env.sp.W)
+            #W3=nn.functional.pad(env.sp.W,(0,Psize,0,Psize))
 
-                # store our experience in memory, using n-step Q-learning:
-                if len(actions) >= N_STEP_QL:
-                    memory.remember(Experience(state          = states[-(N_STEP_QL+1)],
-                                               state_tsr      = nn.functional.pad(states_tsrs[-(N_STEP_QL+1)],(0,0,0,Psize)),
-                                               W              = nn.functional.pad(env.sp.W,(0,Psize,0,Psize)),
-                                               action         = actions[-N_STEP_QL],
-                                               action_nodeselect=actions_nodeselect[-N_STEP_QL],
-                                               done           = dones[-1], 
-                                               reward         = sum(GAMMA_ARR * np.array(rewards[-N_STEP_QL:])),
-                                               next_state     = next_state,
-                                               next_state_tsr = nn.functional.pad(next_state_tsr,(0,0,0,Psize)),
-                                               next_state_neighbors= env.neighbors[next_state[0]] ))
-                    
-                if done:
-                    for n in range(1, min(N_STEP_QL, len(states))):
-                        memory.remember(Experience( state       = states[-(n+1)],
-                                                    state_tsr   = nn.functional.pad(states_tsrs[-(n+1)],(0,0,0,Psize)),
-                                                    W           = nn.functional.pad(env.sp.W,(0,Psize,0,Psize)), 
-                                                    action      = actions[-n],
-                                                    action_nodeselect=actions_nodeselect[-n], 
-                                                    done=True,
-                                                    reward      = sum(GAMMA_ARR[:n] * np.array(rewards[-n:])), 
-                                                    next_state  = next_state,
-                                                    next_state_tsr=nn.functional.pad(next_state_tsr,(0,0,0,Psize)),
-                                                    next_state_neighbors= env.neighbors[next_state[0]] ))
+            # store our experience in memory, using n-step Q-learning:
+            if len(actions) >= N_STEP_QL:
+                memory.remember(Experience(state          = states[-(N_STEP_QL+1)],
+                                            state_tsr      = nn.functional.pad(states_tsrs[-(N_STEP_QL+1)],(0,0,0,Psize)),
+                                            W              = nn.functional.pad(env.sp.W,(0,Psize,0,Psize)),
+                                            action         = actions[-N_STEP_QL],
+                                            action_nodeselect=actions_nodeselect[-N_STEP_QL],
+                                            done           = dones[-1], 
+                                            reward         = sum(GAMMA_ARR * np.array(rewards[-N_STEP_QL:])),
+                                            next_state     = next_state,
+                                            next_state_tsr = nn.functional.pad(next_state_tsr,(0,0,0,Psize)),
+                                            next_state_neighbors= env.neighbors[next_state[0]] ))
                 
-                # update state and current solution
-                current_state = next_state
-                current_state_tsr = next_state_tsr
+            if done:
+                for n in range(1, min(N_STEP_QL, len(states))):
+                    memory.remember(Experience( state       = states[-(n+1)],
+                                                state_tsr   = nn.functional.pad(states_tsrs[-(n+1)],(0,0,0,Psize)),
+                                                W           = nn.functional.pad(env.sp.W,(0,Psize,0,Psize)), 
+                                                action      = actions[-n],
+                                                action_nodeselect=actions_nodeselect[-n], 
+                                                done=True,
+                                                reward      = sum(GAMMA_ARR[:n] * np.array(rewards[-n:])), 
+                                                next_state  = next_state,
+                                                next_state_tsr=nn.functional.pad(next_state_tsr,(0,0,0,Psize)),
+                                                next_state_neighbors= env.neighbors[next_state[0]] ))
+            
+            # update state and current solution
+            current_state = next_state
+            current_state_tsr = next_state_tsr
+            
+            # take a gradient step
+            loss = None
+            if len(memory) >= config['bsize']:
+                experiences = memory.sample_batch(config['bsize'])
                 
-                # take a gradient step
-                loss = None
-                if len(memory) >= config['bsize']:
-                    experiences = memory.sample_batch(config['bsize'])
-                    
-                    batch_states_tsrs = [e.state_tsr for e in experiences]
-                    batch_Ws = [ e.W for e in experiences]
-                    batch_actions = [e.action_nodeselect for e in experiences] #CHECK!
-                    batch_targets = []
-                    
+                batch_states_tsrs = [e.state_tsr for e in experiences]
+                batch_Ws = [ e.W for e in experiences]
+                batch_actions = [e.action_nodeselect for e in experiences] #CHECK!
+                batch_targets = []
+                
 #                   Q_target=copy.deepcopy(policy.model)
 #                   Q_target.load_state_dict(policy.model.state_dict())
-     
+    
 
-                    for i, experience in enumerate(experiences):
-                        target = experience.reward
-                        if not experience.done:
-                            with torch.no_grad():
-                                _, _, best_reward = Q_func_target.get_best_action(experience.next_state_tsr, 
-                                                                        experience.W,
-                                                                        experience.next_state_neighbors )
-                            target += (GAMMA ** N_STEP_QL) * best_reward#.detach().cpu()#.item()
-                        batch_targets.append(target)
-                        
-                    # print('batch targets: {}'.format(batch_targets))
-                    loss = Q_func.batch_update(batch_states_tsrs, batch_Ws, batch_actions, batch_targets)
-                    grad_update_count+=1
-                    losses.append(loss)
-                    if grad_update_count % config['tau'] == 0:
-                        #Q_func_target.model.load_state_dict(torch.load(Q_func.model.state.dict()))
-                        Q_func_target.model = copy.deepcopy(Q_func.model)
-                        print('Target network updated, epi=',episode,'grad_update_count=',grad_update_count)
-
-
-
-            success_ratio = len(actions_nodeselect) / env.sp.spath_length
-            path_length_ratios.append(success_ratio)
-            total_rewards.append(np.sum(rewards))
-
-            """ Save model when we reach a new low average path length
-            """
-            #med_length = np.median(path_length_ratios[-100:])
-            if (len(total_rewards)+1) % 5 == 0: # check every 5 episodes
-                if config['optim_target']=='returns': # we seek to maximize the returns per episode
-                    mean_Return = int(np.mean(total_rewards[-10:])*100)/100
-                    if mean_Return >= current_max_Return:
-                        save_best_only = (mean_Return == current_max_Return)
-                        current_max_Return = mean_Return
-                        checkpoint_model(Q_net, optimizer, lr_scheduler, loss, episode, mean_Return, logdir, best_only=save_best_only)                
-                elif config['optim_target']=='ratios': # we seek to minimize the path lenths per episode w.r.t. shortest path to nearest target
-                    mean_Ratio = int(np.mean(path_length_ratios[-10:])*100)/100
-                    if mean_Ratio <= current_min_Ratio:
-                        save_best_only = (mean_Ratio == current_min_Ratio)
-                        current_min_Ratio = mean_Ratio
-                        checkpoint_model(Q_net, optimizer, lr_scheduler, loss, episode, mean_Ratio, logdir, best_only=save_best_only)
-                else:
-                    assert False
-
-            writer.add_scalar("1a. epsilon", epsilon, episode)
-            writer.add_scalar("1b. lr", optimizer.param_groups[0]['lr'], episode)
-            writer.add_scalar("2. loss",    0 if loss is None else loss, episode)
-            writer.add_scalar("3. epi_len", len(actions_nodeselect), episode)
-            writer.add_scalar("4. Reward per epi", total_rewards[-1], episode)
-            writer.add_scalar("5. Success ratio", success_ratio, episode)
+                for i, experience in enumerate(experiences):
+                    target = experience.reward
+                    if not experience.done:
+                        with torch.no_grad():
+                            _, _, best_reward = Q_func_target.get_best_action(experience.next_state_tsr, 
+                                                                    experience.W,
+                                                                    experience.next_state_neighbors )
+                        target += (GAMMA ** N_STEP_QL) * best_reward#.detach().cpu()#.item()
+                    batch_targets.append(target)
+                    
+                # print('batch targets: {}'.format(batch_targets))
+                loss = Q_func.batch_update(batch_states_tsrs, batch_Ws, batch_actions, batch_targets)
+                grad_update_count+=1
+                losses.append(loss)
+                if grad_update_count % config['tau'] == 0:
+                    #Q_func_target.model.load_state_dict(torch.load(Q_func.model.state.dict()))
+                    Q_func_target.model = copy.deepcopy(Q_func.model)
+                    print('Target network updated, epi=',episode,'grad_update_count=',grad_update_count)
 
 
-            if episode % 10 == 0:
-                print('Ep %d. Loss = %.3f / median R=%.2f/last=%.2f / median Ratio=%.2f / eps=%.4f / lr=%.4f / mem=%d / target %s walk %s.' % (
-                    episode, (-1 if loss is None else loss), np.mean(total_rewards[-10:]), total_rewards[-1], np.mean(path_length_ratios[-10:]), epsilon,
-                    Q_func.optimizer.param_groups[0]['lr'], len(memory), str(env.sp.target_nodes), str(actions_nodeselect)))
-                #print(path_length_ratios[-50:])
-                #found_solutions[episode] = (W.clone(), [n for n in solution])
+
+        success_ratio = len(actions_nodeselect) / env.sp.spath_length
+        path_length_ratios.append(success_ratio)
+        total_rewards.append(np.sum(rewards))
+
+        """ Save model when we reach a new low average path length
+        """
+        #med_length = np.median(path_length_ratios[-100:])
+        if (len(total_rewards)+1) % 5 == 0: # check every 5 episodes
+            if config['optim_target']=='returns': # we seek to maximize the returns per episode
+                mean_Return = int(np.mean(total_rewards[-10:])*100)/100
+                if mean_Return >= current_max_Return:
+                    save_best_only = (mean_Return == current_max_Return)
+                    current_max_Return = mean_Return
+                    checkpoint_model(Q_net, optimizer, lr_scheduler, loss, episode, mean_Return, logdir, best_only=save_best_only)                
+            elif config['optim_target']=='ratios': # we seek to minimize the path lenths per episode w.r.t. shortest path to nearest target
+                mean_Ratio = int(np.mean(path_length_ratios[-10:])*100)/100
+                if mean_Ratio <= current_min_Ratio:
+                    save_best_only = (mean_Ratio == current_min_Ratio)
+                    current_min_Ratio = mean_Ratio
+                    checkpoint_model(Q_net, optimizer, lr_scheduler, loss, episode, mean_Ratio, logdir, best_only=save_best_only)
+            else:
+                assert False
+
+        writer.add_scalar("1a. epsilon", epsilon, episode)
+        writer.add_scalar("1b. lr", optimizer.param_groups[0]['lr'], episode)
+        writer.add_scalar("2. loss",    0 if loss is None else loss, episode)
+        writer.add_scalar("3. epi_len", len(actions_nodeselect), episode)
+        writer.add_scalar("4. Reward per epi", total_rewards[-1], episode)
+        writer.add_scalar("5. Success ratio", success_ratio, episode)
 
 
-        def _moving_avg(x, N=10):
-            return np.convolve(np.array(x), np.ones((N,))/N, mode='valid')
+        if episode % 10 == 0:
+            print('Ep %d. Loss = %.3f / median R=%.2f/last=%.2f / median Ratio=%.2f / eps=%.4f / lr=%.4f / mem=%d / target %s walk %s.' % (
+                episode, (-1 if loss is None else loss), np.mean(total_rewards[-10:]), total_rewards[-1], np.mean(path_length_ratios[-10:]), epsilon,
+                Q_func.optimizer.param_groups[0]['lr'], len(memory), str(env.sp.target_nodes), str(actions_nodeselect)))
+            #print(path_length_ratios[-50:])
+            #found_solutions[episode] = (W.clone(), [n for n in solution])
 
-        plt.figure(figsize=(8,5))
-        plt.semilogy(_moving_avg(losses, 100))
-        plt.title('Loss (moving average) during training')
-        plt.ylabel('loss')
-        plt.xlabel('training iteration')
-        plt.savefig(logdir+'/lossplot.png')
-        plt.clf()
 
-        plt.figure(figsize=(8,5))
-        plt.plot(_moving_avg(total_rewards, 10))
-        plt.title('Ratio (moving average) of (estimated MVC) / (real MVC)')
-        plt.ylabel('ratio')
-        plt.xlabel('episode')
-        plt.savefig(logdir+'/ratioplot.png')
-        plt.clf()
+    def _moving_avg(x, N=10):
+        return np.convolve(np.array(x), np.ones((N,))/N, mode='valid')
 
+    plt.figure(figsize=(8,5))
+    plt.semilogy(_moving_avg(losses, 100))
+    plt.title('Loss (moving average) during training')
+    plt.ylabel('loss')
+    plt.xlabel('training iteration')
+    plt.savefig(logdir+'/lossplot.png')
+    plt.clf()
+
+    plt.figure(figsize=(8,5))
+    plt.plot(_moving_avg(total_rewards, 10))
+    plt.title('Ratio (moving average) of (estimated MVC) / (real MVC)')
+    plt.ylabel('ratio')
+    plt.xlabel('episode')
+    plt.savefig(logdir+'/ratioplot.png')
+    plt.clf()
 
 def evaluate_tabular(logdir, config, env_all):
     num_seeds   = 1
@@ -582,7 +581,7 @@ def evaluate(logdir, info=False, config=None, env_all=None, eval_subdir='.'):
         once_every = max(1,len(env_all)//num_worlds_requested)
         if i % once_every ==0:
             plotlist = GetFullCoverageSample(returns, env.world_pool, bins=10, n=10)
-            EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgs2, silent_mode=False, plot_each_timestep=True)
+            EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=False, logdir=logdir, eval_arg_func=EvalArgs2, silent_mode=False, plot_each_timestep=True)
         R+=returns 
         S+=solves
     
@@ -590,12 +589,15 @@ def evaluate(logdir, info=False, config=None, env_all=None, eval_subdir='.'):
     def printing(text):
         print(text)
         OF.write(text + "\n")
-    printing('Total unique graphs evaluated: '+str(len(env_all)))
-    printing('Total instances evaluated: '+str(len(R))+' Avg reward: {:.2f}'.format(np.mean(R)))
+    num_unique_graphs=len(env_all)
+    num_graph_instances=len(R)
+    avg_return=np.mean(R)
     num_solved=np.sum(S)
     success_rate = num_solved/len(S)
+    printing('Total unique graphs evaluated: '+str(num_unique_graphs))
+    printing('Total instances evaluated: '+str(num_graph_instances)+' Avg reward: {:.2f}'.format(avg_return))
     printing('Goal reached: '+str(num_solved)+' ({:.1f}'.format(success_rate*100)+'%)')
     printing('---------------------------------------')
     for k,v in config.items():
         printing(k+' '+str(v))
-    return success_rate
+    return num_unique_graphs, num_graph_instances, avg_return, success_rate
