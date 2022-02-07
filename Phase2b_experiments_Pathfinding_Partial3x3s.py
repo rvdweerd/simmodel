@@ -84,7 +84,7 @@ if __name__ == '__main__':
     config['eps_decay']     = 1 - np.exp(np.log(config['eps_min'])/(epi_min*config['num_episodes']))
     rootdir='./results_Phase2/Pathfinding/'+ \
                                 world_name+'/'+ \
-                                solve_select+'edgeblock'+str(edge_blocking)+'/'+\
+                                solve_select+'_edgeblock'+str(edge_blocking)+'/'+\
                                 scenario_name
     config['logdir']        = rootdir + '/' +\
                                 nfm_func.name+'/'+ \
@@ -110,10 +110,10 @@ if __name__ == '__main__':
     # Evaluate with simple shortest path heuristic to get low mark on performance 
     if args.eval:
         evalResults={}
-        evaluate_spath_heuristic(logdir=rootdir+'/heur/spath', config=config, env_all=env_all_train)
+        #evaluate_spath_heuristic(logdir=rootdir+'/heur/spath', config=config, env_all=env_all_train)
         # Evaluate on the full training set
-        evalName='trainseteval'
-        evalResults['evalName']={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
+        evalName='trainset_eval'
+        evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
         for seed in range(seed0, seed0+numseeds):
             result = evaluate(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=env_all_train, eval_subdir=evalName)
             num_unique_graphs, num_graph_instances, avg_return, success_rate = result
@@ -123,8 +123,8 @@ if __name__ == '__main__':
             evalResults[evalName]['success_rate.......'].append(success_rate)
 
         # Evaluate on the full evaluation set
-        evalName='trainset_eval'
-        evalResults['evalName']={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
+        evalName='testset_eval'
+        evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
         Etest=[0,1,2,3,4,5,6,7,8,9,10]
         Utest=[1,2,3]
         env_all_test, _, _, _  = GetWorldSet(state_repr, state_enc, U=Utest, E=Etest, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func)
@@ -138,7 +138,7 @@ if __name__ == '__main__':
         
         # Evaluate on each individual segment of the evaluation set
         evalName='graphsegments_eval'
-        evalResults['evalName']={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
+        evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
         for seed in range(seed0, seed0+numseeds):
             success_matrix   =[]
             num_graphs_matrix=[]
@@ -151,7 +151,7 @@ if __name__ == '__main__':
                 returns_vec   =[]
                 for e in Etest:
                     env_all_test, _, _, _  = GetWorldSet(state_repr, state_enc, U=[u], E=[e], edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func)
-                    result = evaluate(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=env_all_test, eval_subdir='testeval/runs/'+'E'+str(e)+'U'+str(u))
+                    result = evaluate(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=env_all_test, eval_subdir=evalName+'/runs/'+'E'+str(e)+'U'+str(u))
                     num_unique_graphs, num_graph_instances, avg_return, success_rate = result         
                     success_vec.append(success_rate)
                     num_graphs_vec.append(num_unique_graphs)
@@ -161,7 +161,7 @@ if __name__ == '__main__':
                 num_graphs_matrix.append(num_graphs_vec)
                 instances_matrix.append(instances_vec)
                 returns_matrix.append(returns_vec)
-            OF = open(config['logdir']+'/SEED'+str(seed)+'/testeval/success_matrix.txt', 'w')
+            OF = open(config['logdir']+'/SEED'+str(seed)+'/'+evalName+'/success_matrix.txt', 'w')
             def printing(text):
                 print(text)
                 OF.write(text + "\n")    
@@ -202,7 +202,7 @@ if __name__ == '__main__':
         for world_name in world_names:
             for seed in range(seed0, seed0+numseeds):
                 evalName=world_name[:16]+'_eval'
-                evalResults['evalName']={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
+                evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
                 custom_env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
                 custom_env.redefine_nfm(nfm_func)
                 result = evaluate(logdir=config['logdir']+'/SEED'+str(seed0), config=config, env_all=[custom_env], eval_subdir=evalName)

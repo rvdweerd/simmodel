@@ -3,8 +3,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from modules.gnn.nfm_gen import NFM_ec_t, NFM_ev_t, NFM_ev_ec_t, NFM_ev_ec_t_um_us, NFM_ev_ec_t_u
 from torch.distributions import Categorical
-from rl_custom_worlds import GetCustomWorld
+from modules.rl.rl_custom_worlds import GetCustomWorld
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # code from https://github.com/seungeunrho/minimalRL/blob/master/ppo.py
 #Hyperparameters
@@ -14,6 +16,7 @@ lmbda         = 0.95
 eps_clip      = 0.1
 K_epoch       = 3
 T_horizon     = 20
+num_epi       = 10000
 
 class PPO(nn.Module):
     def __init__(self, dim_obs=4, dim_actions=2):
@@ -59,11 +62,11 @@ class PPO(nn.Module):
         return s, a, r, s_prime, done_mask, prob_a
         
     def train_net(self):
-        s, a, r, s_prime, done_mask, prob_a = self.make_batch()
+        s, a, r, s_prime, done_mask, prob_a, W = self.make_batch()
 
         for i in range(K_epoch):
-            td_target = r + gamma * self.v(s_prime) * done_mask
-            delta = td_target - self.v(s)
+            td_target = r + gamma * self.v(s_prime, W) * done_mask
+            delta = td_target - self.v(s, W)
             delta = delta.detach().numpy()
 
             advantage_lst = []
@@ -74,7 +77,7 @@ class PPO(nn.Module):
             advantage_lst.reverse()
             advantage = torch.tensor(advantage_lst, dtype=torch.float)
 
-            pi = self.pi(s, softmax_dim=1)
+            pi = self.pi(s, W, softmax_dim=1)
             pi_a = pi.gather(1,a)
             ratio = torch.exp(torch.log(pi_a) - torch.log(prob_a))  # a/b == exp(log(a)-log(b))
 
@@ -87,27 +90,27 @@ class PPO(nn.Module):
             self.optimizer.step()
         
 def GetTrainedModel(env):
-    #env = gym.make('CartPole-v1')
     model = PPO(env.state_encoding_dim, env.action_space.n)
     score = 0.0
     print_interval = 20
 
-    for n_epi in range(10000):
-        s = env.reset()
+    for n_epi in range(num_epi):
+        env.reset()
+        s = env.nfm
         done = False
         while not done:
-            for t in range(T_horizon):
-                prob = model.pi(torch.from_numpy(s).float())
-                m = Categorical(prob)
-                a = m.sample().item()
-                s_prime, r, done, info = env.step(a)
+            prob = model.pi(torch.from_numpy(s).float())
+            m = Categorical(prob)
+            a = m.sample().item()
+            _, r, done, info = env.step(a)
+            s_prime = env.nfm
 
-                model.put_data((s, a, r/100.0, s_prime, prob[a].item(), done))
-                s = s_prime
+            model.put_data(( s, a, r/10.0, s_prime, prob[a].item(), done, env.sp.W))
+            s = s_prime
 
-                score += r
-                if done:
-                    break
+            score += r
+            if done:
+                break
 
             model.train_net()
 
@@ -118,12 +121,22 @@ def GetTrainedModel(env):
     env.close()
 
 if __name__ == '__main__':
-    # Select graph world
-    world_name='Manhattan3x3_PauseFreezeWorld'
-    #world_name='Manhattan3x3_PauseDynamicWorld'
-    #world_name='Manhattan5x5_FixedEscapeInit'
-    #world_name='Manhattan5x5_VariableEscapeInit'
-    #world_name='MetroU3_e17_FixedEscapeInit'
-    env=GetCustomWorld(world_name, make_reflexive=True, state_repr='etUt', state_enc='tensor')
+    world_name='MetroU3_e17tborder_FixedEscapeInit'
+    scenario_name='TrainMetro'
+    state_repr='etUte0U0'
+    state_enc='nfm'
+    nfm_funcs = {
+    'NFM_ev_ec_t'       : NFM_ev_ec_t(),
+    'NFM_ec_t'          : NFM_ec_t(),
+    'NFM_ev_t'          : NFM_ev_t(),
+    'NFM_ev_ec_t_u'     : NFM_ev_ec_t_u(),
+    'NFM_ev_ec_t_um_us' : NFM_ev_ec_t_um_us(),
+    }
+    nfm_func=nfm_funcs['NFM_ev_ec_t_um_us']
+    edge_blocking = True
+
+    env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
+    env.redefine_nfm(nfm_func)
+    env.capture_on_edges = edge_blocking
 
     model = GetTrainedModel(env)

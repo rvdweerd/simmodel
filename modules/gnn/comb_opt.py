@@ -563,7 +563,7 @@ def evaluate_spath_heuristic(logdir, config, env_all):
 def evaluate(logdir, info=False, config=None, env_all=None, eval_subdir='.'):
     #Test(config)
     if env_all==None or len(env_all)==0:
-        return
+        return 0,0,0,0
     Q_func, Q_net, optimizer, lr_scheduler = init_model(config,fname=logdir+'/best_model.tar')
     #Q_func.model.T = 5 ## DANGEROUS, BE CAREFUL
     logdir=logdir+'/'+eval_subdir
@@ -580,8 +580,8 @@ def evaluate(logdir, info=False, config=None, env_all=None, eval_subdir='.'):
         num_worlds_requested = 10
         once_every = max(1,len(env_all)//num_worlds_requested)
         if i % once_every ==0:
-            plotlist = GetFullCoverageSample(returns, env.world_pool, bins=10, n=10)
-            EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=False, logdir=logdir, eval_arg_func=EvalArgs2, silent_mode=False, plot_each_timestep=True)
+            plotlist = GetFullCoverageSample(returns, env.world_pool, bins=3, n=3)
+            EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgs2, silent_mode=False, plot_each_timestep=False)
         R+=returns 
         S+=solves
     

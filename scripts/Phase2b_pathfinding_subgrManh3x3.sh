@@ -7,7 +7,7 @@ mem=2000 #2000
 tau=100
 nstep=2
 optim='returns'
-train="True"
+train="False"
 eval="True"
 etrain="0,1,2,3,4,5,6,7,8,9"
 etrain_="0123456789"
@@ -20,7 +20,7 @@ solveselect='solvable'
 edgeblock="True"
 for nfm in {"NFM_ev_ec_t_um_us",}
 do
-    for itt in {2,3,4,5,6,7}
+    for itt in {2,}
     do
         tmux new-session -d -s sub$itt
         tmux send-keys -t "sub$itt" "conda activate rlcourse" Enter
