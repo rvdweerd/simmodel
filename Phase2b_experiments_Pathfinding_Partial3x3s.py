@@ -110,7 +110,7 @@ if __name__ == '__main__':
     # Evaluate with simple shortest path heuristic to get low mark on performance 
     if args.eval:
         evalResults={}
-        #evaluate_spath_heuristic(logdir=rootdir+'/heur/spath', config=config, env_all=env_all_train)
+        evaluate_spath_heuristic(logdir=rootdir+'/heur/spath', config=config, env_all=env_all_train)
         # Evaluate on the full training set
         evalName='trainset_eval'
         evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
@@ -180,8 +180,8 @@ if __name__ == '__main__':
             printing(str(num_graphs_matrix))
             printing('\ninstances_matrix:')
             printing(str(instances_matrix))
-            printing('\nWeighted return: '+weighted_return)
-            printing('Weighted success rate: '+weighted_success_rate)
+            printing('\nWeighted return: '+str(weighted_return))
+            printing('Weighted success rate: '+str(weighted_success_rate))
             OF.close()
             evalResults[evalName]['num_graphs.........'].append(num_graphs_matrix.sum())
             evalResults[evalName]['num_graph_instances'].append(instances_matrix.sum())

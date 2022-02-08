@@ -20,7 +20,7 @@ solveselect='solvable'
 edgeblock="True"
 for nfm in {"NFM_ev_ec_t_um_us",}
 do
-    for itt in {2,}
+    for itt in {2,3,4,5,6,7}
     do
         tmux new-session -d -s sub$itt
         tmux send-keys -t "sub$itt" "conda activate rlcourse" Enter
