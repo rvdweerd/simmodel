@@ -7,17 +7,17 @@ mem=2000 #2000
 tau=100
 nstep=2
 optim="returns"
-train="True"
+train="False"
 eval="True"
-numseeds=6
+numseeds=1
 seed0=0
-nfm="NFM_ev_ec_t_u"
+nfm="NFM_ev_ec_t_um_us"
 #for nfm in {"NFM_ev_ec_t_um_us",}
 #for nfm in {"NFM_ev_ec_t_u","NFM_ev_ec_t_um_us"}
 #itt=7
-for itt in {7,}
+for itt in {1,2,3,4,5,6}
 do
-    for edgeblock in {"False",} #"False"}
+    for edgeblock in {"True",} #"False"}
     do
         tmux new-session -d -s sub$itt$edgeblock
         tmux send-keys -t "sub$itt$edgeblock" "conda activate rlcourse" Enter

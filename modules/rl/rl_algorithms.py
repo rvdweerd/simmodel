@@ -79,9 +79,9 @@ def q_learning_exhaustive(env, policy, num_episodes, discount_factor=1.0, alpha_
     # runs=250
     for world in env.world_pool:
         
-        #if (world)%100==0:
-        #    cr=np.sum(Captured) / len(Captured)
-        #    print('World',world,' running er=',1-cr)
+        if (world)%100==0:
+           cr=np.sum(Captured) / len(Captured)
+           print('World',world,' running er=',1-cr)
 
         policy.epsilon=policy.epsilon0
         for i_episode in range(num_episodes):#tqdm(range(runs)):

@@ -200,12 +200,12 @@ if __name__ == '__main__':
         state_repr='etUte0U0'
         state_enc='nfm'
         for world_name in world_names:
+            evalName=world_name[:16]+'_eval'
+            evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
+            custom_env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
+            custom_env.redefine_nfm(nfm_func)
             for seed in range(seed0, seed0+numseeds):
-                evalName=world_name[:16]+'_eval'
-                evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
-                custom_env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
-                custom_env.redefine_nfm(nfm_func)
-                result = evaluate(logdir=config['logdir']+'/SEED'+str(seed0), config=config, env_all=[custom_env], eval_subdir=evalName)
+                result = evaluate(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=[custom_env], eval_subdir=evalName)
                 num_unique_graphs, num_graph_instances, avg_return, success_rate = result
                 evalResults[evalName]['num_graphs.........'].append(num_unique_graphs)
                 evalResults[evalName]['num_graph_instances'].append(num_graph_instances)

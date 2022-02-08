@@ -569,6 +569,6 @@ def SimulateInteractiveMode(env, filesave_with_time_suffix=True, entry=None):
         R+=r
     print('\n******************** done, reward='+str(R),'**********************')
     input('> Press any key to continue')
-    env.render_eupaths(mode=None, fname="testrun_tot", t_suffix=filesave_with_time_suffix)
+    env.render_eupaths(mode=None, fname="testrun", t_suffix=filesave_with_time_suffix)
     input('> Press any key to continue')
     print('\n')

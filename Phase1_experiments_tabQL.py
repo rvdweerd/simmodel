@@ -22,23 +22,25 @@ run_world_names = [
     #'Manhattan3x3_PauseDynamicWorld',
     #'Manhattan5x5_DuplicateSetA',
     #'Manhattan5x5_DuplicateSetB',
-    #'Manhattan5x5_FixedEscapeInit',
-    #'Manhattan5x5_VariableEscapeInit',
+    'Manhattan5x5_FixedEscapeInit',
+    'Manhattan5x5_VariableEscapeInit',
     'MetroU3_e17tborder_FixedEscapeInit',
     #'MetroU3_e17t31_FixedEscapeInit', 
     #'MetroU3_e17t0_FixedEscapeInit', 
     #'MetroU3_e17tborder_VariableEscapeInit'
-    #'SparseManhattan5x5'
+    'SparseManhattan5x5'
 ]
 #worlds = CreateWorlds(run_world_names, make_reflexive=True, state_repr='et'      , state_enc='nodes')
 #worlds = CreateWorlds(run_world_names, make_reflexive=True, state_repr='etUt'    , state_enc='nodes')
 #worlds = CreateWorlds(run_world_names, make_reflexive=True, state_repr='ete0U0'   , state_enc='nodes')
 worlds = CreateWorlds(run_world_names, make_reflexive=True, state_repr='etUte0U0', state_enc='nodes')
+for w in worlds:
+    w.capture_on_edges = False
 
 for env, world_name in zip(worlds, run_world_names):
     policy = EpsilonGreedyPolicy(env, eps_0, eps_min, initial_Q_values)
     
-    # Learn the policy
+    # # Learn the policy
     metrics_episode_returns = {}
     metrics_episode_lengths = {}
     metrics_avgperstep = {}
@@ -64,9 +66,19 @@ for env, world_name in zip(worlds, run_world_names):
     #PlotNodeValues(algos,env,Q_tables)
 
     # Evaluate the learned policy
+    
+    # Load pre-trained Q table
+    # logdir_load = 'results_Phase1/TabQL/'+world_name+'/'+env.state_representation
+    # in_file = open(logdir_load + "/" + "Q_table.pkl", "rb")
+    # in_dict = pickle.load(in_file)
+    # in_file.close()
+    # Qtable=in_dict['Q']
+    # policy.Q=Qtable
+
     policy.epsilon=0.
-    logdir = 'results/testing/TabQL/'+world_name+'/'+env.state_representation
-    _, returns, _, _ = EvaluatePolicy(env,policy,env.world_pool,print_runs=False, save_plots=False, logdir=logdir, has_Q_table=True)
+    edgeblock=env.capture_on_edges
+    logdir = 'results/testing/TabQL/'+world_name+'/eblock'+str(edgeblock)+'/'+env.state_representation
+    _, returns, captures, solves = EvaluatePolicy(env,policy,env.world_pool,print_runs=False, save_plots=False, logdir=logdir, has_Q_table=True)
     plotlist = GetFullCoverageSample(returns, env.world_pool, bins=10, n=10)
     EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=logdir, has_Q_table=True)
     saveinfo = {"Q":policy.Q}

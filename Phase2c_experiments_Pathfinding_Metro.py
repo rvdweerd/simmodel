@@ -100,6 +100,36 @@ if __name__ == '__main__':
     #
     # Evaluate on the full training set
     if args.eval:
+        evalResults={}
+
+        world_names=[
+            'Manhattan5x5_FixedEscapeInit',
+            'Manhattan5x5_VariableEscapeInit',
+            'MetroU3_e17tborder_FixedEscapeInit',
+            'SparseManhattan5x5',
+            'MetroU3_e1t31_FixedEscapeInit'
+            'MetroU3_e17t31_FixedEscapeInit', 
+            'MetroU3_e17t0_FixedEscapeInit',
+        ]
+        state_repr='etUte0U0'
+        state_enc='nfm'
+        for world_name in world_names:
+            evalName=world_name[:16]+'_eval'
+            evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
+            custom_env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
+            custom_env.redefine_nfm(nfm_func)
+            custom_env.capture_on_edges = edge_blocking
+
+            for seed in range(seed0, seed0+numseeds):
+                result = evaluate(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=[custom_env], eval_subdir=evalName)
+                num_unique_graphs, num_graph_instances, avg_return, success_rate = result
+                evalResults[evalName]['num_graphs.........'].append(num_unique_graphs)
+                evalResults[evalName]['num_graph_instances'].append(num_graph_instances)
+                evalResults[evalName]['avg_return.........'].append(avg_return)
+                evalResults[evalName]['success_rate.......'].append(success_rate)
+
+
+        assert False
         env_all_test=env_all_train
         evalName='trainseteval'
         evalResults={ evalName:{'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} }
