@@ -1,0 +1,17 @@
+#SBATCH --partition=shared
+#SBATCH --partition=gpu_share
+#SBATCH --partition=gpu_short
+#SBATCH --partition=gpu_titanrtx_shared
+
+#SBATCH --gpus-per-node=titanrtx:1
+
+#SBATCH --gres=gpu:0
+#SBATCH --gpus=1
+#SBATCH -N 1
+#SBATCH --gres=gpu:1
+
+sinfo
+scancel [jobid]
+
+slurm_joblogin [jobid][nodeid]
+slurm_jobmonitor [jobid] [nodeid]

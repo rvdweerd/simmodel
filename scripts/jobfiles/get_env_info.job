@@ -1,0 +1,11 @@
+#!/bin/bash
+#SBATCH -lnodes=1 -lwalltime=1:00
+echo "-----"
+echo "Non-SLURM environment"
+echo "-----"
+env | grep -v SBATCH
+echo "-----"
+echo "SLURM environment"
+echo "-----"
+env | grep SLURM
+scontrol show hostnames "$SLURM_JOB_NODELIST" > hostfile

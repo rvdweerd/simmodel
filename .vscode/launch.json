@@ -4,7 +4,6 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-
         {
             "name": "Python: Current File",
             "type": "python",
@@ -12,39 +11,24 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args" : [
-//                "--world_name", "Manhattan3x3_PauseDynamicWorld",
-//                "--state_repr","et",
-//                "--train","False",
-//                "--eval","False",
-//                "--num_seeds","1",
-                
-                //  "--num_edges","5",
-                //  "--U","1",  
-
-                "--emb_dim","64",
-                "--num_epi","2500",
-                "--mem_size","2000",
-                "--tau","100",
-                "--nstep","2",
-                "--optim_target","returns",
-                "--train","False",
-                "--eval","True",
-                "--Etrain","0,1,2,3,4,5,6,7,8,9",
-                "--Utrain","1,2,3",
-                "--scenario","Train_U123E0123456789",
-                "--num_seeds","5",
-                "--seed0","0",
-                "--solve_select","solvable",
-                "--edge_blocking","True",
-                //"--scenario","Train_U123E0123456789",
-                //"--scenario","toptargets-fixed_3U-random-dynamic",
-                "--nfm_func","NFM_ev_ec_t_um_us",
-                "--emb_itT","2",
-            ],
-            //"cwd" : "${workspaceFolder}" //{fileDirname} {workspaceFolder}
-//            "pipeArgs": [
-//                "export DISPLAY=:0;${debuggerCommand}",
-//              ]
+                    "--emb_dim","64",
+                    "--num_epi","2500",
+                    "--mem_size","2000",
+                    "--tau","100",
+                    "--nstep","2",
+                    "--optim_target","returns",
+                    "--train","True",
+                    "--eval","True",
+                    "--Etrain","0,1,2,3,4,5,6,7,8,9",
+                    "--Utrain","1,2,3",
+                    "--scenario","Train_U123E0123456789",
+                    "--num_seeds","5",
+                    "--seed0","0",
+                    "--solve_select","solvable",
+                    "--edge_blocking","True",
+                    "--nfm_func","NFM_ev_ec_t_um_us",
+                    "--emb_itT","2",
+                ],
         }
     ]
 }

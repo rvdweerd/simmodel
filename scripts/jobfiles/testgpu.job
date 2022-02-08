@@ -1,0 +1,27 @@
+#!/bin/bash
+#SBATCH --job-name=gnn_ppo
+#SBATCH --partition=gpu_titanrtx_shared
+#SBATCH --gpus-per-node=titanrtx:1
+
+#SBATCH --ntasks=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=3
+#SBATCH --time=00:10:00
+#SBATCH --mem=32000M
+#SBATCH --output=slurm_output_%A.out
+
+__conda_setup="$('/home/weerdr/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/weerdr/miniconda3/etc/profile.d/conda.sh" ]; then
+        . "/home/weerdr/miniconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/weerdr/miniconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+
+conda activate rlcourse
+
+python test_gpu.py
