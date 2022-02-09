@@ -6,25 +6,31 @@ import torch.nn.functional as F
 import torch.optim as optim
 from modules.gnn.nfm_gen import NFM_ec_t, NFM_ev_t, NFM_ev_ec_t, NFM_ev_ec_t_um_us, NFM_ev_ec_t_u
 from torch.distributions import Categorical
+from modules.dqn.dqn_utils import seed_everything
 from modules.rl.rl_custom_worlds import GetCustomWorld
+from modules.sim.simdata_utils import SimulateInteractiveMode
+from torch.utils.tensorboard import SummaryWriter
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
+#import matplotlib.pyplot as plt
+
+
 # code from https://github.com/seungeunrho/minimalRL/blob/master/ppo.py
-#Hyperparameters
-learning_rate = 0.0005
-gamma         = 0.98
-lmbda         = 0.95
-eps_clip      = 0.1
-K_epoch       = 3
-T_horizon     = 20
-num_epi       = 10000
+
 
 class PPONet(nn.Module):
     def __init__(self, config):
         super(PPONet, self).__init__()
-        self.emb_dim = config['emb_dim']
-        self.T = config['emb_iter_T']
-        self.node_dim = config['node_dim'] #node feature dim
+        self.emb_dim        = config['emb_dim']
+        self.T              = config['emb_iter_T']
+        self.node_dim       = config['node_dim'] #node feature dim
+        self.learning_rate  = config['learning_rate'] 
+        self.gamma          = config['gamma']         
+        self.lmbda          = config['lmbda']         
+        self.eps_clip       = config['eps_clip']   
+        self.K_epoch        = config['K_epoch']     
+        self.num_epi        = config['num_epi']     
+
         self.data = []
 
         # Build the learnable affine maps:
@@ -39,7 +45,7 @@ class PPONet(nn.Module):
         self.theta7 = nn.Linear(self.emb_dim, self.emb_dim, True, dtype=torch.float32)
   
         #self.numTrainableParameters()
-        self.optimizer = optim.Adam(self.parameters(), lr=learning_rate)
+        self.optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
 
     def propagate(self, xv, Ws):
         # xv: The node features (batch_size, num_nodes, node_dim)
@@ -90,10 +96,10 @@ class PPONet(nn.Module):
     
     def v(self, x, W, reachable_nodes):
         rep = self.propagate(x, W) # (batch_dim, nr_nodes, 2*emb_dim)
-        rep2 = self.theta5_v(rep).squeeze(dim=2) # (batch_dim, nr_nodes)
-        reachable_nodes=reachable_nodes.type(torch.BoolTensor)
-        #v = rep2.sum(dim=1)
-        v = rep2[reachable_nodes].sum()
+        rep2 = self.theta5_pi(rep).squeeze(dim=2) # (batch_dim, nr_nodes)
+        #reachable_nodes=reachable_nodes.type(torch.BoolTensor)
+        #rep2[~reachable_nodes] = 0
+        v = rep2.mean(dim=1)
         return v # (batch_dim): a value of the current graph state for each transition
       
     def put_data(self, transition):
@@ -106,11 +112,11 @@ class PPONet(nn.Module):
             
             s_lst.append(s)
             a_lst.append([a])
-            r_lst.append([r])
+            r_lst.append(r)
             s_prime_lst.append(s_prime)
             prob_a_lst.append([prob_a])
             done_mask = 0 if done else 1
-            done_lst.append([done_mask])
+            done_lst.append(done_mask)
             W_lst.append(W)
             reachable_nodes_lst.append(reachable_nodes)
             
@@ -129,15 +135,15 @@ class PPONet(nn.Module):
         done_mask=done_mask.to(device)
         prob_a=prob_a.to(device)
 
-        for i in range(K_epoch):
-            td_target = r + gamma * self.v(s_prime, W, reachable_nodes) * done_mask
+        for i in range(self.K_epoch):
+            td_target = r + self.gamma * self.v(s_prime, W, reachable_nodes) * done_mask
             delta = td_target - self.v(s, W, reachable_nodes)
             delta = delta.detach().cpu().numpy()
 
             advantage_lst = []
             advantage = 0.0
             for delta_t in delta[::-1]:
-                advantage = gamma * lmbda * advantage + delta_t[0]
+                advantage = self.gamma * self.lmbda * advantage + delta_t
                 advantage_lst.append([advantage])
             advantage_lst.reverse()
             advantage = torch.tensor(advantage_lst, dtype=torch.float32).to(device)
@@ -147,21 +153,23 @@ class PPONet(nn.Module):
             ratio = torch.exp(log_pi_a - torch.log(prob_a))  # a/b == exp(log(a)-log(b))
 
             surr1 = ratio * advantage
-            surr2 = torch.clamp(ratio, 1-eps_clip, 1+eps_clip) * advantage
+            surr2 = torch.clamp(ratio, 1-self.eps_clip, 1+self.eps_clip) * advantage
             loss = -torch.min(surr1, surr2) + F.smooth_l1_loss(self.v(s, W, reachable_nodes) , td_target.detach())
 
             self.optimizer.zero_grad()
             loss.mean().backward()
             self.optimizer.step()
+        return loss.mean().detach().cpu()
         
-def GetTrainedModel(env):
-    config={}
-    config['emb_dim']=64
-    config['emb_iter_T']=4
-    config['node_dim']=5
+def GetTrainedModel(env, config, logdir='runs/test'):
+    num_epi=config['num_epi']
+
+    writer = SummaryWriter(logdir)
     model = PPONet(config).to(device)
+    #writer.add_graph(model)
     score = 0.0
     print_interval = 20
+    plot_interval=250
 
     for n_epi in range(num_epi):
         env.reset()
@@ -169,29 +177,35 @@ def GetTrainedModel(env):
         done = False
         while not done:
             prob_logits = model.pi(s.unsqueeze(0), env.sp.W.unsqueeze(0), env.sp.W[env.state[0]].unsqueeze(0))
-            m = Categorical(logits = prob_logits.squeeze())
+            pl_select = prob_logits > -torch.inf
+            m = Categorical(logits = prob_logits[pl_select].squeeze())
             a = m.sample().item()
+
             _, r, done, info = env.step(a)
             s_prime = env.nfm
 
-            model.put_data(( s, a, r/10.0, s_prime, m.probs[a].item(), done, env.sp.W, env.sp.W[env.state[0]]))
+            model.put_data(( s, a, r/10., s_prime, m.probs[a].item(), done, env.sp.W, env.sp.W[env.state[0]]))
             s = s_prime
 
             score += r
-            if done:
-                break
 
-            model.train_net()
+        loss = model.train_net()
 
+        writer.add_scalar('loss',loss,n_epi)
+        writer.add_scalar('return per epi',score,n_epi)
         if n_epi%print_interval==0 and n_epi!=0:
             print("# of episode :{}, avg score : {:.1f}".format(n_epi, score/print_interval))
             score = 0.0
+        if n_epi%plot_interval==0 and n_epi!=0:
+            env.render_eupaths(fname='./'+logdir+'/rendering_active',t_suffix=False)
 
     env.close()
 
 if __name__ == '__main__':
     world_name='MetroU3_e17tborder_FixedEscapeInit'
-    scenario_name='TrainMetro'
+    #world_name='Manhattan3x3_WalkAround'
+    
+    #scenario_name='TrainMetro'
     state_repr='etUte0U0'
     state_enc='nfm'
     nfm_funcs = {
@@ -201,11 +215,32 @@ if __name__ == '__main__':
     'NFM_ev_ec_t_u'     : NFM_ev_ec_t_u(),
     'NFM_ev_ec_t_um_us' : NFM_ev_ec_t_um_us(),
     }
-    nfm_func=nfm_funcs['NFM_ev_ec_t_um_us']
     edge_blocking = True
+    nfm_func_name = 'NFM_ev_ec_t'
+    nfm_func=nfm_funcs[nfm_func_name]
 
     env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
     env.redefine_nfm(nfm_func)
     env.capture_on_edges = edge_blocking
 
-    model = GetTrainedModel(env)
+    # make task easier
+    env._remove_world_pool()
+    #env.redefine_goal_nodes([7])
+    #env.current_entry=1
+    #SimulateInteractiveMode(env)
+    
+    #Hyperparameters
+    config={}
+    config['emb_dim']       = 64
+    config['emb_iter_T']    = 3
+    config['node_dim']      = 3
+    config['learning_rate'] = 0.005
+    config['gamma']         = 0.98
+    config['lmbda']         = 0.95
+    config['eps_clip']      = 0.1
+    config['K_epoch']       = 3
+    config['num_epi']       = 10000
+    seed_everything(0)
+
+    logdir='runs/'+world_name+'/'+nfm_func_name+'_emb'+str(config['emb_dim'])+'_itT'+str(config['emb_iter_T'])+'_lr'+str(config['learning_rate'])+'_Kepoch'+str(config['K_epoch'] )
+    model = GetTrainedModel(env, config, logdir)

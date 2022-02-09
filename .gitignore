@@ -13,3 +13,4 @@ datasets/__partial_graphs/_databank_full
 wandb
 tb_logs
 lightning_logs
+runs

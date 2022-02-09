@@ -157,9 +157,9 @@ class NFM_ev_ec_t():
         # 2. target node
     def init(self, eo):
         eo.F = 3
-        eo.nfm0 = np.zeros((eo.sp.V,eo.F))
+        eo.nfm0 = torch.zeros((eo.sp.V,eo.F),dtype=torch.float32)
         if len(eo.sp.target_nodes) > 0:
-            eo.nfm0[np.array(list(eo.sp.target_nodes)),2]=1 # set target nodes, fixed for the given graph
+            eo.nfm0[torch.tensor(list(eo.sp.target_nodes),dtype=torch.int64),2]=1 # set target nodes, fixed for the given graph
         eo.nfm  = copy.deepcopy(eo.nfm0)
 
     def reset(self, eo):
