@@ -344,6 +344,7 @@ class GraphWorld(gym.Env):
 
     def step(self, action_idx):
         # Take a step
+        assert self.state[0] not in self.sp.target_nodes
         info = {'Solved':False, 'Captured':False, 'u_positions':self.state[1:], 'Misc':None}
         prev_node=self.state[0]
         if action_idx >= len(self.neighbors[self.state[0]]): # account for invalid action choices
