@@ -59,33 +59,21 @@ class GraphWorld(gym.Env):
         self.max_timesteps          = self.sp.T
         self.neighbors, self.in_degree, self.max_indegree, self.out_degree, self.max_outdegree = su.GetGraphData(self.sp)
 
-        # Gym objects
-        #self.observation_space = spaces.Discrete(self.sp.V) if state_encoding == 'nodes' else spaces.MultiBinary(self.state_encoding_dim)
-        self.observation_space = spaces.Box(0., self.sp.U, shape=(self.state_encoding_dim,), dtype=np.float32)
-        #self.observation_space = spaces.Tuple([spaces.Discrete(self.sp.V) for i in range(self.state_len)])             
-        # @property
-        # def action_space(self):
-        #     return spaces.Discrete(self.out_degree[self.state[0]])
-        self.action_space = spaces.Discrete(self.max_outdegree)# + int(config['make_reflextive']))
-        self.metadata = {'render.modes':['human']}
-        self.max_episode_length = self.max_timesteps
-
-        # Graph feature matrix, (FxV) with F number of features, V number of nodes
-        # 0  [.] node number
-        # 1  [.] 1 if target node, 0 otherwise 
-        # 2  [.] # of units present at node at current time
-        # 3  [.] ## off ## 1 if node previously visited by unit
-        # 4  [.] ## off ## 1 if node previously visited by escaper
-        # 5  [.] ## off ## distance from nearest target node
-        # 6  [.] ...
+        # Define NFM: Node Feature Matrix, (VxF) with V number of nodes, F number of features
         self.nfm_calculator=NFM_ev_ec_t()
         if self.state_encoding=='nfm':
             self.nfm_calculator.init(self)
-        # self.F = 3
-        # self.nfm0 = np.zeros((self.sp.V,self.F))
-        # self.nfm0[:,0] = np.array([i for i in range(self.sp.V)])
-        # self.nfm0[np.array(list(self.sp.target_nodes)),1]=1 # set target nodes, fixed for the given graph
-        # self.nfm  = copy.deepcopy(self.nfm0)
+
+        # Gym objects
+        if state_encoding == 'nfm':
+            self.observation_space = spaces.Box(0., self.sp.U, shape=(self.sp.V, (self.F+self.sp.V+1)), dtype=np.float32)
+            self.action_space = spaces.Discrete(self.sp.V) # all possible nodes 
+        else:
+            self.observation_space = spaces.Box(0., self.sp.U, shape=(self.state_encoding_dim,), dtype=np.float32)
+            self.action_space = spaces.Discrete(self.max_outdegree)# + int(config['make_reflextive']))
+        self.metadata = {'render.modes':['human']}
+        self.max_episode_length = self.max_timesteps
+
         self.reset()
     
     def redefine_nfm(self, nfm_function=None):

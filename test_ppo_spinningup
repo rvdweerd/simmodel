@@ -1,14 +1,61 @@
 from spinup import ppo_pytorch as ppo
 import gym
+from gym import ObservationWrapper
 import torch
+from modules.gnn.nfm_gen import NFM_ec_t, NFM_ev_t, NFM_ev_ec_t, NFM_ev_ec_t_um_us, NFM_ev_ec_t_u
+#import modules.sim.simdata_utils as su
+from modules.rl.rl_custom_worlds import GetCustomWorld
 
-env_fn = lambda : gym.make('LunarLander-v2')
+nfm_funcs = {
+    'NFM_ev_ec_t'       : NFM_ev_ec_t(),
+    'NFM_ec_t'          : NFM_ec_t(),
+    'NFM_ev_t'          : NFM_ev_t(),
+    'NFM_ev_ec_t_u'     : NFM_ev_ec_t_u(),
+    'NFM_ev_ec_t_um_us' : NFM_ev_ec_t_um_us(),
+    }
 
-ac_kwargs = dict(hidden_sizes=[64,64], activation=torch.nn.ReLU)
+class PPOWrapper(ObservationWrapper):
+    """Wrapper for stacking nfm|W|reachable nodes."""
 
+    def __init__(self, env):
+        super().__init__(env)
+
+    def observation(self, observation):
+        """convert observation."""
+        obs = torch.cat((self.nfm, self.sp.W, torch.index_select(env.sp.W, 1, torch.tensor(self.state[0]))),1)
+        return obs
+
+def CreateEnv():
+    world_name='Manhattan3x3_WalkAround'
+    state_repr='etUte0U0'
+    state_enc='nfm'
+    nfm_func_name = 'NFM_ev_ec_t'
+    edge_blocking = True
+    remove_world_pool = False
+    env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
+    env.redefine_nfm(nfm_funcs[nfm_func_name])
+    env.capture_on_edges = edge_blocking
+    if remove_world_pool:
+        env._remove_world_pool()
+    env = PPOWrapper(env)        
+    return env
+#env_fn = lambda : gym.make('GraphWorld-v0',**kwargs)
+#env_fn = lambda : gym.make('LunarLander-v2')
+
+
+env=CreateEnv()
+
+from modules.rl.environments import GraphWorld
+#ac_kwargs = dict(hidden_sizes=[64,64], activation=torch.nn.ReLU)
+ac_kwargs = dict(
+    emb_dim       = 16,
+    emb_iter_T    = 3,
+)
 logger_kwargs = dict(output_dir='path/to/output_dir', exp_name='experiment_name')
+from modules.ppo.models_spinup import Struc2VecActorCritic
 
-ppo(env_fn=env_fn, ac_kwargs=ac_kwargs, steps_per_epoch=5000, epochs=250, logger_kwargs=logger_kwargs)
+ppo(env_fn=CreateEnv, actor_critic=Struc2VecActorCritic, ac_kwargs=ac_kwargs, steps_per_epoch=5000, epochs=250, logger_kwargs=logger_kwargs)
+#ppo(env_fn=CreateEnv, ac_kwargs=ac_kwargs, steps_per_epoch=5000, epochs=250, logger_kwargs=logger_kwargs)
 
 
 k=0

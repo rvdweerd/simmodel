@@ -16,7 +16,7 @@ from modules.sim.sim_graphs import SparseManhattanGraph, graph, CircGraph, TKGra
 from modules.rl.rl_plotting import PlotAgentsOnGraph
 from modules.optim.escape_route_generator_MC import mutiple_escape_routes
 from modules.optim.optimization_FIP_gurobipy import unit_ranges, optimization_alt, optimization
-from torch_geometric.utils.convert import from_networkx
+#from torch_geometric.utils.convert import from_networkx
 
 class SimParameters(object):
     def __init__(self):
@@ -322,8 +322,8 @@ def DefineSimParameters(config):
         if len(sp.G.edges[key]) == 0:
             sp.G.edges[key]['N_pref']=-1
             sp.G.edges[key]['weight']=1
-    pyg_graph = from_networkx(sp.G)
-    sp.EI = pyg_graph.edge_index
+    #pyg_graph = from_networkx(sp.G)
+    #sp.EI = pyg_graph.edge_index
     return sp
 
 def GetUnitsInitialConditions(sp, register, specific_start_units, cutoff):
