@@ -80,7 +80,7 @@ ac_kwargs = dict(
     emb_iter_T    = 3,
     #max_num_nodes = 12,
 )
-logger_kwargs = dict(output_dir='path/to/output_dir', exp_name='experiment_name')
+logger_kwargs = dict(output_dir='results/gnn-ppo/spinningup/', exp_name='experiment_name')
 from modules.ppo.models_spinup import Struc2VecActorCritic
 
 ppo(env_fn=CreateEnv, actor_critic=Struc2VecActorCritic, ac_kwargs=ac_kwargs, 

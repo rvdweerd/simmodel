@@ -395,5 +395,5 @@ if __name__ == '__main__':
 
     for seed in [0,1,2,3,4]:
         seed_everything(seed)
-        logdir='results/gnn-ppo/runs/'+world_name+'_wpremoved'+str(remove_world_pool)+'/'+nfm_func_name+'_emb'+str(config['emb_dim'])+'_itT'+str(config['emb_iter_T'])+'_lr'+str(config['learning_rate'])+'_Kepoch'+str(config['K_epoch'])+'_qmimic_maxreach_2L/SEED'+str(seed) 
+        logdir='results/gnn-ppo/minrl/runs/'+world_name+'_wpremoved'+str(remove_world_pool)+'/'+nfm_func_name+'_emb'+str(config['emb_dim'])+'_itT'+str(config['emb_iter_T'])+'_lr'+str(config['learning_rate'])+'_Kepoch'+str(config['K_epoch'])+'_qmimic_maxreach_2L/SEED'+str(seed) 
         model = GetTrainedModel(env, config, logdir)
