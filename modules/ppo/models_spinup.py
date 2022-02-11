@@ -19,8 +19,6 @@ class Struc2Vec(nn.Module):
         self.theta2     = nn.Linear(self.emb_dim, self.emb_dim, True)#, dtype=torch.float32)
         self.theta3     = nn.Linear(self.emb_dim, self.emb_dim, True)#, dtype=torch.float32)
         self.theta4     = nn.Linear(1, self.emb_dim, True)#, dtype=torch.float32)
-        self.theta6     = nn.Linear(self.emb_dim, self.emb_dim, True)#, dtype=torch.float32)
-        self.theta7     = nn.Linear(self.emb_dim, self.emb_dim, True)#, dtype=torch.float32)
         print("PARAMETERS Struc2Vec core")
         self.numTrainableParameters()
 
@@ -49,13 +47,15 @@ class Struc2Vec(nn.Module):
         for t in range(self.T):
             s2 = self.theta2(conn_matrices.matmul(mu))    
             mu = F.relu(s1 + s2 + s3) # (batch_size, nr_nodes, emb_dim)
-
+        
+        return mu
         # we repeat the global state (summed over nodes) for each node, 
         # in order to concatenate it to local states later
         global_state = self.theta6(torch.sum(mu, dim=1, keepdim=True).repeat(1, num_nodes, 1))
         local_action = self.theta7(mu)  # (batch_dim, nr_nodes, emb_dim)
         out = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (batch_dim, nr_nodes, 2*emb_dim)
         return out
+
     def numTrainableParameters(self):
         print('Struc2Vec core size:')
         print('------------------------------------------')
@@ -75,6 +75,8 @@ class Stuc2Vec_policynet(nn.Module):
         self.emb_dim = emb_dim
         self.theta5_pi  = nn.Linear(2*self.emb_dim, 1, True)#, dtype=torch.float32)
         #self.theta5_pi2 = nn.Linear(self.emb_dim, 1, True, dtype=torch.float32) # Maybe too complex, perhaps share weights with th_5_pi CHECK / TODO 
+        self.theta6_pi = nn.Linear(self.emb_dim, self.emb_dim, True)#, dtype=torch.float32)
+        self.theta7_pi = nn.Linear(self.emb_dim, self.emb_dim, True)#, dtype=torch.float32)
 
         print("PARAMETERS pi Policynet")
         self.numTrainableParameters()
@@ -87,7 +89,12 @@ class Stuc2Vec_policynet(nn.Module):
         num_nodes = X.shape[1]
         node_dim = X.shape[2]-1-num_nodes
         nfm, W, reachable_nodes = torch.split(X,[node_dim, num_nodes, 1],2)
-        rep = self.struc2vec(nfm, W)
+        mu = self.struc2vec(nfm, W)
+        global_state = self.theta6_pi(torch.sum(mu, dim=1, keepdim=True).repeat(1, num_nodes, 1))
+        local_action = self.theta7_pi(mu)  # (batch_dim, nr_nodes, emb_dim)
+        rep = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (batch_dim, nr_nodes, 2*emb_dim)
+        
+        
         prob_logits = self.theta5_pi(rep).squeeze(dim=2) # (batch_dim, nr_nodes)
         # mask invalid actions
         reachable_nodes=reachable_nodes.squeeze(dim=2).type(torch.BoolTensor)
@@ -120,6 +127,8 @@ class Stuc2Vec_valuenet(nn.Module):
         self.emb_dim = emb_dim
         self.theta5_v1  = nn.Linear(2*self.emb_dim, 1, True)#, dtype=torch.float32)
         #self.theta5_v2  = nn.Linear(self.emb_dim, 1, True, dtype=torch.float32) # Maybe too complex, perhaps share weights with th_5_pi CHECK / TODO
+        self.theta6_v = nn.Linear(self.emb_dim, self.emb_dim, True)#, dtype=torch.float32)
+        self.theta7_v = nn.Linear(self.emb_dim, self.emb_dim, True)#, dtype=torch.float32)
 
         print("PARAMETERS v Valuenet")
         self.numTrainableParameters()
@@ -132,9 +141,17 @@ class Stuc2Vec_valuenet(nn.Module):
         num_nodes = X.shape[1]
         node_dim = X.shape[2]-1-num_nodes
         nfm, W, reachable_nodes = torch.split(X,[node_dim, num_nodes, 1],2)
-        rep = self.struc2vec(nfm, W)
-        rep = self.theta5_v1(rep).squeeze(dim=2) # (batch_dim, nr_nodes)
-        v = rep.mean(dim=1)      
+        mu = self.struc2vec(nfm, W)
+        global_state = self.theta6_v(torch.sum(mu, dim=1, keepdim=True).repeat(1, num_nodes, 1))
+        local_action = self.theta7_v(mu)  # (batch_dim, nr_nodes, emb_dim)
+        rep = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (batch_dim, nr_nodes, 2*emb_dim)
+        qvals = self.theta5_v1(rep).squeeze(-1) # (batch_dim, nr_nodes)
+        reachable_nodes=reachable_nodes.type(torch.BoolTensor)
+        qvals[~reachable_nodes.squeeze(-1)] = -1e12
+        v=torch.max(qvals,dim=1)[0]
+        
+        
+        #v = rep.mean(dim=1)      
         return v # flat (batch_dim)
     def numTrainableParameters(self):
         print('v size:')
@@ -156,11 +173,11 @@ class Struc2VecActorCritic(nn.Module):
         self.emb_iter_T   = emb_iter_T
         obs_dim = observation_space.shape
         self.node_dim       = obs_dim[1]-obs_dim[0]-1 # dimension of original node features
-        self.struc2vec1 = Struc2Vec(self.emb_dim, self.emb_iter_T, self.node_dim)
-        self.struc2vec2 = Struc2Vec(self.emb_dim, self.emb_iter_T, self.node_dim)
+        self.struc2vec = Struc2Vec(self.emb_dim, self.emb_iter_T, self.node_dim)
+        #self.struc2vec2 = Struc2Vec(self.emb_dim, self.emb_iter_T, self.node_dim)
         
-        self.pi = Stuc2Vec_policynet(self.struc2vec1, emb_dim=self.emb_dim)
-        self.v  = Stuc2Vec_valuenet(self.struc2vec2,  emb_dim=self.emb_dim)
+        self.pi = Stuc2Vec_policynet(self.struc2vec, emb_dim=self.emb_dim)
+        self.v  = Stuc2Vec_valuenet(self.struc2vec,  emb_dim=self.emb_dim)
 
         print("PARAMETERS Struc2VecActorCritic")
         self.numTrainableParameters()
