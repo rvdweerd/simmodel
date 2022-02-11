@@ -1,3 +1,4 @@
+import copy
 import numpy as np
 from gym import ObservationWrapper, ActionWrapper
 import re
@@ -41,8 +42,6 @@ class Struc2Vec(nn.Module):
         self.theta2     = nn.Linear(self.emb_dim, self.emb_dim, True)#, dtype=torch.float32)
         self.theta3     = nn.Linear(self.emb_dim, self.emb_dim, True)#, dtype=torch.float32)
         self.theta4     = nn.Linear(1, self.emb_dim, True)#, dtype=torch.float32)
-        self.theta6     = nn.Linear(self.emb_dim, self.emb_dim, True)#, dtype=torch.float32)
-        self.theta7     = nn.Linear(self.emb_dim, self.emb_dim, True)#, dtype=torch.float32)
 
     def forward(self, xv, Ws):
         # xv: The node features (batch_size, num_nodes, node_dim)
@@ -76,10 +75,7 @@ class Struc2Vec(nn.Module):
 
         # we repeat the global state (summed over nodes) for each node, 
         # in order to concatenate it to local states later
-        global_state = self.theta6(torch.sum(mu, dim=1, keepdim=True).repeat(1, num_nodes, 1))
-        local_action = self.theta7(mu)  # (batch_dim, nr_nodes, emb_dim)
-        out = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (batch_dim, nr_nodes, 2*emb_dim)
-        return out
+        return mu
 
 class PPONet(nn.Module):
     def __init__(self, config):
@@ -100,10 +96,14 @@ class PPONet(nn.Module):
         
         self.theta5_pi1 = nn.Linear(2*self.emb_dim, self.emb_dim, True, dtype=torch.float32)
         self.theta5_pi2 = nn.Linear(self.emb_dim, 1, True, dtype=torch.float32)
+        self.theta6_pi  = nn.Linear(self.emb_dim, self.emb_dim, True)#, dtype=torch.float32)
+        self.theta7_pi  = nn.Linear(self.emb_dim, self.emb_dim, True)#, dtype=torch.float32)
 
         #self.s2v_v = Struc2Vec(self.emb_dim, self.T, self.node_dim)
         self.theta5_v1 = nn.Linear(2*self.emb_dim, self.emb_dim, True, dtype=torch.float32)
         self.theta5_v2 = nn.Linear(self.emb_dim, 1, True, dtype=torch.float32)
+        self.theta6_v  = nn.Linear(self.emb_dim, self.emb_dim, True)#, dtype=torch.float32)
+        self.theta7_v  = nn.Linear(self.emb_dim, self.emb_dim, True)#, dtype=torch.float32)
 
         self.optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
         self.numTrainableParameters()
@@ -112,7 +112,13 @@ class PPONet(nn.Module):
         # reachable_nodes (batch_dim, nr_nodes)
         reachable_nodes=reachable_nodes.type(torch.BoolTensor)
 
-        rep = self.s2v(x, W) # (batch_dim, nr_nodes, 2*emb_dim)
+        mu = self.s2v(x, W) # (batch_dim, nr_nodes, 2*emb_dim)
+        num_nodes=x.shape[1]
+        global_state = self.theta6_pi(torch.sum(mu, dim=1, keepdim=True).repeat(1, num_nodes, 1))
+        local_action = self.theta7_pi(mu)  # (batch_dim, nr_nodes, emb_dim)
+        rep= F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (batch_dim, nr_nodes, 2*emb_dim)
+
+
         rep = self.theta5_pi1(F.relu(rep))
         #rep = F.relu(self.theta5_pi1(rep))
         prob_logits = ((self.theta5_pi2(rep))).squeeze(dim=2) # (batch_dim, nr_nodes)
@@ -126,7 +132,11 @@ class PPONet(nn.Module):
 
     
     def v(self, x, W, reachable_nodes, snode):
-        rep = self.s2v(x, W) # (batch_dim, nr_nodes, 2*emb_dim)
+        mu = self.s2v(x, W) # (batch_dim, nr_nodes, 2*emb_dim)
+        num_nodes=x.shape[1]
+        global_state = self.theta6_v(torch.sum(mu, dim=1, keepdim=True).repeat(1, num_nodes, 1))
+        local_action = self.theta7_v(mu)  # (batch_dim, nr_nodes, emb_dim)
+        rep= F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (batch_dim, nr_nodes, 2*emb_dim)
         
         # # OPTION 1: aggregate (mean = best) and project
         # ##rep2 = torch.max(rep,dim=1)[0]
@@ -197,9 +207,9 @@ class PPONet(nn.Module):
             advantage = torch.tensor(advantage_lst, dtype=torch.float32).to(device)
 
             log_pi = self.pi(s, W, reachable_nodes)
-            m=Categorical(logits=log_pi)
-            log_pi=m.logits
-            log_pi_a = log_pi.gather(1,a).squeeze()
+            m = Categorical(logits = log_pi)
+            
+            log_pi_a = m.log_prob(a.squeeze())
             ratio = torch.exp(log_pi_a - prob_log_a)  # a/b == exp(log(a)-log(b))
 
             surr1 = ratio * advantage
@@ -251,24 +261,43 @@ def GetTrainedModel(env, config, logdir='runs/test'):
     plot_interval=config['plot_interval']
 
     for n_epi in range(num_epi):
-        env.reset()
-        s = env.nfm
-        done = False
-        while not done:
-            prob_logits = model.pi(s.unsqueeze(0), env.sp.W.unsqueeze(0), env.sp.W[env.state[0]].unsqueeze(0))
-            #pl_select = prob_logits > -torch.inf
-            #prob_logits = prob_logits[prob_logits>-torch.inf]
-            m = Categorical(logits = prob_logits.squeeze())
-            a = m.sample().item()
-            snode = env.state[0]
+        scores=[]
+        entries=[]
+        for i in range(5):
+            env.reset()
+            s = copy.deepcopy(env.nfm)
+            done = False
+            score_local=0
+            epientry=[]
+            while not done:
+                with torch.no_grad(): #TODO check
+                    prob_logits = model.pi(s.unsqueeze(0), env.sp.W.unsqueeze(0), env.sp.W[env.state[0]].unsqueeze(0))
+                #pl_select = prob_logits > -torch.inf
+                #prob_logits = prob_logits[prob_logits>-torch.inf]
+                m = Categorical(logits = prob_logits.squeeze())
+                a = m.sample()
+                a_logprob = m.log_prob(a)
+                snode = env.state[0]
 
-            _, r, done, info = env.step(a)
-            s_prime = env.nfm
+                _, r, done, info = env.step(a)
+                s_prime = copy.deepcopy(env.nfm)
 
-            model.put_data(( s, a, r/10., s_prime, m.logits[a].item(), done, env.sp.W, env.sp.W[snode], snode))
-            s = s_prime
+                entry=( s, a.detach().item(), r/10, s_prime, a_logprob.detach().item(), done, env.sp.W, env.sp.W[snode], snode)
+                epientry.append(entry)
+                #model.put_data(( s, a.detach().item(), r/10, s_prime, a_logprob.detach().item(), done, env.sp.W, env.sp.W[snode], snode))
+                s = copy.deepcopy(s_prime)
 
-            score += r
+                score += r
+                score_local+=r
+            scores.append(score_local)
+            entries.append(epientry)
+        maxindex=np.argmax(np.array(scores))
+        if scores[maxindex] > 0:
+            model.K_epoch=10
+        else:
+            model.K_epoch=1
+        for e in entries[maxindex]:
+            model.put_data(e)
 
         loss = model.train_net(writer, n_epi)
         lossadd+=loss
@@ -276,12 +305,19 @@ def GetTrainedModel(env, config, logdir='runs/test'):
         if n_epi%plot_interval==0 and n_epi!=0:
             env.render_eupaths(fname='./'+logdir+'/rendering_active',t_suffix=False)
         if n_epi%print_interval==0 and n_epi!=0:
-            p1,p2 = get_test_probs(env,model)
+            test_probs = get_test_probs(env,model)
             
-
+            np.set_printoptions(formatter={'float':"{0:0.1f}".format})
             print("# of episode :{}, avg score : {:.1f}".format(n_epi, score/print_interval))
-            print(p1)
-            print(p2)
+            evalstates=sorted(list(test_probs.keys()))
+            for s in evalstates:
+                print('state:',s,'probs: ',end='')
+                for pr in test_probs[s]:
+                    if pr>0.01:
+                        print('{:.2f}'.format(pr)+'  ',end='')
+                    else:
+                        print('  .   ',end='')
+                print(' - best option', np.argmax(test_probs[s]))
             writer.add_scalar('return per epi',score/print_interval,n_epi)
             writer.add_scalar('loss',loss/print_interval,n_epi)
             score = 0.
@@ -292,8 +328,10 @@ def GetTrainedModel(env, config, logdir='runs/test'):
 def get_test_probs(env, model):
     env.reset()
     done=False
-    probs=[]
-    consecutive_action_queries=[2,5]
+    probs={}
+    t=env.sp.T
+    env.sp.T=100
+    consecutive_action_queries=[2,5,8,7]
     for a in consecutive_action_queries:
         s = env.nfm
         with torch.no_grad():
@@ -302,9 +340,10 @@ def get_test_probs(env, model):
             model.train()
             #pl_select = prob_logits > -torch.inf
             m = Categorical(logits = prob_logits.squeeze())
-        probs.append(m.probs.detach().cpu())
+        probs[env.state[0]] = m.probs.detach().cpu().numpy()
         _,_,done,_ = env.step(a)
-    return tuple(probs)
+    env.sp.T=t
+    return probs
 
 
 if __name__ == '__main__':
@@ -322,12 +361,12 @@ if __name__ == '__main__':
     'NFM_ev_ec_t_um_us' : NFM_ev_ec_t_um_us(),
     }
     edge_blocking = True
-    nfm_func_name = 'NFM_ev_ec_t_um_us'
+    nfm_func_name = 'NFM_ev_ec_t'#_um_us'
     nfm_func=nfm_funcs[nfm_func_name]
     remove_world_pool = False
-
     env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
     env.redefine_nfm(nfm_func)
+    env.redefine_goal_nodes([7])
     env.capture_on_edges = edge_blocking
 
     # make task easier
@@ -335,24 +374,26 @@ if __name__ == '__main__':
         env._remove_world_pool()
     #env.redefine_goal_nodes([7])
     #env.current_entry=1
-    #SimulateInteractiveMode(env)
+    SimulateInteractiveMode(env)
+    
     env = PPO_ActWrapper(env)
 
     #Hyperparameters
     config={}
     config['emb_dim']       = 32
-    config['emb_iter_T']    = 3
+    config['emb_iter_T']    = 5
     config['node_dim']      = env.nfm.shape[1]
-    config['learning_rate'] = 0.00005
+    config['learning_rate'] = 0.0001
     config['gamma']         = 0.98
     config['lmbda']         = 0.95
     config['eps_clip']      = 0.05
-    config['K_epoch']       = 5#3
+    config['K_epoch']       = 1#3
     config['num_epi']       = 10000
     config['print_interval']= 20
     config['plot_interval'] = 100
-    config['seed']          = 0
-    seed_everything(config['seed'])
+    #config['seed']          = 10
 
-    logdir='runsnew/'+world_name+'_wpremoved'+str(remove_world_pool)+'/'+nfm_func_name+'_emb'+str(config['emb_dim'])+'_itT'+str(config['emb_iter_T'])+'_lr'+str(config['learning_rate'])+'_Kepoch'+str(config['K_epoch'])+'_qmimic_maxreach_2L/SEED'+str(config['seed']) 
-    model = GetTrainedModel(env, config, logdir)
+    for seed in [0,1,2,3,4]:
+        seed_everything(seed)
+        logdir='results/gnn-ppo/runs/'+world_name+'_wpremoved'+str(remove_world_pool)+'/'+nfm_func_name+'_emb'+str(config['emb_dim'])+'_itT'+str(config['emb_iter_T'])+'_lr'+str(config['learning_rate'])+'_Kepoch'+str(config['K_epoch'])+'_qmimic_maxreach_2L/SEED'+str(seed) 
+        model = GetTrainedModel(env, config, logdir)
