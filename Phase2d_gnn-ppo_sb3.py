@@ -8,6 +8,7 @@ from modules.rl.rl_custom_worlds import GetCustomWorld
 from modules.rl.rl_utils import EvaluatePolicy, print_parameters, GetFullCoverageSample, NpWrapper
 #from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3 import PPO
+from sb3_contrib import MaskablePPO
 import numpy as np
 import torch
 import torch.nn as nn 
@@ -35,7 +36,7 @@ def CreateEnv(max_nodes=9):
     state_enc='nfm'
     nfm_func_name = 'NFM_ev_ec_t'
     edge_blocking = True
-    remove_world_pool = True
+    remove_world_pool = False
     env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
     env.redefine_nfm(nfm_funcs[nfm_func_name])
     env.capture_on_edges = edge_blocking
@@ -199,9 +200,10 @@ class s2v_ACNetwork(nn.Module):
         reachable_nodes = reachable_nodes.type(torch.BoolTensor)
         qvals[~reachable_nodes.squeeze(-1)] = -torch.inf
         v=torch.max(qvals,dim=1)[0]
-        return v # (bsize,)
+        return v.unsqueeze(-1) # (bsize,)
 
-class s2v_ActorCriticPolicy(ActorCriticPolicy):
+from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
+class s2v_ActorCriticPolicy(MaskableActorCriticPolicy):
     def __init__(
         self,
         observation_space: gym.spaces.Space,
@@ -237,7 +239,7 @@ policy_kwargs = dict(
     
 )
 
-model = PPO(s2v_ActorCriticPolicy, env, \
+model = MaskablePPO(s2v_ActorCriticPolicy, env, \
     #learning_rate=1e-4,\
     seed=0,\
     #clip_range=0.1,\    
@@ -245,5 +247,5 @@ model = PPO(s2v_ActorCriticPolicy, env, \
     policy_kwargs = policy_kwargs, verbose=1, tensorboard_log="results/gnn-ppo/sb3/test/tensorboard/")
 
 print_parameters(model.policy)
-model.learn(total_timesteps = 10000)
+model.learn(total_timesteps = 50000)
 

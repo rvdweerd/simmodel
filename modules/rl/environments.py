@@ -1,4 +1,5 @@
 #from os import stat_result
+from typing import List, Optional
 import modules.sim.simdata_utils as su
 import random 
 #import time
@@ -341,6 +342,12 @@ class GraphWorld(gym.Env):
         else:
             assert False
         return self.obs
+
+    def action_masks(self) -> List[bool]:
+        reachable=np.zeros(self.sp.V).astype(np.bool)
+        idx=np.array(self.neighbors[self.state[0]]).astype(int)
+        reachable[idx]=True
+        return list(reachable)
 
     def step(self, action_idx):
         # Take a step
