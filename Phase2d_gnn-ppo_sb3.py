@@ -9,17 +9,41 @@ from modules.rl.rl_utils import EvaluatePolicy, print_parameters, GetFullCoverag
 #from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3 import PPO
 from sb3_contrib import MaskablePPO
+from sb3_contrib.common.maskable.evaluation import evaluate_policy
+from sb3_contrib.common.maskable.utils import get_action_masks
 import numpy as np
 import torch
 import torch.nn as nn 
 import torch.nn.functional as F
 from modules.gnn.nfm_gen import NFM_ec_t, NFM_ev_t, NFM_ev_ec_t, NFM_ev_ec_t_um_us, NFM_ev_ec_t_u
+from modules.sim.graph_factory import GetWorldSet, LoadData
+from modules.rl.environments import SuperEnv
 from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsWrapper
 #import modules.sim.simdata_utils as su
 from modules.rl.rl_custom_worlds import GetCustomWorld
 from typing import Callable, Dict, List, Optional, Tuple, Type, Union
-
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+def get_super_env(Utrain=[1], Etrain=[4], max_nodes=9):
+    scenario_name='test'
+    #scenario_name = 'Train_U2E45'
+    world_name = 'SubGraphsManhattan3x3'
+    state_repr = 'etUte0U0'
+    state_enc  = 'nfm'
+    nfm_funcs = {'NFM_ev_ec_t':NFM_ev_ec_t(),'NFM_ec_t':NFM_ec_t(),'NFM_ev_t':NFM_ev_t(),'NFM_ev_ec_t_um_us':NFM_ev_ec_t_um_us()}
+    nfm_func=nfm_funcs['NFM_ev_ec_t_um_us']
+    edge_blocking = True
+    solve_select = 'solvable'# only solvable worlds (so best achievable performance is 100%)
+    reject_u_duplicates = False
+
+    #databank_full, register_full, solvable = LoadData(edge_blocking = True)
+    env_all_train, hashint2env, env2hashint, env2hashstr = GetWorldSet(state_repr, state_enc, U=Utrain, E=Etrain, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func)
+    for i in range(len(env_all_train)):
+        env_all_train[i]=PPO_ObsWrapper(env_all_train[i], max_possible_num_nodes = max_nodes)        
+        env_all_train[i]=PPO_ActWrapper(env_all_train[i])        
+    super_env = SuperEnv(env_all_train, max_possible_num_nodes = max_nodes)
+    #SimulateInteractiveMode(super_env)
+    return super_env
 
 nfm_funcs = {
     'NFM_ev_ec_t'       : NFM_ev_ec_t(),
@@ -34,7 +58,7 @@ def CreateEnv(max_nodes=9):
     world_name='Manhattan3x3_WalkAround'
     state_repr='etUte0U0'
     state_enc='nfm'
-    nfm_func_name = 'NFM_ev_ec_t'
+    nfm_func_name = 'NFM_ev_ec_t_um_us'
     edge_blocking = True
     remove_world_pool = False
     env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
@@ -46,20 +70,18 @@ def CreateEnv(max_nodes=9):
     MAX_NODES=9
     env = PPO_ObsWrapper(env, max_possible_num_nodes = max_nodes)        
     env = PPO_ActWrapper(env)        
-
     return env
 
 MAX_NODES=9
-env=CreateEnv(max_nodes=MAX_NODES)
-EMB_DIM = 16
+env=get_super_env(Utrain=[1,2,3], Etrain=[0,1,2,3,4,5,6,7,8,9],max_nodes=9)
+#env=get_super_env(Utrain=[1], Etrain=[0],max_nodes=9)
+EMB_DIM = 64
 EMB_ITER_T = 3
 NODE_DIM = env.F
 
+#env=CreateEnv(max_nodes=MAX_NODES)
 obs=env.reset()
 k=0
-
-
-
 
 
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
@@ -186,7 +208,9 @@ class s2v_ACNetwork(nn.Module):
         # mask invalid actions
         #reachable_nodes = reachable_nodes.squeeze(dim=2).type(torch.BoolTensor)
         #prob_logits[~reachable_nodes] = -torch.inf
+        #print(prob_logits)
         return prob_logits # (bsize, num_nodes)
+        #return F.relu(prob_logits) # (bsize, num_nodes) TODO CHECK: extra nonlinearity useful?
 
     def forward_critic(self, features: torch.Tensor) -> torch.Tensor:
         #mu = features.reshape(-1, self.num_nodes, self.emb_dim)  # (batch_size, nr_nodes, emb_dim)
@@ -231,6 +255,12 @@ class s2v_ActorCriticPolicy(MaskableActorCriticPolicy):
 
     def _build_mlp_extractor(self) -> None:
         self.mlp_extractor = s2v_ACNetwork(self.features_dim, self.net_arch['max_num_nodes'], 1, self.net_arch['emb_dim'], self.net_arch['num_nodes'])
+        
+        # emb_dim = self.features_extractor_kwargs['emb_dim']
+        # emb_iter_T = self.features_extractor_kwargs['emb_iter_T']
+        # node_dim =  self.features_extractor_kwargs['node_dim']
+        # num_nodes = emb_dim = self.features_extractor_kwargs['num_nodes']
+        # self.mlp_extractor = s2v_ACNetwork(self.features_dim, num_nodes, 1, emb_dim, num_nodes)        
         #self.net_arch['max_num_nodes']
 policy_kwargs = dict(
     features_extractor_class=Struc2Vec,
@@ -246,6 +276,73 @@ model = MaskablePPO(s2v_ActorCriticPolicy, env, \
     #max_grad_norm=0.1,\
     policy_kwargs = policy_kwargs, verbose=1, tensorboard_log="results/gnn-ppo/sb3/test/tensorboard/")
 
-print_parameters(model.policy)
-model.learn(total_timesteps = 50000)
+from stable_baselines3.common.callbacks import BaseCallback
+class TestCallBack(BaseCallback):
+    def __init__(self, verbose=0):
+        super(TestCallBack, self).__init__(verbose)
+        # Those variables will be accessible in the callback
+        # (they are defined in the base class)
+        # The RL model
+        # self.model = None  # type: BaseAlgorithm
+        # An alias for self.model.get_env(), the environment used for training
+        # self.training_env = None  # type: Union[gym.Env, VecEnv, None]
+        # Number of time the callback was called
+        # self.n_calls = 0  # type: int
+        # self.num_timesteps = 0  # type: int
+        # local and global variables
+        # self.locals = None  # type: Dict[str, Any]
+        # self.globals = None  # type: Dict[str, Any]
+        # The logger object, used to report things in the terminal
+        # self.logger = None  # stable_baselines3.common.logger
+        # # Sometimes, for event callback, it is useful
+        # # to have access to the parent object
+        # self.parent = None  # type: Optional[BaseCallback]
+    def _on_step(self):
+        pass#print('on_step  calls',self.n_calls) 
+    def _on_rollout_start(self) -> None:
+        """
+        A rollout is the collection of environment interaction
+        using the current policy.
+        This event is triggered before collecting new samples.
+        """
+        res = evaluate_policy(model, env, n_eval_episodes=20, reward_threshold=-15, warn=False, return_episode_rewards=False)
+        print('Test result: avg rew:', res[0], 'std:', res[1])
 
+class SimpleCallback(BaseCallback):
+    """
+    a simple callback that can only be called twice
+
+    :param verbose: (int) Verbosity level 0: not output 1: info 2: debug
+    """
+    def __init__(self, verbose=0):
+        super(SimpleCallback, self).__init__(verbose)
+        self._called = False
+    
+    def _on_step(self):
+      if not self._called:
+        print("callback - first call")
+        self._called = True
+        return True # returns True, training continues.
+      print("callback - second call")
+      return False # returns False, training stops.  
+
+print_parameters(model.policy)
+model.learn(total_timesteps = 100000, callback=TestCallBack())
+
+
+res = evaluate_policy(model, env, n_eval_episodes=20, reward_threshold=-15, warn=False, return_episode_rewards=False)
+print('Test result: avg rew:', res[0], 'std:', res[1])
+
+
+# obs = env.reset()
+# env.render(fname='test')
+# done=False
+# while not done:
+#     action_masks = get_action_masks(env)
+#     action, _state = model.predict(obs, deterministic=True, action_masks=action_masks)
+#     obs, reward, done, info = env.step(action)
+#     env.render(fname='test')
+#     if done:
+#         env.render_eupaths(fname='test_final')
+#         probs = model.policy.get_distribution(obs).log_prob(env.all_actions)
+#         obs = env.reset()

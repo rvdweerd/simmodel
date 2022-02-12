@@ -476,3 +476,62 @@ register(
     entry_point='modules.rl.environments:GraphWorld'
 )
 
+class SuperEnv(gym.Env):
+    def __init__(self, all_env, max_possible_num_nodes = 9):
+        super(SuperEnv,self).__init__()
+        self.max_num_nodes = max_possible_num_nodes
+        self.all_env = all_env
+        self.num_env = len(all_env)
+        self.reset()
+    
+    def reset(self, entry=None):
+        self.current_env_nr = random.randint(0, self.num_env-1)
+        self.env = self.all_env[self.current_env_nr]
+        obs = self.env.reset(entry=entry)
+
+        self._updateGraphLevelData()
+        self._updateInstanceLevelData()
+        self._updateStepLevelData()
+        return obs
+
+    def step(self, action):
+        s,r,d,i = self.env.step(action)
+        self._updateStepLevelData()
+        return s,r,d,i
+    
+    def render(self, mode=None, fname=None, t_suffix=True, size=None):
+        return self.env.render(mode,fname,t_suffix,size)
+
+    def render_epath(self, fname=None, t_suffix=True, size=None):
+        return self.env.render_epath(fname, t_suffix, size)
+
+    def render_eupaths(self, mode=None, fname=None, t_suffix=True, size=None, last_step_only=False):
+        self.env.render_eupaths(mode, fname, t_suffix, size, last_step_only)
+
+    def action_masks(self):
+        m = self.env.action_masks() + [False] * (self.max_num_nodes - self.sp.V)
+        return m
+
+    def _getUpositions(self, t=0):
+        return self.env._getUpositions(t)
+
+    def _updateGraphLevelData(self):
+        self.sp = self.env.sp
+        self.F = self.env.F
+        self.observation_space = self.env.observation_space
+        self.action_space = self.env.action_space
+        self.neighbors = self.env.neighbors
+        self.state_encoding = self.env.state_encoding
+
+    def _updateInstanceLevelData(self):
+        self.current_entry = self.env.current_entry
+        self.u_paths = self.env.u_paths
+
+        self.global_t = self.env.global_t
+        self.local_t = self.env.local_t        
+        self.state = self.env.state
+        self.obs = self.env.obs
+        self.nfm = self.env.nfm
+    
+    def _updateStepLevelData(self):
+        pass
