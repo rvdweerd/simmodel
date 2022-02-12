@@ -183,18 +183,21 @@ class s2v_ACNetwork(nn.Module):
         rep = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (batch_dim, nr_nodes, 2*emb_dim)
         prob_logits = self.theta5_pi(rep).squeeze(dim=2) # (batch_dim, nr_nodes)
         # mask invalid actions
-        reachable_nodes = reachable_nodes.squeeze(dim=2).type(torch.BoolTensor)
-        prob_logits[~reachable_nodes] = -torch.inf
+        #reachable_nodes = reachable_nodes.squeeze(dim=2).type(torch.BoolTensor)
+        #prob_logits[~reachable_nodes] = -torch.inf
         return prob_logits # (bsize, num_nodes)
 
     def forward_critic(self, features: torch.Tensor) -> torch.Tensor:
-        mu = features.reshape(-1, self.num_nodes, self.emb_dim)  # (batch_size, nr_nodes, emb_dim)
+        #mu = features.reshape(-1, self.num_nodes, self.emb_dim)  # (batch_size, nr_nodes, emb_dim)
+        mu_rn = features.reshape(-1, self.num_nodes, self.emb_dim+1)  # (batch_size, nr_nodes, emb_dim+1)
+        mu, reachable_nodes = torch.split(mu_rn,[self.emb_dim, 1],2)
+
         global_state = self.theta6_v(torch.sum(mu, dim=1, keepdim=True).repeat(1, self.num_nodes, 1))
         local_action = self.theta7_v(mu)  # (batch_dim, nr_nodes, emb_dim)
         rep = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (batch_dim, nr_nodes, 2*emb_dim)
         qvals = self.theta5_v(rep).squeeze(-1) # (batch_dim, nr_nodes)
         reachable_nodes = reachable_nodes.type(torch.BoolTensor)
-        qvals[~reachable_nodes.squeeze(-1)] = -1e12
+        qvals[~reachable_nodes.squeeze(-1)] = -torch.inf
         v=torch.max(qvals,dim=1)[0]
         return v # (bsize,)
 
@@ -226,7 +229,7 @@ class s2v_ActorCriticPolicy(ActorCriticPolicy):
 
     def _build_mlp_extractor(self) -> None:
         self.mlp_extractor = s2v_ACNetwork(self.features_dim, self.net_arch['max_num_nodes'], 1, self.net_arch['emb_dim'], self.net_arch['num_nodes'])
-
+        #self.net_arch['max_num_nodes']
 policy_kwargs = dict(
     features_extractor_class=Struc2Vec,
     features_extractor_kwargs=dict(emb_dim=EMB_DIM, emb_iter_T=EMB_ITER_T, node_dim=NODE_DIM, num_nodes=MAX_NODES),
