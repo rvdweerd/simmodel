@@ -549,8 +549,8 @@ def SimulateInteractiveMode(env, filesave_with_time_suffix=True, entry=None):
             print('],  ',end='')
         print('\nu positions per time-step:')
         for t in range(env.sp.T):
-            print(env._getUpositions(t))
-            if t < env.sp.T-1 and env._getUpositions(t) == env._getUpositions(t+1):
+            print(env.getUpositions(t))
+            if t < env.sp.T-1 and env.getUpositions(t) == env.getUpositions(t+1):
                 print('[., ., .]')
                 break
         print('------------')

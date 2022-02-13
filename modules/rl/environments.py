@@ -246,6 +246,9 @@ class GraphWorld(gym.Env):
             upos.append(p)
         return upos
 
+    def getUpositions(self, t=0):
+        return self._getUpositions(t=0)        
+
     def _availableActionsInCurrentState(self):
         return self.neighbors[self.state[0]]
 
@@ -509,7 +512,7 @@ class SuperEnv(gym.Env):
         self.env.render_eupaths(mode, fname, t_suffix, size, last_step_only)
 
     def action_masks(self):
-        m = self.env.action_masks() + [False] * (self.max_num_nodes - self.sp.V)
+        m = self.env.action_masks()# + [False] * (self.max_num_nodes - self.sp.V)
         return m
 
     def _getUpositions(self, t=0):
@@ -527,11 +530,11 @@ class SuperEnv(gym.Env):
         self.current_entry = self.env.current_entry
         self.u_paths = self.env.u_paths
 
+    
+    def _updateStepLevelData(self):
         self.global_t = self.env.global_t
         self.local_t = self.env.local_t        
         self.state = self.env.state
         self.obs = self.env.obs
         self.nfm = self.env.nfm
-    
-    def _updateStepLevelData(self):
-        pass
+

@@ -54,8 +54,8 @@ nfm_funcs = {
     }
 
 
-def CreateEnv(max_nodes=9):
-    world_name='Manhattan3x3_WalkAround'
+def CreateEnv(world_name, max_nodes=9):
+    #world_name='Manhattan3x3_WalkAround'
     state_repr='etUte0U0'
     state_enc='nfm'
     nfm_func_name = 'NFM_ev_ec_t_um_us'
@@ -72,16 +72,7 @@ def CreateEnv(max_nodes=9):
     env = PPO_ActWrapper(env)        
     return env
 
-MAX_NODES=9
-env=get_super_env(Utrain=[1,2,3], Etrain=[0,1,2,3,4,5,6,7,8,9],max_nodes=MAX_NODES)
-#env=get_super_env(Utrain=[1], Etrain=[0],max_nodes=MAX_NODES)
-EMB_DIM = 64
-EMB_ITER_T = 3
-NODE_DIM = env.F
 
-#env=CreateEnv(max_nodes=MAX_NODES)
-obs=env.reset()
-k=0
 
 
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
@@ -91,9 +82,11 @@ class Struc2Vec(BaseFeaturesExtractor):
     :param features_dim: (int) Number of features extracted.
         This corresponds to the number of unit for the last layer.
     """
-    def __init__(self, observation_space: gym.spaces.Box, emb_dim, emb_iter_T, node_dim, num_nodes):
+    def __init__(self, observation_space: gym.spaces.Box, emb_dim, emb_iter_T, node_dim):#, num_nodes):
+        num_nodes=observation_space.shape[0]
         features_dim: int = num_nodes * (emb_dim+1) #MUST BE NUM_NODES*(EMB_DIM+1), reacheble nodes vec concatenated
         super(Struc2Vec, self).__init__(observation_space, features_dim)
+        
         
         # Incoming: (bsize, num_nodes, (F+num_nodes+1))      
         # Compute shape by doing one forward pass
@@ -167,7 +160,7 @@ class s2v_ACNetwork(nn.Module):
         last_layer_dim_pi: int = 64,
         last_layer_dim_vf: int = 64,
         emb_dim: int =0,
-        num_nodes: int=0,
+        #num_nodes: int=0,
     ):
         super(s2v_ACNetwork, self).__init__()
 
@@ -177,7 +170,7 @@ class s2v_ACNetwork(nn.Module):
         self.latent_dim_vf = last_layer_dim_vf
         self.feature_dim = feature_dim
         self.emb_dim = emb_dim
-        self.num_nodes = num_nodes
+        #self.num_nodes = num_nodes
 
         # Policy network parameters
         self.theta5_pi = nn.Linear(2*self.emb_dim, 1, True)#, dtype=torch.float32)
@@ -195,13 +188,15 @@ class s2v_ACNetwork(nn.Module):
         :return: (th.Tensor, th.Tensor) latent_policy, latent_value of the specified network.
             If all layers are shared, then ``latent_policy == latent_value``
         """
-        return self.forward_actor(features), self.forward_critic(features)
+        num_nodes=features.shape[1]//(self.emb_dim+1)
+        return self.forward_actor(features,num_nodes), self.forward_critic(features,num_nodes)
 
-    def forward_actor(self, features: torch.Tensor) -> torch.Tensor:
-        mu_rn = features.reshape(-1, self.num_nodes, self.emb_dim+1)  # (batch_size, nr_nodes, emb_dim+1)
+    def forward_actor(self, features: torch.Tensor, num_nodes: int) -> torch.Tensor:
+        #num_nodes = features.shape[1]//(self.emb_dim+1)
+        mu_rn = features.reshape(features.shape[0], num_nodes, self.emb_dim+1)  # (batch_size, nr_nodes, emb_dim+1)
         mu, reachable_nodes = torch.split(mu_rn,[self.emb_dim, 1],2)
 
-        global_state = self.theta6_pi(torch.sum(mu, dim=1, keepdim=True).repeat(1, self.num_nodes, 1))
+        global_state = self.theta6_pi(torch.sum(mu, dim=1, keepdim=True).repeat(1, num_nodes, 1))
         local_action = self.theta7_pi(mu)  # (batch_dim, nr_nodes, emb_dim)
         rep = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (batch_dim, nr_nodes, 2*emb_dim)
         
@@ -211,12 +206,12 @@ class s2v_ACNetwork(nn.Module):
         
         #return F.relu(prob_logits) # (bsize, num_nodes) TODO CHECK: extra nonlinearity useful?
 
-    def forward_critic(self, features: torch.Tensor) -> torch.Tensor:
+    def forward_critic(self, features: torch.Tensor, num_nodes: int) -> torch.Tensor:
         #mu = features.reshape(-1, self.num_nodes, self.emb_dim)  # (batch_size, nr_nodes, emb_dim)
-        mu_rn = features.reshape(-1, self.num_nodes, self.emb_dim+1)  # (batch_size, nr_nodes, emb_dim+1)
+        mu_rn = features.reshape(-1, num_nodes, self.emb_dim+1)  # (batch_size, nr_nodes, emb_dim+1)
         mu, reachable_nodes = torch.split(mu_rn,[self.emb_dim, 1],2)
 
-        global_state = self.theta6_v(torch.sum(mu, dim=1, keepdim=True).repeat(1, self.num_nodes, 1))
+        global_state = self.theta6_v(torch.sum(mu, dim=1, keepdim=True).repeat(1, num_nodes, 1))
         local_action = self.theta7_v(mu)  # (batch_dim, nr_nodes, emb_dim)
         rep = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (batch_dim, nr_nodes, 2*emb_dim)
         qvals = self.theta5_v(rep).squeeze(-1) # (batch_dim, nr_nodes)
@@ -257,8 +252,8 @@ class s2v_ActorCriticPolicy(MaskableActorCriticPolicy):
     def _build_mlp_extractor(self) -> None:
         emb_dim=self.features_extractor_kwargs['emb_dim']
         node_dim=self.features_extractor_kwargs['node_dim']
-        max_num_nodes=self.features_extractor_kwargs['num_nodes']
-        self.mlp_extractor = s2v_ACNetwork(self.features_dim, 1, 1, emb_dim, max_num_nodes)
+        #max_num_nodes=self.features_extractor_kwargs['num_nodes']
+        self.mlp_extractor = s2v_ACNetwork(self.features_dim, 1, 1, emb_dim)# max_num_nodes)
         
         # emb_dim = self.features_extractor_kwargs['emb_dim']
         # emb_iter_T = self.features_extractor_kwargs['emb_iter_T']
@@ -266,22 +261,6 @@ class s2v_ActorCriticPolicy(MaskableActorCriticPolicy):
         # num_nodes = emb_dim = self.features_extractor_kwargs['num_nodes']
         # self.mlp_extractor = s2v_ACNetwork(self.features_dim, num_nodes, 1, emb_dim, num_nodes)        
         #self.net_arch['max_num_nodes']
-policy_kwargs = dict(
-    features_extractor_class=Struc2Vec,
-    features_extractor_kwargs=dict(emb_dim=EMB_DIM, emb_iter_T=EMB_ITER_T, node_dim=NODE_DIM, num_nodes=MAX_NODES),
-    #net_arch=dict(max_num_nodes=MAX_NODES, emb_dim=EMB_DIM, num_nodes=MAX_NODES)
-    # NOTE: FOR THIS TO WORK, NEED TO ADJUST sb3 policies.py
-    #           def proba_distribution_net(self, latent_dim: int) -> nn.Module:
-    #       to create a linear layer that maps to 1-dim instead of self.action_dim
-    #       reason: our model is invariant to the action space (number of nodes in the graph) 
-)
-
-model = MaskablePPO(s2v_ActorCriticPolicy, env, \
-    #learning_rate=1e-4,\
-    seed=0,\
-    #clip_range=0.1,\    
-    #max_grad_norm=0.1,\
-    policy_kwargs = policy_kwargs, verbose=1, tensorboard_log="results/gnn-ppo/sb3/test/tensorboard/")
 
 from stable_baselines3.common.callbacks import BaseCallback
 class TestCallBack(BaseCallback):
@@ -312,8 +291,10 @@ class TestCallBack(BaseCallback):
         using the current policy.
         This event is triggered before collecting new samples.
         """
-        res = evaluate_policy(model, env, n_eval_episodes=20, reward_threshold=-15, warn=False, return_episode_rewards=False)
-        print('Test result: avg rew:', res[0], 'std:', res[1])
+        res_det = evaluate_policy(model, env, n_eval_episodes=20, reward_threshold=-100, warn=False, return_episode_rewards=False, deterministic=True)
+        print('Test result (deterministic): avg rew:', res_det[0], 'std:', res_det[1])
+        res_nondet = evaluate_policy(model, env, n_eval_episodes=20, reward_threshold=-100, warn=False, return_episode_rewards=False, deterministic=False)
+        print('Test result (non-deterministic): avg rew:', res_nondet[0], 'std:', res_nondet[1])
 
 class SimpleCallback(BaseCallback):
     """
@@ -333,23 +314,101 @@ class SimpleCallback(BaseCallback):
       print("callback - second call")
       return False # returns False, training stops.  
 
-print_parameters(model.policy)
-model.learn(total_timesteps = 150000, callback=TestCallBack())
+train=True
+eval=True
+if train:
+    MAX_NODES=33
+    EMB_DIM = 64
+    EMB_ITER_T = 5
+    #env=CreateEnv(world_name='Manhattan3x3_WalkAround', max_nodes=MAX_NODES)
+    env=get_super_env(Utrain=[1], Etrain=[0],max_nodes=MAX_NODES)
+    #env=get_super_env(Utrain=[1,2,3], Etrain=[0,1,2,3,4,5,6,7,8,9],max_nodes=MAX_NODES)
+    obs=env.reset()
+    NODE_DIM = env.F
+
+    policy_kwargs = dict(
+        features_extractor_class=Struc2Vec,
+        features_extractor_kwargs=dict(emb_dim=EMB_DIM, emb_iter_T=EMB_ITER_T, node_dim=NODE_DIM),#, num_nodes=MAX_NODES),
+        #net_arch=dict(max_num_nodes=MAX_NODES, emb_dim=EMB_DIM, num_nodes=MAX_NODES)
+        # NOTE: FOR THIS TO WORK, NEED TO ADJUST sb3 policies.py
+        #           def proba_distribution_net(self, latent_dim: int) -> nn.Module:
+        #       to create a linear layer that maps to 1-dim instead of self.action_dim
+        #       reason: our model is invariant to the action space (number of nodes in the graph) 
+    )
+
+    model = MaskablePPO(s2v_ActorCriticPolicy, env, \
+        #learning_rate=1e-4,\
+        seed=0,\
+        #clip_range=0.1,\    
+        #max_grad_norm=0.1,\
+        policy_kwargs = policy_kwargs, verbose=1, tensorboard_log="results/gnn-ppo/sb3/test/tensorboard/")
+
+    print_parameters(model.policy)
+    model.learn(total_timesteps = 300000, callback=TestCallBack())
+    model.save("ppo_trained_on_all_3x3")
+    policy = model.policy
+    policy.save("ppo_policy_trained_on_all_3x3")    
+
+    res = evaluate_policy(model, env, n_eval_episodes=20, reward_threshold=-15, warn=False, return_episode_rewards=False)
+    print('Test result: avg rew:', res[0], 'std:', res[1])
 
 
-res = evaluate_policy(model, env, n_eval_episodes=20, reward_threshold=-15, warn=False, return_episode_rewards=False)
-print('Test result: avg rew:', res[0], 'std:', res[1])
 
+if eval:
+    # nfm_funcs = {
+    #     'NFM_ev_ec_t'       : NFM_ev_ec_t(),
+    #     'NFM_ec_t'          : NFM_ec_t(),
+    #     'NFM_ev_t'          : NFM_ev_t(),
+    #     'NFM_ev_ec_t_u'     : NFM_ev_ec_t_u(),
+    #     'NFM_ev_ec_t_um_us' : NFM_ev_ec_t_um_us(),
+    # }
+    # nfm_func=nfm_funcs[args.nfm_func]
+    # edge_blocking = args.edge_blocking
+    # solve_select = 'solvable' # only solvable worlds (so best achievable performance is 100%)
 
-# obs = env.reset()
-# env.render(fname='test')
-# done=False
-# while not done:
-#     action_masks = get_action_masks(env)
-#     action, _state = model.predict(obs, deterministic=True, action_masks=action_masks)
-#     obs, reward, done, info = env.step(action)
-#     env.render(fname='test')
-#     if done:
-#         env.render_eupaths(fname='test_final')
-#         probs = model.policy.get_distribution(obs).log_prob(env.all_actions)
-#         obs = env.reset()
+    # world_name='MetroU3_e17tborder_FixedEscapeInit'
+    # scenario_name='TrainMetro'
+    # state_repr='etUte0U0'
+    # state_enc='nfm'
+    MAX_NODES=33
+    EMB_DIM = 64
+    EMB_ITER_T = 5
+    #env=CreateEnv(world_name='Manhattan3x3_WalkAround', max_nodes=MAX_NODES)
+    env=get_super_env(Utrain=[1], Etrain=[4],max_nodes=MAX_NODES)
+    #env=CreateEnv(world_name='MetroU3_e17tborder_FixedEscapeInit', max_nodes=MAX_NODES)
+    #env=CreateEnv(world_name='Manhattan3x3_WalkAround', max_nodes=MAX_NODES)
+    #SimulateInteractiveMode(env,filesave_with_time_suffix=False)
+    obs=env.reset()
+    NODE_DIM = env.F
+
+    #model=PPO.load('ppo_trained_on_all_3x3')
+    saved_policy = s2v_ActorCriticPolicy.load('ppo_policy_trained_on_all_3x3')
+    #res = evaluate_policy(saved_policy, env, n_eval_episodes=20, reward_threshold=-100, warn=False, return_episode_rewards=True)
+    #print('Test result: avg rew:', res[0], 'std:', res[1])
+
+    res_det = evaluate_policy(saved_policy, env, n_eval_episodes=20, reward_threshold=-100, warn=False, return_episode_rewards=False, deterministic=True)
+    print('Test result (deterministic): avg rew:', res_det[0], 'std:', res_det[1])
+    res_nondet = evaluate_policy(saved_policy, env, n_eval_episodes=20, reward_threshold=-100, warn=False, return_episode_rewards=False, deterministic=False)
+    print('Test result (non-deterministic): avg rew:', res_nondet[0], 'std:', res_nondet[1])
+
+    np.set_printoptions(formatter={'float':"{0:0.2f}".format})
+
+    for i in range(10):
+        obs = env.reset()
+        print('\nInitial state:',env.state)
+        env.env.render(fname='test'+str(i))
+        done=False
+        while not done:
+            action_masks = get_action_masks(env)
+            action, _state = saved_policy.predict(obs, deterministic=True, action_masks=action_masks)
+            probs1 = F.softmax(saved_policy.get_distribution(obs[None].to(device)).log_prob(torch.tensor(env.neighbors[env.state[0]]).to(device)))
+            print('actions',[a for a in env.neighbors[env.state[0]]],'; probs:',probs1.detach().cpu().numpy(), 'chosen:', action)
+            obs, reward, done, info = env.step(action)
+            env.env.render(fname='test'+str(i))
+            if done:
+                env.env.render_eupaths(fname='test'+str(i)+'_final')
+
+                #probs1 = F.softmax(saved_policy.get_distribution(obs[None].to(device)).log_prob(torch.tensor(env.neighbors[env.state[0]]).to(device)))
+                # check (all nodes):
+                # probs2 = F.softmax(saved_policy.get_distribution(obs[None].to(device),action_masks=action_masks).log_prob(torch.tensor([i for i in range(33)]).to(device)))
+                obs = env.reset()

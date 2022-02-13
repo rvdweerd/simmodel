@@ -18,6 +18,18 @@ class PPO_ObsWrapper(ObservationWrapper):
         #self.observation_space
         #self.action_space
     
+    def getUpositions(self,t=0):
+        return self.env._getUpositions(t=0)
+        # upos = []
+        # for i,P_path in enumerate(self.u_paths):
+        #     p = P_path[-1] if t >= len(P_path) else P_path[t]
+        #     upos.append(p)
+        # return upos
+    
+    def action_masks(self):
+        m = self.env.action_masks() + [False] * (self.max_nodes - self.V)
+        return m
+
     def observation(self, observation):
         """convert observation."""
         p = self.max_nodes - self.V
