@@ -73,8 +73,8 @@ def CreateEnv(max_nodes=9):
     return env
 
 MAX_NODES=9
-env=get_super_env(Utrain=[1,2,3], Etrain=[0,1,2,3,4,5,6,7,8,9],max_nodes=9)
-#env=get_super_env(Utrain=[1], Etrain=[0],max_nodes=9)
+env=get_super_env(Utrain=[1,2,3], Etrain=[0,1,2,3,4,5,6,7,8,9],max_nodes=MAX_NODES)
+#env=get_super_env(Utrain=[1], Etrain=[0],max_nodes=MAX_NODES)
 EMB_DIM = 64
 EMB_ITER_T = 3
 NODE_DIM = env.F
@@ -204,12 +204,11 @@ class s2v_ACNetwork(nn.Module):
         global_state = self.theta6_pi(torch.sum(mu, dim=1, keepdim=True).repeat(1, self.num_nodes, 1))
         local_action = self.theta7_pi(mu)  # (batch_dim, nr_nodes, emb_dim)
         rep = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (batch_dim, nr_nodes, 2*emb_dim)
-        prob_logits = self.theta5_pi(rep).squeeze(dim=2) # (batch_dim, nr_nodes)
-        # mask invalid actions
-        #reachable_nodes = reachable_nodes.squeeze(dim=2).type(torch.BoolTensor)
-        #prob_logits[~reachable_nodes] = -torch.inf
-        #print(prob_logits)
-        return prob_logits # (bsize, num_nodes)
+        
+        # Extra linear layer in sb3?
+        prob_logits = self.theta5_pi(rep)#.squeeze(dim=2) # (batch_dim, nr_nodes)
+        return prob_logits # (bsize, num_nodes,1)
+        
         #return F.relu(prob_logits) # (bsize, num_nodes) TODO CHECK: extra nonlinearity useful?
 
     def forward_critic(self, features: torch.Tensor) -> torch.Tensor:
@@ -235,6 +234,7 @@ class s2v_ActorCriticPolicy(MaskableActorCriticPolicy):
         lr_schedule: Callable[[float], float],
         net_arch: Optional[List[Union[int, Dict[str, List[int]]]]] = None,
         activation_fn: Type[nn.Module] = nn.Tanh,
+        #max_num_nodes=5,
         *args,
         **kwargs,
     ):
@@ -252,9 +252,13 @@ class s2v_ActorCriticPolicy(MaskableActorCriticPolicy):
         # Disable orthogonal initialization
         self.ortho_init = False
         self.info = net_arch
+        #self.max_num_nodes=max_num_nodes
 
     def _build_mlp_extractor(self) -> None:
-        self.mlp_extractor = s2v_ACNetwork(self.features_dim, self.net_arch['max_num_nodes'], 1, self.net_arch['emb_dim'], self.net_arch['num_nodes'])
+        emb_dim=self.features_extractor_kwargs['emb_dim']
+        node_dim=self.features_extractor_kwargs['node_dim']
+        max_num_nodes=self.features_extractor_kwargs['num_nodes']
+        self.mlp_extractor = s2v_ACNetwork(self.features_dim, 1, 1, emb_dim, max_num_nodes)
         
         # emb_dim = self.features_extractor_kwargs['emb_dim']
         # emb_iter_T = self.features_extractor_kwargs['emb_iter_T']
@@ -265,8 +269,11 @@ class s2v_ActorCriticPolicy(MaskableActorCriticPolicy):
 policy_kwargs = dict(
     features_extractor_class=Struc2Vec,
     features_extractor_kwargs=dict(emb_dim=EMB_DIM, emb_iter_T=EMB_ITER_T, node_dim=NODE_DIM, num_nodes=MAX_NODES),
-    net_arch=dict(max_num_nodes=MAX_NODES, emb_dim=EMB_DIM, num_nodes=MAX_NODES)
-    
+    #net_arch=dict(max_num_nodes=MAX_NODES, emb_dim=EMB_DIM, num_nodes=MAX_NODES)
+    # NOTE: FOR THIS TO WORK, NEED TO ADJUST sb3 policies.py
+    #           def proba_distribution_net(self, latent_dim: int) -> nn.Module:
+    #       to create a linear layer that maps to 1-dim instead of self.action_dim
+    #       reason: our model is invariant to the action space (number of nodes in the graph) 
 )
 
 model = MaskablePPO(s2v_ActorCriticPolicy, env, \
@@ -327,7 +334,7 @@ class SimpleCallback(BaseCallback):
       return False # returns False, training stops.  
 
 print_parameters(model.policy)
-model.learn(total_timesteps = 100000, callback=TestCallBack())
+model.learn(total_timesteps = 150000, callback=TestCallBack())
 
 
 res = evaluate_policy(model, env, n_eval_episodes=20, reward_threshold=-15, warn=False, return_episode_rewards=False)
