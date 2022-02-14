@@ -73,6 +73,23 @@ class NFM_ev_ec_t_um_us():
             else:
                 eo.nfm[path[eo.local_t],3] += 1
 
+    def get_custom_nfm(self, eo, epath, targetnodes, upaths):
+        nfm = torch.zeros(eo.nfm0.shape,dtype=torch.float32)
+        local_t = len(epath)-1
+        if len(targetnodes) > 0:
+            #eo.nfm0[np.array(list(eo.sp.target_nodes)),2] = 1
+            nfm[torch.tensor(list(targetnodes),dtype=torch.int64),2] = 1.
+        for e in epath:
+            nfm[e,0] = 1 # visited nodes by e
+        nfm[epath[-1],1] = 1 # current e position
+        for path_index, path in enumerate(upaths): 
+            if local_t >= len(path)-1: #unit has settled
+                nfm[path[-1],4] += 1
+            else:
+                nfm[path[eo.local_t],3] += 1
+        return nfm
+
+
 class NFM_ev_ec_t_u():
     def __init__(self):
         self.name='nfm-ev-ec-t-u'

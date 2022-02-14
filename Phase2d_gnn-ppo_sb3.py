@@ -41,7 +41,7 @@ def get_super_env(Utrain=[1], Etrain=[4], max_nodes=9):
     for i in range(len(env_all_train)):
         env_all_train[i]=PPO_ObsWrapper(env_all_train[i], max_possible_num_nodes = max_nodes)        
         env_all_train[i]=PPO_ActWrapper(env_all_train[i])        
-    super_env = SuperEnv(env_all_train, max_possible_num_nodes = max_nodes)
+    super_env = SuperEnv(env_all_train, hashint2env, max_possible_num_nodes = max_nodes)
     #SimulateInteractiveMode(super_env)
     return super_env
 
@@ -314,15 +314,15 @@ class SimpleCallback(BaseCallback):
       print("callback - second call")
       return False # returns False, training stops.  
 
-train=True
+train=False
 eval=True
 if train:
     MAX_NODES=33
     EMB_DIM = 64
     EMB_ITER_T = 5
     #env=CreateEnv(world_name='Manhattan3x3_WalkAround', max_nodes=MAX_NODES)
-    env=get_super_env(Utrain=[1], Etrain=[0],max_nodes=MAX_NODES)
-    #env=get_super_env(Utrain=[1,2,3], Etrain=[0,1,2,3,4,5,6,7,8,9],max_nodes=MAX_NODES)
+    #env=get_super_env(Utrain=[1], Etrain=[0],max_nodes=MAX_NODES)
+    env=get_super_env(Utrain=[1,2,3], Etrain=[0,1,2,3,4,5,6,7,8,9],max_nodes=MAX_NODES)
     obs=env.reset()
     NODE_DIM = env.F
 
@@ -345,15 +345,42 @@ if train:
 
     print_parameters(model.policy)
     model.learn(total_timesteps = 300000, callback=TestCallBack())
-    model.save("ppo_trained_on_all_3x3")
+    model.save("results/gnn-ppo/sb3/test/ppo_trained_on_all_3x3")
     policy = model.policy
-    policy.save("ppo_policy_trained_on_all_3x3")    
+    policy.save("results/gnn-ppo/sb3/test/ppo_policy_trained_on_all_3x3")    
 
     res = evaluate_policy(model, env, n_eval_episodes=20, reward_threshold=-15, warn=False, return_episode_rewards=False)
     print('Test result: avg rew:', res[0], 'std:', res[1])
 
+def check_custom_position_probs(env,ppo_policy,hashint=None,entry=None,targetnodes=[1],epath=[4],upaths=[[6]]):    
+    if hashint is not None:
+        obs=env.reset(hashint, entry)
+    else:
+        obs=env.reset(entry=entry)
+    nfm = env.get_custom_nfm(epath,targetnodes,upaths)
+    p = MAX_NODES - env.sp.V
+    nfm = nn.functional.pad(nfm,(0,0,0,p))
+    print(nfm)
+    W = nn.functional.pad(env.sp.W,(0,p,0,p))
+    obs = torch.cat((nfm, W, torch.index_select(W, 1, torch.tensor(epath[-1]))),1)#.to(device)
+    reachable=np.zeros(env.sp.V).astype(np.bool)
+    idx=np.array(env.neighbors[epath[-1]]).astype(int)
+    reachable[idx]=True
+    action_masks=list(reachable)+[False]*p
+    action_masks=torch.tensor(action_masks,dtype=torch.bool)#.to(device)
 
+    action, _state = ppo_policy.predict(obs, deterministic=True, action_masks=action_masks)
+    probs1 = F.softmax(ppo_policy.get_distribution(obs[None].to(device)).log_prob(torch.tensor(env.neighbors[epath[-1]]).to(device)))
+    np.set_printoptions(formatter={'float':"{0:0.2f}".format})
+    print('actions',[a for a in env.neighbors[epath[-1]]],'; probs:',probs1.detach().cpu().numpy(), 'chosen:', action)
 
+    newsp=copy.deepcopy(env.sp)
+    newsp.target_nodes=targetnodes
+    fname='results/gnn-ppo/sb3/test/'+'hashint'+str(hashint)+'_target'+str(targetnodes)+'_epath'+str(epath)+'_upaths'+str(upaths)
+    PlotEUPathsOnGraph_(newsp,epath,upaths,filename=fname,fig_show=False,fig_save=True,goal_reached=False,last_step_only=False)
+
+from modules.rl.rl_plotting import PlotEUPathsOnGraph_
+import copy
 if eval:
     # nfm_funcs = {
     #     'NFM_ev_ec_t'       : NFM_ev_ec_t(),
@@ -374,15 +401,29 @@ if eval:
     EMB_DIM = 64
     EMB_ITER_T = 5
     #env=CreateEnv(world_name='Manhattan3x3_WalkAround', max_nodes=MAX_NODES)
-    env=get_super_env(Utrain=[1], Etrain=[4],max_nodes=MAX_NODES)
-    #env=CreateEnv(world_name='MetroU3_e17tborder_FixedEscapeInit', max_nodes=MAX_NODES)
+    #env=get_super_env(Utrain=[1], Etrain=[4],max_nodes=MAX_NODES)
+    env=CreateEnv(world_name='MetroU3_e17tborder_FixedEscapeInit', max_nodes=MAX_NODES)
     #env=CreateEnv(world_name='Manhattan3x3_WalkAround', max_nodes=MAX_NODES)
     #SimulateInteractiveMode(env,filesave_with_time_suffix=False)
-    obs=env.reset()
+    
+    
     NODE_DIM = env.F
 
     #model=PPO.load('ppo_trained_on_all_3x3')
-    saved_policy = s2v_ActorCriticPolicy.load('ppo_policy_trained_on_all_3x3')
+    saved_policy = s2v_ActorCriticPolicy.load('results/gnn-ppo/sb3/test/ppo_policy_trained_on_all_3x3')
+    #check_custom_position_probs(env,saved_policy,hashint=4041,entry=5,targetnodes=[1],  epath=[4],upaths=[[6]])
+    #check_custom_position_probs(env,saved_policy,hashint=4041,entry=5,targetnodes=[3],  epath=[4],upaths=[[6]])
+    #check_custom_position_probs(env,saved_policy,hashint=4041,entry=5,targetnodes=[6],  epath=[4],upaths=[[1]])
+    #check_custom_position_probs(env,saved_policy,hashint=4041,entry=5,targetnodes=[3],  epath=[4],upaths=[[1]])
+    
+    check_custom_position_probs(env,saved_policy,targetnodes=[8],epath=[1],upaths=[[6,3],[7,4]])
+
+    check_custom_position_probs(env,saved_policy,hashint=4041,entry=5,targetnodes=[2,7],epath=[4],upaths=[[5,2]])
+    check_custom_position_probs(env,saved_policy,hashint=4041,entry=5,targetnodes=[2,7],epath=[3,4],upaths=[[5,2]])
+    check_custom_position_probs(env,saved_policy,hashint=4041,entry=5,targetnodes=[2,7],epath=[4],upaths=[[2]])
+    check_custom_position_probs(env,saved_policy,hashint=4041,entry=5,targetnodes=[2,7],epath=[4],upaths=[[5]])
+
+
     #res = evaluate_policy(saved_policy, env, n_eval_episodes=20, reward_threshold=-100, warn=False, return_episode_rewards=True)
     #print('Test result: avg rew:', res[0], 'std:', res[1])
 
@@ -392,11 +433,12 @@ if eval:
     print('Test result (non-deterministic): avg rew:', res_nondet[0], 'std:', res_nondet[1])
 
     np.set_printoptions(formatter={'float':"{0:0.2f}".format})
-
+    fpath='results/gnn-ppo/sb3/'
     for i in range(10):
         obs = env.reset()
-        print('\nInitial state:',env.state)
-        env.env.render(fname='test'+str(i))
+        print('\nHashint: ',env.sp.hashint, ', entry:', env.current_entry)
+        print('Initial state:',env.state)
+        env.env.render(fname=fpath+'test'+str(i))
         done=False
         while not done:
             action_masks = get_action_masks(env)
@@ -404,9 +446,9 @@ if eval:
             probs1 = F.softmax(saved_policy.get_distribution(obs[None].to(device)).log_prob(torch.tensor(env.neighbors[env.state[0]]).to(device)))
             print('actions',[a for a in env.neighbors[env.state[0]]],'; probs:',probs1.detach().cpu().numpy(), 'chosen:', action)
             obs, reward, done, info = env.step(action)
-            env.env.render(fname='test'+str(i))
+            env.env.render(fname=fpath+'test'+str(i))
             if done:
-                env.env.render_eupaths(fname='test'+str(i)+'_final')
+                env.env.render_eupaths(fname=fpath+'test'+str(i)+'_final')
 
                 #probs1 = F.softmax(saved_policy.get_distribution(obs[None].to(device)).log_prob(torch.tensor(env.neighbors[env.state[0]]).to(device)))
                 # check (all nodes):

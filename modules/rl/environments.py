@@ -85,6 +85,9 @@ class GraphWorld(gym.Env):
         self.nfm_calculator.init(self)
         self.reset()
 
+    def get_custom_nfm(self, epath, targetnodes, upaths):
+        return self.nfm_calculator.get_custom_nfm(self, epath, targetnodes, upaths)
+
     def redefine_goal_nodes(self, goal_nodes):
         self.sp.target_nodes=goal_nodes
         self.sp.CalculateShortestPath()
@@ -480,15 +483,19 @@ register(
 )
 
 class SuperEnv(gym.Env):
-    def __init__(self, all_env, max_possible_num_nodes = 9):
+    def __init__(self, all_env, hashint2env, max_possible_num_nodes = 9):
         super(SuperEnv,self).__init__()
+        self.hashint2env = hashint2env
         self.max_num_nodes = max_possible_num_nodes
         self.all_env = all_env
         self.num_env = len(all_env)
         self.reset()
     
-    def reset(self, entry=None):
-        self.current_env_nr = random.randint(0, self.num_env-1)
+    def reset(self, hashint=None, entry=None):
+        if hashint == None:
+            self.current_env_nr = random.randint(0, self.num_env-1)
+        else:
+            self.current_env_nr = self.hashint2env[hashint]
         self.env = self.all_env[self.current_env_nr]
         obs = self.env.reset(entry=entry)
 
@@ -502,6 +509,9 @@ class SuperEnv(gym.Env):
         self._updateStepLevelData()
         return s,r,d,i
     
+    def get_custom_nfm(self, epath, targetnodes, upaths):
+        return self.env.get_custom_nfm(epath, targetnodes, upaths)
+
     def render(self, mode=None, fname=None, t_suffix=True, size=None):
         return self.env.render(mode,fname,t_suffix,size)
 
