@@ -100,7 +100,7 @@ if __name__ == '__main__':
     config['eps_min']       = 0.1
     epi_min                 = .9        # reach eps_min at % of episodes # .9
     config['eps_decay']     = 1 - np.exp(np.log(config['eps_min'])/(epi_min*config['num_episodes']))
-    rootdir='./results_Phase2/Pathfinding/'+ \
+    rootdir='./results_Phase2/Pathfinding/dqn/'+ \
                                 world_name+'/'+ \
                                 scenario_name
     config['logdir']        = rootdir + \

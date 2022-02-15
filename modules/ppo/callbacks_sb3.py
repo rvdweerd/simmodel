@@ -1,6 +1,15 @@
 from stable_baselines3.common.callbacks import BaseCallback
 from sb3_contrib.common.maskable.evaluation import evaluate_policy
 
+class TensorboardLoggingCallback(BaseCallback):
+    def __init__(self, verbose=0):
+        super(TensorboardLoggingCallback, self).__init__(verbose)
+    def _on_step(self):
+        self.logger.record('loss',1)
+         
+
+
+
 class TestCallBack(BaseCallback):
     def __init__(self, verbose=0):
         super(TestCallBack, self).__init__(verbose)
