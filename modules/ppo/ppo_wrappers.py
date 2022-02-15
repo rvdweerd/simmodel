@@ -30,6 +30,9 @@ class PPO_ObsWrapper(ObservationWrapper):
         m = self.env.action_masks() + [False] * (self.max_nodes - self.V)
         return m
 
+    def render(self, mode=None, fname=None, t_suffix=True, size=None):
+        return self.env.render(mode,fname,t_suffix,size)
+
     def observation(self, observation):
         """convert observation."""
         p = self.max_nodes - self.V
@@ -45,6 +48,8 @@ class PPO_ActWrapper(ActionWrapper):
         super().__init__(env)
         print('Wrapping the env with an action wrapper to redefine action inputs as node labels')
 
+    def render(self, mode=None, fname=None, t_suffix=True, size=None):
+        return self.env.render(mode,fname,t_suffix,size)
         
     def action(self, action):
         """convert action."""

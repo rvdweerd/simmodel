@@ -3,7 +3,7 @@ from itertools import product
 import random 
 import networkx as nx
 import pickle
-from modules.rl.environments import GraphWorld#, GraphWorldFromDatabank
+from modules.rl.environments import GraphWorld, VariableTargetGraphWorld#, GraphWorldFromDatabank
 import copy
 
 def rand_key(p):
@@ -188,11 +188,15 @@ def GetConfig(u=2):
     }
     return config
 
-def GetWorldSet(state_repr = 'et', state_enc  = 'tensors', U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_duplicates=True, nfm_func=None):
+def GetWorldSet(state_repr = 'et', state_enc  = 'tensors', U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_duplicates=True, nfm_func=None, variable_targets=False):
     config=GetConfig(u=2)#only needed to find datafile
     databank_full, register_full, solvable = LoadData(edge_blocking = edge_blocking)
     
-    env0 = GraphWorld(config, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
+    #env0 = GraphWorld(config, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
+    if variable_targets:
+        env0 = VariableTargetGraphWorld(config, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc,target_range=[1,2])
+    else:
+        env0 = GraphWorld(config, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
     env0.capture_on_edges = edge_blocking
     all_envs=[]
     hashint2env={}
@@ -204,17 +208,25 @@ def GetWorldSet(state_repr = 'et', state_enc  = 'tensors', U=[1,2,3], E=[i for i
             for W_, hashint, hashstr in register_full[e]:
             #W_, hashint, hashstr = random.choice(register_full[4])
             #for hashint, env_data in databank_full['U='+str(u)].items():
-                if hashint not in databank_full['U='+str(u)]:
+                remove_paths=False
+                u_=u
+                if 'U='+str(u_) not in databank_full:
+                    if hashint not in databank_full['U=1']:
+                        assert False
+                    u_=1
+                    env0.sp.U = u_
+                    remove_paths=True
+                if hashint not in databank_full['U='+str(u_)]:
                     assert False
-                env_data = databank_full['U='+str(u)][hashint] # dict contains  'register':{(e0,U0):index}, 'databank':[], 'iratios':[]
+                env_data = databank_full['U='+str(u_)][hashint] # dict contains  'register':{(e0,U0):index}, 'databank':[], 'iratios':[]
                 for entry in env_data['databank']:
-                    if len(entry['paths']) < u:
+                    if len(entry['paths']) < u_:
                         assert False
                 env=copy.deepcopy(env0)
                 env.redefine_graph_structure(env_data['W'],env_data['nodeid2coord'],new_nodeids=True)
                 env.reload_unit_paths(env_data['register'],env_data['databank'],env_data['iratios'])
                 env.redefine_nfm(nfm_func)
-                s = solvable['U='+str(u)][hashint]
+                s = solvable['U='+str(u_)][hashint]
                 env.sp.hashint = hashint
                 env.world_pool_solvable = s
                 valids = s #np.logical_and(np.logical_not(s),r)
@@ -229,6 +241,8 @@ def GetWorldSet(state_repr = 'et', state_enc  = 'tensors', U=[1,2,3], E=[i for i
                     assert False
                 if len(env.world_pool) > 0:
                     env.all_worlds = env.world_pool
+                    if remove_paths:
+                        env._remove_world_pool()
                     env.reset()
                     all_envs.append(env)
                     hashint2env[hashint]=len(all_envs)-1

@@ -1,5 +1,7 @@
 #from os import stat_result
 from typing import List, Optional
+
+from rdflib import Graph
 import modules.sim.simdata_utils as su
 import random 
 #import time
@@ -307,9 +309,19 @@ class GraphWorld(gym.Env):
             self.state0 =self.state
             pass
             #return
-        else:    
+        else:
+            if entry is not None:
+                assert self.databank['labels'][entry]['start_escape_route'] not in self.sp.target_nodes
             if entry==None:
-                entry = random.choice(self.world_pool) 
+                valid=False
+                count=0
+                while not valid:    
+                    entry = random.choice(self.world_pool)
+                    count+=1
+                    assert count < 1000
+                    if self.databank['labels'][entry]['start_escape_route'] not in self.sp.target_nodes:
+                        valid=True
+            
             self.current_entry=entry
             data_sample = self.databank['labels'][entry]
             self.iratio = self.iratios[entry]
@@ -357,7 +369,8 @@ class GraphWorld(gym.Env):
 
     def step(self, action_idx):
         # Take a step
-        assert self.state[0] not in self.sp.target_nodes
+        assert self.state[0] not in self.sp.target_nodes # can only happen if start position is on a target node
+
         info = {'Solved':False, 'Captured':False, 'u_positions':self.state[1:], 'Misc':None}
         prev_node=self.state[0]
         if action_idx >= len(self.neighbors[self.state[0]]): # account for invalid action choices
@@ -482,18 +495,42 @@ register(
     entry_point='modules.rl.environments:GraphWorld'
 )
 
+class VariableTargetGraphWorld(GraphWorld):
+    def __init__(self, config, optimization_method='static', fixed_initial_positions=None, state_representation='etUt', state_encoding='nodes', target_range=[1,1]):
+        self.min_num_targets=target_range[0]
+        self.max_num_targets=target_range[1]
+        super(VariableTargetGraphWorld,self).__init__(config, optimization_method='static', fixed_initial_positions=None, state_representation='etUt', state_encoding='nodes')
+    def reset(self, entry=None):
+        super(VariableTargetGraphWorld, self).reset(entry)
+        num_targets = random.randint(self.min_num_targets,self.max_num_targets)
+        pool = set(range(self.sp.V))
+        pool.remove(self.state[0])
+        assert num_targets <= len(pool)
+        new_targets = np.random.choice(list(pool),num_targets,replace=False)
+        self.redefine_goal_nodes(new_targets)
+
 class SuperEnv(gym.Env):
-    def __init__(self, all_env, hashint2env, max_possible_num_nodes = 9):
+    def __init__(self, all_env, hashint2env, max_possible_num_nodes = 9, probs=None):
         super(SuperEnv,self).__init__()
         self.hashint2env = hashint2env
         self.max_num_nodes = max_possible_num_nodes
         self.all_env = all_env
         self.num_env = len(all_env)
+        if probs == None:
+            self.probs = np.ones(self.num_env,dtype=np.float)/self.num_env
+        else:
+            assert len(probs) == self.num_env
+            self.probs = np.array(probs,dtype=np.float)
+            assert (self.probs<0).sum() == 0
+            if abs(self.probs.sum() - 1) > 1e-5:
+                print('probs dont sum up to 1, rescaling')
+                self.probs = self.probs / (self.probs).sum()
         self.reset()
     
     def reset(self, hashint=None, entry=None):
         if hashint == None:
-            self.current_env_nr = random.randint(0, self.num_env-1)
+            #self.current_env_nr = random.randint(0, self.num_env-1)
+            self.current_env_nr = int(np.random.choice(self.num_env, p=self.probs))
         else:
             self.current_env_nr = self.hashint2env[hashint]
         self.env = self.all_env[self.current_env_nr]

@@ -5,6 +5,7 @@ import torch
 #import torch.nn.functional as F
 from torch.distributions import Categorical
 #from torch import optim
+import torch.nn.functional as F
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 class Policy():
@@ -404,6 +405,34 @@ class EpsilonGreedyPolicySB3_PPO(Policy):
             all_actions = torch.tensor(self.all_actions).to(device)
             self.probs = torch.exp(self.model.policy.get_distribution(obs).log_prob(all_actions)).detach().cpu().numpy()
         return action, None
+
+class ActionMaskedPolicySB3_PPO(Policy):
+    def __init__(self, model, deterministic=True):
+        super().__init__('...')
+        self.deterministice=deterministic
+        self.model = model
+        self.reset_hidden_states()
+        self.__name__ = 'SB3_MaskedActionPPO'
+        self.probs = None
+        
+    def get_action_probs(self):
+        return self.probs.astype(np.float64)
+
+    def sample_greedy_action(self, obs, available_actions, printing=False):
+        with torch.no_grad():            
+            neighboring_nodes = obs[:,-1].nonzero().squeeze().to(device)
+            action_masks=obs[:,-1]
+            obs = obs[None,:]
+            action, _states = self.model.predict(obs, deterministic=True, action_masks=action_masks)
+            obs=obs.to(device)
+            
+            self.probs = F.softmax(self.model.get_distribution(obs).log_prob(neighboring_nodes)).detach().cpu().numpy()
+            if printing:
+                np.set_printoptions(formatter={'float':"{0:0.2f}".format})
+                print('available_actions:',neighboring_nodes.detach().cpu().numpy(),'prob',self.probs,'action',action)
+        return action, None
+
+
 
 class GNN_s2v_Policy(Policy):
     def __init__(self, qfunc):

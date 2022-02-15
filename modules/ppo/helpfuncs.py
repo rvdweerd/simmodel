@@ -25,7 +25,7 @@ nfm_funcs = {
     'NFM_ev_ec_t_um_us' : NFM_ev_ec_t_um_us(),
     }
 
-def get_super_env(Uselected=[1], Eselected=[4], config=None):
+def get_super_env(Uselected=[1], Eselected=[4], config=None, variable_targets=False):
     # scenario_name=config['scenario_name']
     #scenario_name = 'Train_U2E45'
     # world_name = 'SubGraphsManhattan3x3'
@@ -39,7 +39,7 @@ def get_super_env(Uselected=[1], Eselected=[4], config=None):
     reject_u_duplicates = False
 
     #databank_full, register_full, solvable = LoadData(edge_blocking = True)
-    env_all_train, hashint2env, env2hashint, env2hashstr = GetWorldSet(state_repr, state_enc, U=Uselected, E=Eselected, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func)
+    env_all_train, hashint2env, env2hashint, env2hashstr = GetWorldSet(state_repr, state_enc, U=Uselected, E=Eselected, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func, variable_targets=variable_targets)
     for i in range(len(env_all_train)):
         env_all_train[i]=PPO_ObsWrapper(env_all_train[i], max_possible_num_nodes = max_nodes)        
         env_all_train[i]=PPO_ActWrapper(env_all_train[i])        

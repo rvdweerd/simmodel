@@ -19,13 +19,15 @@ from modules.ppo.callbacks_sb3 import SimpleCallback, TestCallBack
 from modules.ppo.models_sb3 import s2v_ActorCriticPolicy, Struc2Vec
 #from typing import Callable, Dict, List, Optional, Tuple, Type, Union
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-from Phase2d_gnn_ppo_sb3_helpers import get_super_env, CreateEnv, eval_simple, evaluate_ppo
-
+from modules.ppo.helpfuncs import get_super_env, CreateEnv, eval_simple, evaluate_ppo
+from Phase2d_construct_sets import ConstructTrainSet
 if __name__ == '__main__':
-    train           =False
-    eval            =True
-    train_on        ='SubGraphsManhattan3x3'
-    solve_select    ='solvable'
+    train           =True
+    eval            =False
+    #train_on        ='SubGraphsManhattan3x3'
+    #train_on        = 'Manhattan5x5_VariableEscapeInit'
+    train_on        = 'ContructedSuperSet'
+    solve_select    ='both'
     edge_blocking   =True
     Utrain          =[1,2,3]
     Etrain          =[0,1,2,3,4,5,6,7,8,9]
@@ -33,27 +35,28 @@ if __name__ == '__main__':
     for i in Utrain: ustr+=str(i)
     estr=''
     for i in Etrain: estr+=str(i)
-    scenario_name   ='Train_U'+ustr+'E'+estr
-    nfm_func_name   ='NFM_ev_ec_t_um_us'
-    emb_dim         =64
-    emb_iter_T      =5
-    num_step        =3000
+    #scenario_name   = 'Train_U'+ustr+'E'+estr
+    scenario_name   = ''
+    nfm_func_name   = 'NFM_ev_ec_t_um_us'
+    emb_dim         = 64
+    emb_iter_T      =  5
+    num_step        = 500000#300000
     seed0           = 0
-    numseeds        =1
-    max_nodes       =33
+    numseeds        = 1
+    max_nodes       = 33
     config={}
-    config['train_on']=train_on
-    config['solve_select']=solve_select
-    config['edge_blocking']=edge_blocking
-    config['Utrain']=Utrain
-    config['Etrain']=Etrain
-    config['nfm_func_name']=nfm_func_name
-    config['emb_dim']=emb_dim
-    config['emb_iter_T']=emb_iter_T
-    config['num_step']=num_step
-    config['seed0']=seed0
-    config['numseeds']=numseeds
-    config['max_nodes']=max_nodes
+    config['train_on'] = train_on
+    config['solve_select'] = solve_select
+    config['edge_blocking'] = edge_blocking
+    config['Utrain'] = Utrain
+    config['Etrain'] = Etrain
+    config['nfm_func_name'] = nfm_func_name
+    config['emb_dim'] = emb_dim
+    config['emb_iter_T'] = emb_iter_T
+    config['num_step'] = num_step
+    config['seed0'] = seed0
+    config['numseeds'] = numseeds
+    config['max_nodes'] = max_nodes
 
     rootdir='results/results_Phase2/Pathfinding/ppo/'+train_on+'/'+solve_select+'_edgeblock'+str(edge_blocking)+'/'+scenario_name
     logdir=rootdir+'/'+\
@@ -70,8 +73,10 @@ if __name__ == '__main__':
         EMB_ITER_T = emb_iter_T
         TOTAL_TIME_STEPS = num_step
         #env=CreateEnv(world_name='Manhattan3x3_WalkAround', max_nodes=MAX_NODES)
-        env, _ = get_super_env(Uselected=Utrain, Eselected=Etrain, config=config)
-        
+        #env=CreateEnv(world_name=config['train_on'], max_nodes=MAX_NODES)
+        #env, _ = get_super_env(Uselected=Utrain, Eselected=Etrain, config=config)
+        env = ConstructTrainSet(config)
+
         obs=env.reset()
         NODE_DIM = env.F
 
@@ -166,7 +171,7 @@ if __name__ == '__main__':
             #logdir_ = logdir+'/SEED'+str(seed)
             saved_policy = s2v_ActorCriticPolicy.load(logdir+'/SEED'+str(seed)+"/saved_models/policy_last")
 
-            CREATE POLICY CLASS
+            #CREATE POLICY CLASS
 
             result = evaluate_ppo(logdir=logdir+'/SEED'+str(seed), policy=..., config=config, env_all=env_all_train, eval_subdir=evalName)
             num_unique_graphs, num_graph_instances, avg_return, success_rate = result
