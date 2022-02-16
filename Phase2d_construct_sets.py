@@ -123,5 +123,41 @@ def get_train_configs():
     config['RunC']['rootdir'] = rootdir
     config['RunC']['logdir'] = logdir
 
+    key='runD'
+    config[key]={}
+    config[key]['train_on']      = 'ContructedSuperSet'
+    config[key]['solve_select']  = 'solvable'
+    config[key]['edge_blocking'] = True
+    config[key]['scenario_name'] = ''
+    config[key]['nfm_func_name'] = 'NFM_ev_ec_t_um_us'
+    config[key]['s2v_layers']    = 2
+    config[key]['emb_dim']       = 128
+    config[key]['emb_iter_T']    = 5
+    config[key]['num_step']      = 500000
+    config[key]['seed0']         = 0
+    config[key]['numseeds']      = 1
+    config[key]['max_nodes']     = 33
+    rootdir, logdir = get_logdirs(config[key])
+    config[key]['rootdir'] = rootdir
+    config[key]['logdir'] = logdir
+
+    key='runE'
+    config[key]={}
+    config[key]['train_on']      = 'ContructedSuperSet'
+    config[key]['solve_select']  = 'solvable'
+    config[key]['edge_blocking'] = True
+    config[key]['scenario_name'] = ''
+    config[key]['nfm_func_name'] = 'NFM_ev_ec_t_um_us'
+    config[key]['s2v_layers']    = 2
+    config[key]['emb_dim']       = 128
+    config[key]['emb_iter_T']    = 7
+    config[key]['num_step']      = 500000
+    config[key]['seed0']         = 0
+    config[key]['numseeds']      = 1
+    config[key]['max_nodes']     = 33
+    rootdir, logdir = get_logdirs(config[key])
+    config[key]['rootdir'] = rootdir
+    config[key]['logdir'] = logdir
+
     return config
 

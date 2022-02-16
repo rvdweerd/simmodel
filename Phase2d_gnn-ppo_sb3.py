@@ -24,7 +24,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 if __name__ == '__main__':
     train_configs=get_train_configs()
-    config=train_configs['runA']
+    config=train_configs['runE']
     train           =True
     eval            =False
 

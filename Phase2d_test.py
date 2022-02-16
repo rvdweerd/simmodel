@@ -13,10 +13,12 @@ from modules.sim.simdata_utils import SimulateInteractiveMode_PPO
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 train_configs=get_train_configs()
-# Run A: Constructed trainset, n=500k, solvable=both https://github.com/rvdweerd/simmodel/blob/a39cda4ce18a33e843e89673ef24b064b7907003/Phase2d_construct_sets.py#L20
-# Run B:            ,,       , n=300k, solvable=both
-# Run C:            ,,       , n=300k, solvable=solvable
-config=train_configs['RunB']
+#  RunA: Constructed trainset, n=500k, sol=both https://github.com/rvdweerd/simmodel/blob/a39cda4ce18a33e843e89673ef24b064b7907003/Phase2d_construct_sets.py#L20
+#  RunB:            ,,       , n=300k, sol=both https://github.com/rvdweerd/simmodel/blob/5e8b82f7ed9427588d72b6b2dd2f90e61402c3ba/Phase2d_construct_sets.py#L20
+# *RunC:            ,,       , n=300k, sol=solvable https://github.com/rvdweerd/simmodel/blob/5e8b82f7ed9427588d72b6b2dd2f90e61402c3ba/Phase2d_construct_sets.py#L20
+#  RunD:            ,,       , n=500k, sol=solvable emb=128
+#  RunE:                     , n=500k, idem + iterT=7                    
+config=train_configs['RunC']
 
 #train_on ='SubGraphsManhattan3x3'
 # train_on ='Manhattan5x5_VariableEscapeInit'
