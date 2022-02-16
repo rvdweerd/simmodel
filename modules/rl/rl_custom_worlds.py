@@ -1,6 +1,6 @@
 import modules.sim.simdata_utils as su
 from modules.rl.rl_utils import CreateDuplicatesTrainsets
-from modules.rl.environments import GraphWorld, VariableTargetGraphWorld
+from modules.rl.environments import GraphWorld
 
 
     
@@ -83,17 +83,13 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         conf['make_reflexive']=make_reflexive
         env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
         return env
-    if world_name == 'Manhattan5x5_VariableEscapeInit' or world_name == 'Manhattan5x5_VariableEscapeInit_VarTargets':
+    if world_name == 'Manhattan5x5_VariableEscapeInit':
         configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
         conf=configs['Manhattan5']
         conf['direction_north']=False
         conf['loadAllStartingPositions']=True
         conf['make_reflexive']=make_reflexive
-        if world_name == 'Manhattan5x5_VariableEscapeInit':
-            env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
-        else:
-            env = VariableTargetGraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc, target_range=[1,5])
-
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
         return env
     if world_name == 'MetroU3_e17tborder_FixedEscapeInit':
         configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
@@ -140,19 +136,17 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         conf['loadAllStartingPositions']=False
         conf['make_reflexive']=make_reflexive
         assert conf['T'] == 25
+        conf['target_nodes']=[31]
         env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
-        env.sp.target_nodes=[31]
+        #env.sp.target_nodes=[31]
         return env
-    if world_name == 'SparseManhattan5x5' or world_name == 'SparseManhattan5x5_VarTargets':
+    if world_name == 'SparseManhattan5x5':
         configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
         conf=configs['SparseManhattan5x5']
         conf['direction_north']=False
         conf['loadAllStartingPositions']=False
         conf['make_reflexive']=make_reflexive
-        if world_name == 'SparseManhattan5x5':
-            env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
-        else:
-            env = VariableTargetGraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc,target_range=[1,3])
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
         return env
 
 def CreateWorlds(run_world_names, make_reflexive=True, state_repr='et', state_enc='nodes'):

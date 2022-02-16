@@ -428,6 +428,8 @@ class ActionMaskedPolicySB3_PPO(Policy):
             
             self.probs = F.softmax(self.model.get_distribution(obs).log_prob(neighboring_nodes)).detach().cpu().numpy()
             if printing:
+                for row in obs[0,:,:5]:
+                    print(row)
                 np.set_printoptions(formatter={'float':"{0:0.2f}".format})
                 print('available_actions:',neighboring_nodes.detach().cpu().numpy(),'prob',self.probs,'action',action)
         return action, None

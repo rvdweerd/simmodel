@@ -19,12 +19,12 @@ def ConstructTrainSet(config):
     
     solve_select_orig = config['solve_select']
     config['solve_select'] = 'solvable'
-    env, _ = get_super_env(Uselected=[0,1,2,3,4], Eselected=[6,7,8,9], config=config, variable_targets=False)
+    env, _ = get_super_env(Uselected=[0,1,2,3,4], Eselected=[6,7,8,9], config=config, variable_targets=None)
     global_env.append(env)
     config['solve_select'] = solve_select_orig
-    env, _ = get_super_env(Uselected=[0,1,2,3,4], Eselected=[0,1,2,3,4,5], config=config, variable_targets=False)
+    env, _ = get_super_env(Uselected=[0,1,2,3,4], Eselected=[0,1,2,3,4,5], config=config, variable_targets=None)
     global_env.append(env)
-    env, _ = get_super_env(Uselected=[0,1,2,3,4], Eselected=[0,1,2,3,4,5], config=config, variable_targets=True)
+    env, _ = get_super_env(Uselected=[0,1,2,3,4], Eselected=[0,1,2,3,4,5], config=config, variable_targets=None)
     global_env.append(env)
 
     world_names=[

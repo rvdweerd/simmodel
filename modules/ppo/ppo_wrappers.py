@@ -1,8 +1,30 @@
-from gym import ObservationWrapper, ActionWrapper
+from gym import ObservationWrapper, ActionWrapper, Wrapper
 from gym import spaces
 import torch
 import torch.nn as nn 
 import numpy as np
+import random
+class VarTargetWrapper(Wrapper):
+    def __init__(self, env, var_targets):
+        # var_targets: list [t1,t2] defines minimum of t1 and maximum of t2 nodes to be selected as target nodes
+        super().__init__(env)
+        print('Wrapping the env with an variable target wrapper')
+        self.min_num_targets = var_targets[0]
+        self.max_num_targets = var_targets[1]
+
+    def reset(self, **kwargs):
+        self.env.reset(**kwargs)
+        num_targets = random.randint(self.min_num_targets,self.max_num_targets)
+        pool = set(range(self.env.sp.V))
+        pool.remove(self.env.state[0])
+        assert num_targets <= len(pool)
+        new_targets = np.random.choice(list(pool),num_targets,replace=False)
+        self.env.redefine_goal_nodes(new_targets)
+        return self.env.obs
+    
+    def render(self, mode=None, fname=None, t_suffix=True, size=None):
+        return self.env.render(mode,fname,t_suffix,size)
+
 
 class PPO_ObsWrapper(ObservationWrapper):
     """Wrapper for stacking nfm|W|reachable nodes."""

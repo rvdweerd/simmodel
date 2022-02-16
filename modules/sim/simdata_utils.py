@@ -281,7 +281,10 @@ def DefineSimParameters(config):
         sp.start_escape_route = sp.nodeid2coord[17]
         sp.most_northern_y = 18
         sp.most_eastern_x = 21
-        sp.target_nodes = set([0,1,2,3,4,9,10,15,20,26,30,31])
+        if 'target_nodes' in config:
+            sp.target_nodes = config['target_nodes']
+        else:
+            sp.target_nodes = set([0,1,2,3,4,9,10,15,20,26,30,31])
         #sp.target_nodes = set([ 0,4,9,20])
     elif sp.graph_type == 'CircGraph':
         sp.G, sp.labels, sp.pos = CircGraph()#manhattan_graph(N)

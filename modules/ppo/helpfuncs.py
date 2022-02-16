@@ -8,7 +8,7 @@ from sb3_contrib.common.maskable.utils import get_action_masks
 from sb3_contrib.common.maskable.evaluation import evaluate_policy
 from modules.rl.rl_utils import EvaluatePolicy, EvalArgs1, EvalArgs2, GetFullCoverageSample
 from modules.gnn.nfm_gen import NFM_ec_t, NFM_ev_t, NFM_ev_ec_t, NFM_ev_ec_t_um_us, NFM_ev_ec_t_u
-from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsWrapper
+from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsWrapper, VarTargetWrapper
 from modules.sim.graph_factory import GetWorldSet, LoadData
 from modules.rl.environments import GraphWorld
 from modules.rl.rl_custom_worlds import GetCustomWorld
@@ -25,7 +25,7 @@ nfm_funcs = {
     'NFM_ev_ec_t_um_us' : NFM_ev_ec_t_um_us(),
     }
 
-def get_super_env(Uselected=[1], Eselected=[4], config=None, variable_targets=False):
+def get_super_env(Uselected=[1], Eselected=[4], config=None, variable_targets=None):
     # scenario_name=config['scenario_name']
     #scenario_name = 'Train_U2E45'
     # world_name = 'SubGraphsManhattan3x3'
@@ -47,7 +47,7 @@ def get_super_env(Uselected=[1], Eselected=[4], config=None, variable_targets=Fa
     #SimulateInteractiveMode(super_env)
     return super_env, env_all_train
 
-def CreateEnv(world_name, max_nodes=9):
+def CreateEnv(world_name, max_nodes=9, var_targets=None):
     #world_name='Manhattan3x3_WalkAround'
     state_repr='etUte0U0'
     state_enc='nfm'
@@ -61,6 +61,8 @@ def CreateEnv(world_name, max_nodes=9):
         env._remove_world_pool()
     #SimulateInteractiveMode(env,filesave_with_time_suffix=False)
     #MAX_NODES=9
+    if var_targets is not None:
+        env = VarTargetWrapper(env, var_targets)
     env = PPO_ObsWrapper(env, max_possible_num_nodes = max_nodes)        
     env = PPO_ActWrapper(env)        
     return env

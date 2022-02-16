@@ -94,6 +94,8 @@ class GraphWorld(gym.Env):
         self.sp.target_nodes=goal_nodes
         self.sp.CalculateShortestPath()
         self.nfm_calculator.init(self)
+        self.nfm_calculator.update(self)
+        self._refresh_obs()
 
     def redefine_graph_structure(self, W, in_nodeid2coord, new_nodeids=False):
         # W:          adjacency matrix (numpy array), based on some node ordering
@@ -349,6 +351,9 @@ class GraphWorld(gym.Env):
             self.nfm_calculator.reset(self)
 
         # Return initial state in appropriate form
+        return self._refresh_obs()
+
+    def _refresh_obs(self):
         if self.state_representation == 'etUt':
             self.obs = self._encode(self.state)
         elif self.state_representation == 'et':
@@ -428,16 +433,17 @@ class GraphWorld(gym.Env):
             self.nfm_calculator.update(self)
 
         # Return s',r',done,info (new state in appropriate form)
-        if self.state_representation == 'etUt':
-            self.obs = self._encode(self.state)#, reward, done, info
-        elif self.state_representation == 'et':
-            self.obs = self._encode((self.state[0],))#, reward, done, info
-        elif self.state_representation == 'etUte0U0':
-            self.obs = self._encode(self.state+self.state0)#, reward, done, info
-        elif self.state_representation == 'ete0U0':
-            self.obs = self._encode(tuple([self.state[0]])+self.state0)#, reward, done, info
-        else:
-            assert False
+        self._refresh_obs()
+        # if self.state_representation == 'etUt':
+        #     self.obs = self._encode(self.state)#, reward, done, info
+        # elif self.state_representation == 'et':
+        #     self.obs = self._encode((self.state[0],))#, reward, done, info
+        # elif self.state_representation == 'etUte0U0':
+        #     self.obs = self._encode(self.state+self.state0)#, reward, done, info
+        # elif self.state_representation == 'ete0U0':
+        #     self.obs = self._encode(tuple([self.state[0]])+self.state0)#, reward, done, info
+        # else:
+        #     assert False
         return self.obs, reward, done, info
 
     def render(self, mode=None, fname=None, t_suffix=True, size=None):#file_name=None):
@@ -495,19 +501,19 @@ register(
     entry_point='modules.rl.environments:GraphWorld'
 )
 
-class VariableTargetGraphWorld(GraphWorld):
-    def __init__(self, config, optimization_method='static', fixed_initial_positions=None, state_representation='etUt', state_encoding='nodes', target_range=[1,1]):
-        self.min_num_targets=target_range[0]
-        self.max_num_targets=target_range[1]
-        super(VariableTargetGraphWorld,self).__init__(config, optimization_method='static', fixed_initial_positions=None, state_representation='etUt', state_encoding='nodes')
-    def reset(self, entry=None):
-        super(VariableTargetGraphWorld, self).reset(entry)
-        num_targets = random.randint(self.min_num_targets,self.max_num_targets)
-        pool = set(range(self.sp.V))
-        pool.remove(self.state[0])
-        assert num_targets <= len(pool)
-        new_targets = np.random.choice(list(pool),num_targets,replace=False)
-        self.redefine_goal_nodes(new_targets)
+# class VariableTargetGraphWorld(GraphWorld):
+#     def __init__(self, config, optimization_method='static', fixed_initial_positions=None, state_representation='etUt', state_encoding='nodes', target_range=[1,1]):
+#         self.min_num_targets=target_range[0]
+#         self.max_num_targets=target_range[1]
+#         super(VariableTargetGraphWorld,self).__init__(config, optimization_method='static', fixed_initial_positions=None, state_representation='etUt', state_encoding='nodes')
+#     def reset(self, entry=None):
+#         super(VariableTargetGraphWorld, self).reset(entry)
+#         num_targets = random.randint(self.min_num_targets,self.max_num_targets)
+#         pool = set(range(self.sp.V))
+#         pool.remove(self.state[0])
+#         assert num_targets <= len(pool)
+#         new_targets = np.random.choice(list(pool),num_targets,replace=False)
+#         self.redefine_goal_nodes(new_targets)
 
 class SuperEnv(gym.Env):
     def __init__(self, all_env, hashint2env, max_possible_num_nodes = 9, probs=None):
