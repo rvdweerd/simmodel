@@ -23,7 +23,7 @@ def PolicyTest(env):
     s = env.reset()
     #print (torch.tensor(s,dtype=torch.float32).to(device))
     epg = EpsilonGreedyPolicyDQN(qnet, env, eps_0=1.0, eps_min=0., eps_cutoff=100)
-    a = epg.sample_action(s,env._availableActionsInCurrentState())
+    a = epg.sample_action(s,env.availableActionsInCurrentState())
     assert not torch.is_tensor(a)
     print('Policy test... [passed]')
 
@@ -38,7 +38,7 @@ def MemTest(env,capacity=10, num_episodes=3, print_output=True):
         s = env.reset()
         #a = env.action_space.sample()
         while True:
-            #a = random.choice(env._availableActionsInCurrentState())
+            #a = random.choice(env.availableActionsInCurrentState())
             a = random.randint(0,env.out_degree[env.state[0]]-1)
             s_next, r, done, _ = env.step(a)
 
@@ -74,7 +74,7 @@ def FastMemTest(env,capacity=10, num_episodes=3, print_output=True):
         s = env.reset()
         #a = env.action_space.sample()
         while True:
-            #a = random.choice(env._availableActionsInCurrentState())
+            #a = random.choice(env.availableActionsInCurrentState())
             a = random.randint(0,env.out_degree[env.state[0]]-1)
             s_next, r, done, _ = env.step(a)
 
@@ -105,7 +105,7 @@ def SeqMemTest(env, capacity=1000, num_episodes=1100, print_output=True):
         s = env.reset()
         #a = env.action_space.sample()
         while True:
-            #a = random.choice(env._availableActionsInCurrentState())
+            #a = random.choice(env.availableActionsInCurrentState())
             a = random.randint(0,env.out_degree[env.state[0]]-1)
             s_next, r, done, _ = env.step(a)
 

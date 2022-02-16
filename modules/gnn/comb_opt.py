@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from modules.dqn.dqn_utils import seed_everything
 from modules.rl.rl_policy import GNN_s2v_Policy, ShortestPathPolicy, EpsilonGreedyPolicy
 from modules.rl.rl_algorithms import q_learning_exhaustive
-from modules.rl.rl_utils import EvaluatePolicy, EvalArgs1, EvalArgs2, GetFullCoverageSample
+from modules.rl.rl_utils import EvaluatePolicy, EvalArgs1, EvalArgs2, EvalArgs3, GetFullCoverageSample
 from modules.sim.simdata_utils import SimulateInteractiveMode
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import connected_components
@@ -532,18 +532,28 @@ def evaluate_tabular(logdir, config, env_all):
     for k,v in config.items():
         printing(k+' '+str(v))
 
-def evaluate_spath_heuristic(logdir, config, env_all):
+def evaluate_spath_heuristic(logdir, config, env_all, n_eval=10000):
     R=[]
     S=[]
-    for i,env in enumerate(tqdm.tqdm(env_all)):
-        policy=ShortestPathPolicy(env,weights='equal')
-        env._encode = env._encode_tensor
-        l, returns, c, solves = EvaluatePolicy(env, policy,env.world_pool, print_runs=False, save_plots=False, logdir=logdir, eval_arg_func=EvalArgs1, silent_mode=True)
-        num_worlds_requested = 10
-        once_every = max(1,len(env_all)//num_worlds_requested)
-        if i % once_every ==0:
-            plotlist = GetFullCoverageSample(returns, env.world_pool, bins=10, n=15)
-            EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgs1, silent_mode=False, plot_each_timestep=False)
+    if type(env_all) == list:
+        for i,env in enumerate(tqdm.tqdm(env_all)):
+            policy=ShortestPathPolicy(env,weights='equal')
+            env._encode = env._encode_tensor
+            l, returns, c, solves = EvaluatePolicy(env, policy,env.world_pool, print_runs=False, save_plots=False, logdir=logdir, eval_arg_func=EvalArgs1, silent_mode=True)
+            num_worlds_requested = 10
+            once_every = max(1,len(env_all)//num_worlds_requested)
+            if i % once_every ==0:
+                plotlist = GetFullCoverageSample(returns, env.world_pool, bins=10, n=15)
+                EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgs1, silent_mode=False, plot_each_timestep=False)
+            R+=returns 
+            S+=solves
+    else:
+    # assume env_all is a superenv
+        policy=ShortestPathPolicy(env_all,weights='equal')
+        full_eval_list = [i for i in range(n_eval)]
+        plot_eval_list = [i for i in range(10)]
+        l, returns, c, solves = EvaluatePolicy(env_all, policy, full_eval_list, print_runs=False, save_plots=False, logdir=logdir, eval_arg_func=EvalArgs3, silent_mode=True)
+        EvaluatePolicy(env_all, policy, plot_eval_list, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgs3, silent_mode=False, plot_each_timestep=False)
         R+=returns 
         S+=solves
     
@@ -551,7 +561,8 @@ def evaluate_spath_heuristic(logdir, config, env_all):
     def printing(text):
         print(text)
         OF.write(text + "\n")
-    printing('Total unique graphs evaluated: '+str(len(env_all)))
+    ugraphs = str(len(env_all)) if type(env_all)==list else 'N/a'
+    printing('Total unique graphs evaluated: '+ugraphs)
     printing('Total instances evaluated: '+str(len(R))+' Avg reward: {:.2f}'.format(np.mean(R)))    
     num_solved=np.sum(S)
     success_rate = num_solved/len(S)
@@ -559,6 +570,8 @@ def evaluate_spath_heuristic(logdir, config, env_all):
     printing('---------------------------------------')
     for k,v in config.items():
         printing(k+' '+str(v))
+
+
 
 def evaluate(logdir, info=False, config=None, env_all=None, eval_subdir='.'):
     #Test(config)

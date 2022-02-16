@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn 
 import numpy as np
 import random
+
 class VarTargetWrapper(Wrapper):
     def __init__(self, env, var_targets):
         # var_targets: list [t1,t2] defines minimum of t1 and maximum of t2 nodes to be selected as target nodes
@@ -41,7 +42,7 @@ class PPO_ObsWrapper(ObservationWrapper):
         #self.action_space
     
     def getUpositions(self,t=0):
-        return self.env.getUpositions(t=0)
+        return self.env.getUpositions(t)
         # upos = []
         # for i,P_path in enumerate(self.u_paths):
         #     p = P_path[-1] if t >= len(P_path) else P_path[t]

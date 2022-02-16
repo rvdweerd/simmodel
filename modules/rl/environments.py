@@ -253,7 +253,7 @@ class GraphWorld(gym.Env):
             upos.append(p)
         return upos
 
-    def _availableActionsInCurrentState(self):
+    def availableActionsInCurrentState(self):
         return self.neighbors[self.state[0]]
 
     def _to_coords_from_state(self):
@@ -310,7 +310,8 @@ class GraphWorld(gym.Env):
             #return
         else:
             if entry is not None:
-                assert self.databank['labels'][entry]['start_escape_route'] not in self.sp.target_nodes
+                if self.databank['labels'][entry]['start_escape_route'] in self.sp.target_nodes:
+                    entry=None
             if entry==None:
                 valid=False
                 count=0
@@ -519,6 +520,7 @@ class SuperEnv(gym.Env):
         self.max_num_nodes = max_possible_num_nodes
         self.all_env = all_env
         self.num_env = len(all_env)
+        
         if probs == None:
             self.probs = np.ones(self.num_env,dtype=np.float)/self.num_env
         else:
@@ -537,6 +539,7 @@ class SuperEnv(gym.Env):
         else:
             self.current_env_nr = self.hashint2env[hashint]
         self.env = self.all_env[self.current_env_nr]
+        #obs = self.env.reset(entry=entry)
         obs = self.env.reset(entry=entry)
 
         self._updateGraphLevelData()
@@ -559,11 +562,17 @@ class SuperEnv(gym.Env):
         return self.env.render_epath(fname, t_suffix, size)
 
     def render_eupaths(self, mode=None, fname=None, t_suffix=True, size=None, last_step_only=False):
-        self.env.render_eupaths(mode, fname, t_suffix, size, last_step_only)
+        return self.env.render_eupaths(mode, fname, t_suffix, size, last_step_only)
 
     def action_masks(self):
         m = self.env.action_masks()# + [False] * (self.max_num_nodes - self.sp.V)
         return m
+
+    def observation(self, obs):
+        return self.env.observation(obs)
+
+    def availableActionsInCurrentState(self):
+        return self.env.availableActionsInCurrentState()
 
     def getUpositions(self, t=0):
         return self.env.getUpositions(t)
@@ -575,12 +584,15 @@ class SuperEnv(gym.Env):
         self.action_space = self.env.action_space
         self.neighbors = self.env.neighbors
         self.state_encoding = self.env.state_encoding
+        self.iratio = self.env.iratio
+        self.iratios = self.env.iratios
 
     def _updateInstanceLevelData(self):
         self.current_entry = self.env.current_entry
         self.u_paths = self.env.u_paths
+        self.max_timesteps = self.env.max_timesteps
+        self.state0 = self.env.state0
 
-    
     def _updateStepLevelData(self):
         self.global_t = self.env.global_t
         self.local_t = self.env.local_t        

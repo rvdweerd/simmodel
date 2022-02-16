@@ -279,3 +279,14 @@ class s2v_ActorCriticPolicy(MaskableActorCriticPolicy):
         # num_nodes = emb_dim = self.features_extractor_kwargs['num_nodes']
         # self.mlp_extractor = s2v_ACNetwork(self.features_dim, num_nodes, 1, emb_dim, num_nodes)        
         #self.net_arch['max_num_nodes']
+    def numTrainableParameters(self):
+        print('Qnet size:')
+        print('------------------------------------------')
+        total = 0
+        for name, p in self.named_parameters():
+            total += np.prod(p.shape)
+            print("{:24s} {:12s} requires_grad={}".format(name, str(list(p.shape)), p.requires_grad))
+        print("Total number of parameters: {}".format(total))
+        print('------------------------------------------')
+        assert total == sum(p.numel() for p in self.parameters() if p.requires_grad)
+        return total

@@ -20,7 +20,7 @@ class Policy():
         return self.sample_greedy_action(obs, available_actions)
     def sample_greedy_action(self, obs, available_actions):
         pass
-    def reset_hidden_states(self):
+    def reset_hidden_states(self, env=None):
         pass
     def reset_epsilon(self):
         pass
@@ -155,6 +155,12 @@ class ShortestPathPolicy(Policy):
             self.__name__ = 'ShortestPath'
         elif weights=='min_indegree':
             self.__name__ = 'MinInDegPath'
+    
+    def reset_hidden_states(self, env):
+        self.env = env
+        self.G = self.env.sp.G.to_directed()
+        self.cache={}
+    
     def _assign_weights(self):    
         for e in self.G.edges():
             v_label = self.env.sp.coord2labels[e[1]]
@@ -173,6 +179,8 @@ class ShortestPathPolicy(Policy):
             source_node_label = int(np.where(s[:self.env.sp.V]>0)[0])
         elif type(s) == tuple:
             source_node_label = s[0]
+        elif type(s) == torch.Tensor:
+            source_node_label = int(torch.where(s[:,1]>0)[0])
         if source_node_label not in self.cache:
             min_cost=1e12
             for target_node_label in self.env.sp.target_nodes:
@@ -188,6 +196,8 @@ class ShortestPathPolicy(Policy):
         next_node = self.env.sp.coord2labels[best_path[1]]
         action = self.env.neighbors[source_node_label].index(int(next_node))
         #print('----------')
+        if s.shape[0] == 33:
+            return next_node, None
         return action, None
 
 class EpsilonGreedyPolicyDQN(Policy):
@@ -271,7 +281,7 @@ class EpsilonGreedyPolicyDRQN(Policy):
         self.rng = np.random.RandomState(1)
         self.__name__ = 'EpsGreedy, DRQN'
     
-    def reset_hidden_states(self):
+    def reset_hidden_states(self, env=None):
         self.ht=torch.zeros(self.lstm_hidden_size)[None,None,:].to(device)
         self.ct=torch.zeros(self.lstm_hidden_size)[None,None,:].to(device)
 
@@ -330,7 +340,7 @@ class EpsilonGreedyPolicyLSTM_PPO(Policy):
         self.reset_hidden_states()
         self.__name__ = 'EpsGreedy, LSTM_PPO'
 
-    def reset_hidden_states(self):
+    def reset_hidden_states(self, env=None):
         self.lstm_hidden = (torch.zeros([1, 1, self.lstm_hidden_dim], dtype=torch.float), torch.zeros([1, 1, self.lstm_hidden_dim], dtype=torch.float))
 
     def sample_greedy_action(self, obs, available_actions):
@@ -363,7 +373,7 @@ class EpsilonGreedyPolicyLSTM_PPO2(Policy):
     def get_action_probs(self):
         return self.probs
 
-    def reset_hidden_states(self):
+    def reset_hidden_states(self, env=None):
         #self.lstm_hidden = (torch.zeros([1, 1, self.lstm_hidden_dim], dtype=torch.float), torch.zeros([1, 1, self.lstm_hidden_dim], dtype=torch.float))
         self.model.hidden_cell=None
 
@@ -428,10 +438,11 @@ class ActionMaskedPolicySB3_PPO(Policy):
             
             self.probs = F.softmax(self.model.get_distribution(obs).log_prob(neighboring_nodes),dim=0).detach().cpu().numpy()
             if printing:
-                for row in obs[0,:,:5]:
-                    print(row)
+                #for row in obs[0,:,:5]:
+                #    print(row)
+                ppo_value = self.model.predict_values(obs)
                 np.set_printoptions(formatter={'float':"{0:0.2f}".format})
-                print('available_actions:',neighboring_nodes.detach().cpu().numpy(),'prob',self.probs,'action',action)
+                print('available_actions:',neighboring_nodes.detach().cpu().numpy(),'prob',self.probs,'chosen action',action, 'estimated value of graph state:',ppo_value.detach().cpu().numpy(),end='')
         return action, None
 
 

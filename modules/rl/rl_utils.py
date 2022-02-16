@@ -18,12 +18,18 @@ def CalculateNumTrainableParameters(model):
 def EvalArgs1(env):
     # arguments of the call to the policy class that samples an action
     # this is the default
-    return env.obs, env._availableActionsInCurrentState()
+    return env.obs, env.availableActionsInCurrentState()
 
 def EvalArgs2(env):
     # arguments of the call to the policy class that samples an action
     # this version is used for GNNs
     return env.nfm, env.sp.W, env.neighbors[env.state[0]]
+
+def EvalArgs3(env):
+    # arguments of the call to the policy class that samples an action
+    # this is the default
+    return env.observation(None), env.availableActionsInCurrentState()
+
 
 def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, logdir='./temp', has_Q_table=False, eval_arg_func=EvalArgs1, silent_mode=False, plot_each_timestep=True):
     # Escaper chooses random neighboring nodes until temination
@@ -71,7 +77,7 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
     if len(test_set)==0: test_set=[None]
     for i, entry in enumerate(test_set):
         s=env.reset(entry = entry) 
-        policy.reset_hidden_states()
+        policy.reset_hidden_states(env)
         iratios_sampled.append(env.iratio)
         done=False
         text_cache=""
@@ -91,7 +97,7 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
                 plot=env.render_eupaths(fname=None, last_step_only=True)
                 plot_cache.append(plot)
             s_start=env.state
-            #action,_ = policy.sample_action(s, env._availableActionsInCurrentState())
+            #action,_ = policy.sample_action(s, env.availableActionsInCurrentState())
             #action,_ = policy.sample_action(env.nfm, env.sp.W, env.neighbors[env.state[0]])
             action,_ = policy.sample_action(*eval_arg_func(env))
             action_probs = policy.get_action_probs()
@@ -312,7 +318,7 @@ def print_parameters(model):
     assert total == sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 class NpWrapper(gym.ObservationWrapper):
-    def _availableActionsInCurrentState(self):
+    def availableActionsInCurrentState(self):
         return None
     def observation(self, observation):
         obs = np.array(observation).astype(np.float64)

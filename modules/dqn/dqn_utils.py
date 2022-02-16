@@ -302,7 +302,7 @@ def run_episodes(train, policy, memory, env, num_episodes, batch_size, discount_
         R=0
         while True:
             # Run one episode
-            action_idx, next_node = policy.sample_action(state,env._availableActionsInCurrentState())
+            action_idx, next_node = policy.sample_action(state,env.availableActionsInCurrentState())
             s_next, r, done, _ = env.step(action_idx)
             if noise:
                 s_next += np.random.rand(env.state_encoding_dim)/env.state_encoding_dim

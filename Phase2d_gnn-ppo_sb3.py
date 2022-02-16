@@ -1,48 +1,42 @@
-#import argparse
-#import gym
-#import wandb
+import argparse
 import numpy as np
 import torch
-#import torch.nn as nn 
-#import torch.nn.functional as F
-#from wandb.integration.sb3 import WandbCallback
-#from stable_baselines3.common.env_checker import check_env
-#from stable_baselines3.common.callbacks import EvalCallback
-#from stable_baselines3.common.vec_env import DummyVecEnv
-#from stable_baselines3 import PPO
 from sb3_contrib import MaskablePPO
-#from modules.gnn.comb_opt import evaluate_spath_heuristic
+from modules.gnn.comb_opt import evaluate_spath_heuristic
 from modules.rl.rl_utils import EvaluatePolicy, print_parameters, GetFullCoverageSample, NpWrapper
 from modules.ppo.helpfuncs import get_super_env, CreateEnv, eval_simple, evaluate_ppo, get_logdirs
 from modules.ppo.callbacks_sb3 import SimpleCallback, TestCallBack
 from modules.ppo.models_sb3 import s2v_ActorCriticPolicy, Struc2Vec
+from modules.rl.rl_policy import ActionMaskedPolicySB3_PPO
+from modules.rl.environments import SuperEnv
+from modules.sim.simdata_utils import SimulateInteractiveMode_PPO
 from Phase2d_construct_sets import ConstructTrainSet, get_train_configs
-#from modules.sim.simdata_utils import SimulateInteractiveMode
-#import modules.sim.simdata_utils as su
-#from typing import Callable, Dict, List, Optional, Tuple, Type, Union
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 if __name__ == '__main__':
-    train_configs=get_train_configs()
-    config=train_configs['runE']
-    train           =True
-    eval            =False
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)    
+    parser.add_argument('--run_name', type=str)
+    args=parser.parse_args()
+    run_name = args.run_name
+    
+    train_configs=get_train_configs(run_name,load_trainset=True)
+    config=train_configs[run_name]
+    train = True
+    eval  = True
+
+    MAX_NODES = config['max_nodes']
+    EMB_DIM = config['emb_dim']
+    EMB_ITER_T = config['emb_iter_T']
+    TOTAL_TIME_STEPS = config['num_step']
+    SEED0 = config['seed0']
+    NUMSEEDS = config['numseeds']
+    LOGDIR = config['logdir']
+    NODE_DIM = config['node_dim']
+    env_train = config['env_train']
 
     if train:
-        MAX_NODES = config['max_nodes']
-        EMB_DIM = config['emb_dim']
-        EMB_ITER_T = config['emb_iter_T']
-        TOTAL_TIME_STEPS = config['num_step']
-        SEED0 = config['seed0']
-        NUMSEEDS = config['numseeds']
-        LOGDIR=config['logdir']
-        #env=CreateEnv(world_name='Manhattan3x3_WalkAround', max_nodes=MAX_NODES)
-        #env=CreateEnv(world_name=config['train_on'], max_nodes=MAX_NODES)
-        #env, _ = get_super_env(Uselected=Utrain, Eselected=Etrain, config=config)
-        env = ConstructTrainSet(config)
-
-        obs=env.reset()
-        NODE_DIM = env.F
+        obs=env_train.reset()
+        assert NODE_DIM == env_train.F
 
         policy_kwargs = dict(
             features_extractor_class = Struc2Vec,
@@ -56,28 +50,11 @@ if __name__ == '__main__':
         for seed in range(SEED0, SEED0+NUMSEEDS):
             logdir_ = LOGDIR+'/SEED'+str(seed)
 
-            # eval_callback = EvalCallback(
-            #     env_eval,
-            #     best_model_save_path=logdir_+'./evalcallbacklogs/',
-            #     log_path=logdir_+'/evalcallbacklogs/', eval_freq=1000,
-            #     deterministic=True,
-            #     render=False)
-            # run = wandb.init(
-            #     project="sb3",
-            #     config={'config1':1, 'config2':2},
-            #     sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics
-            #     # monitor_gym=True,  # auto-upload the videos of agents playing the game
-            #     # save_code=True,  # optional
-            # )
-            # wandb_callback=WandbCallback(
-            #     model_save_path=f"models/{run.id}",
-            #     verbose=2,
-            #     gradient_save_freq=100,
-            # )
 
-            model = MaskablePPO(s2v_ActorCriticPolicy, env, \
+            model = MaskablePPO(s2v_ActorCriticPolicy, env_train, \
                 #learning_rate=1e-4,\
-                seed=seed,\
+                seed=seed, \
+                batch_size=128, \
                 #clip_range=0.1,\    
                 #max_grad_norm=0.1,\
                 policy_kwargs = policy_kwargs, verbose=2, tensorboard_log=logdir_+"/tb/")
@@ -89,151 +66,140 @@ if __name__ == '__main__':
             model.policy.save(logdir_+"/saved_models/policy_last")    
 
     if eval:
-        # nfm_funcs = {
-        #     'NFM_ev_ec_t'       : NFM_ev_ec_t(),
-        #     'NFM_ec_t'          : NFM_ec_t(),
-        #     'NFM_ev_t'          : NFM_ev_t(),
-        #     'NFM_ev_ec_t_u'     : NFM_ev_ec_t_u(),
-        #     'NFM_ev_ec_t_um_us' : NFM_ev_ec_t_um_us(),
-        # }
-        # nfm_func=nfm_funcs[args.nfm_func]
-        # edge_blocking = args.edge_blocking
-        # solve_select = 'solvable' # only solvable worlds (so best achievable performance is 100%)
-
-        # world_name='MetroU3_e17tborder_FixedEscapeInit'
-        # scenario_name='TrainMetro'
-        # state_repr='etUte0U0'
-        # state_enc='nfm'
-        #MAX_NODES=max_nodes
-        #EMB_DIM = emb_dim
-        #EMB_ITER_T = emb_iter_T
-
-        #env=CreateEnv(world_name='Manhattan3x3_WalkAround', max_nodes=MAX_NODES)
-        #env=get_super_env(Utrain=[1], Etrain=[4],max_nodes=MAX_NODES)
-        #env=CreateEnv(world_name='MetroU3_e17tborder_FixedEscapeInit', max_nodes=MAX_NODES)
-        #env=CreateEnv(world_name='Manhattan3x3_WalkAround', max_nodes=MAX_NODES)
-        #SimulateInteractiveMode(env,filesave_with_time_suffix=False)
-        #NODE_DIM = env.F
-        #model=PPO.load('ppo_trained_on_all_3x3')
-        #check_custom_position_probs(env,saved_policy,hashint=4041,entry=5,targetnodes=[1],  epath=[4],upaths=[[6]], max_nodes=MAX_NODES)
-        #res = evaluate_policy(saved_policy, env, n_eval_episodes=20, reward_threshold=-100, warn=False, return_episode_rewards=True)
-        #print('Test result: avg rew:', res[0], 'std:', res[1])
-        #eval_simple(saved_policy,env)
-
-        #_, env_all_train = get_super_env(Uselected=Utrain, Eselected=Etrain, config=config)
-        _, env_all_train = get_super_env(Uselected=[1], Eselected=[0], config=config)
-
         evalResults={}
-        #evaluate_spath_heuristic(logdir=rootdir+'/heur/spath', config=config, env_all=env_all_train)
-        # Evaluate on the full training set
-        evalName='trainset_eval'
-        evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
+        test_heuristics              = False
+        test_full_trainset           = False
+        test_full_solvable_3x3subs   = True
+        test_all_solvable_3x3segments= True
+        test_other_worlds            = True
 
-
-        for seed in range(SEED0, SEED0+NUMSEEDS):
-            #logdir_ = logdir+'/SEED'+str(seed)
-            saved_policy = s2v_ActorCriticPolicy.load(LOGDIR+'/SEED'+str(seed)+"/saved_models/policy_last")
-
-            #CREATE POLICY CLASS
-
-            result = evaluate_ppo(logdir=LOGDIR+'/SEED'+str(seed), policy=..., config=config, env_all=env_all_train, eval_subdir=evalName)
-            num_unique_graphs, num_graph_instances, avg_return, success_rate = result
-            evalResults[evalName]['num_graphs.........'].append(num_unique_graphs)
-            evalResults[evalName]['num_graph_instances'].append(num_graph_instances)
-            evalResults[evalName]['avg_return.........'].append(avg_return)
-            evalResults[evalName]['success_rate.......'].append(success_rate)
-
-        # Evaluate on the full evaluation set
-        evalName='testset_eval'
-        evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
-        Utest=[0,1,2,3]
-        Etest=[0,1,2,3,4,5,6,7,8,9,10]
-        _, env_all_test = get_super_env(Uselected=Utest, Eselected=Etest, config=config)
-        for seed in range(SEED0, SEED0+NUMSEEDS):
-            result = evaluate_ppo(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=env_all_test, eval_subdir=evalName)
-            num_unique_graphs, num_graph_instances, avg_return, success_rate = result
-            evalResults[evalName]['num_graphs.........'].append(num_unique_graphs)
-            evalResults[evalName]['num_graph_instances'].append(num_graph_instances)
-            evalResults[evalName]['avg_return.........'].append(avg_return)
-            evalResults[evalName]['success_rate.......'].append(success_rate)
+        if test_heuristics:
+            # Evaluate using shortest path heuristics on the full trainset
+            evaluate_spath_heuristic(logdir=config['rootdir']+'/heur/spath', config=config, env_all=env_train)
         
-        # Evaluate on each individual segment of the evaluation set
-        evalName='graphsegments_eval'
-        evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
-        for seed in range(SEED0, SEED0+NUMSEEDS):
-            success_matrix   =[]
-            num_graphs_matrix=[]
-            instances_matrix =[]
-            returns_matrix   =[]
-            for u in Utest:
-                success_vec   =[]
-                num_graphs_vec=[]
-                instances_vec =[]
-                returns_vec   =[]
-                for e in Etest:
-                    _, env_all_test = get_super_env(Uselected=[u], Eselected=[e], config=config)
-                    result = evaluate_ppo(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=env_all_test, eval_subdir=evalName+'/runs/'+'E'+str(e)+'U'+str(u))
-                    num_unique_graphs, num_graph_instances, avg_return, success_rate = result         
-                    success_vec.append(success_rate)
-                    num_graphs_vec.append(num_unique_graphs)
-                    instances_vec.append(num_graph_instances)
-                    returns_vec.append(avg_return)
-                success_matrix.append(success_vec)
-                num_graphs_matrix.append(num_graphs_vec)
-                instances_matrix.append(instances_vec)
-                returns_matrix.append(returns_vec)
-            OF = open(config['logdir']+'/SEED'+str(seed)+'/'+evalName+'/success_matrix.txt', 'w')
-            def printing(text):
-                print(text)
-                OF.write(text + "\n")    
-            success_matrix = np.array(success_matrix)
-            returns_matrix = np.array(returns_matrix)
-            num_graphs_matrix = np.array(num_graphs_matrix)
-            instances_matrix = np.array(instances_matrix)
-            weighted_return = (returns_matrix * instances_matrix).sum() / instances_matrix.sum()
-            weighted_success_rate = (success_matrix * instances_matrix).sum() / instances_matrix.sum()
-            np.set_printoptions(formatter={'float':"{0:0.3f}".format})
-            printing('success_matrix:')
-            printing(str(success_matrix))
-            printing('\nreturns_matrix:')
-            printing(str(returns_matrix))
-            printing('\nnum_graphs_matrix:')
-            printing(str(num_graphs_matrix))
-            printing('\ninstances_matrix:')
-            printing(str(instances_matrix))
-            printing('\nWeighted return: '+str(weighted_return))
-            printing('Weighted success rate: '+str(weighted_success_rate))
-            OF.close()
-            evalResults[evalName]['num_graphs.........'].append(num_graphs_matrix.sum())
-            evalResults[evalName]['num_graph_instances'].append(instances_matrix.sum())
-            evalResults[evalName]['avg_return.........'].append(weighted_return)
-            evalResults[evalName]['success_rate.......'].append(weighted_success_rate)
-
-        #
-        #   Evaluate learned model on another (out of distribution) graph
-        #
-        world_names=[
-            'Manhattan5x5_FixedEscapeInit',
-            'Manhattan5x5_VariableEscapeInit',
-            'MetroU3_e17tborder_FixedEscapeInit',
-            'SparseManhattan5x5',
-        ]
-        state_repr='etUte0U0'
-        state_enc='nfm'
-        for world_name in world_names:
-            evalName=world_name[:16]+'_eval'
+        if test_full_trainset:
+            # Evaluate on the full training set
+            evalName='trainset_eval'
             evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
-            
-            custom_env=CreateEnv(world_name=world_name, max_nodes=config['max_nodes'])
-            #custom_env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
-            #custom_env.redefine_nfm(nfm_func)
+
             for seed in range(SEED0, SEED0+NUMSEEDS):
-                result = evaluate_ppo(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=[custom_env], eval_subdir=evalName)
+                saved_policy = s2v_ActorCriticPolicy.load(LOGDIR+'/SEED'+str(seed)+"/saved_models/policy_last")
+                policy = ActionMaskedPolicySB3_PPO(saved_policy, deterministic=True)
+
+                result = evaluate_ppo(logdir=LOGDIR+'/SEED'+str(seed), policy=policy, config=config, env=env_train, eval_subdir=evalName, n_eval=5000)
                 num_unique_graphs, num_graph_instances, avg_return, success_rate = result
                 evalResults[evalName]['num_graphs.........'].append(num_unique_graphs)
                 evalResults[evalName]['num_graph_instances'].append(num_graph_instances)
                 evalResults[evalName]['avg_return.........'].append(avg_return)
                 evalResults[evalName]['success_rate.......'].append(success_rate)
+
+        if test_full_solvable_3x3subs:
+            # Evaluate on the full evaluation set
+            evalName='3x3full_testset_eval'
+            evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
+            Utest=[0,1,2,3]
+            Etest=[0,1,2,3,4,5,6,7,8,9]
+            config['solve_select']='solvable'
+            _, env_all_test = get_super_env(Uselected=Utest, Eselected=Etest, config=config)
+         
+            for seed in range(SEED0, SEED0+NUMSEEDS):
+                saved_policy = s2v_ActorCriticPolicy.load(LOGDIR+'/SEED'+str(seed)+"/saved_models/policy_last")
+                policy = ActionMaskedPolicySB3_PPO(saved_policy, deterministic=True)
+
+                result = evaluate_ppo(logdir=config['logdir']+'/SEED'+str(seed), policy=policy, config=config, env=env_all_test, eval_subdir=evalName)
+                num_unique_graphs, num_graph_instances, avg_return, success_rate = result
+                evalResults[evalName]['num_graphs.........'].append(num_unique_graphs)
+                evalResults[evalName]['num_graph_instances'].append(num_graph_instances)
+                evalResults[evalName]['avg_return.........'].append(avg_return)
+                evalResults[evalName]['success_rate.......'].append(success_rate)
+        
+        if test_all_solvable_3x3segments:
+            # Evaluate on each individual segment of the evaluation set
+            Utest=[0,1,2,3]
+            Etest=[0,1,2,3,4,5,6,7,8,9]
+            evalName='graphsegments_eval'
+            config['solve_select']='solvable'
+            evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
+            for seed in range(SEED0, SEED0+NUMSEEDS):
+                saved_policy = s2v_ActorCriticPolicy.load(LOGDIR+'/SEED'+str(seed)+"/saved_models/policy_last")
+                policy = ActionMaskedPolicySB3_PPO(saved_policy, deterministic=True)
+                success_matrix   =[]
+                num_graphs_matrix=[]
+                instances_matrix =[]
+                returns_matrix   =[]
+                for u in Utest:
+                    success_vec   =[]
+                    num_graphs_vec=[]
+                    instances_vec =[]
+                    returns_vec   =[]
+                    for e in Etest:
+                        _, env_all_test = get_super_env(Uselected=[u], Eselected=[e], config=config)
+                        result = evaluate_ppo(logdir=config['logdir']+'/SEED'+str(seed), policy=policy, config=config, env=env_all_test, eval_subdir=evalName+'/runs/'+'E'+str(e)+'U'+str(u))
+                        num_unique_graphs, num_graph_instances, avg_return, success_rate = result         
+                        success_vec.append(success_rate)
+                        num_graphs_vec.append(num_unique_graphs)
+                        instances_vec.append(num_graph_instances)
+                        returns_vec.append(avg_return)
+                    success_matrix.append(success_vec)
+                    num_graphs_matrix.append(num_graphs_vec)
+                    instances_matrix.append(instances_vec)
+                    returns_matrix.append(returns_vec)
+                OF = open(config['logdir']+'/SEED'+str(seed)+'/'+evalName+'/success_matrix.txt', 'w')
+                def printing(text):
+                    print(text)
+                    OF.write(text + "\n")    
+                success_matrix = np.array(success_matrix)
+                returns_matrix = np.array(returns_matrix)
+                num_graphs_matrix = np.array(num_graphs_matrix)
+                instances_matrix = np.array(instances_matrix)
+                weighted_return = (returns_matrix * instances_matrix).sum() / instances_matrix.sum()
+                weighted_success_rate = (success_matrix * instances_matrix).sum() / instances_matrix.sum()
+                np.set_printoptions(formatter={'float':"{0:0.3f}".format})
+                printing('success_matrix:')
+                printing(str(success_matrix))
+                printing('\nreturns_matrix:')
+                printing(str(returns_matrix))
+                printing('\nnum_graphs_matrix:')
+                printing(str(num_graphs_matrix))
+                printing('\ninstances_matrix:')
+                printing(str(instances_matrix))
+                printing('\nWeighted return: '+str(weighted_return))
+                printing('Weighted success rate: '+str(weighted_success_rate))
+                OF.close()
+                evalResults[evalName]['num_graphs.........'].append(num_graphs_matrix.sum())
+                evalResults[evalName]['num_graph_instances'].append(instances_matrix.sum())
+                evalResults[evalName]['avg_return.........'].append(weighted_return)
+                evalResults[evalName]['success_rate.......'].append(weighted_success_rate)
+
+        #
+        #   Evaluate learned model on another (out of distribution) graph
+        #
+        if test_other_worlds:
+            world_names=[
+                'SparseManhattan5x5',
+                'MetroU3_e17tborder_FixedEscapeInit',
+                'Manhattan5x5_FixedEscapeInit',
+                'Manhattan5x5_VariableEscapeInit',
+            ]
+            state_repr='etUte0U0'
+            state_enc='nfm'
+            for world_name in world_names:
+                evalName=world_name[:16]+'_eval'
+                evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
+                
+                custom_env=CreateEnv(world_name=world_name, max_nodes=config['max_nodes'])
+                #custom_env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
+                #custom_env.redefine_nfm(nfm_func)
+                for seed in range(SEED0, SEED0+NUMSEEDS):
+                    saved_policy = s2v_ActorCriticPolicy.load(LOGDIR+'/SEED'+str(seed)+"/saved_models/policy_last")
+                    policy = ActionMaskedPolicySB3_PPO(saved_policy, deterministic=True)
+
+                    result = evaluate_ppo(logdir=config['logdir']+'/SEED'+str(seed), policy=policy, config=config, env=[custom_env], eval_subdir=evalName)
+                    num_unique_graphs, num_graph_instances, avg_return, success_rate = result
+                    evalResults[evalName]['num_graphs.........'].append(num_unique_graphs)
+                    evalResults[evalName]['num_graph_instances'].append(num_graph_instances)
+                    evalResults[evalName]['avg_return.........'].append(avg_return)
+                    evalResults[evalName]['success_rate.......'].append(success_rate)
 
         for ename, results in evalResults.items():
             OF = open(config['logdir']+'/Results_over_seeds_'+ename+'.txt', 'w')

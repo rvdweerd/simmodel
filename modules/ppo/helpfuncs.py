@@ -6,7 +6,7 @@ import copy
 import tqdm
 from sb3_contrib.common.maskable.utils import get_action_masks
 from sb3_contrib.common.maskable.evaluation import evaluate_policy
-from modules.rl.rl_utils import EvaluatePolicy, EvalArgs1, EvalArgs2, GetFullCoverageSample
+from modules.rl.rl_utils import EvaluatePolicy, EvalArgs1, EvalArgs2, EvalArgs3, GetFullCoverageSample
 from modules.gnn.nfm_gen import NFM_ec_t, NFM_ev_t, NFM_ev_ec_t, NFM_ev_ec_t_um_us, NFM_ev_ec_t_u
 from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsWrapper, VarTargetWrapper
 from modules.sim.graph_factory import GetWorldSet, LoadData
@@ -121,24 +121,31 @@ def eval_simple(saved_policy,env):
                 obs = env.reset()
 
 
-def evaluate_ppo(logdir, policy, info=False, config=None, env_all=None, eval_subdir='.'):
-    #Test(config)
-    if env_all==None or len(env_all)==0:
-        return 0,0,0,0
-    
+def evaluate_ppo(logdir, policy, info=False, config=None, env=None, eval_subdir='.', n_eval=1000):
+    if env==None: return 0,0,0,0   
     logdir=logdir+'/'+eval_subdir
-    #Q_func, Q_net, optimizer, lr_scheduler = init_model(config,fname='results_Phase2/CombOpt/'+affix+'/ep_350_length_7.0.tar')
-    #policy.epsilon=0.
-
+    
     R=[]
     S=[]
-    for i,env in enumerate(tqdm.tqdm(env_all)):
-        l, returns, c, solves = EvaluatePolicy(env, policy,env.world_pool, print_runs=False, save_plots=False, logdir=logdir, eval_arg_func=EvalArgs2, silent_mode=True)
-        num_worlds_requested = 10
-        once_every = max(1,len(env_all)//num_worlds_requested)
-        if i % once_every ==0:
-            plotlist = GetFullCoverageSample(returns, env.world_pool, bins=3, n=3)
-            EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgs2, silent_mode=False, plot_each_timestep=False)
+    
+    if type(env) == list:
+        if len(env)==0: return 0,0,0,0
+        for i,e in enumerate(tqdm.tqdm(env)):
+            l, returns, c, solves = EvaluatePolicy(e, policy, e.world_pool, print_runs=False, save_plots=False, logdir=logdir, eval_arg_func=EvalArgs3, silent_mode=True)
+            num_worlds_requested = 10
+            once_every = max(1,len(env)//num_worlds_requested)
+            if i % once_every ==0:
+                plotlist = GetFullCoverageSample(returns, e.world_pool, bins=3, n=3)
+                EvaluatePolicy(e, policy, plotlist, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgs3, silent_mode=False, plot_each_timestep=False)
+            R+=returns 
+            S+=solves
+
+    else:
+    # assume env_all is a superenv
+        full_eval_list = [i for i in range(n_eval)]
+        plot_eval_list = [i for i in range(30)]
+        l, returns, c, solves = EvaluatePolicy(env, policy, full_eval_list, print_runs=False, save_plots=False, logdir=logdir, eval_arg_func=EvalArgs3, silent_mode=True)
+        EvaluatePolicy(env, policy, plot_eval_list, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgs3, silent_mode=False, plot_each_timestep=False)
         R+=returns 
         S+=solves
     
@@ -146,7 +153,7 @@ def evaluate_ppo(logdir, policy, info=False, config=None, env_all=None, eval_sub
     def printing(text):
         print(text)
         OF.write(text + "\n")
-    num_unique_graphs=len(env_all)
+    num_unique_graphs=-1#len(env_all)
     num_graph_instances=len(R)
     avg_return=np.mean(R)
     num_solved=np.sum(S)

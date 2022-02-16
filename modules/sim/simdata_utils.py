@@ -579,12 +579,12 @@ def SimulateInteractiveMode(env, filesave_with_time_suffix=True, entry=None):
     input('> Press any key to continue')
     print('\n')
 
-def SimulateInteractiveMode_PPO(env, model, t_suffix=True, entry=None):
+def SimulateInteractiveMode_PPO(env, model=None, t_suffix=True, entry=None):
     if entry is not None:
         obs=env.reset(entry)
     else:
         obs=env.reset()
-    print('ENTRY:',env.current_entry)
+    print('\nENTRY:',env.current_entry)
     s=env.state
     done=False
     R=0
@@ -607,25 +607,29 @@ def SimulateInteractiveMode_PPO(env, model, t_suffix=True, entry=None):
                 break
         print('------------')
         print('Current state:',s, 'spath to goal', env.sp.spath_to_target, '('+str(env.sp.spath_length)+' steps)')
-        print('Current obs:','\n'+str(env.obs) if env.state_encoding=='nfm' else env.obs)
         n = env.neighbors[env.state[0]]
         print('Available actions: ',n,end='')
 
-        action_masks = env.action_masks()
-        ppo_action, ppo_state = model.policy.predict(obs, deterministic=True, action_masks=action_masks)
-        distro = model.policy.get_distribution(obs[None].to(device))
-        actionlist = torch.tensor(env.neighbors[env.state[0]]).to(device)
-        ppo_probs = F.softmax(distro.log_prob(actionlist),dim=0)
-        ppo_value = model.policy.predict_values(obs[None].to(device))
-        np.set_printoptions(formatter={'float':"{0:0.2f}".format})
-        print('; PPO action probs: ',ppo_probs.detach().cpu().numpy(),'; Estimated value of current graph state:', ppo_value.detach().cpu().numpy())
+        if model is not None:
+            action_masks = env.action_masks()
+            ppo_action, ppo_state = model.policy.predict(obs, deterministic=True, action_masks=action_masks)
+            distro = model.policy.get_distribution(obs[None].to(device))
+            actionlist = torch.tensor(env.neighbors[env.state[0]]).to(device)
+            ppo_probs = F.softmax(distro.log_prob(actionlist),dim=0)
+            ppo_value = model.policy.predict_values(obs[None].to(device))
+            np.set_printoptions(formatter={'float':"{0:0.2f}".format})
+            print('; PPO action probs: ',ppo_probs.detach().cpu().numpy(),'; Estimated value of current graph state:', ppo_value.detach().cpu().numpy())
+        else:
+            print()
 
         while True:
-            a=input('Action nr '+str(env.global_t+1)+'/max '+str(env.sp.T)+' (new node)?  > ')
+            a=input('Action nr '+str(env.global_t+1)+'/max '+str(env.sp.T)+' (new node) [q=quit][n=print obs]?  > ')
             if a.isnumeric() and int(a) in n: break
-            if a == 'q':
+            if a.lower() == 'q':
                 endepi=True
                 break
+            if a == 'n':
+                print('Current obs:','\n'+str(env.obs) if env.state_encoding=='nfm' else env.obs)
         if endepi:
             break
         print()
@@ -639,3 +643,24 @@ def SimulateInteractiveMode_PPO(env, model, t_suffix=True, entry=None):
     env.render_eupaths(mode=None, fname="results/final", t_suffix=t_suffix)
     input('> Press any key to continue')
     print('\n')
+    return a
+
+def SimulateAutomaticMode_PPO(env, ppo_policy, t_suffix=True, entries=None):
+    if entries is not None:
+        entry=random.choice(entries)
+    else: entry = None
+    obs=env.reset(entry=entry)
+    print('Entry:',env.current_entry)
+    
+    done=False
+    while not done:
+        action, _state = ppo_policy.sample_greedy_action(obs,None,printing=True)
+        env.render_eupaths(fname='results/test',t_suffix=False,last_step_only=True)
+        obs,r,done,i = env.step(action)
+        a=input('   |   [q]-stop current, [enter]-take step, [n]-show nfm ...> ')
+        if a.lower() == 'q': break
+        if a == 'n': print(env.obs)
+    env.render_eupaths(fname='results/test',t_suffix=False,last_step_only=True)
+    env.render_eupaths(fname='results/final',t_suffix=False)
+    input('')
+    return a

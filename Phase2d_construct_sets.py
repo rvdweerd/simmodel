@@ -70,94 +70,122 @@ def ConstructTrainSet(config):
     
     return super_env
 
-def get_train_configs():
+def get_train_configs(runname, load_trainset=True):
     config={}
-    config['RunA']={}
-    config['RunA']['train_on']      = 'ContructedSuperSet'
-    config['RunA']['solve_select']  = 'both'
-    config['RunA']['edge_blocking'] = True
-    config['RunA']['scenario_name'] = ''
-    config['RunA']['nfm_func_name'] = 'NFM_ev_ec_t_um_us'
-    config['RunA']['s2v_layers']    = 2
-    config['RunA']['emb_dim']       = 64
-    config['RunA']['emb_iter_T']    = 5
-    config['RunA']['num_step']      = 500000
-    config['RunA']['seed0']         = 0
-    config['RunA']['numseeds']      = 1
-    config['RunA']['max_nodes']     = 33
-    rootdir, logdir = get_logdirs(config['RunA'])
-    config['RunA']['rootdir'] = rootdir
-    config['RunA']['logdir'] = logdir
 
-    config['RunB']={}
-    config['RunB']['train_on']      = 'ContructedSuperSet'
-    config['RunB']['solve_select']  = 'both'
-    config['RunB']['edge_blocking'] = True
-    config['RunB']['scenario_name'] = ''
-    config['RunB']['nfm_func_name'] = 'NFM_ev_ec_t_um_us'
-    config['RunB']['s2v_layers']    = 2
-    config['RunB']['emb_dim']       = 64
-    config['RunB']['emb_iter_T']    = 5
-    config['RunB']['num_step']      = 300000
-    config['RunB']['seed0']         = 0
-    config['RunB']['numseeds']      = 1
-    config['RunB']['max_nodes']     = 33
-    rootdir, logdir = get_logdirs(config['RunB'])
-    config['RunB']['rootdir'] = rootdir
-    config['RunB']['logdir'] = logdir
+    if runname == 'RunB':
+        config[runname]={}
+        config[runname]['train_on']      = 'ContructedSuperSet'
+        config[runname]['solve_select']  = 'both'
+        config[runname]['edge_blocking'] = True
+        config[runname]['scenario_name'] = ''
+        config[runname]['nfm_func_name'] = 'NFM_ev_ec_t_um_us'
+        config[runname]['node_dim'] = 5
+        config[runname]['s2v_layers']    = 2
+        config[runname]['emb_dim']       = 64
+        config[runname]['emb_iter_T']    = 5
+        config[runname]['num_step']      = 300000
+        config[runname]['seed0']         = 1
+        config[runname]['numseeds']      = 5
+        config[runname]['max_nodes']     = 33
+        rootdir, logdir = get_logdirs(config[runname])
+        config[runname]['rootdir'] = rootdir
+        config[runname]['logdir'] = logdir
+        env = ConstructTrainSet(config[runname])
+        config[runname]['env_train'] = env
+    elif runname == 'RunC':
+        config[runname]={}
+        config[runname]['train_on']      = 'ContructedSuperSet'
+        config[runname]['solve_select']  = 'solvable'
+        config[runname]['edge_blocking'] = True
+        config[runname]['scenario_name'] = ''
+        config[runname]['nfm_func_name'] = 'NFM_ev_ec_t_um_us'
+        config[runname]['node_dim'] = 5
+        config[runname]['s2v_layers']    = 2
+        config[runname]['emb_dim']       = 64
+        config[runname]['emb_iter_T']    = 5
+        config[runname]['num_step']      = 300000
+        config[runname]['seed0']         = 1
+        config[runname]['numseeds']      = 5
+        config[runname]['max_nodes']     = 33
+        rootdir, logdir = get_logdirs(config[runname])
+        config[runname]['rootdir'] = rootdir
+        config[runname]['logdir'] = logdir
+        if load_trainset:
+            env = ConstructTrainSet(config['RunC'])
+            config['RunC']['env_train'] = env
+        else:
+            config['RunC']['env_train'] = None    
+    elif runname == 'RunD':
+        key='RunD'
+        config[key]={}
+        config[key]['train_on']      = 'ContructedSuperSet'
+        config[key]['solve_select']  = 'solvable'
+        config[key]['edge_blocking'] = True
+        config[key]['scenario_name'] = ''
+        config[key]['nfm_func_name'] = 'NFM_ev_ec_t_um_us'
+        config[key]['node_dim'] = 5
+        config[key]['s2v_layers']    = 2
+        config[key]['emb_dim']       = 128
+        config[key]['emb_iter_T']    = 5
+        config[key]['num_step']      = 500000
+        config[key]['seed0']         = 1
+        config[key]['numseeds']      = 5
+        config[key]['max_nodes']     = 33
+        rootdir, logdir = get_logdirs(config[key])
+        config[key]['rootdir'] = rootdir
+        config[key]['logdir'] = logdir
+        env = ConstructTrainSet(config[key])
+        config[key]['env_train'] = env    
+    
+    elif runname == 'RunE':
+        key='RunE'
+        config[key]={}
+        config[key]['train_on']      = 'ContructedSuperSet'
+        config[key]['solve_select']  = 'solvable'
+        config[key]['edge_blocking'] = True
+        config[key]['scenario_name'] = ''
+        config[key]['nfm_func_name'] = 'NFM_ev_ec_t_um_us'
+        config[key]['node_dim'] = 5    
+        config[key]['s2v_layers']    = 2
+        config[key]['emb_dim']       = 128
+        config[key]['emb_iter_T']    = 7
+        config[key]['num_step']      = 500000
+        config[key]['seed0']         = 1
+        config[key]['numseeds']      = 5
+        config[key]['max_nodes']     = 33
+        rootdir, logdir = get_logdirs(config[key])
+        config[key]['rootdir'] = rootdir
+        config[key]['logdir'] = logdir
+        env = ConstructTrainSet(config[key])
+        config[key]['env_train'] = env    
 
-    config['RunC']={}
-    config['RunC']['train_on']      = 'ContructedSuperSet'
-    config['RunC']['solve_select']  = 'solvable'
-    config['RunC']['edge_blocking'] = True
-    config['RunC']['scenario_name'] = ''
-    config['RunC']['nfm_func_name'] = 'NFM_ev_ec_t_um_us'
-    config['RunC']['s2v_layers']    = 2
-    config['RunC']['emb_dim']       = 64
-    config['RunC']['emb_iter_T']    = 5
-    config['RunC']['num_step']      = 300000
-    config['RunC']['seed0']         = 0
-    config['RunC']['numseeds']      = 1
-    config['RunC']['max_nodes']     = 33
-    rootdir, logdir = get_logdirs(config['RunC'])
-    config['RunC']['rootdir'] = rootdir
-    config['RunC']['logdir'] = logdir
-
-    key='runD'
-    config[key]={}
-    config[key]['train_on']      = 'ContructedSuperSet'
-    config[key]['solve_select']  = 'solvable'
-    config[key]['edge_blocking'] = True
-    config[key]['scenario_name'] = ''
-    config[key]['nfm_func_name'] = 'NFM_ev_ec_t_um_us'
-    config[key]['s2v_layers']    = 2
-    config[key]['emb_dim']       = 128
-    config[key]['emb_iter_T']    = 5
-    config[key]['num_step']      = 500000
-    config[key]['seed0']         = 0
-    config[key]['numseeds']      = 1
-    config[key]['max_nodes']     = 33
-    rootdir, logdir = get_logdirs(config[key])
-    config[key]['rootdir'] = rootdir
-    config[key]['logdir'] = logdir
-
-    key='runE'
-    config[key]={}
-    config[key]['train_on']      = 'ContructedSuperSet'
-    config[key]['solve_select']  = 'solvable'
-    config[key]['edge_blocking'] = True
-    config[key]['scenario_name'] = ''
-    config[key]['nfm_func_name'] = 'NFM_ev_ec_t_um_us'
-    config[key]['s2v_layers']    = 2
-    config[key]['emb_dim']       = 128
-    config[key]['emb_iter_T']    = 7
-    config[key]['num_step']      = 500000
-    config[key]['seed0']         = 0
-    config[key]['numseeds']      = 1
-    config[key]['max_nodes']     = 33
-    rootdir, logdir = get_logdirs(config[key])
-    config[key]['rootdir'] = rootdir
-    config[key]['logdir'] = logdir
+    elif runname == 'train_on_metro':
+        key='train_on_metro'
+        config[key]={}
+        config[key]['train_on']      = 'MetroWorlds'
+        config[key]['solve_select']  = 'both'
+        config[key]['edge_blocking'] = True
+        config[key]['scenario_name'] = ''
+        config[key]['nfm_func_name'] = 'NFM_ev_ec_t_um_us'
+        config[key]['node_dim'] = 5    
+        config[key]['s2v_layers']    = 2
+        config[key]['emb_dim']       = 64
+        config[key]['emb_iter_T']    = 5
+        config[key]['num_step']      = 300000
+        config[key]['seed0']         = 1
+        config[key]['numseeds']      = 5
+        config[key]['max_nodes']     = 33
+        rootdir, logdir = get_logdirs(config[key])
+        config[key]['rootdir'] = rootdir
+        config[key]['logdir'] = logdir
+        global_env=[]
+        env = CreateEnv('MetroU3_e17tborder_FixedEscapeInit',max_nodes=33,var_targets=None, remove_world_pool=False)
+        global_env.append(env)
+        env = CreateEnv('MetroU3_e17tborder_FixedEscapeInit',max_nodes=33,var_targets=[1,5], remove_world_pool=True)
+        global_env.append(env)
+        env=SuperEnv(global_env, None, max_possible_num_nodes = 33)
+        config[key]['env_train'] = env    
 
     return config
 
