@@ -41,7 +41,7 @@ class PPO_ObsWrapper(ObservationWrapper):
         #self.action_space
     
     def getUpositions(self,t=0):
-        return self.env._getUpositions(t=0)
+        return self.env.getUpositions(t=0)
         # upos = []
         # for i,P_path in enumerate(self.u_paths):
         #     p = P_path[-1] if t >= len(P_path) else P_path[t]

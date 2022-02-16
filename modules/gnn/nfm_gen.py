@@ -82,12 +82,17 @@ class NFM_ev_ec_t_um_us():
         for e in epath:
             nfm[e,0] = 1 # visited nodes by e
         nfm[epath[-1],1] = 1 # current e position
+        upos=[]
         for path_index, path in enumerate(upaths): 
             if local_t >= len(path)-1: #unit has settled
                 nfm[path[-1],4] += 1
+                upos.append(path[-1])
             else:
                 nfm[path[eo.local_t],3] += 1
-        return nfm
+                upos.append(path[eo.local_t])
+        upos.sort()
+        state=tuple([epath[-1]]+upos)
+        return nfm, state
 
 
 class NFM_ev_ec_t_u():

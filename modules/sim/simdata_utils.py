@@ -9,6 +9,8 @@ from datetime import datetime
 #import plotly.graph_objects as go
 import random
 import torch
+import torch.nn as nn 
+import torch.nn.functional as F
 from pathlib import Path
 import os
 import pickle
@@ -17,6 +19,7 @@ from modules.rl.rl_plotting import PlotAgentsOnGraph
 from modules.optim.escape_route_generator_MC import mutiple_escape_routes
 from modules.optim.optimization_FIP_gurobipy import unit_ranges, optimization_alt, optimization
 #from torch_geometric.utils.convert import from_networkx
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 class SimParameters(object):
     def __init__(self):
@@ -573,5 +576,66 @@ def SimulateInteractiveMode(env, filesave_with_time_suffix=True, entry=None):
     print('\n******************** done, reward='+str(R),'**********************')
     input('> Press any key to continue')
     env.render_eupaths(mode=None, fname="testrun", t_suffix=filesave_with_time_suffix)
+    input('> Press any key to continue')
+    print('\n')
+
+def SimulateInteractiveMode_PPO(env, model, t_suffix=True, entry=None):
+    if entry is not None:
+        obs=env.reset(entry)
+    else:
+        obs=env.reset()
+    print('ENTRY:',env.current_entry)
+    s=env.state
+    done=False
+    R=0
+    env.render(mode=None, fname="results/test", t_suffix=t_suffix)
+    endepi=False
+    while not done:
+        print('e position:',env.state[0],env.sp.labels2coord[env.state[0]])
+        print('u paths (node labels):',env.u_paths)
+        print('u paths (node coords): ',end='')
+        for p in env.u_paths:
+            print('[',end='')
+            for e in p:
+                print(str(env.sp.labels2coord[e])+',',end='')
+            print('],  ',end='')
+        print('\nu positions per time-step:')
+        for t in range(env.sp.T):
+            print(env.getUpositions(t))
+            if t < env.sp.T-1 and env.getUpositions(t) == env.getUpositions(t+1):
+                print('[., ., .]')
+                break
+        print('------------')
+        print('Current state:',s, 'spath to goal', env.sp.spath_to_target, '('+str(env.sp.spath_length)+' steps)')
+        print('Current obs:','\n'+str(env.obs) if env.state_encoding=='nfm' else env.obs)
+        n = env.neighbors[env.state[0]]
+        print('Available actions: ',n,end='')
+
+        action_masks = env.action_masks()
+        ppo_action, ppo_state = model.policy.predict(obs, deterministic=True, action_masks=action_masks)
+        distro = model.policy.get_distribution(obs[None].to(device))
+        actionlist = torch.tensor(env.neighbors[env.state[0]]).to(device)
+        ppo_probs = F.softmax(distro.log_prob(actionlist),dim=0)
+        ppo_value = model.policy.predict_values(obs[None].to(device))
+        np.set_printoptions(formatter={'float':"{0:0.2f}".format})
+        print('; PPO action probs: ',ppo_probs.detach().cpu().numpy(),'; Estimated value of current graph state:', ppo_value.detach().cpu().numpy())
+
+        while True:
+            a=input('Action nr '+str(env.global_t+1)+'/max '+str(env.sp.T)+' (new node)?  > ')
+            if a.isnumeric() and int(a) in n: break
+            if a == 'q':
+                endepi=True
+                break
+        if endepi:
+            break
+        print()
+        #a=n.index(int(a))
+        obs,r,done,_=env.step(int(a))
+        s=env.state
+        env.render_eupaths(mode=None, fname="results/test", t_suffix=t_suffix, last_step_only=True)
+        R+=r
+    print('\n******************** done, reward='+str(R),'**********************')
+    #input('> Press any key to continue')
+    env.render_eupaths(mode=None, fname="results/final", t_suffix=t_suffix)
     input('> Press any key to continue')
     print('\n')

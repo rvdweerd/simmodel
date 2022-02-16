@@ -246,15 +246,12 @@ class GraphWorld(gym.Env):
         databank_returned = {'coords': databank_coords, 'labels': databank_labels}
         return register_returned, databank_returned, iratios
 
-    def _getUpositions(self,t=0):
+    def getUpositions(self,t=0):
         upos = []
         for i,P_path in enumerate(self.u_paths):
             p = P_path[-1] if t >= len(P_path) else P_path[t]
             upos.append(p)
         return upos
-
-    def getUpositions(self, t=0):
-        return self._getUpositions(t=0)        
 
     def _availableActionsInCurrentState(self):
         return self.neighbors[self.state[0]]
@@ -342,7 +339,7 @@ class GraphWorld(gym.Env):
             self.state0   = self.state
         
         self.e_path = [ self.state[0] ]
-        new_Upositions = self._getUpositions(self.local_t)
+        new_Upositions = self.getUpositions(self.local_t)
         for i,u in enumerate(new_Upositions):
             self.u_paths_taken[i] = [u]
     
@@ -392,8 +389,8 @@ class GraphWorld(gym.Env):
         self.local_t  += 1
         
         # Update unit positions
-        old_Upositions = self._getUpositions(self.local_t-1)
-        new_Upositions = self._getUpositions(self.local_t) # uses local time: u_paths may have been updated from last state if sim is dynamic
+        old_Upositions = self.getUpositions(self.local_t-1)
+        new_Upositions = self.getUpositions(self.local_t) # uses local time: u_paths may have been updated from last state if sim is dynamic
         new_Upositions_sorted = list(np.sort(new_Upositions))
 
         self.state = tuple([next_node] + new_Upositions_sorted)
@@ -568,8 +565,8 @@ class SuperEnv(gym.Env):
         m = self.env.action_masks()# + [False] * (self.max_num_nodes - self.sp.V)
         return m
 
-    def _getUpositions(self, t=0):
-        return self.env._getUpositions(t)
+    def getUpositions(self, t=0):
+        return self.env.getUpositions(t)
 
     def _updateGraphLevelData(self):
         self.sp = self.env.sp

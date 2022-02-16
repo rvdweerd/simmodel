@@ -1,77 +1,41 @@
-import argparse
+#import argparse
 #import gym
+#import wandb
 import numpy as np
 import torch
-import torch.nn as nn 
-import torch.nn.functional as F
-import wandb
-from wandb.integration.sb3 import WandbCallback
-from stable_baselines3.common.env_checker import check_env
-from stable_baselines3.common.callbacks import EvalCallback
+#import torch.nn as nn 
+#import torch.nn.functional as F
+#from wandb.integration.sb3 import WandbCallback
+#from stable_baselines3.common.env_checker import check_env
+#from stable_baselines3.common.callbacks import EvalCallback
 #from stable_baselines3.common.vec_env import DummyVecEnv
 #from stable_baselines3 import PPO
 from sb3_contrib import MaskablePPO
-from modules.gnn.comb_opt import evaluate_spath_heuristic
+#from modules.gnn.comb_opt import evaluate_spath_heuristic
 from modules.rl.rl_utils import EvaluatePolicy, print_parameters, GetFullCoverageSample, NpWrapper
-#from modules.sim.simdata_utils import SimulateInteractiveMode
-#import modules.sim.simdata_utils as su
+from modules.ppo.helpfuncs import get_super_env, CreateEnv, eval_simple, evaluate_ppo, get_logdirs
 from modules.ppo.callbacks_sb3 import SimpleCallback, TestCallBack
 from modules.ppo.models_sb3 import s2v_ActorCriticPolicy, Struc2Vec
+from Phase2d_construct_sets import ConstructTrainSet, get_train_configs
+#from modules.sim.simdata_utils import SimulateInteractiveMode
+#import modules.sim.simdata_utils as su
 #from typing import Callable, Dict, List, Optional, Tuple, Type, Union
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-from modules.ppo.helpfuncs import get_super_env, CreateEnv, eval_simple, evaluate_ppo
-from Phase2d_construct_sets import ConstructTrainSet
+
 if __name__ == '__main__':
+    train_configs=get_train_configs()
+    config=train_configs['runA']
     train           =True
     eval            =False
-    #train_on        ='SubGraphsManhattan3x3'
-    #train_on        = 'Manhattan5x5_VariableEscapeInit'
-    train_on        = 'ContructedSuperSet'
-    solve_select    ='both'
-    edge_blocking   =True
-    Utrain          =[1,2,3]
-    Etrain          =[0,1,2,3,4,5,6,7,8,9]
-    ustr=''
-    for i in Utrain: ustr+=str(i)
-    estr=''
-    for i in Etrain: estr+=str(i)
-    #scenario_name   = 'Train_U'+ustr+'E'+estr
-    scenario_name   = ''
-    nfm_func_name   = 'NFM_ev_ec_t_um_us'
-    emb_dim         = 64
-    emb_iter_T      =  5
-    num_step        = 500000#300000
-    seed0           = 0
-    numseeds        = 1
-    max_nodes       = 33
-    config={}
-    config['train_on'] = train_on
-    config['solve_select'] = solve_select
-    config['edge_blocking'] = edge_blocking
-    config['Utrain'] = Utrain
-    config['Etrain'] = Etrain
-    config['nfm_func_name'] = nfm_func_name
-    config['emb_dim'] = emb_dim
-    config['emb_iter_T'] = emb_iter_T
-    config['num_step'] = num_step
-    config['seed0'] = seed0
-    config['numseeds'] = numseeds
-    config['max_nodes'] = max_nodes
-
-    rootdir='results/results_Phase2/Pathfinding/ppo/'+train_on+'/'+solve_select+'_edgeblock'+str(edge_blocking)+'/'+scenario_name
-    logdir=rootdir+'/'+\
-            nfm_func_name+'/'+ \
-            'emb'+str(emb_dim) + \
-            '_itT'+str(emb_iter_T) + \
-            '_nstep'+str(num_step)
-    config['rootdir']=rootdir
-    config['logdir']=logdir
 
     if train:
-        MAX_NODES=max_nodes
-        EMB_DIM = emb_dim
-        EMB_ITER_T = emb_iter_T
-        TOTAL_TIME_STEPS = num_step
+        MAX_NODES = config['max_nodes']
+        EMB_DIM = config['emb_dim']
+        EMB_ITER_T = config['emb_iter_T']
+        TOTAL_TIME_STEPS = config['num_step']
+        SEED0 = config['seed0']
+        NUMSEEDS = config['numseeds']
+        LOGDIR=config['logdir']
         #env=CreateEnv(world_name='Manhattan3x3_WalkAround', max_nodes=MAX_NODES)
         #env=CreateEnv(world_name=config['train_on'], max_nodes=MAX_NODES)
         #env, _ = get_super_env(Uselected=Utrain, Eselected=Etrain, config=config)
@@ -81,16 +45,16 @@ if __name__ == '__main__':
         NODE_DIM = env.F
 
         policy_kwargs = dict(
-            features_extractor_class=Struc2Vec,
-            features_extractor_kwargs=dict(emb_dim=EMB_DIM, emb_iter_T=EMB_ITER_T, node_dim=NODE_DIM),#, num_nodes=MAX_NODES),
+            features_extractor_class = Struc2Vec,
+            features_extractor_kwargs = dict(emb_dim=EMB_DIM, emb_iter_T=EMB_ITER_T, node_dim=NODE_DIM),#, num_nodes=MAX_NODES),
             # NOTE: FOR THIS TO WORK, NEED TO ADJUST sb3 policies.py
             #           def proba_distribution_net(self, latent_dim: int) -> nn.Module:
             #       to create a linear layer that maps to 1-dim instead of self.action_dim
             #       reason: our model is invariant to the action space (number of nodes in the graph) 
         )
 
-        for seed in range(seed0, seed0+numseeds):
-            logdir_ = logdir+'/SEED'+str(seed)
+        for seed in range(SEED0, SEED0+NUMSEEDS):
+            logdir_ = LOGDIR+'/SEED'+str(seed)
 
             # eval_callback = EvalCallback(
             #     env_eval,
@@ -122,8 +86,7 @@ if __name__ == '__main__':
             model.learn(total_timesteps = TOTAL_TIME_STEPS, callback=[TestCallBack()])#,eval_callback]) #,wandb_callback])
             # run.finish()
             model.save(logdir_+"/saved_models/model_last")
-            policy = model.policy
-            policy.save(logdir_+"/saved_models/policy_last")    
+            model.policy.save(logdir_+"/saved_models/policy_last")    
 
     if eval:
         # nfm_funcs = {
@@ -167,13 +130,13 @@ if __name__ == '__main__':
         evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
 
 
-        for seed in range(seed0, seed0+numseeds):
+        for seed in range(SEED0, SEED0+NUMSEEDS):
             #logdir_ = logdir+'/SEED'+str(seed)
-            saved_policy = s2v_ActorCriticPolicy.load(logdir+'/SEED'+str(seed)+"/saved_models/policy_last")
+            saved_policy = s2v_ActorCriticPolicy.load(LOGDIR+'/SEED'+str(seed)+"/saved_models/policy_last")
 
             #CREATE POLICY CLASS
 
-            result = evaluate_ppo(logdir=logdir+'/SEED'+str(seed), policy=..., config=config, env_all=env_all_train, eval_subdir=evalName)
+            result = evaluate_ppo(logdir=LOGDIR+'/SEED'+str(seed), policy=..., config=config, env_all=env_all_train, eval_subdir=evalName)
             num_unique_graphs, num_graph_instances, avg_return, success_rate = result
             evalResults[evalName]['num_graphs.........'].append(num_unique_graphs)
             evalResults[evalName]['num_graph_instances'].append(num_graph_instances)
@@ -186,7 +149,7 @@ if __name__ == '__main__':
         Utest=[0,1,2,3]
         Etest=[0,1,2,3,4,5,6,7,8,9,10]
         _, env_all_test = get_super_env(Uselected=Utest, Eselected=Etest, config=config)
-        for seed in range(seed0, seed0+numseeds):
+        for seed in range(SEED0, SEED0+NUMSEEDS):
             result = evaluate_ppo(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=env_all_test, eval_subdir=evalName)
             num_unique_graphs, num_graph_instances, avg_return, success_rate = result
             evalResults[evalName]['num_graphs.........'].append(num_unique_graphs)
@@ -197,7 +160,7 @@ if __name__ == '__main__':
         # Evaluate on each individual segment of the evaluation set
         evalName='graphsegments_eval'
         evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
-        for seed in range(seed0, seed0+numseeds):
+        for seed in range(SEED0, SEED0+NUMSEEDS):
             success_matrix   =[]
             num_graphs_matrix=[]
             instances_matrix =[]
@@ -264,7 +227,7 @@ if __name__ == '__main__':
             custom_env=CreateEnv(world_name=world_name, max_nodes=config['max_nodes'])
             #custom_env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
             #custom_env.redefine_nfm(nfm_func)
-            for seed in range(seed0, seed0+numseeds):
+            for seed in range(SEED0, SEED0+NUMSEEDS):
                 result = evaluate_ppo(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=[custom_env], eval_subdir=evalName)
                 num_unique_graphs, num_graph_instances, avg_return, success_rate = result
                 evalResults[evalName]['num_graphs.........'].append(num_unique_graphs)

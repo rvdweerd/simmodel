@@ -25,7 +25,7 @@ nfm_funcs = {
     'NFM_ev_ec_t_um_us' : NFM_ev_ec_t_um_us(),
     }
 
-def get_super_env(Uselected=[1], Eselected=[4], config=None, variable_targets=None):
+def get_super_env(Uselected=[1], Eselected=[4], config=None, var_targets=None):
     # scenario_name=config['scenario_name']
     #scenario_name = 'Train_U2E45'
     # world_name = 'SubGraphsManhattan3x3'
@@ -39,7 +39,7 @@ def get_super_env(Uselected=[1], Eselected=[4], config=None, variable_targets=No
     reject_u_duplicates = False
 
     #databank_full, register_full, solvable = LoadData(edge_blocking = True)
-    env_all_train, hashint2env, env2hashint, env2hashstr = GetWorldSet(state_repr, state_enc, U=Uselected, E=Eselected, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func, variable_targets=variable_targets)
+    env_all_train, hashint2env, env2hashint, env2hashstr = GetWorldSet(state_repr, state_enc, U=Uselected, E=Eselected, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func, var_targets=var_targets)
     for i in range(len(env_all_train)):
         env_all_train[i]=PPO_ObsWrapper(env_all_train[i], max_possible_num_nodes = max_nodes)        
         env_all_train[i]=PPO_ActWrapper(env_all_train[i])        
@@ -47,13 +47,13 @@ def get_super_env(Uselected=[1], Eselected=[4], config=None, variable_targets=No
     #SimulateInteractiveMode(super_env)
     return super_env, env_all_train
 
-def CreateEnv(world_name, max_nodes=9, var_targets=None):
+def CreateEnv(world_name, max_nodes=9, var_targets=None, remove_world_pool=False):
     #world_name='Manhattan3x3_WalkAround'
     state_repr='etUte0U0'
     state_enc='nfm'
     nfm_func_name = 'NFM_ev_ec_t_um_us'
     edge_blocking = True
-    remove_world_pool = False
+    #remove_world_pool = False
     env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
     env.redefine_nfm(nfm_funcs[nfm_func_name])
     env.capture_on_edges = edge_blocking
@@ -67,15 +67,16 @@ def CreateEnv(world_name, max_nodes=9, var_targets=None):
     env = PPO_ActWrapper(env)        
     return env
 
-def check_custom_position_probs(env,ppo_policy,hashint=None,entry=None,targetnodes=[1],epath=[4],upaths=[[6]],max_nodes=0):    
+def check_custom_position_probs(env,ppo_policy,hashint=None,entry=None,targetnodes=[1],epath=[4],upaths=[[6]],max_nodes=0,logdir='test'):    
     if hashint is not None:
         obs=env.reset(hashint, entry)
     else:
         obs=env.reset(entry=entry)
-    nfm = env.get_custom_nfm(epath,targetnodes,upaths)
+    nfm, state = env.get_custom_nfm(epath,targetnodes,upaths)
     p = max_nodes - env.sp.V
     nfm = nn.functional.pad(nfm,(0,0,0,p))
-    print(nfm)
+    print('state:',state)
+    #print(nfm)
     W = nn.functional.pad(env.sp.W,(0,p,0,p))
     obs = torch.cat((nfm, W, torch.index_select(W, 1, torch.tensor(epath[-1]))),1)#.to(device)
     reachable=np.zeros(env.sp.V).astype(np.bool)
@@ -85,13 +86,13 @@ def check_custom_position_probs(env,ppo_policy,hashint=None,entry=None,targetnod
     action_masks=torch.tensor(action_masks,dtype=torch.bool)#.to(device)
 
     action, _state = ppo_policy.predict(obs, deterministic=True, action_masks=action_masks)
-    probs1 = F.softmax(ppo_policy.get_distribution(obs[None].to(device)).log_prob(torch.tensor(env.neighbors[epath[-1]]).to(device)))
+    probs1 = F.softmax(ppo_policy.get_distribution(obs[None].to(device)).log_prob(torch.tensor(env.neighbors[epath[-1]]).to(device)),dim=0)
     np.set_printoptions(formatter={'float':"{0:0.2f}".format})
     print('actions',[a for a in env.neighbors[epath[-1]]],'; probs:',probs1.detach().cpu().numpy(), 'chosen:', action)
 
     newsp=copy.deepcopy(env.sp)
     newsp.target_nodes=targetnodes
-    fname='results/gnn-ppo/sb3/test/'+'hashint'+str(hashint)+'_target'+str(targetnodes)+'_epath'+str(epath)+'_upaths'+str(upaths)
+    fname=logdir+'/'+'hashint'+str(hashint)+'_target'+str(targetnodes)+'_epath'+str(epath)+'_upaths'+str(upaths)
     PlotEUPathsOnGraph_(newsp,epath,upaths,filename=fname,fig_show=False,fig_save=True,goal_reached=False,last_step_only=False)
 
 def eval_simple(saved_policy,env):
@@ -111,7 +112,7 @@ def eval_simple(saved_policy,env):
         while not done:
             action_masks = get_action_masks(env)
             action, _state = saved_policy.predict(obs, deterministic=True, action_masks=action_masks)
-            probs1 = F.softmax(saved_policy.get_distribution(obs[None].to(device)).log_prob(torch.tensor(env.neighbors[env.state[0]]).to(device)))
+            probs1 = F.softmax(saved_policy.get_distribution(obs[None].to(device)).log_prob(torch.tensor(env.neighbors[env.state[0]]).to(device)),dim=0)
             print('actions',[a for a in env.neighbors[env.state[0]]],'; probs:',probs1.detach().cpu().numpy(), 'chosen:', action)
             obs, reward, done, info = env.step(action)
             env.env.render(fname=fpath+'test'+str(i))
@@ -157,3 +158,16 @@ def evaluate_ppo(logdir, policy, info=False, config=None, env_all=None, eval_sub
     for k,v in config.items():
         printing(k+' '+str(v))
     return num_unique_graphs, num_graph_instances, avg_return, success_rate
+
+def get_logdirs(config):
+    rootdir = 'results/results_Phase2/Pathfinding/ppo/'+ \
+                config['train_on'] + \
+                '/solvselect=' + config['solve_select']+'_edgeblock='+str(config['edge_blocking'])+'/' +\
+                config['scenario_name']
+    logdir = rootdir+'/'+ \
+                config['nfm_func_name'] +'/'+ \
+                's2v_layers='+str(config['s2v_layers']) + \
+                '_emb='+str(config['emb_dim']) + \
+                '_itT='+str(config['emb_iter_T']) + \
+                '_nstep='+str(config['num_step'])
+    return rootdir, logdir

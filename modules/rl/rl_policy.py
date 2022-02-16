@@ -426,7 +426,7 @@ class ActionMaskedPolicySB3_PPO(Policy):
             action, _states = self.model.predict(obs, deterministic=True, action_masks=action_masks)
             obs=obs.to(device)
             
-            self.probs = F.softmax(self.model.get_distribution(obs).log_prob(neighboring_nodes)).detach().cpu().numpy()
+            self.probs = F.softmax(self.model.get_distribution(obs).log_prob(neighboring_nodes),dim=0).detach().cpu().numpy()
             if printing:
                 for row in obs[0,:,:5]:
                     print(row)
