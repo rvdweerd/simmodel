@@ -589,6 +589,7 @@ def SimulateInteractiveMode_PPO(env, model=None, t_suffix=True, entry=None):
     done=False
     R=0
     env.render(mode=None, fname="results/test", t_suffix=t_suffix)
+    env.render(mode=None, fname="results/test", t_suffix=True)
     endepi=False
     while not done:
         print('e position:',env.state[0],env.sp.labels2coord[env.state[0]])
@@ -637,10 +638,12 @@ def SimulateInteractiveMode_PPO(env, model=None, t_suffix=True, entry=None):
         obs,r,done,_=env.step(int(a))
         s=env.state
         env.render_eupaths(mode=None, fname="results/test", t_suffix=t_suffix, last_step_only=True)
+        env.render_eupaths(mode=None, fname="results/test", t_suffix=True, last_step_only=True)
         R+=r
     print('\n******************** done, reward='+str(R),'**********************')
     #input('> Press any key to continue')
     env.render_eupaths(mode=None, fname="results/final", t_suffix=t_suffix)
+    env.render_eupaths(mode=None, fname="results/final", t_suffix=True)
     input('> Press any key to continue')
     print('\n')
     return a

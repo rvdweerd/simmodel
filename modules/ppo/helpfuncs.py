@@ -75,7 +75,7 @@ def check_custom_position_probs(env,ppo_policy,hashint=None,entry=None,targetnod
     nfm, state = env.get_custom_nfm(epath,targetnodes,upaths)
     p = max_nodes - env.sp.V
     nfm = nn.functional.pad(nfm,(0,0,0,p))
-    print('state:',state)
+    print('state:',state,end='')
     #print(nfm)
     W = nn.functional.pad(env.sp.W,(0,p,0,p))
     obs = torch.cat((nfm, W, torch.index_select(W, 1, torch.tensor(epath[-1]))),1)#.to(device)
@@ -87,11 +87,18 @@ def check_custom_position_probs(env,ppo_policy,hashint=None,entry=None,targetnod
 
     action, _state = ppo_policy.predict(obs, deterministic=True, action_masks=action_masks)
     probs1 = F.softmax(ppo_policy.get_distribution(obs[None].to(device)).log_prob(torch.tensor(env.neighbors[epath[-1]]).to(device)),dim=0)
+    ppo_value = ppo_policy.predict_values(obs[None].to(device)).detach().cpu().numpy()
     np.set_printoptions(formatter={'float':"{0:0.2f}".format})
+    print('; estimated  value of graph state:',ppo_value)
     print('actions',[a for a in env.neighbors[epath[-1]]],'; probs:',probs1.detach().cpu().numpy(), 'chosen:', action)
-
     newsp=copy.deepcopy(env.sp)
     newsp.target_nodes=targetnodes
+    
+    epath0 = [epath[0]]
+    upath0 = [[u[0]] for u in upaths]
+    fname=logdir+'/'+'hashint'+str(hashint)+'_target'+str(targetnodes)+'_epath'+str(epath)+'_upaths'+str(upaths)
+    PlotEUPathsOnGraph_(newsp,epath0,upath0,filename=fname,fig_show=False,fig_save=True,goal_reached=False,last_step_only=False)
+    epath+=[action]
     fname=logdir+'/'+'hashint'+str(hashint)+'_target'+str(targetnodes)+'_epath'+str(epath)+'_upaths'+str(upaths)
     PlotEUPathsOnGraph_(newsp,epath,upaths,filename=fname,fig_show=False,fig_save=True,goal_reached=False,last_step_only=False)
 

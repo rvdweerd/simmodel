@@ -27,16 +27,17 @@ logdir = config['logdir']
 
 ## 2. Set of specific worlds
 global_env=[]
-world_names=[
-    'Manhattan5x5_FixedEscapeInit',
-    'Manhattan5x5_VariableEscapeInit',
-    'MetroU3_e17tborder_FixedEscapeInit',
-    'MetroU3_e1t31_FixedEscapeInit',
-    'SparseManhattan5x5' ]
-for w in world_names:
-    env = CreateEnv(w,max_nodes=config['max_nodes'],var_targets=[4,4])
-    global_env.append(env)
-env=SuperEnv(global_env,hashint2env=None,max_possible_num_nodes=33)#,probs=[1,10,1,1,1,1,1,1])
+# world_names=[
+    #'Manhattan5x5_FixedEscapeInit',
+    #'Manhattan5x5_VariableEscapeInit',
+    #'MetroU3_e17tborder_FixedEscapeInit',
+    #'MetroU3_e1t31_FixedEscapeInit',
+    #'SparseManhattan5x5' ]
+env = CreateEnv('MetroU3_e1t31_FixedEscapeInit',max_nodes=config['max_nodes'],var_targets=[4,4])
+# for w in world_names:
+#     env = CreateEnv(w,max_nodes=config['max_nodes'],var_targets=[4,4])
+#     global_env.append(env)
+# env=SuperEnv(global_env,hashint2env=None,max_possible_num_nodes=33)#,probs=[1,10,1,1,1,1,1,1])
 
 ## 3. Individual environment
 #env = CreateEnv('MetroU3_e1t31_FixedEscapeInit',max_nodes=config['max_nodes'],var_targets=[3,3], remove_world_pool=False)
@@ -52,8 +53,8 @@ ppo_policy = ActionMaskedPolicySB3_PPO(saved_policy, deterministic=True)
 # OPTIONS TO PERFORM TESTS
 
 ## 1. Evaluate a specific constellation on the graph
-#check_custom_position_probs(env,saved_model.policy,hashint=None,entry=None,targetnodes=[22],epath=[14],upaths=[[17]],max_nodes=33,logdir=logdir)
-#check_custom_position_probs(env,saved_model.policy,hashint=None,entry=None,targetnodes=[22],epath=[14],upaths=[[18]],max_nodes=33,logdir=logdir)
+check_custom_position_probs(env,saved_model.policy,hashint=None,entry=None,targetnodes=[13,22,23,29],epath=[17],upaths=[[23,22],[30,27],[32,7]],max_nodes=33,logdir=logdir)
+check_custom_position_probs(env,saved_model.policy,hashint=None,entry=None,targetnodes=[13,22,23,29],epath=[17],upaths=[[12,13],[30,27],[32,7]],max_nodes=33,logdir=logdir)
 
 ## 2. Run Interactive simulation 
 # plots are updated in the results folder
