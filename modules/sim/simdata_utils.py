@@ -619,12 +619,13 @@ def SimulateInteractiveMode_PPO(env, model=None, t_suffix=True, entry=None):
             ppo_probs = F.softmax(distro.log_prob(actionlist),dim=0)
             ppo_value = model.policy.predict_values(obs[None].to(device))
             np.set_printoptions(formatter={'float':"{0:0.2f}".format})
-            print('; PPO action probs: ',ppo_probs.detach().cpu().numpy(),'; Estimated value of current graph state:', ppo_value.detach().cpu().numpy())
+            ppo_probs=ppo_probs.detach().cpu().numpy()
+            print('; PPO action probs: ',ppo_probs,'Action:',n[np.argmax(ppo_probs)],'; Estimated value of current graph state:', ppo_value.detach().cpu().numpy())
         else:
             print()
 
         while True:
-            a=input('Action nr '+str(env.global_t+1)+'/max '+str(env.sp.T)+' (new node) [q=quit][n=print obs]?  > ')
+            a=input('           Action nr '+str(env.global_t+1)+'/max '+str(env.sp.T)+' (new node) [q=quit][n=print obs]?  > ')
             if a.isnumeric() and int(a) in n: break
             if a.lower() == 'q':
                 endepi=True
@@ -656,14 +657,23 @@ def SimulateAutomaticMode_PPO(env, ppo_policy, t_suffix=True, entries=None):
     print('Entry:',env.current_entry)
     
     done=False
+    endepi=False
     while not done:
         action, _state = ppo_policy.sample_greedy_action(obs,None,printing=True)
         env.render_eupaths(fname='results/test',t_suffix=False,last_step_only=True)
+        
+        while True:
+            a=input('\n             [q]-stop current, [enter]-take step, [n]-show nfm ...> ')
+            if a.lower() == 'q':
+                endepi=True
+                break
+            if a == 'n': print(env.obs)
+            if a == '': break
+        if endepi:
+            break        
         obs,r,done,i = env.step(action)
-        a=input('   |   [q]-stop current, [enter]-take step, [n]-show nfm ...> ')
-        if a.lower() == 'q': break
-        if a == 'n': print(env.obs)
     env.render_eupaths(fname='results/test',t_suffix=False,last_step_only=True)
     env.render_eupaths(fname='results/final',t_suffix=False)
-    input('')
+    if a!='Q':
+        input('')
     return a

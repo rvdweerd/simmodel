@@ -75,6 +75,9 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
             printing('#Trainable parameters: '+str(CalculateNumTrainableParameters(policy.model.policy)))
     printing('\n-------------------------------------------------------------------------------------------------------')   
     if len(test_set)==0: test_set=[None]
+    MAX_TEST_SET_SIZE = 10000
+    if len(test_set) > MAX_TEST_SET_SIZE:
+        test_set=list(np.random.choice(test_set,size=MAX_TEST_SET_SIZE,replace=False))
     for i, entry in enumerate(test_set):
         s=env.reset(entry = entry) 
         policy.reset_hidden_states(env)

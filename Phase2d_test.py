@@ -26,14 +26,14 @@ logdir = config['logdir']
 #env, _ = get_super_env(Uselected=[0,1,2,3], Eselected=[0,1,2,3,4,5,6,7,8,9], config=config)
 
 ## 2. Set of specific worlds
-global_env=[]
+#global_env=[]
 # world_names=[
     #'Manhattan5x5_FixedEscapeInit',
     #'Manhattan5x5_VariableEscapeInit',
     #'MetroU3_e17tborder_FixedEscapeInit',
     #'MetroU3_e1t31_FixedEscapeInit',
     #'SparseManhattan5x5' ]
-env = CreateEnv('MetroU3_e1t31_FixedEscapeInit',max_nodes=config['max_nodes'],var_targets=[4,4])
+#env = CreateEnv('MetroU3_e17tborder_FixedEscapeInit',max_nodes=config['max_nodes'],var_targets=None)#[4,4])
 # for w in world_names:
 #     env = CreateEnv(w,max_nodes=config['max_nodes'],var_targets=[4,4])
 #     global_env.append(env)
@@ -43,7 +43,7 @@ env = CreateEnv('MetroU3_e1t31_FixedEscapeInit',max_nodes=config['max_nodes'],va
 #env = CreateEnv('MetroU3_e1t31_FixedEscapeInit',max_nodes=config['max_nodes'],var_targets=[3,3], remove_world_pool=False)
 
 ## 4. Pre-defined training set for ppo experiments
-#env = ConstructTrainSet(config)
+env = ConstructTrainSet(config)
 
 ## Load pre-saved model
 saved_model = MaskablePPO.load(logdir+'/SEED'+str(seed)+"/saved_models/model_last")
@@ -53,8 +53,17 @@ ppo_policy = ActionMaskedPolicySB3_PPO(saved_policy, deterministic=True)
 # OPTIONS TO PERFORM TESTS
 
 ## 1. Evaluate a specific constellation on the graph
-check_custom_position_probs(env,saved_model.policy,hashint=None,entry=None,targetnodes=[13,22,23,29],epath=[17],upaths=[[23,22],[30,27],[32,7]],max_nodes=33,logdir=logdir)
-check_custom_position_probs(env,saved_model.policy,hashint=None,entry=None,targetnodes=[13,22,23,29],epath=[17],upaths=[[12,13],[30,27],[32,7]],max_nodes=33,logdir=logdir)
+## Metro example, left turn or right turn
+#check_custom_position_probs(env,saved_model.policy,hashint=None,entry=None,targetnodes=[13,22,23,29],epath=[17],upaths=[[23,22],[30,27],[32,7]],max_nodes=33,logdir=logdir)
+#check_custom_position_probs(env,saved_model.policy,hashint=None,entry=None,targetnodes=[13,22,23,29],epath=[17],upaths=[[12,13],[30,27],[32,7]],max_nodes=33,logdir=logdir)
+## Metro example, long range shortest path
+#check_custom_position_probs(env,saved_model.policy,hashint=None,entry=None,targetnodes=[31],epath=[1],upaths=[[14]],max_nodes=33,logdir=logdir)
+#check_custom_position_probs(env,saved_model.policy,hashint=None,entry=None,targetnodes=[31],epath=[1],upaths=[[14,17]],max_nodes=33,logdir=logdir)
+
+## Metro example, long range shortest path with one pursuer
+# epath=[1,5,6,7,14,18,19,25,29,31]
+# upaths=[]#[[9,8,7]]
+# check_custom_position_probs(env,saved_model.policy,hashint=None,entry=None,targetnodes=[31],epath=epath,upaths=upaths,max_nodes=33,logdir=logdir)
 
 ## 2. Run Interactive simulation 
 # plots are updated in the results folder
@@ -64,7 +73,7 @@ while True:
 
 ## 3. Run automated simulation (stepping)
 while True:
-    entries=[5012,218,3903]
+    entries=None#[5012,218,3903]
     a = SimulateAutomaticMode_PPO(env, ppo_policy, entries)
     if a == 'Q': break
     

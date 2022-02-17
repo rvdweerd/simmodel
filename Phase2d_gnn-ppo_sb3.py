@@ -19,9 +19,9 @@ if __name__ == '__main__':
     args=parser.parse_args()
     run_name = args.run_name
     
-    train_configs=get_train_configs(run_name,load_trainset=True)
+    train_configs=get_train_configs(run_name,load_trainset=False)
     config=train_configs[run_name]
-    train = True
+    train = False
     eval  = True
 
     MAX_NODES = config['max_nodes']
@@ -54,7 +54,7 @@ if __name__ == '__main__':
             model = MaskablePPO(s2v_ActorCriticPolicy, env_train, \
                 #learning_rate=1e-4,\
                 seed=seed, \
-                batch_size=128, \
+                #batch_size=128, \
                 #clip_range=0.1,\    
                 #max_grad_norm=0.1,\
                 policy_kwargs = policy_kwargs, verbose=2, tensorboard_log=logdir_+"/tb/")
@@ -69,8 +69,8 @@ if __name__ == '__main__':
         evalResults={}
         test_heuristics              = False
         test_full_trainset           = False
-        test_full_solvable_3x3subs   = True
-        test_all_solvable_3x3segments= True
+        test_full_solvable_3x3subs   = False
+        test_all_solvable_3x3segments= False
         test_other_worlds            = True
 
         if test_heuristics:
@@ -176,10 +176,11 @@ if __name__ == '__main__':
         #
         if test_other_worlds:
             world_names=[
-                'SparseManhattan5x5',
-                'MetroU3_e17tborder_FixedEscapeInit',
-                'Manhattan5x5_FixedEscapeInit',
-                'Manhattan5x5_VariableEscapeInit',
+                #'SparseManhattan5x5',
+                #'MetroU3_e17tborder_FixedEscapeInit',
+                'MetroU3_e17t31_FixedEscapeInit',
+                #'Manhattan5x5_FixedEscapeInit',
+                #'Manhattan5x5_VariableEscapeInit',
             ]
             state_repr='etUte0U0'
             state_enc='nfm'

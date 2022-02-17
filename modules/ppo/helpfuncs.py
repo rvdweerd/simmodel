@@ -98,9 +98,9 @@ def check_custom_position_probs(env,ppo_policy,hashint=None,entry=None,targetnod
     upath0 = [[u[0]] for u in upaths]
     fname=logdir+'/'+'hashint'+str(hashint)+'_target'+str(targetnodes)+'_epath'+str(epath)+'_upaths'+str(upaths)
     PlotEUPathsOnGraph_(newsp,epath0,upath0,filename=fname,fig_show=False,fig_save=True,goal_reached=False,last_step_only=False)
-    epath+=[action]
+    #epath+=[action]
     fname=logdir+'/'+'hashint'+str(hashint)+'_target'+str(targetnodes)+'_epath'+str(epath)+'_upaths'+str(upaths)
-    PlotEUPathsOnGraph_(newsp,epath,upaths,filename=fname,fig_show=False,fig_save=True,goal_reached=False,last_step_only=False)
+    PlotEUPathsOnGraph_(newsp,epath,upaths,filename=fname,fig_show=False,fig_save=True,goal_reached=(epath[-1] in targetnodes),last_step_only=False)
 
 def eval_simple(saved_policy,env):
     res_det = evaluate_policy(saved_policy, env, n_eval_episodes=20, reward_threshold=-100, warn=False, return_episode_rewards=False, deterministic=True)
