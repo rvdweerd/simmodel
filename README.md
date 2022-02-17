@@ -6,4 +6,4 @@ Thesis work-in-progress for UvA/AI program
 ![escape_demo](modules/sim/escape_route.gif)
 
 * Demo: a Graph Neural Net based policy model, trained using PPO with invalid action masking, can genereralize and by applied to unseen graphs</br></br>
-![ppo_demo](modules/sim/ppo_evasion.png)
+![ppo_demo](modules/sim/PPO_best_metro-evade-demo_right-1.png)
