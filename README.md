@@ -5,5 +5,5 @@ Thesis work-in-progress for UvA/AI program
 * Goal: predicting escape routes in a passive search scenario with partial observability</br></br>
 ![escape_demo](modules/sim/escape_route.gif)
 
-* Demo: a Graph Neural Net based policy model, trained using PPO with invalid action masking, can genereralize and by applied to unseen graphs</br></br>
+* Demo: a Graph Neural Net based policy model, trained using PPO with invalid action masking, can generalize and be applied to unseen graphs</br></br>
 ![ppo_demo](modules/sim/PPO_best_metro-evade-demo_right-1.png)
