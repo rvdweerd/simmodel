@@ -1,7 +1,7 @@
 import modules.sim.simdata_utils as su
 from modules.rl.rl_utils import CreateDuplicatesTrainsets
 from modules.rl.environments import GraphWorld
-
+import networkx as nx
 
     
 
@@ -148,6 +148,23 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         conf['make_reflexive']=make_reflexive
         env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
         return env
+    if world_name  == 'NWB_test':
+        conf={
+            'graph_type': "NWBGraph",
+            'make_reflexive': False,            
+            'N': 56,    # number of nodes along one side
+            'U': 10,    # number of pursuer units
+            'L': 50,    # Time steps
+            'T': 50,
+            'R': 2,  # Number of escape routes sampled 
+            'direction_north': False,       # Directional preference of escaper
+            #'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
+            #'fixed_initial_positions': (1,5,7,28),
+            'loadAllStartingPositions': False
+        }
+        conf['G']=nx.read_gpickle('datasets/G_nwb/G_test_bb1.pkl')
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
+        return env       
 
 def CreateWorlds(run_world_names, make_reflexive=True, state_repr='et', state_enc='nodes'):
     worlds=[]

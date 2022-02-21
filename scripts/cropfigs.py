@@ -17,13 +17,13 @@ for path in working_dir.glob("**/*.png"):
     # OR if you need absolute paths
     pathname=str(path.absolute())
     #if 'Entry=' in pathname and 'c_' not in pathname:
-    if 'hashintNone_targ' in pathname:
+    if 'test_t=' in pathname:
         dirname = os.path.dirname(pathname)
         fname = path.parts[-1]
         fstem = path.stem
         
         #if '3x3' in pathname or '5x5' in pathname:
-        if 'final_t=' in pathname:
+        if 'test_t=' in pathname:
             img = Image.open(pathname)
             img2=img.crop((110,0,530,480))
             img2.save(dirname+'/c_'+fname)

@@ -25,7 +25,7 @@ nfm_funcs = {
     'NFM_ev_ec_t_um_us' : NFM_ev_ec_t_um_us(),
     }
 
-def get_super_env(Uselected=[1], Eselected=[4], config=None, var_targets=None):
+def get_super_env(Uselected=[1], Eselected=[4], config=None, var_targets=None, apply_wrappers=True):
     # scenario_name=config['scenario_name']
     #scenario_name = 'Train_U2E45'
     # world_name = 'SubGraphsManhattan3x3'
@@ -40,14 +40,15 @@ def get_super_env(Uselected=[1], Eselected=[4], config=None, var_targets=None):
 
     #databank_full, register_full, solvable = LoadData(edge_blocking = True)
     env_all_train, hashint2env, env2hashint, env2hashstr = GetWorldSet(state_repr, state_enc, U=Uselected, E=Eselected, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func, var_targets=var_targets)
-    for i in range(len(env_all_train)):
-        env_all_train[i]=PPO_ObsWrapper(env_all_train[i], max_possible_num_nodes = max_nodes)        
-        env_all_train[i]=PPO_ActWrapper(env_all_train[i])        
+    if apply_wrappers:
+        for i in range(len(env_all_train)):
+            env_all_train[i]=PPO_ObsWrapper(env_all_train[i], max_possible_num_nodes = max_nodes)        
+            env_all_train[i]=PPO_ActWrapper(env_all_train[i])        
     super_env = SuperEnv(env_all_train, hashint2env, max_possible_num_nodes = max_nodes)
     #SimulateInteractiveMode(super_env)
     return super_env, env_all_train
 
-def CreateEnv(world_name, max_nodes=9, var_targets=None, remove_world_pool=False):
+def CreateEnv(world_name, max_nodes=9, var_targets=None, remove_world_pool=False, apply_wrappers=True):
     #world_name='Manhattan3x3_WalkAround'
     state_repr='etUte0U0'
     state_enc='nfm'
@@ -63,8 +64,9 @@ def CreateEnv(world_name, max_nodes=9, var_targets=None, remove_world_pool=False
     #MAX_NODES=9
     if var_targets is not None:
         env = VarTargetWrapper(env, var_targets)
-    env = PPO_ObsWrapper(env, max_possible_num_nodes = max_nodes)        
-    env = PPO_ActWrapper(env)        
+    if apply_wrappers:
+        env = PPO_ObsWrapper(env, max_possible_num_nodes = max_nodes)        
+        env = PPO_ActWrapper(env)        
     return env
 
 def check_custom_position_probs(env,ppo_policy,hashint=None,entry=None,targetnodes=[1],epath=[4],upaths=[[6]],max_nodes=0,logdir='test'):    

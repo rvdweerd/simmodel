@@ -532,19 +532,19 @@ def evaluate_tabular(logdir, config, env_all):
     for k,v in config.items():
         printing(k+' '+str(v))
 
-def evaluate_spath_heuristic(logdir, config, env_all, n_eval=10000):
+def evaluate_spath_heuristic(logdir, config, env_all, n_eval=20000):
     R=[]
     S=[]
     if type(env_all) == list:
         for i,env in enumerate(tqdm.tqdm(env_all)):
             policy=ShortestPathPolicy(env,weights='equal')
-            env._encode = env._encode_tensor
-            l, returns, c, solves = EvaluatePolicy(env, policy,env.world_pool, print_runs=False, save_plots=False, logdir=logdir, eval_arg_func=EvalArgs1, silent_mode=True)
+            #env.encode = env.encode_nfm
+            l, returns, c, solves = EvaluatePolicy(env, policy,env.world_pool, print_runs=False, save_plots=False, logdir=logdir, eval_arg_func=EvalArgs3, silent_mode=True)
             num_worlds_requested = 10
             once_every = max(1,len(env_all)//num_worlds_requested)
             if i % once_every ==0:
                 plotlist = GetFullCoverageSample(returns, env.world_pool, bins=10, n=15)
-                EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgs1, silent_mode=False, plot_each_timestep=False)
+                EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgs3, silent_mode=False, plot_each_timestep=False)
             R+=returns 
             S+=solves
     else:

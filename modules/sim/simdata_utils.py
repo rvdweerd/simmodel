@@ -64,7 +64,10 @@ class SimParameters(object):
             min_cost = 1e9
             for target_node_label in self.target_nodes:
                 target_node_coord = self.labels2coord[target_node_label]
-                cost, path = nx.single_source_dijkstra(self.G, self.start_escape_route, target_node_coord, weight='weight')
+                try:
+                    cost, path = nx.single_source_dijkstra(self.G, self.start_escape_route, target_node_coord, weight='weight')
+                except:
+                    cost, path = 1e8, [self.start_escape_route]
                 if cost < min_cost:
                     best_path_coords = path
                     min_cost = cost
@@ -252,6 +255,26 @@ def DefineSimParameters(config):
     sp.R = config['R']              # Number of escape routes sampled 
     sp.T = config['T']
     sp.loadAllStartingPositions = config['loadAllStartingPositions']
+    
+    if sp.graph_type == 'NWBGraph':
+        sp.G=config['G']
+        sp.labels={}
+        for i,tup in enumerate(list(sp.G.nodes)):
+            sp.labels[tup]=i
+        sp.pos = dict( (n,n) for n in sp.G.nodes() )
+        sp.N=len(sp.G.nodes)
+        sp.nodeid2coord = dict( (i, n) for i,n in enumerate(sp.G.nodes()) )
+        sp.U=10
+        sp.L
+        sp.U = config['U']              # number of pursuer units
+        sp.L = config['L']              # Time steps
+        sp.R = config['R']              # Number of escape routes sampled 1000
+        sp.V = sp.N                  # Total number of vertices
+        sp.T = sp.L+1                   # Total steps in time taken (L + start node)
+        sp.direction_north = config['direction_north']
+        sp.start_escape_route = sp.nodeid2coord[0]
+        sp.target_nodes=[20]
+    
     if sp.graph_type == 'SparseManhattan':
         sp.G, sp.labels, sp.pos = SparseManhattanGraph(config['N'])
         sp.N = config['N']
@@ -660,7 +683,7 @@ def SimulateAutomaticMode_PPO(env, ppo_policy, t_suffix=True, entries=None):
     endepi=False
     while not done:
         action, _state = ppo_policy.sample_greedy_action(obs,None,printing=True)
-        env.render_eupaths(fname='results/test',t_suffix=False,last_step_only=True)
+        env.render_eupaths(fname='results/test',t_suffix=t_suffix,last_step_only=True)
         
         while True:
             a=input('\n             [q]-stop current, [enter]-take step, [n]-show nfm ...> ')
@@ -672,8 +695,8 @@ def SimulateAutomaticMode_PPO(env, ppo_policy, t_suffix=True, entries=None):
         if endepi:
             break        
         obs,r,done,i = env.step(action)
-    env.render_eupaths(fname='results/test',t_suffix=False,last_step_only=True)
-    env.render_eupaths(fname='results/final',t_suffix=False)
+    env.render_eupaths(fname='results/test',t_suffix=t_suffix,last_step_only=True)
+    env.render_eupaths(fname='results/final',t_suffix=t_suffix)
     if a!='Q':
         input('')
     return a

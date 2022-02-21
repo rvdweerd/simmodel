@@ -45,7 +45,7 @@ class GraphWorld(gym.Env):
         self.all_worlds             = [ind for k,ind in self.register['labels'].items()]
         self.world_pool             = su.GetWorldPool(self.all_worlds, fixed_initial_positions, self.register)
         self.world_pool_solvable    = {} # filled in later uses when available
-        self._encode                = self._encode_nodes if state_encoding == 'nodes' else self._encode_tensor if state_encoding == 'tensors' else self._encode_nfm
+        self.encode                = self.encode_nodes if state_encoding == 'nodes' else self.encode_tensor if state_encoding == 'tensors' else self.encode_nfm
         if state_encoding not in ['nodes', 'tensors', 'nfm']: assert False
 
         # Dynamics parameters
@@ -167,15 +167,15 @@ class GraphWorld(gym.Env):
         self.world_pool             = su.GetWorldPool(self.all_worlds, self.fixed_initial_positions, self.register)
         self.reset()
 
-    def _encode_nodes(self, s):
+    def encode_nodes(self, s):
         # used to return a tuple of node labels of E and U positions as observation
         return s
 
-    def _encode_tensor(self, s):
+    def encode_tensor(self, s):
         # used to return a one-hot-coded tensor of E and Upositions as observation
         return self._state2vec_packed(s)
 
-    def _encode_nfm(self, s):
+    def encode_nfm(self, s):
         # used to return the node feature matrix as observation
         return self.nfm
 
@@ -353,13 +353,13 @@ class GraphWorld(gym.Env):
 
     def _refresh_obs(self):
         if self.state_representation == 'etUt':
-            self.obs = self._encode(self.state)
+            self.obs = self.encode(self.state)
         elif self.state_representation == 'et':
-            self.obs = self._encode((self.state[0],))
+            self.obs = self.encode((self.state[0],))
         elif self.state_representation == 'etUte0U0':
-            self.obs = self._encode(self.state+self.state0)
+            self.obs = self.encode(self.state+self.state0)
         elif self.state_representation == 'ete0U0':
-            self.obs = self._encode(tuple([self.state[0]])+self.state0)
+            self.obs = self.encode(tuple([self.state[0]])+self.state0)
         else:
             assert False
         return self.obs
@@ -586,6 +586,7 @@ class SuperEnv(gym.Env):
         self.state_encoding = self.env.state_encoding
         self.iratio = self.env.iratio
         self.iratios = self.env.iratios
+        self.out_degree = self.env.out_degree
 
     def _updateInstanceLevelData(self):
         self.current_entry = self.env.current_entry

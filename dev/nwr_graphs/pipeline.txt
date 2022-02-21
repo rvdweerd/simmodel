@@ -1,0 +1,24 @@
+1. run IMA/old/Modellen/FIP/NWB_data/runfile.py
+    settings: start_escape_route in (long,lat) eg via google maps
+    filter on main roads or max speed optional
+    plt.savefig as png and nx.write_gpickle in graph()
+
+    Either use nwb_data_parquet or all_nwb_data_with_enrichtments in local_nationaalgeoregister()
+
+2. Convert gpickle file to .graphml with script convert_pkl_to_graphml.py
+
+3. Import .graphml in Gephi (>0.9.2) and make necessary corrections
+
+4. Export as graphml and convert back to nx format with [...]
+
+
+
+NB Prep adjustements in IMA repo:
+1. Add to IMA/ima/modellen/nwb/attachments.py:
+    nx.write_gpickle(G,'G_test.pkl')
+    print('nr_nodes:',len(G.nodes()))
+    print('nr_edges:',len(G.edges()))
+    
+    plt.savefig(
+        f"images/{FIP_model}_Sfug{start_offender}_R{R}_L{L}_Bsize{bounding_size_in_km}.png")
+2. comment out "from math import comb", dist in IMA/data_api/utils/enrichtments.py

@@ -16,13 +16,16 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)    
     parser.add_argument('--run_name', type=str)
+    parser.add_argument('--train', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
+    parser.add_argument('--eval', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])   
+
     args=parser.parse_args()
     run_name = args.run_name
     
-    train_configs=get_train_configs(run_name,load_trainset=False)
+    train_configs=get_train_configs(run_name,load_trainset=True)
     config=train_configs[run_name]
-    train = False
-    eval  = True
+    train = args.train
+    eval  = args.eval
 
     MAX_NODES = config['max_nodes']
     EMB_DIM = config['emb_dim']
@@ -67,11 +70,11 @@ if __name__ == '__main__':
 
     if eval:
         evalResults={}
-        test_heuristics              = False
+        test_heuristics              = True
         test_full_trainset           = False
         test_full_solvable_3x3subs   = False
         test_all_solvable_3x3segments= False
-        test_other_worlds            = True
+        test_other_worlds            = False
 
         if test_heuristics:
             # Evaluate using shortest path heuristics on the full trainset
@@ -178,9 +181,9 @@ if __name__ == '__main__':
             world_names=[
                 #'SparseManhattan5x5',
                 #'MetroU3_e17tborder_FixedEscapeInit',
-                'MetroU3_e17t31_FixedEscapeInit',
+                #'MetroU3_e17t31_FixedEscapeInit',
                 #'Manhattan5x5_FixedEscapeInit',
-                #'Manhattan5x5_VariableEscapeInit',
+                'Manhattan5x5_VariableEscapeInit',
             ]
             state_repr='etUte0U0'
             state_enc='nfm'

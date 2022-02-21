@@ -2,30 +2,30 @@
 
 # ## BATCH
 emb=64
-numepi=2500 #2500
-mem=2000 #2000
+numepi=25000 #2500
+mem=5000 #2000
 tau=100
 nstep=2
 optim='returns'
-train="False"
+train="True"
 eval="True"
 etrain="0,1,2,3,4,5,6,7,8,9"
 etrain_="0123456789"
 utrain="1,2,3"
 utrain_="123"
-scen="Train_U$utrain_""E$etrain_"
+scen="M3M5mixture"
 numseeds=5
 seed0=0
 solveselect='solvable'
 edgeblock="True"
 for nfm in {"NFM_ev_ec_t_um_us",}
 do
-    for itt in {2,3,4,5,6,7}
+    for itt in {5,}
     do
         tmux new-session -d -s sub$itt
-        tmux send-keys -t "sub$itt" "conda activate rlcourse" Enter
+        tmux send-keys -t "sub$itt" "conda activate rlcourse-sb3c" Enter
         tmux send-keys -t "sub$itt" "cd ~/testing/sim" Enter
-        tmux send-keys -t "sub$itt" "python Phase2b_experiments_Pathfinding_Partial3x3s.py --emb_dim $emb --emb_itT $itt --num_epi $numepi --mem_size $mem --nfm_func $nfm --scenario $scen --optim_target $optim --tau $tau --nstep $nstep --Etrain $etrain --Utrain $utrain --edge_blocking $edgeblock --solve_select $solveselect --train $train --eval $eval --num_seeds $numseeds --seed0 $seed0" Enter
+        tmux send-keys -t "sub$itt" "python Phase2b_experiments_Pathfinding_M3x3M5x5Mixture.py --emb_dim $emb --emb_itT $itt --num_epi $numepi --mem_size $mem --nfm_func $nfm --scenario $scen --optim_target $optim --tau $tau --nstep $nstep --Etrain $etrain --Utrain $utrain --edge_blocking $edgeblock --solve_select $solveselect --train $train --eval $eval --num_seeds $numseeds --seed0 $seed0" Enter
     done
 done
 
