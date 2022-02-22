@@ -36,6 +36,7 @@ class GraphWorld(gym.Env):
         self.state_encoding         = state_encoding
         self.state_encoding_dim, self.state_chunks, self.state_len = su.GetStateEncodingDimension(state_representation, self.sp.V, self.sp.U)
         self.render_fileprefix      = 'test_scenario_t='
+#        self.rendersize             = # 0=small, 1=medium, 2=large
         # Load relevant pre-saved optimization runs for the U trajectories
         dirname                     = su.make_result_directory(self.sp, optimization_method)
         register_coords, databank_coords, iratios = su.LoadDatafile(dirname)
@@ -85,6 +86,8 @@ class GraphWorld(gym.Env):
         #assert  self.state_encoding=='nfm'
         self.nfm_calculator = nfm_function
         self.nfm_calculator.init(self)
+        self.observation_space = spaces.Box(0., self.sp.U, shape=(self.sp.V, (self.F+self.sp.V+1)), dtype=np.float32)        
+        self.action_space = spaces.Discrete(self.sp.V) # all possible nodes 
         self.reset()
 
     def get_custom_nfm(self, epath, targetnodes, upaths):

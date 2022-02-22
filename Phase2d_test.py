@@ -41,6 +41,7 @@ print(logdir)
 
 ## 3. Individual environment
 env = CreateEnv('MetroU3_e17tborder_FixedEscapeInit',max_nodes=config['max_nodes'],var_targets=[3,3], remove_world_pool=False)
+#env = CreateEnv('NWB_test',max_nodes=975,var_targets=None, remove_world_pool=True)
 
 ## 4. Pre-defined training set for ppo experiments
 #env = ConstructTrainSet(config)
@@ -48,7 +49,22 @@ env = CreateEnv('MetroU3_e17tborder_FixedEscapeInit',max_nodes=config['max_nodes
 ## Load pre-saved model
 saved_model = MaskablePPO.load(logdir+'/SEED'+str(seed)+"/saved_models/model_last")
 saved_policy = s2v_ActorCriticPolicy.load(logdir+'/SEED'+str(seed)+"/saved_models/policy_last")
+
+from modules.ppo.models_sb3 import s2v_ACNetwork
+class DeployedPPOPolicy(nn.Module):
+    def __init__(self, env):
+        super(DeployedPPOPolicy, self).__init__()
+        self.struc2vec = Struc2Vec(env.observation_space,64,5,5)
+        self.struc2vec.load_state_dict(saved_policy.features_extractor.state_dict())
+        
+        self.s2vACnet = s2v_ACNetwork(64,1,1,64)
+        #Q_target.load_state_dict(policy.model.state_dict())
+
+deployed=DeployedPPOPolicy(env)
+
 ppo_policy = ActionMaskedPolicySB3_PPO(saved_policy, deterministic=True)
+
+
 
 # OPTIONS TO PERFORM TESTS
 

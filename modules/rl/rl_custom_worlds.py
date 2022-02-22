@@ -152,17 +152,17 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         conf={
             'graph_type': "NWBGraph",
             'make_reflexive': False,            
-            'N': 56,    # number of nodes along one side
+            'N': 975,    # number of nodes along one side
             'U': 10,    # number of pursuer units
             'L': 50,    # Time steps
             'T': 50,
-            'R': 2,  # Number of escape routes sampled 
+            'R': 1000,  # Number of escape routes sampled 
             'direction_north': False,       # Directional preference of escaper
             #'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
             #'fixed_initial_positions': (1,5,7,28),
             'loadAllStartingPositions': False
         }
-        conf['G']=nx.read_gpickle('datasets/G_nwb/G_test_bb1.pkl')
+        conf['obj'] = nx.read_gpickle('datasets/G_nwb/4.GEPHI_to_SIM/G_test_DAM_1km_edited_V=975.bin')
         env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
         return env       
 

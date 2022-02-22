@@ -257,23 +257,19 @@ def DefineSimParameters(config):
     sp.loadAllStartingPositions = config['loadAllStartingPositions']
     
     if sp.graph_type == 'NWBGraph':
-        sp.G=config['G']
-        sp.labels={}
-        for i,tup in enumerate(list(sp.G.nodes)):
-            sp.labels[tup]=i
-        sp.pos = dict( (n,n) for n in sp.G.nodes() )
+        sp.G=config['obj']['G']
+        sp.labels=config['obj']['labels']
+        sp.pos = config['obj']['pos']
         sp.N=len(sp.G.nodes)
         sp.nodeid2coord = dict( (i, n) for i,n in enumerate(sp.G.nodes()) )
-        sp.U=10
-        sp.L
         sp.U = config['U']              # number of pursuer units
         sp.L = config['L']              # Time steps
         sp.R = config['R']              # Number of escape routes sampled 1000
         sp.V = sp.N                  # Total number of vertices
         sp.T = sp.L+1                   # Total steps in time taken (L + start node)
         sp.direction_north = config['direction_north']
-        sp.start_escape_route = sp.nodeid2coord[0]
-        sp.target_nodes=[20]
+        sp.start_escape_route = config['obj']['centernode_coord']
+        sp.target_nodes=config['obj']['target_nodes']
     
     if sp.graph_type == 'SparseManhattan':
         sp.G, sp.labels, sp.pos = SparseManhattanGraph(config['N'])
