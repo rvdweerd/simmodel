@@ -668,7 +668,7 @@ def SimulateInteractiveMode_PPO(env, model=None, t_suffix=True, entry=None):
     print('\n')
     return a
 
-def SimulateAutomaticMode_PPO(env, ppo_policy, t_suffix=True, entries=None):
+def SimulateAutomaticMode_PPO(env, ppo_policy, t_suffix=True, entries=None, deployed=None):
     if entries is not None:
         entry=random.choice(entries)
     else: entry = None
@@ -681,6 +681,9 @@ def SimulateAutomaticMode_PPO(env, ppo_policy, t_suffix=True, entries=None):
         action, _state = ppo_policy.sample_greedy_action(obs,None,printing=True)
         env.render_eupaths(fname='results/test',t_suffix=t_suffix,last_step_only=True)
         
+        ppo_value = ppo_policy.model.predict_values(obs[None,:].to(device))
+        test_logits, test_value = deployed(obs)
+
         while True:
             a=input('\n             [q]-stop current, [enter]-take step, [n]-show nfm ...> ')
             if a.lower() == 'q':

@@ -54,13 +54,30 @@ from modules.ppo.models_sb3 import s2v_ACNetwork
 class DeployedPPOPolicy(nn.Module):
     def __init__(self, env):
         super(DeployedPPOPolicy, self).__init__()
-        self.struc2vec = Struc2Vec(env.observation_space,64,5,5)
+        self.struc2vec = Struc2Vec(env.observation_space,64,5,5).to(device)
         self.struc2vec.load_state_dict(saved_policy.features_extractor.state_dict())
         
-        self.s2vACnet = s2v_ACNetwork(64,1,1,64)
+        self.s2vACnet = s2v_ACNetwork(64,1,1,64).to(device)
+        self.s2vACnet.load_state_dict(saved_policy.mlp_extractor.state_dict())
+
+        self.pnet = nn.Linear(1,1,True).to(device)
+        self.pnet.load_state_dict(saved_policy.action_net.state_dict())
+
+        self.vnet = nn.Linear(1,1,True).to(device)
+        self.vnet.load_state_dict(saved_policy.value_net.state_dict())
         #Q_target.load_state_dict(policy.model.state_dict())
 
+    def forward(self, obs):
+        obs = obs[None,:].to(device)
+        y=self.struc2vec(obs)
+        a,b=self.s2vACnet(y)
+        logits=self.pnet(a)
+        value=self.vnet(b)
+        return logits, value
+
 deployed=DeployedPPOPolicy(env)
+obs=env.reset().to(device)
+l,v = deployed(obs)
 
 ppo_policy = ActionMaskedPolicySB3_PPO(saved_policy, deterministic=True)
 
@@ -90,7 +107,7 @@ ppo_policy = ActionMaskedPolicySB3_PPO(saved_policy, deterministic=True)
 ## 3. Run automated simulation (stepping)
 while True:
     entries=None#[5012,218,3903]
-    a = SimulateAutomaticMode_PPO(env, ppo_policy, t_suffix=False, entries=entries)
+    a = SimulateAutomaticMode_PPO(env, ppo_policy, t_suffix=False, entries=entries, deployed=deployed)
     if a == 'Q': break
     
 
