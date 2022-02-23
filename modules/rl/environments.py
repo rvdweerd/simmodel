@@ -307,7 +307,18 @@ class GraphWorld(gym.Env):
         if len(self.world_pool)==0:
             #self.current_entry=-1
             self.iratio=-1
-            self.state=self._to_state((self.sp.coord2labels[self.sp.start_escape_route]),[])
+            #self.state=self._to_state((self.sp.coord2labels[self.sp.start_escape_route]),[])
+            count=0
+            while True:
+                i = random.choice(self.all_worlds)
+                ser=self.databank['labels'][i]['start_escape_route']
+                if ser not in self.sp.target_nodes:
+                    break
+                else:
+                    #print('initial pos on target node, looking for other instance')
+                    count+=1
+                    assert count <1e4
+            self.state=self._to_state((ser),[])
             self.state0 =self.state
             pass
             #return

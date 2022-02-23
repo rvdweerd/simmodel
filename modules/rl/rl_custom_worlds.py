@@ -148,7 +148,7 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         conf['make_reflexive']=make_reflexive
         env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
         return env
-    if world_name  == 'NWB_test':
+    if world_name  in ['NWB_test_FixedEscapeInit', 'NWB_test_VariableEscapeInit']:
         conf={
             'graph_type': "NWBGraph",
             'make_reflexive': False,            
@@ -162,6 +162,8 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
             #'fixed_initial_positions': (1,5,7,28),
             'loadAllStartingPositions': False
         }
+        if world_name == 'NWB_test_VariableEscapeInit':
+            conf['loadAllStartingPositions'] = True
         conf['obj'] = nx.read_gpickle('datasets/G_nwb/4.GEPHI_to_SIM/G_test_DAM_1km_edited_V=975.bin')
         env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
         return env       

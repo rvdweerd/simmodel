@@ -677,11 +677,11 @@ def SimulateAutomaticMode_PPO(env, ppo_policy, t_suffix=True, entries=None):
     
     done=False
     endepi=False
+            
     while not done:
         action, _state = ppo_policy.sample_greedy_action(obs,None,printing=True)
         
         env.render_eupaths(fname='results/test',t_suffix=t_suffix,last_step_only=True)
-        
         ppo_value = ppo_policy.model.predict_values(obs[None,:].to(device))
 
         while True:
@@ -690,6 +690,7 @@ def SimulateAutomaticMode_PPO(env, ppo_policy, t_suffix=True, entries=None):
                 endepi=True
                 break
             if a == 'n': print(env.obs)
+            if a == 'c': env.render_eupaths(fname='results/final',t_suffix=t_suffix,last_step_only=False)
             if a == '': break
         if endepi:
             break        
