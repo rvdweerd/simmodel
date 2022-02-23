@@ -29,7 +29,7 @@ def PlotAgentsOnGraph_(sp, escape_pos, pursuers_pos, timestep, fig_show=False, f
     for n in sp.target_nodes:
         node_borderlist[sp.labels2nodeids[n]] = "red"
         #nodelist.append(sp.labels2coord[n])
-    nodesizelist =  [nodesize for _ in range(sp.V)] 
+    nodesizelist =  [5 for _ in range(sp.V)] 
     node_text = dict([(c,str(sp.coord2labels[c])) for c in sp.G.nodes])
     colorlist=["white"]*sp.V
     if goal_reached:
@@ -159,30 +159,39 @@ def PlotEPathOnGraph_(sp, epath, pursuers_pos, fig_show, fig_save, filename, goa
     return out
 
 def PlotEUPathsOnGraph_(sp, epath, u_paths, fig_show, fig_save, filename, goal_reached, size='small', last_step_only=False):
-    nodesize = 10 # 400 1200
-    edgewidth = .5 # 5
-    fontsize = 1 # 8 12
-    arrowsize = 5 # 25
+    if sp.V > 50:
+        nodesize = 10 # 400 1200
+        edgewidth = .5 # 5
+        fontsize = 1 # 8 12
+        arrowsize = 5 # 25
+    else:
+        nodesize = 400 # 400 1200
+        edgewidth = 1 # 5
+        fontsize = 8 # 8 12
+        arrowsize = 25 # 25
     G=sp.G#.to_directed()
     labels=sp.labels
     pos=sp.pos
     plt.clf()
     colorlist = [1 for _ in range(sp.V)]
     node_borderlist = ["white"]*sp.V
+    nodesizelist =  [0 for _ in range(sp.V)]
     for n in sp.target_nodes:
         node_borderlist[sp.labels2nodeids[n]] = "red"
-    nodesizelist =  [nodesize for _ in range(sp.V)]
+        nodesizelist[sp.labels2nodeids[n]] = nodesize
     node_text = dict([(c,str(sp.coord2labels[c])) for c in sp.G.nodes])
     colorlist=["white"]*sp.V
     if goal_reached:
         colorlist[sp.labels2nodeids[epath[-1]]]='#66FF00'
     else:
         colorlist[sp.labels2nodeids[epath[-1]]]='#FF0000'
-    nodesizelist[sp.labels2nodeids[epath[-1]]] = nodesize*2
-    
+    nodesizelist[sp.labels2nodeids[epath[-1]]] = nodesize
+    node_borderlist[sp.labels2nodeids[epath[-1]]] = 'red'
+
     for i,u_path in enumerate(u_paths):
         colorlist[sp.labels2nodeids[u_path[-1]]]='#0000FF'
-        nodesizelist[sp.labels2nodeids[u_path[-1]]] = nodesize*2
+        nodesizelist[sp.labels2nodeids[u_path[-1]]] = nodesize
+        node_borderlist[sp.labels2nodeids[u_path[-1]]] = 'blue'
 
     edgelist_not_taken=list(G.edges())
     edgelist_takenE=[]
@@ -207,7 +216,7 @@ def PlotEUPathsOnGraph_(sp, epath, u_paths, fig_show, fig_save, filename, goal_r
 
     nx.draw_networkx_edges(G, pos, edgelist=edgelist_not_taken, edge_color='grey', width=edgewidth, alpha=1.)#width=1
     nx.draw_networkx_edges(G, pos, edgelist=edgelist_takenE, edge_color='red', arrowsize=25, width=edgewidth*2, alpha=1.)#width=1
-    nx.draw_networkx_edges(G, pos, edgelist=edgelist_takenU, edge_color='blue', arrowsize=arrowsize, width=edgewidth*2. if size == 'large' else 3., alpha=1.)#width=1
+    nx.draw_networkx_edges(G, pos, edgelist=edgelist_takenU, edge_color='blue', arrowsize=arrowsize, width=edgewidth*2, alpha=1.)#width=1
     if fontsize > 1:
         nx.draw_networkx_labels(G,pos, font_size = fontsize, labels=node_text, font_color='black')#fontsize=8
     nx.draw_networkx_nodes(G, pos, node_size=nodesizelist, node_color=colorlist, edgecolors=node_borderlist, alpha=1.)#alhpa=.6
