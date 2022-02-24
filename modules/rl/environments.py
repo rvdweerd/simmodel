@@ -310,6 +310,10 @@ class GraphWorld(gym.Env):
             #self.state=self._to_state((self.sp.coord2labels[self.sp.start_escape_route]),[])
             count=0
             while True:
+                if len(self.all_worlds)==0:
+                    i=0
+                    ser=self.sp.coord2labels[self.sp.start_escape_route]
+                    break
                 i = random.choice(self.all_worlds)
                 ser=self.databank['labels'][i]['start_escape_route']
                 if ser not in self.sp.target_nodes:

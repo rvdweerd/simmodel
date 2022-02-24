@@ -41,6 +41,7 @@ print(logdir)
 # env=SuperEnv(global_env,hashint2env=None,max_possible_num_nodes=33)#,probs=[1,10,1,1,1,1,1,1])
 
 ## 3. Individual environment
+#env = CreateEnv('MetroU3_e17tborder_FixedEscapeInit',max_nodes=config['max_nodes'],var_targets=None, remove_world_pool=False)
 #env = CreateEnv('Manhattan5x5_FixedEscapeInit',max_nodes=config['max_nodes'],var_targets=[3,3], remove_world_pool=False)
 #env = CreateEnv('NWB_test_FixedEscapeInit',max_nodes=975,var_targets=[20,20], remove_world_pool=False)
 env = CreateEnv('NWB_test_VariableEscapeInit',max_nodes=975,var_targets=None, remove_world_pool=False)
