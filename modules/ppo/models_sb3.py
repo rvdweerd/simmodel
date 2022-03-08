@@ -298,7 +298,7 @@ class DeployablePPOPolicy(nn.Module):
     def __init__(self, env, trained_policy):
         super(DeployablePPOPolicy, self).__init__()
         self.device=device
-        self.struc2vec = Struc2Vec(env.observation_space,64,5,5).to(device)
+        self.struc2vec = Struc2Vec(env.observation_space,64,5,env.F).to(device)
         self.struc2vec.load_state_dict(trained_policy.features_extractor.state_dict())
         
         self.s2vACnet = s2v_ACNetwork(64,1,1,64).to(device)
@@ -349,3 +349,15 @@ class DeployablePPOPolicy(nn.Module):
         obs=obs.to(device)
         raw_logits, value = self.forward(obs)
         return value
+
+    def numTrainableParameters(self):
+        print('Qnet size:')
+        print('------------------------------------------')
+        total = 0
+        for name, p in self.named_parameters():
+            total += np.prod(p.shape)
+            print("{:24s} {:12s} requires_grad={}".format(name, str(list(p.shape)), p.requires_grad))
+        print("Total number of parameters: {}".format(total))
+        print('------------------------------------------')
+        assert total == sum(p.numel() for p in self.parameters() if p.requires_grad)
+        return total

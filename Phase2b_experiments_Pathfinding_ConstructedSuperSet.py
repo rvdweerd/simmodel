@@ -59,7 +59,7 @@ if __name__ == '__main__':
     #env_all_train, hashint2env, env2hashint, env2hashstr = GetWorldSet(state_repr, state_enc, U=Utrain, E=Etrain, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func)
     config={}
     config['solve_select']=solve_select
-    config['max_nodes']=25
+    config['max_nodes']=33
     config['nfm_func_name']=args.nfm_func
     config['edge_blocking']=edge_blocking
 
@@ -79,7 +79,7 @@ if __name__ == '__main__':
 
     config={}
     config['node_dim']      = nfm_func.F
-    config['max_num_nodes']  = 25#env_all_train[0].sp.V
+    config['max_num_nodes']  = 33#env_all_train[0].sp.V
     config['scenario_name'] = args.scenario
     config['nfm_func']      = args.nfm_func
     config['emb_dim']       = args.emb_dim
@@ -125,11 +125,11 @@ if __name__ == '__main__':
     #
     if args.eval:
         evalResults={}
-        test_heuristics              = True
+        test_heuristics              = False
         test_full_trainset           = True
-        test_full_solvable_3x3subs   = True
-        test_all_solvable_3x3segments= True
-        test_other_worlds            = True
+        test_full_solvable_3x3subs   = False
+        test_all_solvable_3x3segments= False
+        test_other_worlds            = False
         
         if test_heuristics:
             # Evaluate with simple shortest path heuristic on full trainet to get low mark on performance 
@@ -254,14 +254,55 @@ if __name__ == '__main__':
                 printing('  per seed: '+str(np.array(values))+'\n')
 
     if args.test:
-        logdir=config['logdir']+'/SEED1'
+        evalResults={}
+        logdir=config['logdir']+'/SEED0'
         Q_func, Q_net, optimizer, lr_scheduler = init_model(config,fname=logdir+'/best_model.tar')
         policy=GNN_s2v_Policy(Q_func)
-        #env = CreateEnv('NWB_test_VariableEscapeInit',max_nodes=975,var_targets=None, remove_world_pool=False, apply_wrappers=False)
-        #env = CreateEnv('MetroU3_e17tborder_FixedEscapeInit',max_nodes=33,var_targets=[1,1], remove_world_pool=True, apply_wrappers=False)
-        env = CreateEnv('MetroU3_e1t31_FixedEscapeInit',max_nodes=33,var_targets=None, remove_world_pool=True, apply_wrappers=False)        
-        while True:
-            entries=None#[5012,218,3903]
-            a = SimulateAutomaticMode_DQN(env, policy, t_suffix=False, entries=entries)
-            if a == 'Q': break
+
+        world_list=['MetroU3_e1t31_FixedEscapeInit', 
+            'NWB_test_VariableEscapeInit']
+        node_maxims = [33,975]
+        var_targets=[ [1,1], None]
+        eval_names =  ['MetroU0_e1t31_vartarget_eval', 
+                       'NWB_VarialeEscapeInit_eval' ]
+        eval_nums = [1000,200]
+
+        for world_name, node_maxim, var_target, eval_name, eval_num in zip(world_list, node_maxims, var_targets, eval_names, eval_nums):
+            env = CreateEnv(world_name, max_nodes=node_maxim, nfm_func_name = config['nfm_func'], var_targets=var_target, remove_world_pool=True, apply_wrappers=False)
+            #env = CreateEnv('NWB_test_FixedEscapeInit',max_nodes=975,nfm_func_name = config['nfm_func'],var_targets=None, remove_world_pool=True, apply_wrappers=False)
+            #env = CreateEnv('MetroU3_e17tborder_FixedEscapeInit',max_nodes=33,nfm_func_name = config['nfm_func'],var_targets=[1,1], remove_world_pool=True, apply_wrappers=False)
+            #env = CreateEnv('MetroU3_e1t31_FixedEscapeInit',max_nodes=33,nfm_func_name = config['nfm_func'],var_targets=[1,1], remove_world_pool=True, apply_wrappers=False)        
+            #env = CreateEnv('MetroU3_e17tborder_VariableEscapeInit',max_nodes=33,nfm_func_name = config['nfm_func'],var_targets=None, remove_world_pool=True, apply_wrappers=False)        
+            while False:
+                entries=None#[5012,218,3903]
+                a = SimulateAutomaticMode_DQN(env, policy, t_suffix=False, entries=entries)
+                if a == 'Q': break
+
+            senv=SuperEnv([env], {1:0}, node_maxim, probs=[1])
+            #evalName='MetroU0_e1t31_vartarget_eval'
+            evalName=eval_name
+            n_eval=eval_num
+            evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
+            for seed in range(seed0, seed0+numseeds):
+                result = evaluate(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=senv, eval_subdir=evalName, n_eval=n_eval)
+                #result = evaluate(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=[env], eval_subdir=evalName)
+                num_unique_graphs, num_graph_instances, avg_return, success_rate = result
+                evalResults[evalName]['num_graphs.........'].append(num_unique_graphs)
+                evalResults[evalName]['num_graph_instances'].append(num_graph_instances)
+                evalResults[evalName]['avg_return.........'].append(avg_return)
+                evalResults[evalName]['success_rate.......'].append(success_rate)
+
+        for ename, results in evalResults.items():
+            OF = open(config['logdir']+'/Results_over_seeds_'+ename+'.txt', 'w')
+            def printing(text):
+                print(text)
+                OF.write(text + "\n")
+            np.set_printoptions(formatter={'float':"{0:0.3f}".format})
+            printing('Results over seeds for evaluation on '+ename+'\n')
+            for category,values in results.items():
+                printing(category)
+                printing('  avg over seeds: '+str(np.mean(values)))
+                printing('  std over seeds: '+str(np.std(values)))
+                printing('  per seed: '+str(np.array(values))+'\n')
+
         

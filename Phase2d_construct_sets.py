@@ -101,7 +101,7 @@ def get_train_configs(runname, load_trainset=True):
         rootdir, logdir = get_logdirs(config[runname])
         config[runname]['rootdir'] = rootdir
         config[runname]['logdir'] = logdir
-        env = ConstructTrainSet(config[runname])
+        env,_ = ConstructTrainSet(config[runname])
         config[runname]['env_train'] = env
     elif runname == 'RunC':
         config[runname]={}
@@ -122,7 +122,7 @@ def get_train_configs(runname, load_trainset=True):
         config[runname]['rootdir'] = rootdir
         config[runname]['logdir'] = logdir
         if load_trainset:
-            env = ConstructTrainSet(config['RunC'])
+            env,_ = ConstructTrainSet(config['RunC'])
             config['RunC']['env_train'] = env
         else:
             config['RunC']['env_train'] = None    
@@ -145,9 +145,8 @@ def get_train_configs(runname, load_trainset=True):
         rootdir, logdir = get_logdirs(config[key])
         config[key]['rootdir'] = rootdir
         config[key]['logdir'] = logdir
-        env = ConstructTrainSet(config[key])
+        env,_ = ConstructTrainSet(config[key])
         config[key]['env_train'] = env    
-    
     elif runname == 'RunE':
         key='RunE'
         config[key]={}
@@ -167,9 +166,8 @@ def get_train_configs(runname, load_trainset=True):
         rootdir, logdir = get_logdirs(config[key])
         config[key]['rootdir'] = rootdir
         config[key]['logdir'] = logdir
-        env = ConstructTrainSet(config[key])
+        env,_ = ConstructTrainSet(config[key])
         config[key]['env_train'] = env    
-
     elif runname == 'train_on_metro':
         key='train_on_metro'
         config[key]={}
@@ -196,7 +194,6 @@ def get_train_configs(runname, load_trainset=True):
         global_env.append(env)
         env=SuperEnv(global_env, None, max_possible_num_nodes = 33)
         config[key]['env_train'] = env    
-
     if runname == 'TestHeur':
         config[runname]={}
         config[runname]['solve_select']  = 'solvable'
@@ -220,6 +217,29 @@ def get_train_configs(runname, load_trainset=True):
         config[runname]['rootdir'] = rootdir
         config[runname]['logdir'] = logdir
         config[runname]['env_train'] = env
+    if runname == 'SuperSet_noU':
+        config[runname]={}
+        config[runname]['train_on']      = 'ContructedSuperSet_noU'
+        config[runname]['solve_select']  = 'solvable'
+        config[runname]['edge_blocking'] = True
+        config[runname]['scenario_name'] = ''
+        config[runname]['nfm_func_name'] = 'NFM_ec_t'
+        config[runname]['node_dim'] = 2
+        config[runname]['s2v_layers']    = 2
+        config[runname]['emb_dim']       = 64
+        config[runname]['emb_iter_T']    = 10
+        config[runname]['num_step']      = 300000
+        config[runname]['seed0']         = 0
+        config[runname]['numseeds']      = 5
+        config[runname]['max_nodes']     = 25
+        rootdir, logdir = get_logdirs(config[runname])
+        config[runname]['rootdir'] = rootdir
+        config[runname]['logdir'] = logdir
+        if load_trainset:
+            env,_ = ConstructTrainSet(config[runname], remove_paths=True)
+            config[runname]['env_train'] = env
+        else:
+            config[runname]['env_train'] = None    
 
     return config
 

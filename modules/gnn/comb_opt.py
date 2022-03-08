@@ -418,7 +418,7 @@ def train(seed=0, config=None, env_all=None):
 
 
 
-        success_ratio = len(actions_nodeselect) / env.sp.spath_length
+        success_ratio = len(actions_nodeselect) / max(1,env.sp.spath_length)
         path_length_ratios.append(success_ratio)
         total_rewards.append(np.sum(rewards))
 
@@ -578,10 +578,13 @@ def evaluate_spath_heuristic(logdir, config, env_all, n_eval=20000):
 
 
 
-def evaluate(logdir, info=False, config=None, env_all=None, eval_subdir='.'):
+def evaluate(logdir, info=False, config=None, env_all=None, eval_subdir='.', n_eval=1000):
     #Test(config)
-    if env_all==None or len(env_all)==0:
-        return 0,0,0,0
+    try:
+        if env_all==None or len(env_all)==0:
+            return 0,0,0,0
+    except:
+        pass
     Q_func, Q_net, optimizer, lr_scheduler = init_model(config,fname=logdir+'/best_model.tar')
     #Q_func.model.T = 5 ## DANGEROUS, BE CAREFUL
     logdir=logdir+'/'+eval_subdir
@@ -593,21 +596,34 @@ def evaluate(logdir, info=False, config=None, env_all=None, eval_subdir='.'):
     #assert False
     R=[]
     S=[]
-    for i,env in enumerate(tqdm.tqdm(env_all)):
-        l, returns, c, solves = EvaluatePolicy(env, policy,env.world_pool, print_runs=False, save_plots=False, logdir=logdir, eval_arg_func=EvalArgs2, silent_mode=True)
-        num_worlds_requested = 10
-        once_every = max(1,len(env_all)//num_worlds_requested)
-        if i % once_every ==0:
-            plotlist = GetFullCoverageSample(returns, env.world_pool, bins=3, n=3)
-            EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgs2, silent_mode=False, plot_each_timestep=False)
+
+    if type(env_all) == list:
+        for i,env in enumerate(tqdm.tqdm(env_all)):
+            l, returns, c, solves = EvaluatePolicy(env, policy,env.world_pool, print_runs=False, save_plots=False, logdir=logdir, eval_arg_func=EvalArgs2, silent_mode=True)
+            num_worlds_requested = 10
+            once_every = max(1,len(env_all)//num_worlds_requested)
+            if i % once_every ==0:
+                plotlist = GetFullCoverageSample(returns, env.world_pool, bins=3, n=3)
+                EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgs2, silent_mode=False, plot_each_timestep=False)
+            R+=returns 
+            S+=solves
+    else:
+        # assume env_all is a superenv
+        full_eval_list = [i for i in range(n_eval)]
+        plot_eval_list = [i for i in range(30)]
+        l, returns, c, solves = EvaluatePolicy(env_all, policy, full_eval_list, print_runs=False, save_plots=False, logdir=logdir, eval_arg_func=EvalArgs2, silent_mode=True)
+        EvaluatePolicy(env_all, policy, plot_eval_list, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgs2, silent_mode=False, plot_each_timestep=False)
         R+=returns 
         S+=solves
-    
+
     OF = open(logdir+'/Full_result.txt', 'w')
     def printing(text):
         print(text)
         OF.write(text + "\n")
-    num_unique_graphs=len(env_all)
+    try:
+        num_unique_graphs=len(env_all)
+    except:
+        num_unique_graphs=1
     num_graph_instances=len(R)
     avg_return=np.mean(R)
     num_solved=np.sum(S)
