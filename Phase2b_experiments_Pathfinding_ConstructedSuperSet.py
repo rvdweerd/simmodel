@@ -2,7 +2,7 @@ import copy
 from modules.gnn.comb_opt import train, evaluate, evaluate_spath_heuristic, evaluate_tabular
 from modules.rl.rl_custom_worlds import GetCustomWorld
 from modules.rl.environments import SuperEnv
-from modules.gnn.nfm_gen import NFM_ec_t, NFM_ev_t, NFM_ev_ec_t, NFM_ev_ec_t_um_us
+from modules.gnn.nfm_gen import NFM_ec_t, NFM_ec_dt, NFM_ec_dtscaled, NFM_ev_t, NFM_ev_ec_t, NFM_ev_ec_t_um_us
 from modules.sim.graph_factory import GetWorldSet, LoadData
 from modules.sim.simdata_utils import SimulateInteractiveMode, SimulateAutomaticMode_DQN
 from modules.gnn.comb_opt import init_model
@@ -45,7 +45,7 @@ if __name__ == '__main__':
     remove_paths=True
     state_repr = 'etUte0U0'
     state_enc  = 'nfm'
-    nfm_funcs = {'NFM_ev_ec_t':NFM_ev_ec_t(),'NFM_ec_t':NFM_ec_t(),'NFM_ev_t':NFM_ev_t(),'NFM_ev_ec_t_um_us':NFM_ev_ec_t_um_us()}
+    nfm_funcs = {'NFM_ev_ec_t':NFM_ev_ec_t(),'NFM_ec_t':NFM_ec_t(),'NFM_ec_dt':NFM_ec_dt(),'NFM_ec_dtscaled':NFM_ec_dtscaled(),'NFM_ev_t':NFM_ev_t(),'NFM_ev_ec_t_um_us':NFM_ev_ec_t_um_us()}
     nfm_func=nfm_funcs[args.nfm_func]
     edge_blocking = args.edge_blocking
     solve_select = args.solve_select # only solvable worlds (so best achievable performance is 100%)

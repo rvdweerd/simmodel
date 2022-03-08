@@ -4,7 +4,7 @@
 train="True"
 eval="False"
 test="True"
-nr="ppo10"
+nr="ppo5r"
 for run in {"SuperSet_noU",}
 #"RunB","RunC","RunD","RunE","train_on_metro"}
 do
