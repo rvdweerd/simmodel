@@ -18,6 +18,7 @@ from modules.sim.sim_graphs import SparseManhattanGraph, graph, CircGraph, TKGra
 from modules.rl.rl_plotting import PlotAgentsOnGraph
 from modules.optim.escape_route_generator_MC import mutiple_escape_routes
 from modules.optim.optimization_FIP_gurobipy import unit_ranges, optimization_alt, optimization
+from modules.rl.rl_utils import EvalArgs2
 #from torch_geometric.utils.convert import from_networkx
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -597,6 +598,40 @@ def SimulateInteractiveMode(env, filesave_with_time_suffix=True, entry=None):
     env.render_eupaths(mode=None, fname="testrun", t_suffix=filesave_with_time_suffix)
     input('> Press any key to continue')
     print('\n')
+
+def SimulateAutomaticMode_DQN(env, dqn_policy, t_suffix=True, entries=None):
+    if entries is not None:
+        entry=random.choice(entries)
+    else: entry = None
+    obs=env.reset(entry=entry)
+    print('Entry:',env.current_entry)
+    
+    done=False
+    endepi=False
+            
+    eval_arg_func = EvalArgs2
+    while not done:
+        action, _state = dqn_policy.sample_action(*eval_arg_func(env),printing=True)
+        
+        env.render_eupaths(fname='results/test',t_suffix=t_suffix,last_step_only=True)
+        #ppo_value = ppo_policy.model.predict_values(obs[None,:].to(device))
+
+        while True:
+            a=input('\n             [q]-stop current, [enter]-take step, [n]-show nfm ...> ')
+            if a.lower() == 'q':
+                endepi=True
+                break
+            if a == 'n': print(env.obs)
+            if a == 'c': env.render_eupaths(fname='results/final',t_suffix=t_suffix,last_step_only=False)
+            if a == '': break
+        if endepi:
+            break        
+        obs,r,done,i = env.step(action)
+    env.render_eupaths(fname='results/test',t_suffix=t_suffix,last_step_only=True)
+    env.render_eupaths(fname='results/final',t_suffix=t_suffix)
+    if a.lower()!='q':
+        input('')
+    return a
 
 def SimulateInteractiveMode_PPO(env, model=None, t_suffix=True, entry=None):
     if entry is not None:

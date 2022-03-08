@@ -7,6 +7,7 @@ import torch
 class NFM_ev_t():
     def __init__(self):
         self.name='nfm-ev-t'
+        self.F=2
         # Features:
         # 0. visited by e
         # 1. target node
@@ -29,6 +30,7 @@ class NFM_ev_t():
 class NFM_ev_ec_t_um_us():
     def __init__(self):
         self.name='nfm-ev-ec-t-um-us'
+        self.F=5
         # Features:
         # 0. visited by e
         # 1. current e
@@ -98,6 +100,7 @@ class NFM_ev_ec_t_um_us():
 class NFM_ev_ec_t_u():
     def __init__(self):
         self.name='nfm-ev-ec-t-u'
+        self.F=4
         # Features:
         # 0. visited by e
         # 1. current e
@@ -133,6 +136,7 @@ class NFM_ev_ec_t_u():
 class NFM_ev_ec_t_um_us_xW(NFM_ev_ec_t_um_us):
     def __init__(self):
         self.name='nfm-ev-ec-t-um-us_xW'
+        self.F=5
         # Inherited, concats Adj matrix W to the output (used in bolts dqn)
         # Features:
         # 0. visited by e
@@ -152,6 +156,7 @@ class NFM_ev_ec_t_um_us_xW(NFM_ev_ec_t_um_us):
 class NFM_ec_t():
     def __init__(self):
         self.name='nfm-ec-t'
+        self.F=2
         # Features:
         # 0. current position e
         # 1. target node
@@ -173,6 +178,7 @@ class NFM_ec_t():
 class NFM_ev_ec_t():
     def __init__(self):
         self.name='nfm-ev-ec-t'
+        self.F=3
         # Features:
         # 0. current position e
         # 1. visited e positions

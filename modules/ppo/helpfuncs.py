@@ -25,7 +25,7 @@ nfm_funcs = {
     'NFM_ev_ec_t_um_us' : NFM_ev_ec_t_um_us(),
     }
 
-def get_super_env(Uselected=[1], Eselected=[4], config=None, var_targets=None, apply_wrappers=True):
+def get_super_env(Uselected=[1], Eselected=[4], config=None, var_targets=None, apply_wrappers=True, remove_paths=False):
     # scenario_name=config['scenario_name']
     #scenario_name = 'Train_U2E45'
     # world_name = 'SubGraphsManhattan3x3'
@@ -39,7 +39,7 @@ def get_super_env(Uselected=[1], Eselected=[4], config=None, var_targets=None, a
     reject_u_duplicates = False
 
     #databank_full, register_full, solvable = LoadData(edge_blocking = True)
-    env_all_train, hashint2env, env2hashint, env2hashstr = GetWorldSet(state_repr, state_enc, U=Uselected, E=Eselected, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func, var_targets=var_targets)
+    env_all_train, hashint2env, env2hashint, env2hashstr = GetWorldSet(state_repr, state_enc, U=Uselected, E=Eselected, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func, var_targets=var_targets, remove_paths=remove_paths)
     if apply_wrappers:
         for i in range(len(env_all_train)):
             env_all_train[i]=PPO_ObsWrapper(env_all_train[i], max_possible_num_nodes = max_nodes)        
@@ -48,11 +48,11 @@ def get_super_env(Uselected=[1], Eselected=[4], config=None, var_targets=None, a
     #SimulateInteractiveMode(super_env)
     return super_env, env_all_train
 
-def CreateEnv(world_name, max_nodes=9, var_targets=None, remove_world_pool=False, apply_wrappers=True):
+def CreateEnv(world_name, max_nodes=9, nfm_func_name = 'NFM_ev_ec_t_um_us', var_targets=None, remove_world_pool=False, apply_wrappers=True):
     #world_name='Manhattan3x3_WalkAround'
     state_repr='etUte0U0'
     state_enc='nfm'
-    nfm_func_name = 'NFM_ev_ec_t_um_us'
+    #nfm_func_name = 'NFM_ev_ec_t_um_us'
     edge_blocking = True
     #remove_world_pool = False
     env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)

@@ -189,7 +189,7 @@ def GetConfig(u=2):
     }
     return config
 
-def GetWorldSet(state_repr = 'et', state_enc  = 'tensors', U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_duplicates=True, nfm_func=None, var_targets=None):
+def GetWorldSet(state_repr = 'et', state_enc  = 'tensors', U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_duplicates=True, nfm_func=None, var_targets=None, remove_paths=False):
     config=GetConfig(u=2)#only needed to find datafile
     databank_full, register_full, solvable = LoadData(edge_blocking = edge_blocking)
     
@@ -209,7 +209,7 @@ def GetWorldSet(state_repr = 'et', state_enc  = 'tensors', U=[1,2,3], E=[i for i
             for W_, hashint, hashstr in register_full[e]:
             #W_, hashint, hashstr = random.choice(register_full[4])
             #for hashint, env_data in databank_full['U='+str(u)].items():
-                remove_paths=False
+                #remove_paths=False
                 u_=u
                 if 'U='+str(u_) not in databank_full:
                     if hashint not in databank_full['U=1']:

@@ -149,12 +149,12 @@ class GraphWorld(gym.Env):
         self.neighbors, self.in_degree, self.max_indegree, self.out_degree, self.max_outdegree = su.GetGraphData(self.sp)
         self.current_entry          = 0    # which entry in the world pool is active
         self.u_paths                = []
-        self.u_paths_taken          = [ [] for i in range(self.sp.U)]
+        self.u_paths_taken          = [ [] for i in range(self.sp.U) ]
         self.iratio                 = 0
         self.state0                 = ()
         self.state                  = ()   # current internal state in node labels: (e,U1,U2,...)
         self.global_t               = 0
-        self.local_t                = 0     
+        self.local_t                = 0
         self.observation_space = spaces.Box(0., self.sp.U, shape=(self.state_encoding_dim,), dtype=np.float32)
         self.action_space = spaces.Discrete(self.max_outdegree)
         self.nfm_calculator.init(self)
@@ -462,6 +462,12 @@ class GraphWorld(gym.Env):
         #     assert False
         return self.obs, reward, done, info
 
+    def observation(self, obs=None):
+        if obs is not None:
+            return obs
+        else:
+            return self.obs
+
     def render(self, mode=None, fname=None, t_suffix=True, size=None):#file_name=None):
         e = self.state[0]
         p = self.state[1:]
@@ -618,4 +624,3 @@ class SuperEnv(gym.Env):
         self.state = self.env.state
         self.obs = self.env.obs
         self.nfm = self.env.nfm
-

@@ -15,10 +15,16 @@ def plot_traindata(episode_returns,losses,logdir='./temp'):
     plt.clf()
 
 def PlotAgentsOnGraph_(sp, escape_pos, pursuers_pos, timestep, fig_show=False, fig_save=True, filename=None, goal_reached=False, size='small'):
-    nodesize = 10 # 400 1200
-    edgewidth = .5 # 5
-    fontsize = 1 # 8 12
-    #nodelist=[]
+    if sp.V > 50:
+        nodesize = 10 # 400 1200
+        edgewidth = .5 # 5
+        fontsize = 1 # 8 12
+        arrowsize = 5 # 25
+    else:
+        nodesize = 400 # 400 1200
+        edgewidth = 1 # 5
+        fontsize = 8 # 8 12
+        arrowsize = 25 # 25
     
     G=sp.G#.to_directed()
     labels=sp.labels
@@ -29,14 +35,14 @@ def PlotAgentsOnGraph_(sp, escape_pos, pursuers_pos, timestep, fig_show=False, f
     for n in sp.target_nodes:
         node_borderlist[sp.labels2nodeids[n]] = "red"
         #nodelist.append(sp.labels2coord[n])
-    nodesizelist =  [5 for _ in range(sp.V)] 
+    nodesizelist =  [nodesize for _ in range(sp.V)] 
     node_text = dict([(c,str(sp.coord2labels[c])) for c in sp.G.nodes])
     colorlist=["white"]*sp.V
     if goal_reached:
         colorlist[sp.labels2nodeids[escape_pos]]='#66FF00'
     else:
         colorlist[sp.labels2nodeids[escape_pos]]='#FF0000'
-    nodesizelist[sp.labels2nodeids[escape_pos]] = nodesize*2
+    #nodesizelist[sp.labels2nodeids[escape_pos]] = nodesize*2
     
     #node_text[sp.labels2coord[escape_pos]]='e'
     for i,P_pos in enumerate(pursuers_pos):
@@ -63,7 +69,7 @@ def PlotAgentsOnGraph_(sp, escape_pos, pursuers_pos, timestep, fig_show=False, f
     
     #matplotlib.rcParams['figure.figsize'] = [7, 7]
     #nx.draw_networkx(G, pos, **options)
-    nx.draw_networkx_edges(G, pos, edge_color='grey', width=edgewidth, alpha=1.)#width=1
+    nx.draw_networkx_edges(G, pos, edge_color='grey', width=edgewidth, arrowsize=arrowsize, alpha=1.)#width=1
     if fontsize>1:
         nx.draw_networkx_labels(G,pos, font_size = fontsize, labels=node_text, font_color='black')#fontsize=8
     nx.draw_networkx_nodes(G, pos, node_size=nodesizelist, node_color=colorlist, edgecolors=node_borderlist, alpha=1.)#alhpa=.6

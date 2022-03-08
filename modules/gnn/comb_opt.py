@@ -148,7 +148,7 @@ class QFunction():
             estimated_rewards = self.model(state_tsr.unsqueeze(0), W.unsqueeze(0))
         return estimated_rewards[0]
                 
-    def get_best_action(self, state_tsr, W, reachable_nodes):
+    def get_best_action(self, state_tsr, W, reachable_nodes, printing=False):
         """ Computes the best (greedy) action to take from a given state
             Returns a tuple containing the ID of the next node and the corresponding estimated reward
         """
@@ -166,6 +166,10 @@ class QFunction():
         action = np.argmax(reachable_rewards)
         action_nodeselect = reachable_nodes[action]
         best_reward = reachable_rewards[action]
+        if printing:
+            print('reachable_nodes:',reachable_nodes)
+            print('values         :',reachable_rewards)
+            print('Selected action:',action,'node',action_nodeselect,'value:',best_reward)
         return action, action_nodeselect, best_reward
         
         
@@ -547,6 +551,7 @@ def evaluate_spath_heuristic(logdir, config, env_all, n_eval=20000):
                 EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgs3, silent_mode=False, plot_each_timestep=False)
             R+=returns 
             S+=solves
+            print('Env',i,'Number of instances:',len(returns),'Cumulative insances:',len(R))
     else:
     # assume env_all is a superenv
         policy=ShortestPathPolicy(env_all,weights='equal')

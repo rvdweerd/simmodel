@@ -27,7 +27,7 @@ def EvalArgs2(env):
 
 def EvalArgs3(env):
     # arguments of the call to the policy class that samples an action
-    # this is the default
+    # this is used when observation wrappers are used
     return env.observation(None), env.availableActionsInCurrentState()
 
 
