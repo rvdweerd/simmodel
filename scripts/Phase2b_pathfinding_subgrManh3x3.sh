@@ -23,10 +23,10 @@ for nfm in {"NFM_ec_t","NFM_ec_dt","NFM_ec_dtscaled"}
 do
     for itt in {5,}
     do
-        tmux new-session -d -s dqnr$itt
-        tmux send-keys -t "dqnr$itt" "conda activate rlcourse-sb3c" Enter
-        tmux send-keys -t "dqnr$itt" "cd ~/testing/sim" Enter
-        tmux send-keys -t "dqnr$itt" "python Phase2b_experiments_Pathfinding_ConstructedSuperSet.py --emb_dim $emb --emb_itT $itt --num_epi $numepi --mem_size $mem --nfm_func $nfm --scenario $scen --optim_target $optim --tau $tau --nstep $nstep --Etrain $etrain --Utrain $utrain --edge_blocking $edgeblock --solve_select $solveselect --train $train --eval $eval --test $test --num_seeds $numseeds --seed0 $seed0" Enter
+        tmux new-session -d -s dqn$nfm
+        tmux send-keys -t "dqn$nfm" "conda activate rlcourse-sb3c" Enter
+        tmux send-keys -t "dqn$nfm" "cd ~/testing/sim" Enter
+        tmux send-keys -t "dqn$nfm" "python Phase2b_experiments_Pathfinding_ConstructedSuperSet.py --emb_dim $emb --emb_itT $itt --num_epi $numepi --mem_size $mem --nfm_func $nfm --scenario $scen --optim_target $optim --tau $tau --nstep $nstep --Etrain $etrain --Utrain $utrain --edge_blocking $edgeblock --solve_select $solveselect --train $train --eval $eval --test $test --num_seeds $numseeds --seed0 $seed0" Enter
     done
 done
 
