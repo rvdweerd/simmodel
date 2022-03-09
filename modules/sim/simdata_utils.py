@@ -478,6 +478,52 @@ def GetGraphData(sp):
     
     return neighbors_labels, indegrees_labels, max_indegree, outdegrees_labels, max_outdegree
 
+def scale0_vec(a, newrange=[0.1,1.]):
+    # scales all node distance to target scores to the range [0.1-1], irrespective of graph size
+    aval=a[a!=0]
+    lowmark=aval.min()
+    b=aval-lowmark
+    bmax=b.max()
+    assert bmax > 0
+    brange=newrange[1]-newrange[0]
+    b=b/bmax * brange + newrange[0]
+    #print(b)
+    out=list(a)
+    for i in range(len(out)):
+        if out[i] != 0:
+            #print(a[i])
+            out[i] = (out[i]-lowmark)/bmax * brange + newrange[0]
+    return torch.tensor(out,dtype=torch.float32)
+
+def GetNodeScores(sp):
+    if len(sp.target_nodes) > 0:
+        nodescores=torch.zeros(sp.V,dtype=torch.float32)
+        scaled_nodescores=torch.zeros(sp.V,dtype=torch.float32)
+        
+        # go over all node labels
+        for sourcelabel, sourcecoord in sp.labels2coord.items():
+            if sourcelabel in sp.target_nodes:
+                continue # assign fixed values to target nodes later
+            distances, spaths = nx.single_source_dijkstra(sp.G, sourcecoord) # dicts to all target coords
+            # calc distance to all target nodes
+            score = 0
+            for targetlabel in sp.target_nodes:
+                targetcoord = sp.labels2coord[targetlabel]
+                if targetcoord in distances:
+                    d = distances[targetcoord]
+                    score += 1/d
+            nodescores[sourcelabel] = score
+    
+        max_score=nodescores.max()
+        nodescores/=max_score
+        scaled_nodescores = scale0_vec(nodescores, [0.1,1.])
+    
+        for n in sp.target_nodes:
+            nodescores[n]=2
+            scaled_nodescores[n]=2
+
+    return nodescores, scaled_nodescores
+
 def make_dirname(sp):
     #timestamp = datetime.now()
     dirname = "datasets/" \
@@ -563,7 +609,7 @@ def SimulateInteractiveMode(env, filesave_with_time_suffix=True, entry=None):
     s=env.state
     done=False
     R=0
-    env.render(mode=None, fname="testrun", t_suffix=filesave_with_time_suffix)
+    env.render(mode=None, fname="results/test", t_suffix=filesave_with_time_suffix)
     while not done:
         print('e position:',env.state[0],env.sp.labels2coord[env.state[0]])
         print('u paths (node labels):',env.u_paths)
@@ -586,16 +632,17 @@ def SimulateInteractiveMode(env, filesave_with_time_suffix=True, entry=None):
         print('Available actions: ',n)
         while True:
             a=input('Action nr '+str(env.global_t+1)+'/max '+str(env.sp.T)+' (new node)?  > ')
-            if a.isnumeric() and int(a) in n: break
+            if (a.isnumeric() and int(a) in n) or a=='q': break
+        if a=='q': break
         print()
         a=n.index(int(a))
         s,r,done,_=env.step(int(a))
         s=env.state
-        env.render_eupaths(mode=None, fname="testrun", t_suffix=filesave_with_time_suffix, last_step_only=True)
+        env.render_eupaths(mode=None, fname="results/test", t_suffix=filesave_with_time_suffix, last_step_only=True)
         R+=r
     print('\n******************** done, reward='+str(R),'**********************')
     input('> Press any key to continue')
-    env.render_eupaths(mode=None, fname="testrun", t_suffix=filesave_with_time_suffix)
+    env.render_eupaths(mode=None, fname="results/final", t_suffix=filesave_with_time_suffix)
     input('> Press any key to continue')
     print('\n')
 

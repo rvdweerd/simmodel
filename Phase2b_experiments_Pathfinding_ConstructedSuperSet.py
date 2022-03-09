@@ -41,7 +41,10 @@ if __name__ == '__main__':
 
     scenario_name=args.scenario
     #scenario_name = 'Train_U2E45'
-    world_name = 'ConstructedSuperSet_noU'
+    world_name = 'NWB_AMS_Mix_noU'
+    #tset='M3M5Mix'
+    tset='NWB_AMS'
+    maxnodes=975
     remove_paths=True
     state_repr = 'etUte0U0'
     state_enc  = 'nfm'
@@ -59,12 +62,12 @@ if __name__ == '__main__':
     #env_all_train, hashint2env, env2hashint, env2hashstr = GetWorldSet(state_repr, state_enc, U=Utrain, E=Etrain, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func)
     config={}
     config['solve_select']=solve_select
-    config['max_nodes']=33
+    config['max_nodes']=maxnodes
     config['nfm_func_name']=args.nfm_func
     config['edge_blocking']=edge_blocking
 
     if args.train or args.eval:
-        senv, env_all_train_list = ConstructTrainSet(config, apply_wrappers=False, remove_paths=remove_paths) #TODO check
+        senv, env_all_train_list = ConstructTrainSet(config, apply_wrappers=False, remove_paths=remove_paths,tset=tset) #TODO check
         env_all_train = [senv]
     
     # env_idx=0
@@ -75,11 +78,12 @@ if __name__ == '__main__':
     # u=env.sp.U
     # s= solvable['U='+str(u)][hashint]
     # print_world_properties(env, env_idx, entry, hashint, hashstr, edge_blocking, solve_select, reject_u_duplicates, solvable_=s)    
-        #SimulateInteractiveMode(senv)
+        while False:
+            SimulateInteractiveMode(senv, filesave_with_time_suffix=False)
 
     config={}
     config['node_dim']      = nfm_func.F
-    config['max_num_nodes']  = 33#env_all_train[0].sp.V
+    config['max_num_nodes']  = maxnodes#env_all_train[0].sp.V
     config['scenario_name'] = args.scenario
     config['nfm_func']      = args.nfm_func
     config['emb_dim']       = args.emb_dim
@@ -255,9 +259,6 @@ if __name__ == '__main__':
 
     if args.test:
         evalResults={}
-        logdir=config['logdir']+'/SEED0'
-        Q_func, Q_net, optimizer, lr_scheduler = init_model(config,fname=logdir+'/best_model.tar')
-        policy=GNN_s2v_Policy(Q_func)
 
         world_list=['MetroU3_e1t31_FixedEscapeInit', 
             'NWB_test_VariableEscapeInit']
@@ -284,6 +285,9 @@ if __name__ == '__main__':
             n_eval=eval_num
             evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
             for seed in range(seed0, seed0+numseeds):
+                logdir=config['logdir']+'/SEED'+str(seed)
+                Q_func, Q_net, optimizer, lr_scheduler = init_model(config,fname=logdir+'/best_model.tar')
+                policy=GNN_s2v_Policy(Q_func)
                 result = evaluate(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=senv, eval_subdir=evalName, n_eval=n_eval)
                 #result = evaluate(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=[env], eval_subdir=evalName)
                 num_unique_graphs, num_graph_instances, avg_return, success_rate = result

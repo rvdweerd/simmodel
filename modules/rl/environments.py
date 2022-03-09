@@ -64,6 +64,7 @@ class GraphWorld(gym.Env):
         self.neighbors, self.in_degree, self.max_indegree, self.out_degree, self.max_outdegree = su.GetGraphData(self.sp)
 
         # Define NFM: Node Feature Matrix, (VxF) with V number of nodes, F number of features
+        self.nodescores, self.scaled_nodescores = su.GetNodeScores(self.sp)
         self.nfm_calculator=NFM_ev_ec_t()
         if self.state_encoding=='nfm':
             self.nfm_calculator.init(self)
@@ -96,6 +97,7 @@ class GraphWorld(gym.Env):
     def redefine_goal_nodes(self, goal_nodes):
         self.sp.target_nodes=goal_nodes
         self.sp.CalculateShortestPath()
+        self.nodescores, self.scaled_nodescores = su.GetNodeScores(self.sp)
         self.nfm_calculator.init(self)
         self.nfm_calculator.update(self)
         self._refresh_obs()
@@ -157,6 +159,7 @@ class GraphWorld(gym.Env):
         self.local_t                = 0
         self.observation_space = spaces.Box(0., self.sp.U, shape=(self.state_encoding_dim,), dtype=np.float32)
         self.action_space = spaces.Discrete(self.max_outdegree)
+        self.nodescores, self.scaled_nodescores = su.GetNodeScores(self.sp)
         self.nfm_calculator.init(self)
         self.sp.CalculateShortestPath()
         self.reset()
@@ -317,6 +320,10 @@ class GraphWorld(gym.Env):
                 i = random.choice(self.all_worlds)
                 ser=self.databank['labels'][i]['start_escape_route']
                 if ser not in self.sp.target_nodes:
+                    if ser != self.sp.start_escape_route_node:
+                        self.sp.start_escape_route_node = ser
+                        self.sp.start_escape_route = self.sp.labels2coord[ser]
+                        self.sp.CalculateShortestPath()
                     break
                 else:
                     #print('initial pos on target node, looking for other instance')

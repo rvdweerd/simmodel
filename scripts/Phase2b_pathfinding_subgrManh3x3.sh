@@ -14,12 +14,12 @@ etrain="0,1,2,3,4,5,6,7,8,9"
 etrain_="0123456789"
 utrain="1,2,3"
 utrain_="123"
-scen="ConstructedSuperSet_noU"
+scen="NWB_AMS_Mix_noU"
 numseeds=5
 seed0=1
 solveselect='solvable'
 edgeblock="True"
-for nfm in {"NFM_ec_dtscaled",}
+for nfm in {"NFM_ec_t","NFM_ec_dt","NFM_ec_dtscaled"}
 do
     for itt in {5,}
     do

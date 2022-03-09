@@ -32,10 +32,13 @@ def PlotAgentsOnGraph_(sp, escape_pos, pursuers_pos, timestep, fig_show=False, f
     plt.clf()
     colorlist = [1 for _ in range(sp.V)]
     node_borderlist = ["white"]*sp.V
+    nodesizelist =  [0 for _ in range(sp.V)]
+    nodesizelist[sp.labels2nodeids[escape_pos]] = nodesize
+    node_borderlist[sp.labels2nodeids[escape_pos]] = "red"     
     for n in sp.target_nodes:
+        nodesizelist[sp.labels2nodeids[n]] = nodesize
         node_borderlist[sp.labels2nodeids[n]] = "red"
         #nodelist.append(sp.labels2coord[n])
-    nodesizelist =  [nodesize for _ in range(sp.V)] 
     node_text = dict([(c,str(sp.coord2labels[c])) for c in sp.G.nodes])
     colorlist=["white"]*sp.V
     if goal_reached:
@@ -47,7 +50,7 @@ def PlotAgentsOnGraph_(sp, escape_pos, pursuers_pos, timestep, fig_show=False, f
     #node_text[sp.labels2coord[escape_pos]]='e'
     for i,P_pos in enumerate(pursuers_pos):
         colorlist[sp.labels2nodeids[P_pos]]='#0000FF'
-        nodesizelist[sp.labels2nodeids[P_pos]] = nodesize*2
+        nodesizelist[sp.labels2nodeids[P_pos]] = nodesize
         #fontcolors[sp.labels2nodeids[P_pos]]='white'
         #node_text[sp.labels2coord[P_pos]]='u'+str(i)
 
