@@ -41,10 +41,11 @@ if __name__ == '__main__':
 
     scenario_name=args.scenario
     #scenario_name = 'Train_U2E45'
-    world_name = 'NWB_AMS_Mix_noU'
-    #tset='M3M5Mix'
-    tset='NWB_AMS'
-    maxnodes=975
+    #world_name = 'NWB_AMS_Mix_noU'
+    world_name = 'TEST'
+    tset='TEST'
+    #tset='NWB_AMS'
+    maxnodes=25#1975
     remove_paths=True
     state_repr = 'etUte0U0'
     state_enc  = 'nfm'

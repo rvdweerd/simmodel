@@ -28,7 +28,98 @@ Experience = namedtuple('Experience', ( \
 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+from modules.gnn.gat.models.definitions.gat import GAT
+from modules.gnn.gat.utils.constants import *
+import modules.gnn.gat.utils.utils as utils
+
+def dense_to_sparse(adj):
+    r"""Converts a dense adjacency matrix to a sparse adjacency matrix defined
+    by edge indices and edge attributes.
+
+    Args:
+        adj (Tensor): The dense adjacency matrix.
+     :rtype: (:class:`LongTensor`, :class:`Tensor`)
+    """
+    assert adj.dim() >= 2 and adj.dim() <= 3
+    assert adj.size(-1) == adj.size(-2)
+
+    index = adj.nonzero(as_tuple=True)
+    edge_attr = adj[index]
+
+    if len(index) == 3:
+        batch = index[0] * adj.size(-1)
+        index = (batch + index[1], batch + index[2])
+
+    return torch.stack(index, dim=0), edge_attr
+
+class QNet_GAT(nn.Module):
+    """ Graph Attention based Q function
+    """    
+    
+    def __init__(self, config):
+        """ emb_dim: embedding dimension p
+            T: number of iterations for the graph embedding
+        """
+        super(QNet_GAT, self).__init__()
+        self.emb_dim    = config['emb_dim']//2
+        self.num_layers = config['emb_iter_T']
+        self.node_dim   = config['node_dim']
         
+        self.gat = GAT(
+            num_of_layers         = self.num_layers,#config['num_of_layers'],
+            num_heads_per_layer   = [2]*self.num_layers,#config['num_heads_per_layer'],
+            num_features_per_layer= [self.node_dim] + [self.emb_dim]*self.num_layers,#config['num_features_per_layer'],
+            add_skip_connection   = False,#config['add_skip_connection'],
+            bias                  = True,#config['bias'],
+            dropout               = 0.,#05,#config['dropout'],
+            layer_type            = LayerType.IMP3,#config['layer_type'],
+            log_attention_weights = False  # no need to store attentions, used only in playground.py for visualization
+        ).to(device)
+        self.theta5 = nn.Linear(2*self.emb_dim, 1, True, dtype=torch.float32)
+        self.theta6 = nn.Linear(self.emb_dim, self.emb_dim, True, dtype=torch.float32)
+        self.theta7 = nn.Linear(self.emb_dim, self.emb_dim, True, dtype=torch.float32)     
+
+        self.numTrainableParameters()
+
+    def forward(self, xv, Ws):
+        # xv: The node features (batch_size, num_nodes, node_dim)
+        # Ws: The graphs (batch_size, num_nodes, num_nodes)
+        
+        #demo: unbatch (will vectorize later)
+        batch_size=xv.shape[0]
+        num_nodes=xv.shape[1]
+        out=[]
+        for i in range(batch_size):
+            edge_index= dense_to_sparse(Ws[i])[0]
+            graphdata = (xv[i], edge_index)
+            nodes_unnormalized_scores = self.gat(graphdata)[0] # yields (N,emb_dim)
+            out.append(nodes_unnormalized_scores)
+
+        mu=torch.stack(out)
+        """ prediction
+        """
+        # we repeat the global state (summed over nodes) for each node, 
+        # in order to concatenate it to local states later
+        global_state = self.theta6(torch.sum(mu, dim=1, keepdim=True).repeat(1, num_nodes, 1))
+        
+        local_action = self.theta7(mu)  # (batch_dim, nr_nodes, emb_dim)
+            
+        out = F.relu(torch.cat([global_state, local_action], dim=2))
+        return self.theta5(out).squeeze(dim=2)
+
+    def numTrainableParameters(self):
+        print('Qnet size:')
+        print('------------------------------------------')
+        total = 0
+        for name, p in self.named_parameters():
+            total += np.prod(p.shape)
+            print("{:24s} {:12s} requires_grad={}".format(name, str(list(p.shape)), p.requires_grad))
+        print("Total number of parameters: {}".format(total))
+        print('------------------------------------------')
+        assert total == sum(p.numel() for p in self.parameters() if p.requires_grad)
+        return total
+
 class QNet(nn.Module):
     """ The neural net that will parameterize the function Q(s, a)
     
@@ -133,7 +224,6 @@ class QNet_xW(QNet):
         #W=W.to(device)
         return super(QNet_xW, self).forward(xv,W)
 
-
 class QFunction():
     def __init__(self, model, optimizer, lr_scheduler):
         self.model = model  # The actual QNet
@@ -201,7 +291,7 @@ class QFunction():
 def init_model(config, fname=None):
     """ Create a new model. If fname is defined, load the model from the specified file.
     """
-    Q_net = QNet(config).to(device)
+    Q_net = QNet_GAT(config).to(device)
     optimizer = optim.Adam(Q_net.parameters(), config['lr_init'])
     lr_scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=config['lr_decay'])
     
@@ -293,7 +383,7 @@ def train(seed=0, config=None, env_all=None):
         env.reset()
         current_state = env.state
         done=False   
-        current_state_tsr = torch.tensor(env.nfm, dtype=torch.float32)#, device=device) 
+        current_state_tsr = env.nfm#torch.tensor(env.nfm, dtype=torch.float32)#, device=device) 
         # Note: nfm = Graph Feature Matrix (FxV), columns are the node features, managed by the environment
         # It's currently defined (for each node) as:
         #   [.] node number
@@ -336,7 +426,7 @@ def train(seed=0, config=None, env_all=None):
             
             _, reward, done, info = env.step(action)
             next_state = env.state
-            next_state_tsr = torch.tensor(env.nfm, dtype=torch.float32)#, device=device)
+            next_state_tsr = env.nfm#torch.tensor(env.nfm, dtype=torch.float32)#, device=device)
             
             # store rewards and states obtained along this episode:
             states.append(next_state)

@@ -19,7 +19,8 @@ from modules.rl.rl_plotting import PlotAgentsOnGraph
 from modules.optim.escape_route_generator_MC import mutiple_escape_routes
 from modules.optim.optimization_FIP_gurobipy import unit_ranges, optimization_alt, optimization
 from modules.rl.rl_utils import EvalArgs2
-#from torch_geometric.utils.convert import from_networkx
+from torch_geometric.utils.convert import from_networkx
+
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 class SimParameters(object):
@@ -348,8 +349,8 @@ def DefineSimParameters(config):
         if len(sp.G.edges[key]) == 0:
             sp.G.edges[key]['N_pref']=-1
             sp.G.edges[key]['weight']=1
-    #pyg_graph = from_networkx(sp.G)
-    #sp.EI = pyg_graph.edge_index
+    pyg_graph = from_networkx(sp.G)
+    sp.EI = pyg_graph.edge_index
     return sp
 
 def GetUnitsInitialConditions(sp, register, specific_start_units, cutoff):
