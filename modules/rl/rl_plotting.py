@@ -24,7 +24,7 @@ def PlotAgentsOnGraph_(sp, escape_pos, pursuers_pos, timestep, fig_show=False, f
         nodesize = 400 # 400 1200
         edgewidth = 1 # 5
         fontsize = 8 # 8 12
-        arrowsize = 25 # 25
+        arrowsize = 10#25 # 25
     
     G=sp.G#.to_directed()
     labels=sp.labels

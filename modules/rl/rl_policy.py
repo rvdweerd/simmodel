@@ -445,8 +445,6 @@ class ActionMaskedPolicySB3_PPO(Policy):
                 print('available_actions:',neighboring_nodes.detach().cpu().numpy(),'prob',self.probs,'chosen action',action, 'estimated value of graph state:',ppo_value.detach().cpu().numpy(),end='')
         return action, None
 
-
-
 class GNN_s2v_Policy(Policy):
     def __init__(self, qfunc):
         super().__init__('GNN_s2v')

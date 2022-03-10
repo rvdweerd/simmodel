@@ -13,6 +13,11 @@ from modules.rl.rl_policy import GNN_s2v_Policy, ShortestPathPolicy, EpsilonGree
 from modules.rl.rl_algorithms import q_learning_exhaustive
 from modules.rl.rl_utils import EvaluatePolicy, EvalArgs1, EvalArgs2, EvalArgs3, GetFullCoverageSample
 from modules.sim.simdata_utils import SimulateInteractiveMode
+from modules.gnn.gat.models.definitions.gat import GAT as GAT_gord
+from modules.gnn.gat.utils.constants import *
+import modules.gnn.gat.utils.utils as utils
+from torch_geometric.data import Data, Batch
+from torch_geometric.nn.models import GAT
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import connected_components
 import torch
@@ -24,14 +29,21 @@ import copy
 from torch.utils.tensorboard import SummaryWriter
 from collections import namedtuple
 Experience = namedtuple('Experience', ( \
-    'state', 'state_tsr', 'W', 'action', 'action_nodeselect', 'reward', 'done', 'next_state', 'next_state_tsr', 'next_state_neighbors'))
+    'state', 
+    'state_tsr',# node feature matrix (nfm)
+    'W',        # weight/adjaceny matrix
+    'pyg_data', # Pytorch Geometric data object (nfm+edge_index)
+    'action', 
+    'action_nodeselect', 
+    'reward', 
+    'done', 
+    'next_state', 
+    'next_state_tsr', 
+    'next_state_neighbors'))
 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-from modules.gnn.gat.models.definitions.gat import GAT
-from modules.gnn.gat.utils.constants import *
-import modules.gnn.gat.utils.utils as utils
 
 def dense_to_sparse(adj):
     r"""Converts a dense adjacency matrix to a sparse adjacency matrix defined
@@ -53,6 +65,7 @@ def dense_to_sparse(adj):
 
     return torch.stack(index, dim=0), edge_attr
 
+from torch.nn.utils.rnn import pad_sequence
 class QNet_GAT(nn.Module):
     """ Graph Attention based Q function
     """    
@@ -62,11 +75,75 @@ class QNet_GAT(nn.Module):
             T: number of iterations for the graph embedding
         """
         super(QNet_GAT, self).__init__()
+        self.emb_dim    = config['emb_dim']
+        self.num_layers = config['emb_iter_T']
+        self.node_dim   = config['node_dim']
+        kwargs={'concat':True}
+        self.gat = GAT(
+            in_channels = self.node_dim,
+            hidden_channels = self.emb_dim,
+            num_layers = 5,
+            out_channels = self.emb_dim,
+            **kwargs
+        ).to(device)
+        self.theta5 = nn.Linear(2*self.emb_dim, 1, True, dtype=torch.float32)
+        self.theta6 = nn.Linear(self.emb_dim, self.emb_dim, True, dtype=torch.float32)
+        self.theta7 = nn.Linear(self.emb_dim, self.emb_dim, True, dtype=torch.float32)     
+
+        self.numTrainableParameters()
+
+    def forward(self, xv, Ws, pyg_data):
+        # xv: The node features (batch_size, num_nodes, node_dim)
+        # Ws: The graphs (batch_size, num_nodes, num_nodes)
+        # pyg_data: pytorch geometric Batch
+        num_nodes = xv.shape[1]
+        #demo: unbatch (will vectorize later)
+        test=self.gat(pyg_data.x,pyg_data.edge_index).shape # gives (num_nodes, emb_dim)
+        ptr=pyg_data.ptr.detach().cpu().numpy()
+        s=[r-l for r,l in zip(ptr[1:],ptr[:-1])]
+
+        mu = self.gat(pyg_data.x,pyg_data.edge_index)#[None,:]
+        mu = pad_sequence(mu.split(s,dim=0),batch_first=True)
+        if mu.shape[1] < num_nodes:
+            p = num_nodes - mu.shape[1]
+            mu = nn.functional.pad(mu,(0,0,0,p,0,0))
+        """ prediction
+        """
+        # we repeat the global state (summed over nodes) for each node, 
+        # in order to concatenate it to local states later
+        global_state = self.theta6(torch.sum(mu, dim=1, keepdim=True).repeat(1, num_nodes, 1))
+        
+        local_action = self.theta7(mu)  # (batch_dim, nr_nodes, emb_dim)
+            
+        out = F.relu(torch.cat([global_state, local_action], dim=2))
+        return self.theta5(out).squeeze(dim=2)
+
+    def numTrainableParameters(self):
+        print('Qnet size:')
+        print('------------------------------------------')
+        total = 0
+        for name, p in self.named_parameters():
+            total += np.prod(p.shape)
+            print("{:24s} {:12s} requires_grad={}".format(name, str(list(p.shape)), p.requires_grad))
+        print("Total number of parameters: {}".format(total))
+        print('------------------------------------------')
+        assert total == sum(p.numel() for p in self.parameters() if p.requires_grad)
+        return total
+
+class QNet_GAT_gord(nn.Module):
+    """ Graph Attention based Q function
+    """    
+    
+    def __init__(self, config):
+        """ emb_dim: embedding dimension p
+            T: number of iterations for the graph embedding
+        """
+        super(QNet_GAT_gord, self).__init__()
         self.emb_dim    = config['emb_dim']//2
         self.num_layers = config['emb_iter_T']
         self.node_dim   = config['node_dim']
         
-        self.gat = GAT(
+        self.gat = GAT_gord(
             num_of_layers         = self.num_layers,#config['num_of_layers'],
             num_heads_per_layer   = [2]*self.num_layers,#config['num_heads_per_layer'],
             num_features_per_layer= [self.node_dim] + [self.emb_dim]*self.num_layers,#config['num_features_per_layer'],
@@ -82,10 +159,11 @@ class QNet_GAT(nn.Module):
 
         self.numTrainableParameters()
 
-    def forward(self, xv, Ws):
+    def forward(self, xv, Ws, pyg_data):
         # xv: The node features (batch_size, num_nodes, node_dim)
         # Ws: The graphs (batch_size, num_nodes, num_nodes)
-        
+        # pyg_data: pytorch geometric Batch
+
         #demo: unbatch (will vectorize later)
         batch_size=xv.shape[0]
         num_nodes=xv.shape[1]
@@ -159,10 +237,10 @@ class QNet(nn.Module):
         #self.theta1_extras = [nn.Linear(self.emb_dim, self.emb_dim, True, dtype=torch.float32).to(device) for _ in range(nr_extra_layers_1)]
         self.numTrainableParameters()
 
-    def forward(self, xv, Ws):
+    def forward(self, xv, Ws, pyg_data):
         # xv: The node features (batch_size, num_nodes, node_dim)
         # Ws: The graphs (batch_size, num_nodes, num_nodes)
-        
+        # pyg_data: pytorch geometric Batch (not used here)
         num_nodes = xv.shape[1]
         batch_size = xv.shape[0]
         
@@ -232,13 +310,14 @@ class QFunction():
         #self.loss_fn = nn.MSELoss()
         self.loss_fn = nn.SmoothL1Loss()
     
-    def predict(self, state_tsr, W):
+    def predict(self, state_tsr, W, pyg_data):
         # batch of 1 - only called at inference time
+        pyg_batch = Batch.from_data_list([pyg_data]).to(device)
         with torch.no_grad():
-            estimated_rewards = self.model(state_tsr.unsqueeze(0), W.unsqueeze(0))
+            estimated_rewards = self.model(state_tsr.unsqueeze(0), W.unsqueeze(0), pyg_batch)
         return estimated_rewards[0]
                 
-    def get_best_action(self, state_tsr, W, reachable_nodes, printing=False):
+    def get_best_action(self, state_tsr, W, pyg_data, reachable_nodes, printing=False):
         """ Computes the best (greedy) action to take from a given state
             Returns a tuple containing the ID of the next node and the corresponding estimated reward
         """
@@ -246,7 +325,7 @@ class QFunction():
         state_tsr=state_tsr.to(device)
         W=W.to(device)
         self.model.eval()
-        estimated_rewards = self.predict(state_tsr, W)  # size (nr_nodes,)
+        estimated_rewards = self.predict(state_tsr, W, pyg_data)  # size (nr_nodes,)
         self.model.train()
         reachable_rewards = estimated_rewards.detach().cpu().numpy()[reachable_nodes]
         #sorted_reward_idx = estimated_rewards.argsort(descending=True)
@@ -263,7 +342,7 @@ class QFunction():
         return action, action_nodeselect, best_reward
         
         
-    def batch_update(self, states_tsrs, Ws, actions, targets):
+    def batch_update(self, states_tsrs, Ws, pyg_data, actions, targets):
         """ Take a gradient step using the loss computed on a batch of (states, Ws, actions, targets)
         
             states_tsrs: list of (single) state tensors
@@ -273,11 +352,12 @@ class QFunction():
         """        
         Ws_tsr = torch.stack(Ws).to(device)
         xv = torch.stack(states_tsrs).to(device)
+        pyg_batch = Batch.from_data_list(pyg_data).to(device)
         self.optimizer.zero_grad()
         
         # the rewards estimated by Q for the given actions
         #estimated_rewards = self.model(xv, Ws_tsr)[range(len(actions)), actions]
-        estimated_rewards = torch.gather(self.model(xv, Ws_tsr), 1, torch.tensor(actions,dtype=torch.int64,device=device)[:,None]).squeeze()
+        estimated_rewards = torch.gather(self.model(xv, Ws_tsr, pyg_batch), 1, torch.tensor(actions,dtype=torch.int64,device=device)[:,None]).squeeze()
 
         loss = self.loss_fn(estimated_rewards, torch.tensor(targets, device=device))
         loss_val = loss.detach().cpu().item()
@@ -291,7 +371,12 @@ class QFunction():
 def init_model(config, fname=None):
     """ Create a new model. If fname is defined, load the model from the specified file.
     """
-    Q_net = QNet_GAT(config).to(device)
+    if config['qnet'] == 's2v':
+        Q_net = QNet(config).to(device)
+    elif config['qnet'] == 'gat':
+        Q_net = QNet_GAT(config).to(device)
+    else:
+        assert False
     optimizer = optim.Adam(Q_net.parameters(), config['lr_init'])
     lr_scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=config['lr_decay'])
     
@@ -419,7 +504,8 @@ def train(seed=0, config=None, env_all=None):
                 # exploit
                 #with torch.no_grad(): #(already dealt with inside function)
                 reachable_nodes=env.neighbors[env.state[0]]
-                action, action_nodeselect, _ = Q_func.get_best_action(current_state_tsr.to(dtype=torch.float32), env.sp.W, reachable_nodes)
+                pyg_data = Data(x=env.nfm, edge_index=env.sp.EI)
+                action, action_nodeselect, _ = Q_func.get_best_action(current_state_tsr.to(dtype=torch.float32), env.sp.W, pyg_data, reachable_nodes)
                 if episode % 50 == 0:
                     pass
                     #print('Ep {} exploit | current sol: {} / next est reward: {} | sol: {}'.format(episode, solution, est_reward,solutions),'nextnode',next_node)
@@ -445,9 +531,10 @@ def train(seed=0, config=None, env_all=None):
 
             # store our experience in memory, using n-step Q-learning:
             if len(actions) >= N_STEP_QL:
-                memory.remember(Experience(state          = states[-(N_STEP_QL+1)],
+                memory.remember(Experience( state          = states[-(N_STEP_QL+1)],
                                             state_tsr      = nn.functional.pad(states_tsrs[-(N_STEP_QL+1)],(0,0,0,Psize)),
                                             W              = nn.functional.pad(env.sp.W,(0,Psize,0,Psize)),
+                                            pyg_data       = Data(x=env.nfm, edge_index=env.sp.EI),
                                             action         = actions[-N_STEP_QL],
                                             action_nodeselect=actions_nodeselect[-N_STEP_QL],
                                             done           = dones[-1], 
@@ -460,7 +547,8 @@ def train(seed=0, config=None, env_all=None):
                 for n in range(1, min(N_STEP_QL, len(states))):
                     memory.remember(Experience( state       = states[-(n+1)],
                                                 state_tsr   = nn.functional.pad(states_tsrs[-(n+1)],(0,0,0,Psize)),
-                                                W           = nn.functional.pad(env.sp.W,(0,Psize,0,Psize)), 
+                                                W           = nn.functional.pad(env.sp.W,(0,Psize,0,Psize)),
+                                                pyg_data    = Data(x=env.nfm, edge_index=env.sp.EI),
                                                 action      = actions[-n],
                                                 action_nodeselect=actions_nodeselect[-n], 
                                                 done=True,
@@ -480,6 +568,7 @@ def train(seed=0, config=None, env_all=None):
                 
                 batch_states_tsrs = [e.state_tsr for e in experiences]
                 batch_Ws = [ e.W for e in experiences]
+                batch_pyg_data = [ e.pyg_data for e in experiences]
                 batch_actions = [e.action_nodeselect for e in experiences] #CHECK!
                 batch_targets = []
                 
@@ -493,12 +582,13 @@ def train(seed=0, config=None, env_all=None):
                         with torch.no_grad():
                             _, _, best_reward = Q_func_target.get_best_action(experience.next_state_tsr, 
                                                                     experience.W,
+                                                                    experience.pyg_data,
                                                                     experience.next_state_neighbors )
                         target += (GAMMA ** N_STEP_QL) * best_reward#.detach().cpu()#.item()
                     batch_targets.append(target)
                     
                 # print('batch targets: {}'.format(batch_targets))
-                loss = Q_func.batch_update(batch_states_tsrs, batch_Ws, batch_actions, batch_targets)
+                loss = Q_func.batch_update(batch_states_tsrs, batch_Ws, batch_pyg_data, batch_actions, batch_targets)
                 grad_update_count+=1
                 losses.append(loss)
                 if grad_update_count % config['tau'] == 0:

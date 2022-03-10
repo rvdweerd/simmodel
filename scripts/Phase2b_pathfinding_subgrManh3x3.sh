@@ -8,27 +8,28 @@ tau=100
 nstep=2
 optim='returns'
 train="True"
-eval="False"
+eval="True"
 test="True"
 etrain="0,1,2,3,4,5,6,7,8,9"
 etrain_="0123456789"
 utrain="1,2,3"
 utrain_="123"
 #scen="NWB_AMS_Mix_noU"
-scen="TEST"
-numseeds=5
+train_on="MetroConstructed"
+qnet="s2v"
+numseeds=1
 seed0=1
 solveselect='solvable'
 edgeblock="True"
-for nfm in {"NFM_ec_dt",}
+for nfm in {"NFM_ec_t_dt",}
 #"NFM_ec_t","NFM_ec_dtscaled"}
 do
     for itt in {5,}
     do
-        tmux new-session -d -s dqnGAT$nfm
-        tmux send-keys -t "dqnGAT$nfm" "conda activate rlcourse-sb3c" Enter
-        tmux send-keys -t "dqnGAT$nfm" "cd ~/testing/sim" Enter
-        tmux send-keys -t "dqnGAT$nfm" "python Phase2b_experiments_Pathfinding_ConstructedSuperSet.py --emb_dim $emb --emb_itT $itt --num_epi $numepi --mem_size $mem --nfm_func $nfm --scenario $scen --optim_target $optim --tau $tau --nstep $nstep --Etrain $etrain --Utrain $utrain --edge_blocking $edgeblock --solve_select $solveselect --train $train --eval $eval --test $test --num_seeds $numseeds --seed0 $seed0" Enter
+        tmux new-session -d -s dqn$nfm
+        tmux send-keys -t "dqn$nfm" "conda activate rlcourse-sb3c" Enter
+        tmux send-keys -t "dqn$nfm" "cd ~/testing/sim" Enter
+        tmux send-keys -t "dqn$nfm" "python Phase2b_experiments_Pathfinding_ConstructedSuperSet.py --emb_dim $emb --emb_itT $itt --num_epi $numepi --mem_size $mem --nfm_func $nfm --train_on $train_on --qnet $qnet --optim_target $optim --tau $tau --nstep $nstep --Etrain $etrain --Utrain $utrain --edge_blocking $edgeblock --solve_select $solveselect --train $train --eval $eval --test $test --num_seeds $numseeds --seed0 $seed0" Enter
     done
 done
 

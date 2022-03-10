@@ -20,6 +20,7 @@ from modules.optim.escape_route_generator_MC import mutiple_escape_routes
 from modules.optim.optimization_FIP_gurobipy import unit_ranges, optimization_alt, optimization
 from modules.rl.rl_utils import EvalArgs2
 from torch_geometric.utils.convert import from_networkx
+from torch_geometric.utils import dense_to_sparse
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -349,8 +350,19 @@ def DefineSimParameters(config):
         if len(sp.G.edges[key]) == 0:
             sp.G.edges[key]['N_pref']=-1
             sp.G.edges[key]['weight']=1
-    pyg_graph = from_networkx(sp.G)
-    sp.EI = pyg_graph.edge_index
+    sp.EI = dense_to_sparse(sp.W)[0] # [0] = edge_index, [1] = edge attributes
+    # # test edge_index
+    # pyg_graph = from_networkx(sp.G)
+    # EI_test = pyg_graph.edge_index
+    # S=set()
+    # for i in range(EI_test.shape[1]):
+    #     e=(EI_test[0,i].item(),EI_test[1,i].item())
+    #     S.add(e)
+    # for i in range(sp.EI.shape[1]):
+    #     e = (sp.EI[0,i].item() ,sp.EI[1,i].item())
+    #     assert (e) in S
+    # assert sp.EI.shape == EI_test.shape
+    # assert len(S) == sp.EI.shape[1]
     return sp
 
 def GetUnitsInitialConditions(sp, register, specific_start_units, cutoff):
@@ -498,6 +510,7 @@ def scale0_vec(a, newrange=[0.1,1.]):
 
 def GetNodeScores(sp):
     if len(sp.target_nodes) > 0:
+        #print('calculating node scores...')
         nodescores=torch.zeros(sp.V,dtype=torch.float32)
         scaled_nodescores=torch.zeros(sp.V,dtype=torch.float32)
         
@@ -633,8 +646,8 @@ def SimulateInteractiveMode(env, filesave_with_time_suffix=True, entry=None):
         print('Available actions: ',n)
         while True:
             a=input('Action nr '+str(env.global_t+1)+'/max '+str(env.sp.T)+' (new node)?  > ')
-            if (a.isnumeric() and int(a) in n) or a=='q': break
-        if a=='q': break
+            if (a.isnumeric() and int(a) in n) or a.lower()=='q': break
+        if a.lower() == 'q': break
         print()
         a=n.index(int(a))
         s,r,done,_=env.step(int(a))
@@ -642,10 +655,11 @@ def SimulateInteractiveMode(env, filesave_with_time_suffix=True, entry=None):
         env.render_eupaths(mode=None, fname="results/test", t_suffix=filesave_with_time_suffix, last_step_only=True)
         R+=r
     print('\n******************** done, reward='+str(R),'**********************')
-    input('> Press any key to continue')
+    #input('> Press any key to continue')
     env.render_eupaths(mode=None, fname="results/final", t_suffix=filesave_with_time_suffix)
     input('> Press any key to continue')
     print('\n')
+    return a
 
 def SimulateAutomaticMode_DQN(env, dqn_policy, t_suffix=True, entries=None):
     if entries is not None:

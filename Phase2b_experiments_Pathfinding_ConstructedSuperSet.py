@@ -2,7 +2,7 @@ import copy
 from modules.gnn.comb_opt import train, evaluate, evaluate_spath_heuristic, evaluate_tabular
 from modules.rl.rl_custom_worlds import GetCustomWorld
 from modules.rl.environments import SuperEnv
-from modules.gnn.nfm_gen import NFM_ec_t, NFM_ec_dt, NFM_ec_dtscaled, NFM_ev_t, NFM_ev_ec_t, NFM_ev_ec_t_um_us
+from modules.gnn.nfm_gen import NFM_ec_t, NFM_ec_t_dt, NFM_ec_dt, NFM_ec_dtscaled, NFM_ev_t, NFM_ev_ec_t, NFM_ev_ec_t_um_us
 from modules.sim.graph_factory import GetWorldSet, LoadData
 from modules.sim.simdata_utils import SimulateInteractiveMode, SimulateAutomaticMode_DQN
 from modules.gnn.comb_opt import init_model
@@ -23,7 +23,9 @@ if __name__ == '__main__':
     parser.add_argument('--num_epi', default=250, type=int)
     parser.add_argument('--mem_size', default=2000, type=int)
     parser.add_argument('--nfm_func', default='NFM_ev_ec_t', type=str)
-    parser.add_argument('--scenario', default='None', type=str)
+    #parser.add_argument('--scenario', default='None', type=str)
+    parser.add_argument('--train_on', default='None', type=str)
+    parser.add_argument('--qnet', default='None', type=str)
     parser.add_argument('--optim_target', default='None', type=str)
     parser.add_argument('--tau', default=100, type=int)
     parser.add_argument('--nstep', default=1, type=int)
@@ -39,17 +41,14 @@ if __name__ == '__main__':
     
     args=parser.parse_args()
 
-    scenario_name=args.scenario
-    #scenario_name = 'Train_U2E45'
-    #world_name = 'NWB_AMS_Mix_noU'
-    world_name = 'TEST'
-    tset='TEST'
-    #tset='NWB_AMS'
-    maxnodes=25#1975
+    scenario_name = args.qnet
+    train_on = args.train_on #'NWB_AMS_Mix_noU'
+    maxnodes=9#975
     remove_paths=True
+    
     state_repr = 'etUte0U0'
     state_enc  = 'nfm'
-    nfm_funcs = {'NFM_ev_ec_t':NFM_ev_ec_t(),'NFM_ec_t':NFM_ec_t(),'NFM_ec_dt':NFM_ec_dt(),'NFM_ec_dtscaled':NFM_ec_dtscaled(),'NFM_ev_t':NFM_ev_t(),'NFM_ev_ec_t_um_us':NFM_ev_ec_t_um_us()}
+    nfm_funcs = {'NFM_ev_ec_t':NFM_ev_ec_t(),'NFM_ec_t':NFM_ec_t(),'NFM_ec_t_dt':NFM_ec_t_dt(),'NFM_ec_dt':NFM_ec_dt(),'NFM_ec_dtscaled':NFM_ec_dtscaled(),'NFM_ev_t':NFM_ev_t(),'NFM_ev_ec_t_um_us':NFM_ev_ec_t_um_us()}
     nfm_func=nfm_funcs[args.nfm_func]
     edge_blocking = args.edge_blocking
     solve_select = args.solve_select # only solvable worlds (so best achievable performance is 100%)
@@ -68,7 +67,7 @@ if __name__ == '__main__':
     config['edge_blocking']=edge_blocking
 
     if args.train or args.eval:
-        senv, env_all_train_list = ConstructTrainSet(config, apply_wrappers=False, remove_paths=remove_paths,tset=tset) #TODO check
+        senv, env_all_train_list = ConstructTrainSet(config, apply_wrappers=False, remove_paths=remove_paths,tset=train_on) #TODO check
         env_all_train = [senv]
     
     # env_idx=0
@@ -80,12 +79,14 @@ if __name__ == '__main__':
     # s= solvable['U='+str(u)][hashint]
     # print_world_properties(env, env_idx, entry, hashint, hashstr, edge_blocking, solve_select, reject_u_duplicates, solvable_=s)    
         while False:
-            SimulateInteractiveMode(senv, filesave_with_time_suffix=False)
+            a = SimulateInteractiveMode(senv, filesave_with_time_suffix=False)
+            if a == 'Q': break
 
     config={}
     config['node_dim']      = nfm_func.F
     config['max_num_nodes']  = maxnodes#env_all_train[0].sp.V
-    config['scenario_name'] = args.scenario
+    #config['scenario_name'] = args.qnet
+    config['qnet']          = args.qnet
     config['nfm_func']      = args.nfm_func
     config['emb_dim']       = args.emb_dim
     config['emb_iter_T']    = args.emb_itT 
@@ -104,9 +105,9 @@ if __name__ == '__main__':
     epi_min                 = .9        # reach eps_min at % of episodes # .9
     config['eps_decay']     = 1 - np.exp(np.log(config['eps_min'])/(epi_min*config['num_episodes']))
     rootdir='./results/results_Phase2/Pathfinding/dqn/'+ \
-                                world_name+'/'+ \
+                                train_on+'/'+ \
                                 solve_select+'_edgeblock'+str(edge_blocking)+'/'+\
-                                scenario_name
+                                config['qnet']
     config['logdir']        = rootdir + '/' +\
                                 nfm_func.name+'/'+ \
                                 'emb'+str(config['emb_dim']) + \

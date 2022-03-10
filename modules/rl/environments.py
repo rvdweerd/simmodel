@@ -15,6 +15,8 @@ from gym import register
 import copy
 import networkx as nx
 from modules.gnn.nfm_gen import NFM_ec_t, NFM_ev_t, NFM_ev_ec_t
+from torch_geometric.utils import dense_to_sparse
+import torch_geometric as pyg
 
 def is_edge_crossing(old_Upositions, new_Upositions, prev_node, next_node):
     if prev_node in new_Upositions and next_node in old_Upositions:
@@ -86,6 +88,8 @@ class GraphWorld(gym.Env):
             return
         #assert  self.state_encoding=='nfm'
         self.nfm_calculator = nfm_function
+        if 'dt' in self.nfm_calculator.name:
+            self.nodescores, self.scaled_nodescores = su.GetNodeScores(self.sp)
         self.nfm_calculator.init(self)
         self.observation_space = spaces.Box(0., self.sp.U, shape=(self.sp.V, (self.F+self.sp.V+1)), dtype=np.float32)        
         self.action_space = spaces.Discrete(self.sp.V) # all possible nodes 
@@ -97,7 +101,8 @@ class GraphWorld(gym.Env):
     def redefine_goal_nodes(self, goal_nodes):
         self.sp.target_nodes=goal_nodes
         self.sp.CalculateShortestPath()
-        self.nodescores, self.scaled_nodescores = su.GetNodeScores(self.sp)
+        if 'dt' in self.nfm_calculator.name: # nodescores used
+            self.nodescores, self.scaled_nodescores = su.GetNodeScores(self.sp)
         self.nfm_calculator.init(self)
         self.nfm_calculator.update(self)
         self._refresh_obs()
@@ -148,6 +153,20 @@ class GraphWorld(gym.Env):
         self.sp.start_escape_route_node = self.sp.coord2labels[self.sp.start_escape_route]
         self.state_encoding_dim, self.state_chunks, self.state_len = su.GetStateEncodingDimension(self.state_representation, self.sp.V, self.sp.U)      
         self.sp.W = torch.tensor(W, dtype=torch.float32)
+        self.sp.EI = dense_to_sparse(self.sp.W)[0]
+        # # test edge index
+        # pyg_graph = pyg.utils.convert.from_networkx(self.sp.G)
+        # EI_test = pyg_graph.edge_index
+        # S=set()
+        # for i in range(EI_test.shape[1]):
+        #     e=(EI_test[0,i].item(),EI_test[1,i].item())
+        #     S.add(e)
+        # for i in range(self.sp.EI.shape[1]):
+        #     e = (self.sp.EI[0,i].item() ,self.sp.EI[1,i].item())
+        #     assert (e) in S
+        # assert self.sp.EI.shape == EI_test.shape
+        # assert len(S) == self.sp.EI.shape[1]
+
         self.neighbors, self.in_degree, self.max_indegree, self.out_degree, self.max_outdegree = su.GetGraphData(self.sp)
         self.current_entry          = 0    # which entry in the world pool is active
         self.u_paths                = []
@@ -159,7 +178,8 @@ class GraphWorld(gym.Env):
         self.local_t                = 0
         self.observation_space = spaces.Box(0., self.sp.U, shape=(self.state_encoding_dim,), dtype=np.float32)
         self.action_space = spaces.Discrete(self.max_outdegree)
-        self.nodescores, self.scaled_nodescores = su.GetNodeScores(self.sp)
+        if 'dt' in self.nfm_calculator.name:
+            self.nodescores, self.scaled_nodescores = su.GetNodeScores(self.sp)
         self.nfm_calculator.init(self)
         self.sp.CalculateShortestPath()
         self.reset()

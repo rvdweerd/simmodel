@@ -200,7 +200,29 @@ class NFM_ec_dt():
         eo.nfm[:,0]=0
         eo.nfm[eo.state[0],0]=1
 
+class NFM_ec_t_dt():
+    def __init__(self):
+        self.name='nfm-ec-t-dt'
+        self.F=3
+        # Features:
+        # 0. current position e
+        # 1. target node
+        # 2. measure of distance/options to target nodes
+    def init(self, eo):
+        eo.F = 3
+        eo.nfm0 = torch.zeros((eo.sp.V,eo.F),dtype=torch.float32)
+        eo.nfm0[:,2] = eo.nodescores
+        if len(eo.sp.target_nodes) > 0:
+            eo.nfm0[torch.tensor(list(eo.sp.target_nodes),dtype=torch.int64),1]=1 # set target nodes, fixed for the given graph
+        self.reset(eo)
 
+    def reset(self, eo):
+        eo.nfm = copy.deepcopy(eo.nfm0)
+        eo.nfm[eo.sp.start_escape_route_node,0]=1
+
+    def update(self, eo):
+        eo.nfm[:,0]=0
+        eo.nfm[eo.state[0],0]=1
 
 class NFM_ec_t():
     def __init__(self):
