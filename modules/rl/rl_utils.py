@@ -6,6 +6,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 #from torch.cuda import init
 from pathlib import Path
+from torch_geometric.data import Data, Batch
+
 plt.switch_backend('agg')
 
 def CalculateNumTrainableParameters(model):
@@ -23,7 +25,7 @@ def EvalArgs1(env):
 def EvalArgs2(env):
     # arguments of the call to the policy class that samples an action
     # this version is used for GNNs
-    return env.nfm, env.sp.W, env.neighbors[env.state[0]]
+    return env.nfm, env.sp.W, Data(env.nfm, env.sp.EI), env.neighbors[env.state[0]]
 
 def EvalArgs3(env):
     # arguments of the call to the policy class that samples an action

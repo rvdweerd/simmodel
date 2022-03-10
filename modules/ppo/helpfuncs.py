@@ -36,7 +36,7 @@ def get_super_env(Uselected=[1], Eselected=[4], config=None, var_targets=None, a
     state_repr = 'etUte0U0'
     state_enc  = 'nfm'
     #nfm_funcs = {'NFM_ev_ec_t':NFM_ev_ec_t(),'NFM_ec_t':NFM_ec_t(),'NFM_ec_dt':NFM_ec_dt(),'NFM_ec_dtscaled':NFM_ec_dtscaled(),'NFM_ev_t':NFM_ev_t(),'NFM_ev_ec_t_um_us':NFM_ev_ec_t_um_us()}
-    nfm_func=nfm_funcs[config['nfm_func_name']]
+    nfm_func=nfm_funcs[config['nfm_func']]
     edge_blocking = config['edge_blocking']
     solve_select = config['solve_select']# only solvable worlds (so best achievable performance is 100%)
     reject_u_duplicates = False
@@ -184,7 +184,7 @@ def get_logdirs(config):
                 '/solvselect=' + config['solve_select']+'_edgeblock='+str(config['edge_blocking'])+'/' +\
                 config['scenario_name']
     logdir = rootdir+'/'+ \
-                config['nfm_func_name'] +'/'+ \
+                config['nfm_func'] +'/'+ \
                 's2v_layers='+str(config['s2v_layers']) + \
                 '_emb='+str(config['emb_dim']) + \
                 '_itT='+str(config['emb_iter_T']) + \

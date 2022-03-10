@@ -456,12 +456,12 @@ class GNN_s2v_Policy(Policy):
     #def sample_greedy_action(self, obs, available_actions):
     #    return self.sample_action(obs, available_actions)
 
-    def sample_action(self, nfm, W, reachable_nodes, printing=False):
-        xv=torch.tensor(nfm, dtype=torch.float32, device=device)#.unsqueeze(0)
+    def sample_action(self, nfm, W, pyg_data, reachable_nodes, printing=False):
+        xv=nfm.to(device)#.unsqueeze(0)
         # TODO: use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor)
         #W=torch.tensor(W,dtype=torch.float32,device=device).unsqueeze(0)
         with torch.no_grad():
-            action, action_nodeselect, best_reward = self.qfunc.get_best_action(xv, W, reachable_nodes, printing=printing)
+            action, action_nodeselect, best_reward = self.qfunc.get_best_action(xv, W, pyg_data, reachable_nodes, printing=printing)
             #action, _states = self.model.predict(obs, deterministic=self.deterministic)
             #obs = torch.tensor(obs)[None,:].to(device)
             #all_actions = torch.tensor(self.all_actions).to(device)

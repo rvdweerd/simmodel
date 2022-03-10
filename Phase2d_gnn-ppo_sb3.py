@@ -236,10 +236,10 @@ if __name__ == '__main__':
         evalResults={}
 
         for world_name, node_maxim, var_target, eval_name, eval_num in zip(world_list, node_maxims, var_targets, eval_names, eval_nums):
-        #custom_env = CreateEnv('MetroU3_e1t31_FixedEscapeInit',max_nodes=33,nfm_func_name =config['nfm_func_name'],var_targets=[1,1], remove_world_pool=True, apply_wrappers=True)
+        #custom_env = CreateEnv('MetroU3_e1t31_FixedEscapeInit',max_nodes=33,nfm_func_name =config['nfm_func'],var_targets=[1,1], remove_world_pool=True, apply_wrappers=True)
         #evalName='MetroU0_e1t31_vartarget_eval'
         
-            custom_env = CreateEnv(world_name, max_nodes=node_maxim, nfm_func_name = config['nfm_func_name'], var_targets=var_target, remove_world_pool=True, apply_wrappers=True)
+            custom_env = CreateEnv(world_name, max_nodes=node_maxim, nfm_func_name = config['nfm_func'], var_targets=var_target, remove_world_pool=True, apply_wrappers=True)
             evalName=eval_name
             senv=SuperEnv([custom_env],{1:0},node_maxim,probs=[1])        
             n_eval=eval_num

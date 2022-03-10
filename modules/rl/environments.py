@@ -14,7 +14,7 @@ from gym import spaces
 from gym import register
 import copy
 import networkx as nx
-from modules.gnn.nfm_gen import NFM_ec_t, NFM_ev_t, NFM_ev_ec_t
+from modules.gnn.nfm_gen import NFM_ec_t, NFM_ev_t, NFM_ev_ec_t, NFM_ec_dt
 from torch_geometric.utils import dense_to_sparse
 import torch_geometric as pyg
 
@@ -67,12 +67,12 @@ class GraphWorld(gym.Env):
 
         # Define NFM: Node Feature Matrix, (VxF) with V number of nodes, F number of features
         self.nodescores, self.scaled_nodescores = su.GetNodeScores(self.sp)
-        self.nfm_calculator=NFM_ev_ec_t()
+        self.nfm_calculator = NFM_ec_dt()
         if self.state_encoding=='nfm':
             self.nfm_calculator.init(self)
 
         # Gym objects
-        if state_encoding == 'nfm':
+        if self.state_encoding == 'nfm':
             self.observation_space = spaces.Box(0., self.sp.U, shape=(self.sp.V, (self.F+self.sp.V+1)), dtype=np.float32)
             self.action_space = spaces.Discrete(self.sp.V) # all possible nodes 
         else:
@@ -87,7 +87,7 @@ class GraphWorld(gym.Env):
         if nfm_function == None:
             return
         #assert  self.state_encoding=='nfm'
-        self.nfm_calculator = nfm_function
+        self.nfm_calculator = copy.deepcopy(nfm_function)
         if 'dt' in self.nfm_calculator.name:
             self.nodescores, self.scaled_nodescores = su.GetNodeScores(self.sp)
         self.nfm_calculator.init(self)

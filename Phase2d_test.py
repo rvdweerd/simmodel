@@ -43,10 +43,10 @@ print(logdir)
 
 ## 3. Individual environment
 #env = CreateEnv('MetroU3_e17tborder_FixedEscapeInit',max_nodes=config['max_nodes'],var_targets=None, remove_world_pool=False)
-env = CreateEnv('MetroU3_e1t31_FixedEscapeInit',max_nodes=33,nfm_func_name =config['nfm_func_name'],var_targets=[1,1], remove_world_pool=True)
+env = CreateEnv('MetroU3_e1t31_FixedEscapeInit',max_nodes=33,nfm_func_name =config['nfm_func'],var_targets=[1,1], remove_world_pool=True)
 #env = CreateEnv('Manhattan5x5_FixedEscapeInit',max_nodes=config['max_nodes'],var_targets=[3,3], remove_world_pool=False)
 #env = CreateEnv('NWB_test_FixedEscapeInit',max_nodes=975,var_targets=[20,20], remove_world_pool=False)
-#env = CreateEnv('NWB_test_VariableEscapeInit',nfm_func_name =config['nfm_func_name'],max_nodes=975,var_targets=None, remove_world_pool=True)
+#env = CreateEnv('NWB_test_VariableEscapeInit',nfm_func_name =config['nfm_func'],max_nodes=975,var_targets=None, remove_world_pool=True)
 
 ## 4. Pre-defined training set for ppo experiments
 #env = ConstructTrainSet(config)

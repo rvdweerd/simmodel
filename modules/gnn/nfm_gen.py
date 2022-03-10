@@ -23,7 +23,7 @@ class NFM_ev_t():
         self.reset(eo)
         
     def reset(self, eo):
-        eo.nfm = copy.deepcopy(eo.nfm0)
+        eo.nfm = eo.nfm0.clone()
         eo.nfm[eo.sp.start_escape_route_node,0]=1
 
     def update(self, eo):
@@ -42,17 +42,14 @@ class NFM_ev_ec_t_um_us():
     
     def init(self, eo):
         eo.F = 5
-        #eo.nfm0 = np.zeros((eo.sp.V,eo.F))
         eo.nfm0 = torch.zeros((eo.sp.V,eo.F),dtype=torch.float32)
         # Set target nodes
         if len(eo.sp.target_nodes) > 0:
-            #eo.nfm0[np.array(list(eo.sp.target_nodes)),2] = 1
             eo.nfm0[torch.tensor(list(eo.sp.target_nodes),dtype=torch.int64),2] = 1.
-        #eo.nfm  = copy.deepcopy(eo.nfm0)
         self.reset(eo)
         
     def reset(self, eo):
-        eo.nfm = copy.deepcopy(eo.nfm0)
+        eo.nfm = eo.nfm0.clone()
         # Set e position
         eo.nfm[eo.sp.start_escape_route_node, 0]=1
         eo.nfm[eo.sp.start_escape_route_node, 1]=1
@@ -111,15 +108,14 @@ class NFM_ev_ec_t_u():
     
     def init(self, eo):
         eo.F = 4
-        eo.nfm0 = np.zeros((eo.sp.V,eo.F))
+        eo.nfm0 = torch.zeros((eo.sp.V,eo.F))
         # Set target nodes
         if len(eo.sp.target_nodes) > 0:
-            eo.nfm0[np.array(list(eo.sp.target_nodes)),2] = 1
-        #eo.nfm  = copy.deepcopy(eo.nfm0)
+            eo.nfm0[torch.tensor(list(eo.sp.target_nodes),dtype=torch.int64),2] = 1
         self.reset(eo)
         
     def reset(self, eo):
-        eo.nfm = copy.deepcopy(eo.nfm0)
+        eo.nfm = eo.nfm0.clone()
         # Set e position
         eo.nfm[eo.sp.start_escape_route_node, 0]=1
         eo.nfm[eo.sp.start_escape_route_node, 1]=1
@@ -165,12 +161,12 @@ class NFM_ec_dtscaled():
     def init(self, eo):
         eo.F = self.F
         eo.nfm0 = torch.zeros((eo.sp.V,eo.F),dtype=torch.float32)
-        eo.nfm0[:,1] = eo.scaled_nodescores
+        eo.nfm0[:,1] = eo.scaled_nodescores.clone()
         #eo.nfm  = copy.deepcopy(eo.nfm0)
         self.reset(eo)
 
     def reset(self, eo):
-        eo.nfm = copy.deepcopy(eo.nfm0)
+        eo.nfm = eo.nfm0.clone()
         eo.nfm[eo.sp.start_escape_route_node,0]=1
 
     def update(self, eo):
@@ -188,12 +184,11 @@ class NFM_ec_dt():
     def init(self, eo):
         eo.F = 2
         eo.nfm0 = torch.zeros((eo.sp.V,eo.F),dtype=torch.float32)
-        eo.nfm0[:,1] = eo.nodescores
-        #eo.nfm  = copy.deepcopy(eo.nfm0)
+        eo.nfm0[:,1] = eo.nodescores.clone()
         self.reset(eo)
 
     def reset(self, eo):
-        eo.nfm = copy.deepcopy(eo.nfm0)
+        eo.nfm = eo.nfm0.clone()
         eo.nfm[eo.sp.start_escape_route_node,0]=1
 
     def update(self, eo):
@@ -211,13 +206,13 @@ class NFM_ec_t_dt():
     def init(self, eo):
         eo.F = 3
         eo.nfm0 = torch.zeros((eo.sp.V,eo.F),dtype=torch.float32)
-        eo.nfm0[:,2] = eo.nodescores
+        eo.nfm0[:,2] = eo.nodescores.clone()
         if len(eo.sp.target_nodes) > 0:
             eo.nfm0[torch.tensor(list(eo.sp.target_nodes),dtype=torch.int64),1]=1 # set target nodes, fixed for the given graph
         self.reset(eo)
 
     def reset(self, eo):
-        eo.nfm = copy.deepcopy(eo.nfm0)
+        eo.nfm = eo.nfm0.clone()
         eo.nfm[eo.sp.start_escape_route_node,0]=1
 
     def update(self, eo):
@@ -240,7 +235,7 @@ class NFM_ec_t():
         self.reset(eo)
 
     def reset(self, eo):
-        eo.nfm = copy.deepcopy(eo.nfm0)
+        eo.nfm = eo.nfm0.clone()
         eo.nfm[eo.sp.start_escape_route_node,0]=1
 
     def update(self, eo):
@@ -260,11 +255,10 @@ class NFM_ev_ec_t():
         eo.nfm0 = torch.zeros((eo.sp.V,eo.F),dtype=torch.float32)
         if len(eo.sp.target_nodes) > 0:
             eo.nfm0[torch.tensor(list(eo.sp.target_nodes),dtype=torch.int64),2]=1 # set target nodes, fixed for the given graph
-        #eo.nfm  = copy.deepcopy(eo.nfm0)
         self.reset(eo)
 
     def reset(self, eo):
-        eo.nfm = copy.deepcopy(eo.nfm0)
+        eo.nfm = eo.nfm0.clone()
         eo.nfm[eo.sp.start_escape_route_node,0]=1
         eo.nfm[eo.sp.start_escape_route_node,1]=1
 
