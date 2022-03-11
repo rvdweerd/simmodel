@@ -26,11 +26,11 @@ edgeblock="True"
 nfm="NFM_ec_dt"
 itt=5
 
-max_nodes=33
-for train_on in {"MetroConstructed",}
+max_nodes=975
+for train_on in {"NWB_AMS",}
 #"NFM_ec_t","NFM_ec_dtscaled"}
 do
-    for qnet in {"s2v","gat"}
+    for qnet in {"gat",}
     do
         tmux new-session -d -s "${qnet}-${train_on}"
         tmux send-keys -t "${qnet}-${train_on}" "conda activate rlcourse-sb3c" Enter

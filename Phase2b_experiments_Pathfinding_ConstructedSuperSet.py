@@ -237,11 +237,13 @@ def main(args):
             #env = CreateEnv('MetroU3_e17tborder_FixedEscapeInit',max_nodes=33,nfm_func_name = config['nfm_func'],var_targets=[1,1], remove_world_pool=True, apply_wrappers=False)
             #env = CreateEnv('MetroU3_e1t31_FixedEscapeInit',max_nodes=33,nfm_func_name = config['nfm_func'],var_targets=[1,1], remove_world_pool=True, apply_wrappers=False)        
             #env = CreateEnv('MetroU3_e17tborder_VariableEscapeInit',max_nodes=33,nfm_func_name = config['nfm_func'],var_targets=None, remove_world_pool=True, apply_wrappers=False)        
-            while False:
+            while True:
+                Q_func, Q_net, optimizer, lr_scheduler = init_model(config,fname=config['logdir']+'/SEED1'+'/best_model.tar')
+                policy=GNN_s2v_Policy(Q_func)
                 entries=None#[5012,218,3903]
                 a = SimulateAutomaticMode_DQN(env, policy, t_suffix=False, entries=entries)
                 if a == 'Q': break
-
+            continue
             senv=SuperEnv([env], {1:0}, node_maxim, probs=[1])
             #evalName='MetroU0_e1t31_vartarget_eval'
             evalName=eval_name
@@ -249,8 +251,6 @@ def main(args):
             evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
             for seed in config['seedrange']:
                 logdir=config['logdir']+'/SEED'+str(seed)
-                #Q_func, Q_net, optimizer, lr_scheduler = init_model(config,fname=logdir+'/best_model.tar')
-                #policy=GNN_s2v_Policy(Q_func)
                 result = evaluate(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=senv, eval_subdir=evalName, n_eval=n_eval)
                 #result = evaluate(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=[env], eval_subdir=evalName)
                 num_unique_graphs, num_graph_instances, avg_return, success_rate = result

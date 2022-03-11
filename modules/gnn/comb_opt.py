@@ -272,7 +272,7 @@ class QNet(nn.Module):
         """
         # we repeat the global state (summed over nodes) for each node, 
         # in order to concatenate it to local states later
-        global_state = self.theta6(torch.sum(mu, dim=1, keepdim=True).repeat(1, num_nodes, 1))
+        global_state = self.theta6((torch.sum(mu, dim=1, keepdim=True)/num_nodes).repeat(1, num_nodes, 1))
         
         local_action = self.theta7(mu)  # (batch_dim, nr_nodes, emb_dim)
             
