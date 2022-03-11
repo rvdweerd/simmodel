@@ -1,7 +1,7 @@
 #from os import stat_result
 from typing import List, Optional
 
-from rdflib import Graph
+#from rdflib import Graph
 import modules.sim.simdata_utils as su
 import random 
 #import time

@@ -100,7 +100,7 @@ class QNet_GAT(nn.Module):
         # pyg_data: pytorch geometric Batch
         max_num_nodes = xv.shape[1]
         
-        test=self.gat(pyg_data.x, pyg_data.edge_index).shape # gives (num_nodes, emb_dim)
+        #test=self.gat(pyg_data.x, pyg_data.edge_index).shape # gives (sum of num_nodes in batch, emb_dim)
         # self.gat is an instantiated torch_geometric.nn.models.GAT object
         ptr = pyg_data.ptr.detach().cpu().numpy()
         s = [r-l for r,l in zip(ptr[1:], ptr[:-1])] # list of #nodes of each graph in the batch
@@ -474,7 +474,7 @@ def train(seed=0, config=None, env_all=None):
         current_state = env.state
         done=False   
         current_state_tsr = env.nfm.clone() #torch.tensor(env.nfm, dtype=torch.float32)#, device=device) 
-        current_pyg_data = Data(x=current_state_tsr, edge_index=env.sp.EI)
+        current_pyg_data = Data(x=env.nfm.clone(), edge_index=env.sp.EI.clone())
         # Note: nfm = Graph Feature Matrix (FxV), columns are the node features, managed by the environment
         # It's currently defined (for each node) as:
         #   [.] node number
@@ -520,7 +520,7 @@ def train(seed=0, config=None, env_all=None):
             _, reward, done, info = env.step(action)
             next_state = env.state
             next_state_tsr = env.nfm.clone()#torch.tensor(env.nfm, dtype=torch.float32)#, device=device)
-            next_pyg_data = Data(x=next_state_tsr, edge_index=env.sp.EI)
+            next_pyg_data = Data(x=env.nfm.clone(), edge_index=env.sp.EI.clone())
 
             # store rewards and states obtained along this episode:
             states.append(next_state)

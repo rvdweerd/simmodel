@@ -26,8 +26,8 @@ edgeblock="True"
 nfm="NFM_ec_dt"
 itt=5
 
-max_nodes=975
-for train_on in {"NWB_AMS",}
+max_nodes=33
+for train_on in {"MetroConstructed",}
 #"NFM_ec_t","NFM_ec_dtscaled"}
 do
     for qnet in {"s2v","gat"}
