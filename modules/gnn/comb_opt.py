@@ -472,7 +472,7 @@ def train(seed=0, config=None, env_all=None):
         env.reset()
         current_state = env.state
         done=False   
-        current_state_tsr = env.nfm#torch.tensor(env.nfm, dtype=torch.float32)#, device=device) 
+        current_state_tsr = env.nfm.clone() #torch.tensor(env.nfm, dtype=torch.float32)#, device=device) 
         current_pyg_data = Data(x=current_state_tsr, edge_index=env.sp.EI)
         # Note: nfm = Graph Feature Matrix (FxV), columns are the node features, managed by the environment
         # It's currently defined (for each node) as:
@@ -518,7 +518,7 @@ def train(seed=0, config=None, env_all=None):
             
             _, reward, done, info = env.step(action)
             next_state = env.state
-            next_state_tsr = env.nfm#torch.tensor(env.nfm, dtype=torch.float32)#, device=device)
+            next_state_tsr = env.nfm.clone()#torch.tensor(env.nfm, dtype=torch.float32)#, device=device)
             next_pyg_data = Data(x=next_state_tsr, edge_index=env.sp.EI)
 
             # store rewards and states obtained along this episode:

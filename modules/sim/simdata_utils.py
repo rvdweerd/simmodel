@@ -508,55 +508,26 @@ def scale0_vec(a, newrange=[0.1,1.]):
             out[i] = (out[i]-lowmark)/bmax * brange + newrange[0]
     return torch.tensor(out,dtype=torch.float32)
 
-def GetNodeScores(sp):
+from collections import deque
+def GetNodeScores(sp, neighbors):
     if len(sp.target_nodes) > 0:
         #print('calculating node scores...')
         nodescores=torch.zeros(sp.V,dtype=torch.float32)
         scaled_nodescores=torch.zeros(sp.V,dtype=torch.float32)
         
-        # go over all node labels
-        for sourcelabel, sourcecoord in sp.labels2coord.items():
-            if sourcelabel in sp.target_nodes:
-                continue # assign fixed values to target nodes later
-            distances, spaths = nx.single_source_dijkstra(sp.G, sourcecoord) # dicts to all target coords
-            # calc distance to all target nodes
-            score = 0
-            for targetlabel in sp.target_nodes:
-                targetcoord = sp.labels2coord[targetlabel]
-                if targetcoord in distances:
-                    d = distances[targetcoord]
-                    score += 1/d
-            nodescores[sourcelabel] = score
-    
-        max_score=nodescores.max()
-        nodescores/=max_score
-        scaled_nodescores = scale0_vec(nodescores, [0.1,1.])
-    
-        for n in sp.target_nodes:
-            nodescores[n]=2
-            scaled_nodescores[n]=2
-
-    return nodescores, scaled_nodescores
-
-def GetNodeScores_bfs(sp):
-    if len(sp.target_nodes) > 0:
-        #print('calculating node scores...')
-        nodescores=torch.zeros(sp.V,dtype=torch.float32)
-        scaled_nodescores=torch.zeros(sp.V,dtype=torch.float32)
-        
-        # go over all node labels
-        for sourcelabel, sourcecoord in sp.labels2coord.items():
-            if sourcelabel in sp.target_nodes:
-                continue # assign fixed values to target nodes later
-            distances, spaths = nx.single_source_dijkstra(sp.G, sourcecoord) # dicts to all target coords
-            # calc distance to all target nodes
-            score = 0
-            for targetlabel in sp.target_nodes:
-                targetcoord = sp.labels2coord[targetlabel]
-                if targetcoord in distances:
-                    d = distances[targetcoord]
-                    score += 1/d
-            nodescores[sourcelabel] = score
+        # go over all target nodes
+        for t in sp.target_nodes:
+            q = deque()
+            visited = set([t])
+            q.append((t,0))
+            while len(q) > 0:
+                c,d = q.popleft()
+                d += 1
+                for n in neighbors[c]:
+                    if n not in sp.target_nodes and n not in visited: 
+                        nodescores[n] += 1/d
+                        visited.add(n)
+                        q.append((n,d))
     
         max_score=nodescores.max()
         nodescores/=max_score

@@ -66,8 +66,8 @@ class GraphWorld(gym.Env):
         self.neighbors, self.in_degree, self.max_indegree, self.out_degree, self.max_outdegree = su.GetGraphData(self.sp)
 
         # Define NFM: Node Feature Matrix, (VxF) with V number of nodes, F number of features
-        self.nodescores, self.scaled_nodescores = su.GetNodeScores(self.sp)
-        self.nfm_calculator = NFM_ec_dt()
+        self.nodescores, self.scaled_nodescores = su.GetNodeScores(self.sp, self.neighbors)
+        self.nfm_calculator = NFM_ev_ec_t()
         if self.state_encoding=='nfm':
             self.nfm_calculator.init(self)
 
@@ -87,9 +87,9 @@ class GraphWorld(gym.Env):
         if nfm_function == None:
             return
         #assert  self.state_encoding=='nfm'
-        self.nfm_calculator = copy.deepcopy(nfm_function)
+        self.nfm_calculator = nfm_function#copy.deepcopy(nfm_function)
         if 'dt' in self.nfm_calculator.name:
-            self.nodescores, self.scaled_nodescores = su.GetNodeScores(self.sp)
+            self.nodescores, self.scaled_nodescores = su.GetNodeScores(self.sp, self.neighbors)
         self.nfm_calculator.init(self)
         self.observation_space = spaces.Box(0., self.sp.U, shape=(self.sp.V, (self.F+self.sp.V+1)), dtype=np.float32)        
         self.action_space = spaces.Discrete(self.sp.V) # all possible nodes 
@@ -102,7 +102,7 @@ class GraphWorld(gym.Env):
         self.sp.target_nodes=goal_nodes
         self.sp.CalculateShortestPath()
         if 'dt' in self.nfm_calculator.name: # nodescores used
-            self.nodescores, self.scaled_nodescores = su.GetNodeScores(self.sp)
+            self.nodescores, self.scaled_nodescores = su.GetNodeScores(self.sp, self.neighbors)
         self.nfm_calculator.init(self)
         self.nfm_calculator.update(self)
         self._refresh_obs()
@@ -179,7 +179,7 @@ class GraphWorld(gym.Env):
         self.observation_space = spaces.Box(0., self.sp.U, shape=(self.state_encoding_dim,), dtype=np.float32)
         self.action_space = spaces.Discrete(self.max_outdegree)
         if 'dt' in self.nfm_calculator.name:
-            self.nodescores, self.scaled_nodescores = su.GetNodeScores(self.sp)
+            self.nodescores, self.scaled_nodescores = su.GetNodeScores(self.sp, self.neighbors)
         self.nfm_calculator.init(self)
         self.sp.CalculateShortestPath()
         self.reset()
