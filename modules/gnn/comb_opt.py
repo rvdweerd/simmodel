@@ -24,6 +24,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import torch_geometric
 from scipy.signal import medfilt
 import copy
 from torch.utils.tensorboard import SummaryWriter
@@ -46,25 +47,25 @@ Experience = namedtuple('Experience', ( \
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
-def dense_to_sparse(adj):
-    r"""Converts a dense adjacency matrix to a sparse adjacency matrix defined
-    by edge indices and edge attributes.
+# def dense_to_sparse(adj):
+#     r"""Converts a dense adjacency matrix to a sparse adjacency matrix defined
+#     by edge indices and edge attributes.
 
-    Args:
-        adj (Tensor): The dense adjacency matrix.
-     :rtype: (:class:`LongTensor`, :class:`Tensor`)
-    """
-    assert adj.dim() >= 2 and adj.dim() <= 3
-    assert adj.size(-1) == adj.size(-2)
+#     Args:
+#         adj (Tensor): The dense adjacency matrix.
+#      :rtype: (:class:`LongTensor`, :class:`Tensor`)
+#     """
+#     assert adj.dim() >= 2 and adj.dim() <= 3
+#     assert adj.size(-1) == adj.size(-2)
 
-    index = adj.nonzero(as_tuple=True)
-    edge_attr = adj[index]
+#     index = adj.nonzero(as_tuple=True)
+#     edge_attr = adj[index]
 
-    if len(index) == 3:
-        batch = index[0] * adj.size(-1)
-        index = (batch + index[1], batch + index[2])
+#     if len(index) == 3:
+#         batch = index[0] * adj.size(-1)
+#         index = (batch + index[1], batch + index[2])
 
-    return torch.stack(index, dim=0), edge_attr
+#     return torch.stack(index, dim=0), edge_attr
 
 #from torch.nn.utils.rnn import pad_sequence
 class QNet_GAT(nn.Module):
@@ -173,7 +174,7 @@ class QNet_GAT_gord(nn.Module):
         num_nodes=xv.shape[1]
         out=[]
         for i in range(batch_size):
-            edge_index= dense_to_sparse(Ws[i])[0]
+            edge_index= torch_geometric.utils.dense_to_sparse(Ws[i])[0]
             graphdata = (xv[i], edge_index)
             nodes_unnormalized_scores = self.gat(graphdata)[0] # yields (N,emb_dim)
             out.append(nodes_unnormalized_scores)
