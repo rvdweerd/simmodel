@@ -36,7 +36,7 @@ def get_super_env(Uselected=[1], Eselected=[4], config=None, var_targets=None, a
     state_repr = 'etUte0U0'
     state_enc  = 'nfm'
     #nfm_funcs = {'NFM_ev_ec_t':NFM_ev_ec_t(),'NFM_ec_t':NFM_ec_t(),'NFM_ec_dt':NFM_ec_dt(),'NFM_ec_dtscaled':NFM_ec_dtscaled(),'NFM_ev_t':NFM_ev_t(),'NFM_ev_ec_t_um_us':NFM_ev_ec_t_um_us()}
-    nfm_func=nfm_funcs[config['nfm_func']]
+    nfm_func=nfm_funcs[config['nfm_func_name']]
     edge_blocking = config['edge_blocking']
     solve_select = config['solve_select']# only solvable worlds (so best achievable performance is 100%)
     reject_u_duplicates = False

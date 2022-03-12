@@ -38,37 +38,37 @@ def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M
         probs.append(2)
 
         world_name = 'Manhattan5x5_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], nfm_func_name=config['nfm_func_name'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(2)
 
         world_name = 'Manhattan5x5_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], nfm_func_name=config['nfm_func_name'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(2)
 
         world_name = 'Manhattan5x5_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], nfm_func_name=config['nfm_func_name'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
         world_name = 'Manhattan5x5_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], nfm_func_name=config['nfm_func_name'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
         world_name = 'Manhattan5x5_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], nfm_func_name=config['nfm_func'], var_targets=[1,1],remove_world_pool=True, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], nfm_func_name=config['nfm_func_name'], var_targets=[1,1],remove_world_pool=True, apply_wrappers=apply_wrappers)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)    
 
         world_name = 'SparseManhattan5x5'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], nfm_func_name=config['nfm_func_name'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)

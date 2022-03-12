@@ -74,7 +74,7 @@ def main(args):
     if args.train or args.eval:
         senv, env_all_train_list = ConstructTrainSet(config, apply_wrappers=False, remove_paths=config['remove_paths'], tset=config['train_on']) #TODO check
         env_all_train = [senv]
-        while True:
+        while False:
             a = SimulateInteractiveMode(senv, filesave_with_time_suffix=False)
             if a == 'Q': break
 

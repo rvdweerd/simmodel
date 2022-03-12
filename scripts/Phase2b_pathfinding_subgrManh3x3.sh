@@ -23,7 +23,7 @@ numseeds=1
 seed0=1
 solveselect='solvable'
 edgeblock="True"
-nfm="NFM_ec_dtscaled"
+nfm="NFM_ec_dt"
 itt=5
 train_on="MixAll33"
 max_nodes=33
@@ -33,10 +33,10 @@ for norm_agg in {"True","False"}
 do
     for qnet in {"gat","s2v"}
     do
-        tmux new-session -d -s "${qnet}-${norm_agg}"
-        tmux send-keys -t "${qnet}-${norm_agg}" "conda activate rlcourse-sb3c" Enter
-        tmux send-keys -t "${qnet}-${norm_agg}" "cd ~/testing/sim" Enter
-        tmux send-keys -t "${qnet}-${norm_agg}" "python Phase2b_experiments_Pathfinding_ConstructedSuperSet.py --emb_dim $emb --emb_itT $itt --num_epi $numepi --mem_size $mem --nfm_func $nfm --qnet $qnet --norm_agg $norm_agg --train_on $train_on --max_nodes $max_nodes --pursuit $pursuit --optim_target $optim --tau $tau --nstep $nstep --Etrain $etrain --Utrain $utrain --edge_blocking $edgeblock --solve_select $solveselect --train $train --eval $eval --test $test --num_seeds $numseeds --seed0 $seed0" Enter
+        tmux new-session -d -s "${qnet}-${norm_agg}2"
+        tmux send-keys -t "${qnet}-${norm_agg}2" "conda activate rlcourse-sb3c" Enter
+        tmux send-keys -t "${qnet}-${norm_agg}2" "cd ~/testing/sim" Enter
+        tmux send-keys -t "${qnet}-${norm_agg}2" "python Phase2b_experiments_Pathfinding_ConstructedSuperSet.py --emb_dim $emb --emb_itT $itt --num_epi $numepi --mem_size $mem --nfm_func $nfm --qnet $qnet --norm_agg $norm_agg --train_on $train_on --max_nodes $max_nodes --pursuit $pursuit --optim_target $optim --tau $tau --nstep $nstep --Etrain $etrain --Utrain $utrain --edge_blocking $edgeblock --solve_select $solveselect --train $train --eval $eval --test $test --num_seeds $numseeds --seed0 $seed0" Enter
     done
 done
 

@@ -49,7 +49,7 @@ env = CreateEnv('NWB_test_VariableEscapeInit',nfm_func_name =config['nfm_func_na
 #env = CreateEnv('NWB_test_VariableEscapeInit',nfm_func_name =config['nfm_func'],max_nodes=975,var_targets=None, remove_world_pool=True)
 
 ## 4. Pre-defined training set for ppo experiments
-#env = ConstructTrainSet(config)
+#env, _ = ConstructTrainSet(config)
 
 ## Load pre-saved model
 saved_model = MaskablePPO.load(logdir+'/SEED'+str(seed)+"/saved_models/model_last")

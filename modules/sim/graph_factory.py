@@ -209,14 +209,14 @@ def GetWorldSet(state_repr = 'et', state_enc  = 'tensors', U=[1,2,3], E=[i for i
             for W_, hashint, hashstr in register_full[e]:
             #W_, hashint, hashstr = random.choice(register_full[4])
             #for hashint, env_data in databank_full['U='+str(u)].items():
-                #remove_paths=False
+                remove_paths_local=remove_paths
                 u_=u
                 if 'U='+str(u_) not in databank_full:
                     if hashint not in databank_full['U=1']:
                         assert False
                     u_=1
                     env0.sp.U = u_
-                    remove_paths=True
+                    remove_paths_local=True
                 if hashint not in databank_full['U='+str(u_)]:
                     assert False
                 env_data = databank_full['U='+str(u_)][hashint] # dict contains  'register':{(e0,U0):index}, 'databank':[], 'iratios':[]
@@ -242,7 +242,7 @@ def GetWorldSet(state_repr = 'et', state_enc  = 'tensors', U=[1,2,3], E=[i for i
                     assert False
                 if len(env.world_pool) > 0:
                     env.all_worlds = env.world_pool
-                    if remove_paths:
+                    if remove_paths_local:
                         env._remove_world_pool()
                     env.reset()
                     all_envs.append(env)
