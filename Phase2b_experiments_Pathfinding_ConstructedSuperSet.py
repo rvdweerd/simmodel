@@ -31,6 +31,7 @@ def GetConfig(args):
     config['edge_blocking']= args.edge_blocking
     config['node_dim']     = nfm_funcs[args.nfm_func].F
     config['qnet']         = args.qnet
+    config['norm_agg']     = args.norm_agg
     config['emb_dim']      = args.emb_dim
     config['emb_iter_T']   = args.emb_itT 
     config['optim_target'] = args.optim_target
@@ -49,7 +50,7 @@ def GetConfig(args):
     config['rootdir']='./results/results_Phase2/Pathfinding/dqn/'+ \
                                 config['train_on']+'_'+args.pursuit+'/'+ \
                                 config['solve_select']+'_edgeblock'+str(config['edge_blocking'])+'/'+\
-                                config['qnet']
+                                config['qnet']+'_normagg'+str(config['norm_agg'])
     config['logdir']        = config['rootdir'] + '/' +\
                                 config['nfm_func']+'/'+ \
                                 'emb'+str(config['emb_dim']) + \
@@ -73,7 +74,7 @@ def main(args):
     if args.train or args.eval:
         senv, env_all_train_list = ConstructTrainSet(config, apply_wrappers=False, remove_paths=config['remove_paths'], tset=config['train_on']) #TODO check
         env_all_train = [senv]
-        while False:
+        while True:
             a = SimulateInteractiveMode(senv, filesave_with_time_suffix=False)
             if a == 'Q': break
 
@@ -237,13 +238,13 @@ def main(args):
             #env = CreateEnv('MetroU3_e17tborder_FixedEscapeInit',max_nodes=33,nfm_func_name = config['nfm_func'],var_targets=[1,1], remove_world_pool=True, apply_wrappers=False)
             #env = CreateEnv('MetroU3_e1t31_FixedEscapeInit',max_nodes=33,nfm_func_name = config['nfm_func'],var_targets=[1,1], remove_world_pool=True, apply_wrappers=False)        
             #env = CreateEnv('MetroU3_e17tborder_VariableEscapeInit',max_nodes=33,nfm_func_name = config['nfm_func'],var_targets=None, remove_world_pool=True, apply_wrappers=False)        
-            while True:
+            while False:
                 Q_func, Q_net, optimizer, lr_scheduler = init_model(config,fname=config['logdir']+'/SEED1'+'/best_model.tar')
                 policy=GNN_s2v_Policy(Q_func)
                 entries=None#[5012,218,3903]
                 a = SimulateAutomaticMode_DQN(env, policy, t_suffix=False, entries=entries)
                 if a == 'Q': break
-            continue
+            #continue
             senv=SuperEnv([env], {1:0}, node_maxim, probs=[1])
             #evalName='MetroU0_e1t31_vartarget_eval'
             evalName=eval_name
@@ -282,6 +283,7 @@ if __name__ == '__main__':
     parser.add_argument('--nfm_func', default='NFM_ev_ec_t', type=str)
     parser.add_argument('--train_on', default='None', type=str)
     parser.add_argument('--qnet', default='None', type=str)
+    parser.add_argument('--norm_agg', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
     parser.add_argument('--optim_target', default='None', type=str)
     parser.add_argument('--tau', default=100, type=int)
     parser.add_argument('--nstep', default=1, type=int)

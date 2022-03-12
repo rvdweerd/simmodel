@@ -80,6 +80,7 @@ class QNet_GAT(nn.Module):
         self.emb_dim    = config['emb_dim']
         self.num_layers = config['emb_iter_T']
         self.node_dim   = config['node_dim']
+        self.norm_agg = config['norm_agg']
         kwargs={'concat':True}
         self.gat = GAT(
             in_channels = self.node_dim,
@@ -116,7 +117,10 @@ class QNet_GAT(nn.Module):
         """
         # we repeat the global state (summed over nodes) for each node, 
         # in order to concatenate it to local states later
-        global_state = self.theta6(torch.sum(mu, dim=1, keepdim=True).repeat(1, max_num_nodes, 1))
+        if self.norm_agg:
+            global_state = self.theta6((torch.sum(mu, dim=1, keepdim=True)/pyg_data.num_nodes).repeat(1, max_num_nodes, 1))
+        else:
+            global_state = self.theta6(torch.sum(mu, dim=1, keepdim=True).repeat(1, max_num_nodes, 1))
         
         local_action = self.theta7(mu)  # (batch_dim, nr_nodes, emb_dim)
             
@@ -217,6 +221,7 @@ class QNet(nn.Module):
         super(QNet, self).__init__()
         self.emb_dim = config['emb_dim']
         self.T = config['emb_iter_T']
+        self.norm_agg=config['norm_agg']
 
         # We use 5 dimensions for representing the nodes' states:
         # * A binary variable indicating whether the node has been visited
@@ -246,7 +251,8 @@ class QNet(nn.Module):
         # xv: The node features (batch_size, num_nodes, node_dim)
         # Ws: The graphs (batch_size, num_nodes, num_nodes)
         # pyg_data: pytorch geometric Batch (not used here)
-        num_nodes = xv.shape[1]
+        num_nodes_padded = xv.shape[1]
+        num_nodes_orig = pyg_data.num_nodes
         batch_size = xv.shape[0]
         
         # pre-compute 1-0 connection matrices masks (batch_size, num_nodes, num_nodes)
@@ -254,7 +260,7 @@ class QNet(nn.Module):
         
         # Graph embedding
         # Note: we first compute s1 and s3 once, as they are not dependent on mu
-        mu = torch.zeros(batch_size, num_nodes, self.emb_dim, dtype=torch.float32,device=device)
+        mu = torch.zeros(batch_size, num_nodes_padded, self.emb_dim, dtype=torch.float32,device=device)
         #s1 = self.theta1a(xv)  # (batch_size, num_nodes, emb_dim)
         s1 = self.theta1b(F.relu(self.theta1a(xv)))  # (batch_size, num_nodes, emb_dim)
         #for layer in self.theta1_extras:
@@ -272,8 +278,10 @@ class QNet(nn.Module):
         """
         # we repeat the global state (summed over nodes) for each node, 
         # in order to concatenate it to local states later
-        global_state = self.theta6((torch.sum(mu, dim=1, keepdim=True)/num_nodes).repeat(1, num_nodes, 1))
-        
+        if self.norm_agg:
+            global_state = self.theta6((torch.sum(mu, dim=1, keepdim=True)/num_nodes_orig).repeat(1, num_nodes_padded, 1))
+        else:
+            global_state = self.theta6((torch.sum(mu, dim=1, keepdim=True)).repeat(1, num_nodes_padded, 1))
         local_action = self.theta7(mu)  # (batch_dim, nr_nodes, emb_dim)
             
         out = F.relu(torch.cat([global_state, local_action], dim=2))

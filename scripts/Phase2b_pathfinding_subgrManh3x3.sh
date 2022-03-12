@@ -8,7 +8,7 @@ tau=100
 nstep=2
 optim='returns'
 train="True"
-eval="True"
+eval="False"
 test="True"
 etrain="0,1,2,3,4,5,6,7,8,9"
 etrain_="0123456789"
@@ -19,23 +19,24 @@ utrain_="123"
 #train_on="M3M5Mix"
 #train_on="NWB_AMS"
 pursuit="Uoff"
-numseeds=5
+numseeds=1
 seed0=1
 solveselect='solvable'
 edgeblock="True"
-nfm="NFM_ec_dt"
+nfm="NFM_ec_dtscaled"
 itt=5
+train_on="MixAll33"
+max_nodes=33
 
-max_nodes=975
-for train_on in {"NWB_AMS",}
+for norm_agg in {"True","False"}
 #"NFM_ec_t","NFM_ec_dtscaled"}
 do
-    for qnet in {"gat",}
+    for qnet in {"gat","s2v"}
     do
-        tmux new-session -d -s "${qnet}-${train_on}"
-        tmux send-keys -t "${qnet}-${train_on}" "conda activate rlcourse-sb3c" Enter
-        tmux send-keys -t "${qnet}-${train_on}" "cd ~/testing/sim" Enter
-        tmux send-keys -t "${qnet}-${train_on}" "python Phase2b_experiments_Pathfinding_ConstructedSuperSet.py --emb_dim $emb --emb_itT $itt --num_epi $numepi --mem_size $mem --nfm_func $nfm --qnet $qnet --train_on $train_on --max_nodes $max_nodes --pursuit $pursuit --optim_target $optim --tau $tau --nstep $nstep --Etrain $etrain --Utrain $utrain --edge_blocking $edgeblock --solve_select $solveselect --train $train --eval $eval --test $test --num_seeds $numseeds --seed0 $seed0" Enter
+        tmux new-session -d -s "${qnet}-${norm_agg}"
+        tmux send-keys -t "${qnet}-${norm_agg}" "conda activate rlcourse-sb3c" Enter
+        tmux send-keys -t "${qnet}-${norm_agg}" "cd ~/testing/sim" Enter
+        tmux send-keys -t "${qnet}-${norm_agg}" "python Phase2b_experiments_Pathfinding_ConstructedSuperSet.py --emb_dim $emb --emb_itT $itt --num_epi $numepi --mem_size $mem --nfm_func $nfm --qnet $qnet --norm_agg $norm_agg --train_on $train_on --max_nodes $max_nodes --pursuit $pursuit --optim_target $optim --tau $tau --nstep $nstep --Etrain $etrain --Utrain $utrain --edge_blocking $edgeblock --solve_select $solveselect --train $train --eval $eval --test $test --num_seeds $numseeds --seed0 $seed0" Enter
     done
 done
 
