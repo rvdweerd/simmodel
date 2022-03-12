@@ -23,7 +23,7 @@
                      "--test","True",
                     "--Etrain","0,1,2,3,4,5,6,7,8,9",
                     "--Utrain","1,2,3",
-                    "--qnet","s2v",
+                    "--qnet","gat",
                     "--norm_agg","True",
                     //"--train_on","NWB_AMS",
                     //"--train_on","MetroConstructed",

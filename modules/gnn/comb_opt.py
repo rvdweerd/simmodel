@@ -99,18 +99,18 @@ class QNet_GAT(nn.Module):
         # xv: The node features (batch_size, num_nodes, node_dim)
         # Ws: The graphs (batch_size, num_nodes, num_nodes)
         # pyg_data: pytorch geometric Batch
-        max_num_nodes = xv.shape[1]
+        num_nodes_padded = xv.shape[1]
         
         #test=self.gat(pyg_data.x, pyg_data.edge_index).shape # gives (sum of num_nodes in batch, emb_dim)
         # self.gat is an instantiated torch_geometric.nn.models.GAT object
         ptr = pyg_data.ptr.detach().cpu().numpy()
-        s = [r-l for r,l in zip(ptr[1:], ptr[:-1])] # list of #nodes of each graph in the batch
+        splitter = [r-l for r,l in zip(ptr[1:], ptr[:-1])] # list of #nodes of each graph in the batch
 
         mu = self.gat(pyg_data.x ,pyg_data.edge_index) # yields the node embeddings
         # mu has shape (sum of num_nodes in the batch, emb_dim), mu needs to be unpacked
-        mu = torch.nn.utils.rnn.pad_sequence(mu.split(s, dim=0), batch_first=True)
-        if mu.shape[1] < max_num_nodes:
-            p = max_num_nodes - mu.shape[1]
+        mu = torch.nn.utils.rnn.pad_sequence(mu.split(splitter, dim=0), batch_first=True)
+        if mu.shape[1] < num_nodes_padded:
+            p = num_nodes_padded - mu.shape[1]
             mu = nn.functional.pad(mu, (0,0,0,p,0,0))
 
         """ prediction
@@ -118,9 +118,16 @@ class QNet_GAT(nn.Module):
         # we repeat the global state (summed over nodes) for each node, 
         # in order to concatenate it to local states later
         if self.norm_agg:
-            global_state = self.theta6((torch.sum(mu, dim=1, keepdim=True)/pyg_data.num_nodes).repeat(1, max_num_nodes, 1))
+            #ptr = pyg_data.ptr.detach().cpu().numpy()
+            s = [1/(r-l) for r,l in zip(ptr[1:], ptr[:-1])] # list of #nodes of each graph in the batch
+            nodesizes=torch.tensor(s,dtype=torch.float32,device=device)[:,None,None] #(bsize,1,1)
+            agg=torch.sum(mu, dim=1, keepdim=True) # (bsize,1,emb_dim)
+            normagg=agg*nodesizes # normalized graph representations, (bsize,1,emb_dim)
+            global_state = self.theta6(normagg.repeat(1, num_nodes_padded, 1)) # (bsize,max_num_nodes,emb_dim)
+
+            #global_state = self.theta6((torch.sum(mu, dim=1, keepdim=True)/pyg_data.num_nodes).repeat(1, num_nodes_padded, 1))
         else:
-            global_state = self.theta6(torch.sum(mu, dim=1, keepdim=True).repeat(1, max_num_nodes, 1))
+            global_state = self.theta6(torch.sum(mu, dim=1, keepdim=True).repeat(1, num_nodes_padded, 1))
         
         local_action = self.theta7(mu)  # (batch_dim, nr_nodes, emb_dim)
             
@@ -252,7 +259,7 @@ class QNet(nn.Module):
         # Ws: The graphs (batch_size, num_nodes, num_nodes)
         # pyg_data: pytorch geometric Batch (not used here)
         num_nodes_padded = xv.shape[1]
-        num_nodes_orig = pyg_data.num_nodes
+        #num_nodes_orig = pyg_data.num_nodes
         batch_size = xv.shape[0]
         
         # pre-compute 1-0 connection matrices masks (batch_size, num_nodes, num_nodes)
@@ -279,7 +286,12 @@ class QNet(nn.Module):
         # we repeat the global state (summed over nodes) for each node, 
         # in order to concatenate it to local states later
         if self.norm_agg:
-            global_state = self.theta6((torch.sum(mu, dim=1, keepdim=True)/num_nodes_orig).repeat(1, num_nodes_padded, 1))
+            ptr = pyg_data.ptr.detach().cpu().numpy()
+            s = [1/(r-l) for r,l in zip(ptr[1:], ptr[:-1])] # list of #nodes of each graph in the batch
+            nodesizes=torch.tensor(s,dtype=torch.float32,device=device)[:,None,None] #(bsize,1,1)
+            agg=torch.sum(mu, dim=1, keepdim=True) # (bsize,1,emb_dim)
+            normagg=agg*nodesizes # normalized graph representations, (bsize,1,emb_dim)
+            global_state = self.theta6(normagg.repeat(1, num_nodes_padded, 1)) # (bsize,max_num_nodes,emb_dim)
         else:
             global_state = self.theta6((torch.sum(mu, dim=1, keepdim=True)).repeat(1, num_nodes_padded, 1))
         local_action = self.theta7(mu)  # (batch_dim, nr_nodes, emb_dim)
