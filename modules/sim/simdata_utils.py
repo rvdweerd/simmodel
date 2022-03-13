@@ -514,7 +514,7 @@ def GetNodeScores(sp, neighbors):
         #print('calculating node scores...')
         nodescores=torch.zeros(sp.V,dtype=torch.float32)
         scaled_nodescores=torch.zeros(sp.V,dtype=torch.float32)
-        
+        min_target_distances=torch.ones(sp.V)*torch.inf
         # go over all target nodes
         for t in sp.target_nodes:
             q = deque()
@@ -526,6 +526,7 @@ def GetNodeScores(sp, neighbors):
                 for n in neighbors[c]:
                     if n not in sp.target_nodes and n not in visited: 
                         nodescores[n] += 1/d
+                        min_target_distances[n] = min(d,min_target_distances[n])
                         visited.add(n)
                         q.append((n,d))
     
@@ -536,8 +537,11 @@ def GetNodeScores(sp, neighbors):
         for n in sp.target_nodes:
             nodescores[n]=2
             scaled_nodescores[n]=2
+            min_target_distances[n]=0
 
-    return nodescores, scaled_nodescores
+        infidx=min_target_distances==torch.inf
+        min_target_distances[infidx]=min_target_distances[~infidx].max()+1
+    return nodescores, scaled_nodescores, min_target_distances
 
 def make_dirname(sp):
     #timestamp = datetime.now()
@@ -668,6 +672,7 @@ def SimulateAutomaticMode_DQN(env, dqn_policy, t_suffix=True, entries=None):
     else: entry = None
     obs=env.reset(entry=entry)
     print('Entry:',env.current_entry)
+    print('spath length',env.sp.spath_length,'path',env.sp.spath_to_target)
     
     done=False
     endepi=False

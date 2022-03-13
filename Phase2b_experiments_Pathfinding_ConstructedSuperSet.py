@@ -2,7 +2,7 @@ import copy
 from modules.gnn.comb_opt import train, evaluate, evaluate_spath_heuristic, evaluate_tabular
 from modules.rl.rl_custom_worlds import GetCustomWorld
 from modules.rl.environments import SuperEnv
-from modules.gnn.nfm_gen import NFM_ec_t, NFM_ec_t_dt, NFM_ec_dt, NFM_ec_dtscaled, NFM_ev_t, NFM_ev_ec_t, NFM_ev_ec_t_um_us
+from modules.gnn.nfm_gen import NFM_ec_t, NFM_ec_t_dt_at, NFM_ec_dt, NFM_ec_dtscaled, NFM_ev_t, NFM_ev_ec_t, NFM_ev_ec_t_um_us
 from modules.sim.graph_factory import GetWorldSet, LoadData
 from modules.sim.simdata_utils import SimulateInteractiveMode, SimulateAutomaticMode_DQN
 from modules.gnn.comb_opt import init_model
@@ -12,7 +12,7 @@ import numpy as np
 import torch
 import argparse
 from Phase2d_construct_sets import ConstructTrainSet
-nfm_funcs = {'NFM_ev_ec_t':NFM_ev_ec_t(),'NFM_ec_t':NFM_ec_t(),'NFM_ec_t_dt':NFM_ec_t_dt(),'NFM_ec_dt':NFM_ec_dt(),'NFM_ec_dtscaled':NFM_ec_dtscaled(),'NFM_ev_t':NFM_ev_t(),'NFM_ev_ec_t_um_us':NFM_ev_ec_t_um_us()}
+nfm_funcs = {'NFM_ev_ec_t':NFM_ev_ec_t(),'NFM_ec_t':NFM_ec_t(),'NFM_ec_t_dt_at':NFM_ec_t_dt_at(),'NFM_ec_dt':NFM_ec_dt(),'NFM_ec_dtscaled':NFM_ec_dtscaled(),'NFM_ev_t':NFM_ev_t(),'NFM_ev_ec_t_um_us':NFM_ev_ec_t_um_us()}
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def GetConfig(args):
@@ -238,13 +238,15 @@ def main(args):
             #env = CreateEnv('MetroU3_e17tborder_FixedEscapeInit',max_nodes=33,nfm_func_name = config['nfm_func'],var_targets=[1,1], remove_world_pool=True, apply_wrappers=False)
             #env = CreateEnv('MetroU3_e1t31_FixedEscapeInit',max_nodes=33,nfm_func_name = config['nfm_func'],var_targets=[1,1], remove_world_pool=True, apply_wrappers=False)        
             #env = CreateEnv('MetroU3_e17tborder_VariableEscapeInit',max_nodes=33,nfm_func_name = config['nfm_func'],var_targets=None, remove_world_pool=True, apply_wrappers=False)        
-            while False:
+            #env, env_all_train_list = ConstructTrainSet(config, apply_wrappers=False, remove_paths=config['remove_paths'], tset=config['train_on']) #TODO check
+
+            while True:
                 Q_func, Q_net, optimizer, lr_scheduler = init_model(config,fname=config['logdir']+'/SEED1'+'/best_model.tar')
                 policy=GNN_s2v_Policy(Q_func)
                 entries=None#[5012,218,3903]
                 a = SimulateAutomaticMode_DQN(env, policy, t_suffix=False, entries=entries)
                 if a == 'Q': break
-            #continue
+            continue
             senv=SuperEnv([env], {1:0}, node_maxim, probs=[1])
             #evalName='MetroU0_e1t31_vartarget_eval'
             evalName=eval_name

@@ -234,18 +234,21 @@ class NFM_ec_dt():
         eo.nfm[:,0]=0
         eo.nfm[eo.state[0],0]=1
 
-class NFM_ec_t_dt():
+class NFM_ec_t_dt_at():
     def __init__(self):
         self.name='nfm-ec-t-dt'
-        self.F=3
+        self.F=4
         # Features:
         # 0. current position e
         # 1. target node
-        # 2. measure of distance/options to target nodes
+        # 2. scaled measure of distance/options to target nodes
+        # 3. absolute distance (hops) to nearest target node
+
     def init(self, eo):
-        eo.F = 3
+        eo.F = self.F
         eo.nfm0 = torch.zeros((eo.sp.V,eo.F),dtype=torch.float32)
         eo.nfm0[:,2] = eo.nodescores.clone()
+        eo.nfm0[:,3] = eo.min_target_distances.clone()
         if len(eo.sp.target_nodes) > 0:
             eo.nfm0[torch.tensor(list(eo.sp.target_nodes),dtype=torch.int64),1]=1 # set target nodes, fixed for the given graph
         self.reset(eo)
