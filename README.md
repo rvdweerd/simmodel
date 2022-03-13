@@ -1,6 +1,6 @@
 # simmodel
 Simulation environment for Reinforcement Learning experiments in Search & Pursuit on Graphs.
-Thesis work-in-progress for UvA/AI MSc program (![Thesis Proposal](modules/sim/Thesis_proposal.pdf))
+Thesis work-in-progress for UvA/AI MSc program ([Thesis Proposal](modules/sim/Thesis_proposal.pdf))
 
 * Goal: predicting escape routes in a passive search scenario with partial observability</br></br>
 ![escape_demo](modules/sim/escape_route.gif)
