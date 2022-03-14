@@ -226,13 +226,15 @@ if __name__ == '__main__':
                 printing('  per seed: '+str(np.array(values))+'\n')
     
     if test:
-        world_list=['MetroU3_e1t31_FixedEscapeInit', 
+        world_list=['Manhattan3x3_WalkAround',
+                    'MetroU3_e1t31_FixedEscapeInit', 
                     'NWB_test_VariableEscapeInit']
-        node_maxims = [33,975]
-        var_targets=[ [1,1], None]
-        eval_names =  ['MetroU0_e1t31_vartarget_eval', 
-                       'NWB_VarialeEscapeInit_eval' ]
-        eval_nums = [1000,200]
+        node_maxims = [9,33,975]
+        var_targets=[ None, [1,1], None]
+        eval_names =  [ 'Manhattan3x3_WalkAround'
+                        'MetroU0_e1t31_vartarget_eval', 
+                        'NWB_VarialeEscapeInit_eval' ]
+        eval_nums = [1, 1000,200]
         evalResults={}
 
         for world_name, node_maxim, var_target, eval_name, eval_num in zip(world_list, node_maxims, var_targets, eval_names, eval_nums):

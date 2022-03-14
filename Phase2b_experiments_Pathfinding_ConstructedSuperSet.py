@@ -2,7 +2,7 @@ import copy
 from modules.gnn.comb_opt import train, evaluate, evaluate_spath_heuristic, evaluate_tabular
 from modules.rl.rl_custom_worlds import GetCustomWorld
 from modules.rl.environments import SuperEnv
-from modules.gnn.nfm_gen import NFM_ec_t, NFM_ec_t_dt_at, NFM_ec_dt, NFM_ec_dtscaled, NFM_ev_t, NFM_ev_ec_t, NFM_ev_ec_t_um_us
+from modules.gnn.nfm_gen import NFM_ec_t, NFM_ec_t_dt_at, NFM_ev_ec_t_dt_at_um_us, NFM_ec_dt, NFM_ec_dtscaled, NFM_ev_t, NFM_ev_ec_t, NFM_ev_ec_t_um_us
 from modules.sim.graph_factory import GetWorldSet, LoadData
 from modules.sim.simdata_utils import SimulateInteractiveMode, SimulateAutomaticMode_DQN
 from modules.gnn.comb_opt import init_model
@@ -12,7 +12,15 @@ import numpy as np
 import torch
 import argparse
 from Phase2d_construct_sets import ConstructTrainSet
-nfm_funcs = {'NFM_ev_ec_t':NFM_ev_ec_t(),'NFM_ec_t':NFM_ec_t(),'NFM_ec_t_dt_at':NFM_ec_t_dt_at(),'NFM_ec_dt':NFM_ec_dt(),'NFM_ec_dtscaled':NFM_ec_dtscaled(),'NFM_ev_t':NFM_ev_t(),'NFM_ev_ec_t_um_us':NFM_ev_ec_t_um_us()}
+nfm_funcs = {
+    'NFM_ev_ec_t':NFM_ev_ec_t(),
+    'NFM_ec_t':NFM_ec_t(),
+    'NFM_ec_t_dt_at':NFM_ec_t_dt_at(),
+    'NFM_ev_ec_t_dt_at_um_us':NFM_ev_ec_t_dt_at_um_us(),
+    'NFM_ec_dt':NFM_ec_dt(),
+    'NFM_ec_dtscaled':NFM_ec_dtscaled(),
+    'NFM_ev_t':NFM_ev_t(),
+    'NFM_ev_ec_t_um_us':NFM_ev_ec_t_um_us()}
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def GetConfig(args):
@@ -224,16 +232,22 @@ def main(args):
     if args.test:
         evalResults={}
 
-        world_list=['MetroU3_e1t31_FixedEscapeInit', 
+        world_list=[
+            'Manhattan5x5_DuplicateSetB',
+            'Manhattan3x3_WalkAround',
+            'MetroU3_e1t31_FixedEscapeInit', 
             'NWB_test_VariableEscapeInit']
-        node_maxims = [33,975]
-        var_targets=[ [1,1], None]
-        eval_names =  ['MetroU0_e1t31_vartarget_eval', 
-                       'NWB_VarialeEscapeInit_eval' ]
-        eval_nums = [1000,200]
+        node_maxims = [25,9,33,975]
+        var_targets=[ None,None, [1,1], None]
+        eval_names =  [
+            'Manhattan5x5_DuplicateSetB',
+            'Manhattan3x3_WalkAround',
+            'MetroU0_e1t31_vartarget_eval', 
+            'NWB_VarialeEscapeInit_eval' ]
+        eval_nums = [1,1,1000,200]
 
         for world_name, node_maxim, var_target, eval_name, eval_num in zip(world_list, node_maxims, var_targets, eval_names, eval_nums):
-            env = CreateEnv(world_name, max_nodes=node_maxim, nfm_func_name = config['nfm_func'], var_targets=var_target, remove_world_pool=True, apply_wrappers=False)
+            env = CreateEnv(world_name, max_nodes=node_maxim, nfm_func_name = config['nfm_func'], var_targets=var_target, remove_world_pool=config['remove_paths'], apply_wrappers=False)
             #env = CreateEnv('NWB_test_FixedEscapeInit',max_nodes=975,nfm_func_name = config['nfm_func'],var_targets=None, remove_world_pool=True, apply_wrappers=False)
             #env = CreateEnv('MetroU3_e17tborder_FixedEscapeInit',max_nodes=33,nfm_func_name = config['nfm_func'],var_targets=[1,1], remove_world_pool=True, apply_wrappers=False)
             #env = CreateEnv('MetroU3_e1t31_FixedEscapeInit',max_nodes=33,nfm_func_name = config['nfm_func'],var_targets=[1,1], remove_world_pool=True, apply_wrappers=False)        

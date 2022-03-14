@@ -261,6 +261,56 @@ class NFM_ec_t_dt_at():
         eo.nfm[:,0]=0
         eo.nfm[eo.state[0],0]=1
 
+class NFM_ev_ec_t_dt_at_um_us():
+    def __init__(self):
+        self.name='nfm-ev-ec-t-dt-at-um-us'
+        self.F=7
+        # Features:
+        # 0. visited by e
+        # 1. current position e
+        # 2. target node
+        # 3. scaled measure of distance/options to target nodes
+        # 4. absolute distance (hops) to nearest target node
+        # 5. u positions (on the move)
+        # 6. u positions (when settled)
+
+    def init(self, eo):
+        eo.F = self.F
+        eo.nfm0 = torch.zeros((eo.sp.V,eo.F),dtype=torch.float32)
+        eo.nfm0[:,3] = eo.nodescores.clone()
+        eo.nfm0[:,4] = eo.min_target_distances.clone()
+        if len(eo.sp.target_nodes) > 0:
+            eo.nfm0[torch.tensor(list(eo.sp.target_nodes),dtype=torch.int64),2]=1 # set target nodes, fixed for the given graph
+        self.reset(eo)
+
+    def reset(self, eo):
+        eo.nfm = eo.nfm0.clone()
+        eo.nfm[eo.sp.start_escape_route_node,0]=1
+        eo.nfm[eo.sp.start_escape_route_node,1]=1
+        # Set u positions
+
+        for path_index, path in enumerate(eo.u_paths): 
+            if eo.local_t >= len(path)-1: #unit has settled
+                assert path[-1] in eo.state
+                eo.nfm[path[-1],6] += 1
+            else:
+                eo.nfm[path[eo.local_t],5] += 1
+
+    def update(self, eo):
+        eo.nfm[eo.state[0],0]=1
+        eo.nfm[:,1]=0
+        eo.nfm[eo.state[0],1]=1
+        # Set u positions
+        eo.nfm[:,5] = 0     
+        eo.nfm[:,6] = 0     
+        for path_index, path in enumerate(eo.u_paths): 
+            if eo.local_t >= len(path)-1: #unit has settled
+                assert path[-1] in eo.state
+                eo.nfm[path[-1],6] += 1
+            else:
+                eo.nfm[path[eo.local_t],5] += 1
+
+
 class NFM_ec_t():
     def __init__(self):
         self.name='nfm-ec-t'

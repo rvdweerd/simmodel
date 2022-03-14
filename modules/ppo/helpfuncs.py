@@ -7,7 +7,7 @@ import tqdm
 from sb3_contrib.common.maskable.utils import get_action_masks
 from sb3_contrib.common.maskable.evaluation import evaluate_policy
 from modules.rl.rl_utils import EvaluatePolicy, EvalArgs1, EvalArgs2, EvalArgs3, GetFullCoverageSample
-from modules.gnn.nfm_gen import NFM_ec_t, NFM_ec_t_dt_at, NFM_ec_dt, NFM_ec_dtscaled, NFM_ev_t, NFM_ev_ec_t, NFM_ev_ec_t_um_us, NFM_ev_ec_t_u
+from modules.gnn.nfm_gen import NFM_ec_t, NFM_ec_t_dt_at, NFM_ev_ec_t_dt_at_um_us, NFM_ec_dt, NFM_ec_dtscaled, NFM_ev_t, NFM_ev_ec_t, NFM_ev_ec_t_um_us, NFM_ev_ec_t_u
 from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsWrapper, VarTargetWrapper
 from modules.sim.graph_factory import GetWorldSet, LoadData
 from modules.rl.environments import GraphWorld
@@ -21,6 +21,7 @@ nfm_funcs = {
     'NFM_ev_ec_t'       : NFM_ev_ec_t(),
     'NFM_ec_t'          : NFM_ec_t(),
     'NFM_ec_t_dt_at'    : NFM_ec_t_dt_at(),
+    'NFM_ev_ec_t_dt_at_um_us': NFM_ev_ec_t_dt_at_um_us(),
     'NFM_ec_dt'         : NFM_ec_dt(),
     'NFM_ec_dtscaled'   : NFM_ec_dtscaled(),
     'NFM_ev_t'          : NFM_ev_t(),
