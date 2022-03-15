@@ -259,7 +259,7 @@ def DefineSimParameters(config):
     sp.T = config['T']
     sp.loadAllStartingPositions = config['loadAllStartingPositions']
     
-    if sp.graph_type in ['NWBGraph', 'NWBGraphROT']:
+    if 'NWBGraph' in sp.graph_type:
         sp.G=config['obj']['G']
         sp.labels=config['obj']['labels']
         sp.pos = config['obj']['pos']

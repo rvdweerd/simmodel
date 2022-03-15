@@ -227,18 +227,18 @@ def main(args):
         evalResults={}
 
         world_list=[
-            'Manhattan5x5_DuplicateSetB',
-            'Manhattan3x3_WalkAround',
-            'MetroU3_e1t31_FixedEscapeInit', 
-            'NWB_test_VariableEscapeInit']
-        node_maxims = [25,9,33,975]
-        var_targets=[ None,None, [1,1], None]
+            #'Manhattan5x5_DuplicateSetB',
+            #'Manhattan3x3_WalkAround',
+            #'MetroU3_e1t31_FixedEscapeInit', 
+            'NWB_UTR_VariableEscapeInit']
+        node_maxims = [0]
+        var_targets=[ None]
         eval_names =  [
-            'Manhattan5x5_DuplicateSetB',
-            'Manhattan3x3_WalkAround',
-            'MetroU0_e1t31_vartarget_eval', 
-            'NWB_VarialeEscapeInit_eval' ]
-        eval_nums = [1,1,1000,200]
+            #'Manhattan5x5_DuplicateSetB',
+            #'Manhattan3x3_WalkAround',
+            #'MetroU0_e1t31_vartarget_eval', 
+            'NWB_UTR_VariableEscapeInit' ]
+        eval_nums = [10]
 
         for world_name, node_maxim, var_target, eval_name, eval_num in zip(world_list, node_maxims, var_targets, eval_names, eval_nums):
             env = CreateEnv(world_name, max_nodes=node_maxim, nfm_func_name = config['nfm_func'], var_targets=var_target, remove_world_pool=config['remove_paths'], apply_wrappers=False)
@@ -249,7 +249,7 @@ def main(args):
             #env, env_all_train_list = ConstructTrainSet(config, apply_wrappers=False, remove_paths=config['remove_paths'], tset=config['train_on']) #TODO check
 
             if config['demoruns']:
-                Q_func, Q_net, optimizer, lr_scheduler = init_model(config,fname=config['logdir']+'/SEED1'+'/best_model.tar')
+                Q_func, Q_net, optimizer, lr_scheduler = init_model(config,fname=config['logdir']+'/SEED'+str(config['seed0'])+'/best_model.tar')
                 policy=GNN_s2v_Policy(Q_func)
                 while True:
                     entries=None#[5012,218,3903]

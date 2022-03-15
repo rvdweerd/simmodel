@@ -27,7 +27,7 @@ def convert_IMApkl_to_graphml():
 
 def convert_Gephi_graphml_to_SIM():
     sourcedir='datasets/G_nwb/3.GEPHIgraphml/'
-    filename='G_test_UTR_1km_edited_V=1182'
+    filename='G_test_ROT_2km_edited_V=2602'
     targetdir='datasets/G_nwb/4.GEPHI_to_SIM/'
 
     G=nx.read_graphml(sourcedir+filename+'.graphml')
@@ -58,7 +58,7 @@ def convert_Gephi_graphml_to_SIM():
         source_coord=nodeid_str2coord[source]
         target_coord=nodeid_str2coord[target]
         edgelist_coord.append((source_coord, target_coord, {'weight':1, 'N_pref':-1}))
-    H=nx.Graph()
+    H=nx.Graph() # creates an undirected graph
     H.add_nodes_from(nodelist_coord)
     H.add_edges_from(edgelist_coord)
     #center_node_nr = nodeid_str2idx[center_nodeid_str]

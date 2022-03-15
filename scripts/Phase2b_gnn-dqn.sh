@@ -7,7 +7,7 @@ mem=5000 #2000
 tau=100
 nstep=2
 optim='returns'
-train="True"
+train="False"
 eval="False"
 test="True"
 etrain="0,1,2,3,4,5,6,7,8,9"
@@ -30,7 +30,7 @@ demoruns="False"
 numseeds=1
 norm_agg="True"
 
-for seed0 in {"1","2","3","4","5"}
+for seed0 in {"10",}
 #"NFM_ec_t","NFM_ec_dtscaled"}
 do
     for qnet in {"gat",}
