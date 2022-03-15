@@ -6,7 +6,7 @@ import pickle
 def convert_IMApkl_to_graphml():
     sourcedir='datasets/G_nwb/1.IMApkl/'
     targetdir='datasets/G_nwb/2.IMAgraphml/'
-    filename='G_test_DAM_1km_V=1152'
+    filename='G_UTR_1km_V=1191'
     G=nx.read_gpickle(sourcedir+filename+'.pkl') 
     nodelist=[]
     coord2id={}
@@ -27,7 +27,7 @@ def convert_IMApkl_to_graphml():
 
 def convert_Gephi_graphml_to_SIM():
     sourcedir='datasets/G_nwb/3.GEPHIgraphml/'
-    filename='G_test_DAM_1km_edited_V=975'
+    filename='G_test_UTR_1km_edited_V=1182'
     targetdir='datasets/G_nwb/4.GEPHI_to_SIM/'
 
     G=nx.read_graphml(sourcedir+filename+'.graphml')
@@ -66,7 +66,7 @@ def convert_Gephi_graphml_to_SIM():
     #assert nodes[center_node_nr]  ==  center_node_coord
     pos = dict( (n,n) for n in H.nodes() )
 
-    l=0.05;t=0.05;r=0.05;b=0.05
+    l=0.02;t=0.02;r=0.01;b=0.02
     centernode, centernode_coord, target_nodes, target_nodes_coord = get_center_and_boundary_nodes(nodes, margins=[l,t,r,b])
     plot_center_and_target_nodes(H, pos, centernode, target_nodes, fname=targetdir+filename)
     obj={'G':H,'labels':labels,'pos':pos,'centernode':centernode,

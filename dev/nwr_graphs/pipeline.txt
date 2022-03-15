@@ -9,8 +9,10 @@
 
 3. Import .graphml in Gephi (>0.9.2) and make necessary corrections
 
-4. Export as graphml and convert back to nx format with [...]
+4. Export as graphml and convert back to nx format with convert_Gephi_graphml_to_SIM()
 
+5. This yields new .bin file that can be loaded in "GetCustomWorld" in rl_custom_worlds.py
+5. Run IMA optimizer to generate pursuer paths in optmodel repo (mind: undirected graph conversion)
 
 
 NB Prep adjustements in IMA repo:

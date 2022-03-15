@@ -168,6 +168,26 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         conf['obj'] = nx.read_gpickle('datasets/G_nwb/4.GEPHI_to_SIM/G_test_DAM_1km_edited_V=975.bin')
         env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
         return env       
+    if world_name  in ['NWB_ROT_FixedEscapeInit', 'NWB_ROT_VariableEscapeInit']:
+        conf={
+            'graph_type': "NWBGraphROT",
+            'make_reflexive': False,            
+            'N': 2602,    # number of nodes along one side
+            'U': 10,    # number of pursuer units
+            'L': 50,    # Time steps
+            'T': 50,
+            'R': 1000,  # Number of escape routes sampled 
+            'direction_north': False,       # Directional preference of escaper
+            #'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
+            #'fixed_initial_positions': (1,5,7,28),
+            'loadAllStartingPositions': False
+        }
+        if world_name == 'NWB_ROT_VariableEscapeInit':
+            conf['loadAllStartingPositions'] = True
+        conf['obj'] = nx.read_gpickle('datasets/G_nwb/4.GEPHI_to_SIM/G_test_ROT_2km_edited_V=2602.bin')
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
+        return env       
+
 
 def CreateWorlds(run_world_names, make_reflexive=True, state_repr='et', state_enc='nodes'):
     worlds=[]
