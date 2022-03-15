@@ -100,7 +100,7 @@ class QNet_GAT(nn.Module):
         # xv: The node features (batch_size, num_nodes, node_dim)
         # Ws: The graphs (batch_size, num_nodes, num_nodes)
         # pyg_data: pytorch geometric Batch
-        num_nodes_padded = xv.shape[1]
+        #num_nodes_padded = xv.shape[1]
         
         #test=self.gat(pyg_data.x, pyg_data.edge_index).shape # gives (sum of num_nodes in batch, emb_dim)
         # self.gat is an instantiated torch_geometric.nn.models.GAT object
@@ -109,42 +109,42 @@ class QNet_GAT(nn.Module):
         splitter_STAR = list(ptr[1:]-ptr[:-1])
         mu_raw = self.gat(pyg_data.x ,pyg_data.edge_index) # yields the node embeddings (sum of num_nodes in the batch, emb_dim)
         # mu_raw has shape (sum of num_nodes in the batch, emb_dim), mu needs to be unpacked
-        mu = torch.nn.utils.rnn.pad_sequence(mu_raw.split(splitter_STAR, dim=0), batch_first=True) #(bsize,max_num_nodes,emb_dim)
-        if mu.shape[1] < num_nodes_padded:
-            p = num_nodes_padded - mu.shape[1]
-            mu = nn.functional.pad(mu, (0,0,0,p,0,0))
+        # mu = torch.nn.utils.rnn.pad_sequence(mu_raw.split(splitter_STAR, dim=0), batch_first=True) #(bsize,max_num_nodes,emb_dim)
+        # if mu.shape[1] < num_nodes_padded:
+        #     p = num_nodes_padded - mu.shape[1]
+        #     mu = nn.functional.pad(mu, (0,0,0,p,0,0))
 
         """ prediction
         """
-        mu_meanpool = scatter_mean(mu_raw,pyg_data.batch,dim=0) # (bsize,emb_dim)
-        mu_meanpool_expanded = torch.repeat_interleave(mu_meanpool,torch.tensor(splitter_STAR,dtype=torch.int64,device=device),dim=0) #(sum of num_nodes in the batch, emb_dim)
-        mu_maxpool = scatter_add(mu_raw,pyg_data.batch,dim=0) # (bsize,emb_dim)
-        mu_maxpool_expanded = torch.repeat_interleave(mu_maxpool,torch.tensor(splitter_STAR,dtype=torch.int64,device=device),dim=0) #(sum of num_nodes in the batch, emb_dim)
 
         # we repeat the global state (summed over nodes) for each node, 
         # in order to concatenate it to local states later
         if self.norm_agg:
+            mu_meanpool = scatter_mean(mu_raw,pyg_data.batch,dim=0) # (bsize,emb_dim)
+            mu_meanpool_expanded = torch.repeat_interleave(mu_meanpool,torch.tensor(splitter_STAR,dtype=torch.int64,device=device),dim=0) #(sum of num_nodes in the batch, emb_dim)
             #ptr = pyg_data.ptr.detach().cpu().numpy()
-            s = [1/(r-l) for r,l in zip(ptr[1:], ptr[:-1])] # list of #nodes of each graph in the batch
-            nodesizes=torch.tensor(s,dtype=torch.float32,device=device)[:,None,None] #(bsize,1,1)
-            agg=torch.sum(mu, dim=1, keepdim=True) # (bsize,1,emb_dim)
-            normagg=agg*nodesizes # normalized graph representations, (bsize,1,emb_dim)
-            global_state = self.theta6(normagg.repeat(1, num_nodes_padded, 1)) # (bsize,max_num_nodes,emb_dim)
+            #s = [1/(r-l) for r,l in zip(ptr[1:], ptr[:-1])] # list of #nodes of each graph in the batch
+            #nodesizes=torch.tensor(s,dtype=torch.float32,device=device)[:,None,None] #(bsize,1,1)
+            #agg=torch.sum(mu, dim=1, keepdim=True) # (bsize,1,emb_dim)
+            #normagg=agg*nodesizes # normalized graph representations, (bsize,1,emb_dim)
+            #global_state = self.theta6(normagg.repeat(1, num_nodes_padded, 1)) # (bsize,max_num_nodes,emb_dim)
             global_state_STAR = self.theta6(mu_meanpool_expanded)
             #global_state = self.theta6((torch.sum(mu, dim=1, keepdim=True)/pyg_data.num_nodes).repeat(1, num_nodes_padded, 1))
         else:
-            global_state = self.theta6(torch.sum(mu, dim=1, keepdim=True).repeat(1, num_nodes_padded, 1))
+            mu_maxpool = scatter_add(mu_raw,pyg_data.batch,dim=0) # (bsize,emb_dim)
+            mu_maxpool_expanded = torch.repeat_interleave(mu_maxpool,torch.tensor(splitter_STAR,dtype=torch.int64,device=device),dim=0) #(sum of num_nodes in the batch, emb_dim)
+            #global_state = self.theta6(torch.sum(mu, dim=1, keepdim=True).repeat(1, num_nodes_padded, 1))
             global_state_STAR = self.theta6(mu_maxpool_expanded)
         
-        local_action = self.theta7(mu)  # (batch_dim, nr_nodes, emb_dim)
+        #local_action = self.theta7(mu)  # (batch_dim, nr_nodes, emb_dim)
         local_action_STAR = self.theta7(mu_raw)  # (sum of num_nodes in the batch, emb_dim)
 
         out_STAR = F.relu(torch.cat([global_state_STAR, local_action_STAR], dim=1)) # (sum of num_nodes in the batch, 2*emb_dim)
         out_STAR = self.theta5(out_STAR).squeeze() # (sum of num_nodes in the batch)
 
-        out = F.relu(torch.cat([global_state, local_action], dim=2)) # (bsize, max_num_nodes, 2*emb_dim)
-        out = self.theta5(out).squeeze(dim=2) # (bsize, max_num_nodes)
-        return out, out_STAR
+        #out = F.relu(torch.cat([global_state, local_action], dim=2)) # (bsize, max_num_nodes, 2*emb_dim)
+        #out = self.theta5(out).squeeze(dim=2) # (bsize, max_num_nodes)
+        return out_STAR
 
     def numTrainableParameters(self):
         print('Qnet size:')
@@ -351,8 +351,13 @@ class QFunction():
         # batch of 1 - only called at inference time
         pyg_batch = Batch.from_data_list([pyg_data]).to(device)
         with torch.no_grad():
-            estimated_rewards, estimated_rewards_STAR = self.model(state_tsr.unsqueeze(0), W.unsqueeze(0), pyg_batch)
-        return estimated_rewards[0]
+            estimated_rewards = self.model(state_tsr.unsqueeze(0), W.unsqueeze(0), pyg_batch)
+        if len(estimated_rewards.shape) == 2 and estimated_rewards.shape[0]==1: # bsize is 1
+            return estimated_rewards[0]
+        elif len(estimated_rewards.shape) == 1:
+            return estimated_rewards
+        else:
+            assert False
                 
     def get_best_action(self, state_tsr, W, pyg_data, reachable_nodes, printing=False):
         """ Computes the best (greedy) action to take from a given state
@@ -394,16 +399,16 @@ class QFunction():
         
         # the rewards estimated by Q for the given actions
         #estimated_rewards = self.model(xv, Ws_tsr)[range(len(actions)), actions]
-        qvals, qvals_STAR = self.model(xv, Ws_tsr, pyg_batch) # (bsize, max_num_nodes)
-        actionselect = torch.tensor(actions,dtype=torch.int64,device=device)[:,None] #(bsize,1)
-        estimated_rewards = torch.gather(qvals, 1, actionselect).squeeze() #(bsize)
+        qvals_STAR = self.model(xv, Ws_tsr, pyg_batch) # (bsize, max_num_nodes)
+        #actionselect = torch.tensor(actions,dtype=torch.int64,device=device)[:,None] #(bsize,1)
+        #estimated_rewards = torch.gather(qvals, 1, actionselect).squeeze() #(bsize)
         #estimated_rewards = torch.gather(self.model(xv, Ws_tsr, pyg_batch), 1, torch.tensor(actions,dtype=torch.int64,device=device)[:,None]).squeeze()
 
 
         actionselect_STAR = torch.tensor(actions,dtype=torch.int64,device=device) + pyg_batch.ptr[:-1]
         estimated_rewards_STAR = qvals_STAR[actionselect_STAR]
 
-        loss = self.loss_fn(estimated_rewards, torch.tensor(targets, device=device))
+        loss = self.loss_fn(estimated_rewards_STAR, torch.tensor(targets, device=device))
         loss_val = loss.detach().cpu().item()
         # check grads: self.model.theta4.weight.grad
         loss.backward()
@@ -484,7 +489,8 @@ def train(seed=0, config=None, env_all=None):
     path_length_ratios = []
     total_rewards=[]
     grad_update_count=0
-    
+    zerovec=torch.tensor([0],dtype=torch.float32)
+
     seed_everything(seed) # 
     # Create module, optimizer, LR scheduler, and Q-function
     Q_func, Q_net, optimizer, lr_scheduler = init_model(config)
@@ -512,13 +518,17 @@ def train(seed=0, config=None, env_all=None):
         env.reset()
         current_state = env.state
         done=False   
-        current_state_tsr = env.nfm.clone() #torch.tensor(env.nfm, dtype=torch.float32)#, device=device) 
-        current_pyg_data = Data(x=env.nfm.clone(), edge_index=env.sp.EI.clone())
+        current_state_tsr = env.nfm.clone() if config['qnet']=='s2v' else zerovec
+        current_pyg_data = Data(x=env.nfm.clone(), edge_index=env.sp.EI.clone()) if config['qnet']=='gat' else zerovec
         # Note: nfm = Graph Feature Matrix (FxV), columns are the node features, managed by the environment
         # It's currently defined (for each node) as:
         #   [.] node number
         #   [.] 1 if target node, 0 otherwise 
         #   [.] # of units present at node at current time
+        
+        # Padding size to ensure W always same shape to enable batching
+        Psize = config['max_nodes'] - env.sp.V if config['qnet']=='s2v' else 0
+        assert env.sp.V == env.sp.W.shape[0]
 
         # Keep track of some variables for insertion in replay memory:
         states = [current_state]
@@ -558,8 +568,8 @@ def train(seed=0, config=None, env_all=None):
             
             _, reward, done, info = env.step(action)
             next_state = env.state
-            next_state_tsr = env.nfm.clone()#torch.tensor(env.nfm, dtype=torch.float32)#, device=device)
-            next_pyg_data = Data(x=env.nfm.clone(), edge_index=env.sp.EI.clone())
+            next_state_tsr = env.nfm.clone() if config['qnet']=='s2v' else zerovec
+            next_pyg_data = Data(x=env.nfm.clone(), edge_index=env.sp.EI.clone()) if config['qnet']=='gat' else zerovec
 
             # store rewards and states obtained along this episode:
             states.append(next_state)
@@ -570,40 +580,34 @@ def train(seed=0, config=None, env_all=None):
             actions.append(action)
             actions_nodeselect.append(action_nodeselect)
             
-            Psize = config['max_nodes'] - env.sp.V # Padding size to ensure W always same shape to enable batching
-            assert env.sp.V == env.sp.W.shape[0]
-            #padW=nn.ZeroPad2d((0,Psize,0,Psize))
-            #W1=pad(env.sp.W)
-            #W2=pad(env.sp.W)
-            #W3=nn.functional.pad(env.sp.W,(0,Psize,0,Psize))
 
             # store our experience in memory, using n-step Q-learning:
             if len(actions) >= N_STEP_QL:
                 memory.remember(Experience( state          = states[-(N_STEP_QL+1)],
-                                            state_tsr      = nn.functional.pad(states_tsrs[-(N_STEP_QL+1)],(0,0,0,Psize)),
-                                            W              = nn.functional.pad(env.sp.W,(0,Psize,0,Psize)),
-                                            pyg_data       = pyg_objects[-(N_STEP_QL+1)],
+                                            state_tsr      = nn.functional.pad(states_tsrs[-(N_STEP_QL+1)],(0,0,0,Psize)) if config['qnet']=='s2v' else zerovec,
+                                            W              = nn.functional.pad(env.sp.W,(0,Psize,0,Psize)) if config['qnet']=='s2v' else zerovec,
+                                            pyg_data       = pyg_objects[-(N_STEP_QL+1)] if config['qnet']=='gat' else zerovec,
                                             action         = actions[-N_STEP_QL],
                                             action_nodeselect=actions_nodeselect[-N_STEP_QL],
                                             done           = dones[-1], 
                                             reward         = sum(GAMMA_ARR * np.array(rewards[-N_STEP_QL:])),
                                             next_state     = next_state,
-                                            next_state_tsr = nn.functional.pad(next_state_tsr,(0,0,0,Psize)),
+                                            next_state_tsr = nn.functional.pad(next_state_tsr,(0,0,0,Psize)) if config['qnet']=='s2v' else zerovec,
                                             next_pyg_data  = next_pyg_data,
                                             next_state_neighbors= env.neighbors[next_state[0]] ))
                 
             if done:
                 for n in range(1, min(N_STEP_QL, len(states))):
                     memory.remember(Experience( state       = states[-(n+1)],
-                                                state_tsr   = nn.functional.pad(states_tsrs[-(n+1)],(0,0,0,Psize)),
-                                                W           = nn.functional.pad(env.sp.W,(0,Psize,0,Psize)),
-                                                pyg_data    = pyg_objects[-(n+1)],
+                                                state_tsr   = nn.functional.pad(states_tsrs[-(n+1)],(0,0,0,Psize)) if config['qnet']=='s2v' else zerovec,
+                                                W           = nn.functional.pad(env.sp.W,(0,Psize,0,Psize)) if config['qnet']=='s2v' else zerovec,
+                                                pyg_data    = pyg_objects[-(n+1)] if config['qnet']=='gat' else zerovec,
                                                 action      = actions[-n],
                                                 action_nodeselect=actions_nodeselect[-n], 
                                                 done=True,
                                                 reward      = sum(GAMMA_ARR[:n] * np.array(rewards[-n:])), 
                                                 next_state  = next_state,
-                                                next_state_tsr=nn.functional.pad(next_state_tsr,(0,0,0,Psize)),
+                                                next_state_tsr=nn.functional.pad(next_state_tsr,(0,0,0,Psize)) if config['qnet']=='s2v' else zerovec,
                                                 next_pyg_data  = next_pyg_data,
                                                 next_state_neighbors= env.neighbors[next_state[0]] ))
             
@@ -617,16 +621,12 @@ def train(seed=0, config=None, env_all=None):
             if len(memory) >= config['bsize']:
                 experiences = memory.sample_batch(config['bsize'])
                 
-                batch_states_tsrs = [e.state_tsr for e in experiences]
-                batch_Ws = [ e.W for e in experiences]
-                batch_pyg_data = [ e.pyg_data for e in experiences]
-                batch_actions = [e.action_nodeselect for e in experiences] #CHECK!
+                batch_states_tsrs = [e.state_tsr for e in experiences] if config['qnet']=='s2v' else [zerovec]
+                batch_Ws = [ e.W for e in experiences] if config['qnet']=='s2v' else [zerovec]
+                batch_pyg_data = [ e.pyg_data for e in experiences] if config['qnet']=='gat' else [zerovec]
+                batch_actions = [e.action_nodeselect for e in experiences]
                 batch_targets = []
                 
-#                   Q_target=copy.deepcopy(policy.model)
-#                   Q_target.load_state_dict(policy.model.state_dict())
-    
-
                 for i, experience in enumerate(experiences):
                     target = experience.reward
                     if not experience.done:

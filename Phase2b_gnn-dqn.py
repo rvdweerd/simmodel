@@ -2,7 +2,8 @@ import copy
 from modules.gnn.comb_opt import train, evaluate, evaluate_spath_heuristic, evaluate_tabular
 from modules.rl.rl_custom_worlds import GetCustomWorld
 from modules.rl.environments import SuperEnv
-from modules.gnn.nfm_gen import NFM_ec_t, NFM_ec_t_dt_at, NFM_ev_ec_t_dt_at_um_us, NFM_ec_dt, NFM_ec_dtscaled, NFM_ev_t, NFM_ev_ec_t, NFM_ev_ec_t_um_us
+#from modules.gnn.nfm_gen import NFM_ec_t, NFM_ec_t_dt_at, NFM_ev_ec_t_dt_at_um_us, NFM_ec_dt, NFM_ec_dtscaled, NFM_ev_t, NFM_ev_ec_t, NFM_ev_ec_t_um_us
+import modules.gnn.nfm_gen
 from modules.sim.graph_factory import GetWorldSet, LoadData
 from modules.sim.simdata_utils import SimulateInteractiveMode, SimulateAutomaticMode_DQN
 from modules.gnn.comb_opt import init_model
@@ -12,15 +13,6 @@ import numpy as np
 import torch
 import argparse
 from Phase2d_construct_sets import ConstructTrainSet
-nfm_funcs = {
-    'NFM_ev_ec_t':NFM_ev_ec_t(),
-    'NFM_ec_t':NFM_ec_t(),
-    'NFM_ec_t_dt_at':NFM_ec_t_dt_at(),
-    'NFM_ev_ec_t_dt_at_um_us':NFM_ev_ec_t_dt_at_um_us(),
-    'NFM_ec_dt':NFM_ec_dt(),
-    'NFM_ec_dtscaled':NFM_ec_dtscaled(),
-    'NFM_ev_t':NFM_ev_t(),
-    'NFM_ev_ec_t_um_us':NFM_ev_ec_t_um_us()}
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def GetConfig(args):
@@ -37,7 +29,8 @@ def GetConfig(args):
     config['solve_select'] = args.solve_select # only solvable worlds (so best achievable performance is 100%)
     config['nfm_func']     = args.nfm_func
     config['edge_blocking']= args.edge_blocking
-    config['node_dim']     = nfm_funcs[args.nfm_func].F
+    config['node_dim']     = modules.gnn.nfm_gen.nfm_funcs[args.nfm_func].F
+    config['demoruns']     = args.demoruns
     config['qnet']         = args.qnet
     config['norm_agg']     = args.norm_agg
     config['emb_dim']      = args.emb_dim
@@ -82,9 +75,10 @@ def main(args):
     if args.train or args.eval:
         senv, env_all_train_list = ConstructTrainSet(config, apply_wrappers=False, remove_paths=config['remove_paths'], tset=config['train_on']) #TODO check
         env_all_train = [senv]
-        while False:
-            a = SimulateInteractiveMode(senv, filesave_with_time_suffix=False)
-            if a == 'Q': break
+        if config['demoruns']:
+            while True:
+                a = SimulateInteractiveMode(senv, filesave_with_time_suffix=False)
+                if a == 'Q': break
 
     #
     #   Train the model on selected subset of graphs
@@ -254,13 +248,14 @@ def main(args):
             #env = CreateEnv('MetroU3_e17tborder_VariableEscapeInit',max_nodes=33,nfm_func_name = config['nfm_func'],var_targets=None, remove_world_pool=True, apply_wrappers=False)        
             #env, env_all_train_list = ConstructTrainSet(config, apply_wrappers=False, remove_paths=config['remove_paths'], tset=config['train_on']) #TODO check
 
-            while True:
+            if config['demoruns']:
                 Q_func, Q_net, optimizer, lr_scheduler = init_model(config,fname=config['logdir']+'/SEED1'+'/best_model.tar')
                 policy=GNN_s2v_Policy(Q_func)
-                entries=None#[5012,218,3903]
-                a = SimulateAutomaticMode_DQN(env, policy, t_suffix=False, entries=entries)
-                if a == 'Q': break
-            continue
+                while True:
+                    entries=None#[5012,218,3903]
+                    a = SimulateAutomaticMode_DQN(env, policy, t_suffix=False, entries=entries)
+                    if a == 'Q': break
+            
             senv=SuperEnv([env], {1:0}, node_maxim, probs=[1])
             #evalName='MetroU0_e1t31_vartarget_eval'
             evalName=eval_name
@@ -313,6 +308,7 @@ if __name__ == '__main__':
     parser.add_argument('--solve_select', default='solvable', type=str)
     parser.add_argument('--edge_blocking', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
     parser.add_argument('--max_nodes', default=9, type=int)
+    parser.add_argument('--demoruns', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
     parser.add_argument('--pursuit', default='Uon', type=str)
     args=parser.parse_args()
     main(args)

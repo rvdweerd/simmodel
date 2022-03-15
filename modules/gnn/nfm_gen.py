@@ -5,6 +5,8 @@ import copy
 import torch
 import networkx as nx
 
+
+
 class NFM_ev_t():
     def __init__(self):
         self.name='nfm-ev-t'
@@ -358,3 +360,14 @@ class NFM_ev_ec_t():
         eo.nfm[:,0]=0
         eo.nfm[eo.state[0],0]=1
         eo.nfm[eo.state[0],1]=1
+
+nfm_funcs = {
+    'NFM_ev_ec_t':NFM_ev_ec_t(),
+    'NFM_ec_t':NFM_ec_t(),
+    'NFM_ec_t_dt_at':NFM_ec_t_dt_at(),
+    'NFM_ev_ec_t_dt_at_um_us':NFM_ev_ec_t_dt_at_um_us(),
+    'NFM_ec_dt':NFM_ec_dt(),
+    'NFM_ec_dtscaled':NFM_ec_dtscaled(),
+    'NFM_ev_t':NFM_ev_t(),
+    'NFM_ev_ec_t_um_us':NFM_ev_ec_t_um_us()
+    }

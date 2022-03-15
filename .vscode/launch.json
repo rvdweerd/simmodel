@@ -30,7 +30,7 @@
                     //"--train_on","M3M5Mix",
                     //"--train_on","TEST",
                     "--train_on","TEST",
-                    "--max_nodes","33",
+                    "--max_nodes","0",
                     "--pursuit","Uon",
                     "--num_seeds","5",
                     "--seed0","1",
@@ -38,6 +38,7 @@
                     "--edge_blocking","True",
                     "--nfm_func","NFM_ev_ec_t_dt_at_um_us",
                     "--emb_itT","5",
+                    "--demoruns","False",
                     //"--nfm_func","NFM_ev_ec_t_um_us",
                 ],
         }

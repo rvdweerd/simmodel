@@ -260,8 +260,6 @@ def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M
         # global_env.append(env)
         # probs.append(1)
 
-
-
         super_env=SuperEnv(
             global_env,
             hashint2env=None,
@@ -279,9 +277,6 @@ def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M
             hashint2env=None,
             max_possible_num_nodes=9,
             probs=probs)
-
-
-    return super_env, env_all_list
 
 
     return super_env, env_all_list
@@ -448,4 +443,3 @@ def get_train_configs(runname, load_trainset=True):
             config[runname]['env_train'] = None    
 
     return config
-
