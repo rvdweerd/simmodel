@@ -120,7 +120,7 @@ def main(args):
             evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
             Etest=[0,1,2,3,4,5,6,7,8,9,10]
             Utest=[1,2,3]
-            env_all_test, _, _, _  = GetWorldSet(state_repr, state_enc, U=Utest, E=Etest, edge_blocking=config['edge_blocking'], solve_select=config['solve_select'], reject_duplicates=config['reject_u_duplicates'], nfm_func=nfm_funcs[config['nfm_func']])
+            env_all_test, _, _, _  = GetWorldSet(state_repr, state_enc, U=Utest, E=Etest, edge_blocking=config['edge_blocking'], solve_select=config['solve_select'], reject_duplicates=config['reject_u_duplicates'], nfm_func=modules.gnn.nfm_gen.nfm_funcs[config['nfm_func']])
             for seed in config['seedrange']:
                 result = evaluate(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=env_all_test, eval_subdir=evalName)
                 num_unique_graphs, num_graph_instances, avg_return, success_rate = result
@@ -128,7 +128,6 @@ def main(args):
                 evalResults[evalName]['num_graph_instances'].append(num_graph_instances)
                 evalResults[evalName]['avg_return.........'].append(avg_return)
                 evalResults[evalName]['success_rate.......'].append(success_rate)
-
         if test_all_solvable_3x3segments:
             # Evaluate on each individual segment of the evaluation set
             evalName='graphsegments_eval'
@@ -144,7 +143,7 @@ def main(args):
                     instances_vec =[]
                     returns_vec   =[]
                     for e in Etest:
-                        env_all_test, _, _, _  = GetWorldSet(state_repr, state_enc, U=[u], E=[e], edge_blocking=config['edge_blocking'], solve_select=config['solve_select'], reject_duplicates=config['reject_u_duplicates'], nfm_func=nfm_funcs[config['nfm_func']])
+                        env_all_test, _, _, _  = GetWorldSet(state_repr, state_enc, U=[u], E=[e], edge_blocking=config['edge_blocking'], solve_select=config['solve_select'], reject_duplicates=config['reject_u_duplicates'], nfm_func=modules.gnn.nfm_gen.nfm_funcs[config['nfm_func']])
                         result = evaluate(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=env_all_test, eval_subdir=evalName+'/runs/'+'E'+str(e)+'U'+str(u))
                         num_unique_graphs, num_graph_instances, avg_return, success_rate = result         
                         success_vec.append(success_rate)
@@ -181,7 +180,6 @@ def main(args):
                 evalResults[evalName]['num_graph_instances'].append(instances_matrix.sum())
                 evalResults[evalName]['avg_return.........'].append(weighted_return)
                 evalResults[evalName]['success_rate.......'].append(weighted_success_rate)
-
         if test_other_worlds:
             #
             #   Evaluate learned model on another (out of distribution) graph
@@ -198,7 +196,7 @@ def main(args):
                 evalName=world_name[:16]+'_eval'
                 evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
                 custom_env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
-                custom_env.redefine_nfm(nfm_funcs[config['nfm_func']])
+                custom_env.redefine_nfm(modules.gnn.nfm_gen.nfm_funcs[config['nfm_func']])
                 for seed in range(config['seed0'], config['seed0']+config['numseeds']):
                     result = evaluate(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=[custom_env], eval_subdir=evalName)
                     num_unique_graphs, num_graph_instances, avg_return, success_rate = result
@@ -230,15 +228,15 @@ def main(args):
             #'Manhattan5x5_DuplicateSetB',
             #'Manhattan3x3_WalkAround',
             #'MetroU3_e1t31_FixedEscapeInit', 
-            'NWB_UTR_VariableEscapeInit']
-        node_maxims = [0]
-        var_targets=[ None]
-        eval_names =  [
-            #'Manhattan5x5_DuplicateSetB',
-            #'Manhattan3x3_WalkAround',
-            #'MetroU0_e1t31_vartarget_eval', 
-            'NWB_UTR_VariableEscapeInit' ]
-        eval_nums = [10]
+            'NWB_test_FixedEscapeInit',
+            'NWB_test_VariableEscapeInit',
+            'NWB_UTR_FixedEscapeInit',
+            'NWB_UTR_VariableEscapeInit',
+            ]
+        node_maxims = [0,0,0,0]
+        var_targets=[ None,None,None,None]
+        eval_names = world_list
+        eval_nums = [10,10,10,10]
 
         for world_name, node_maxim, var_target, eval_name, eval_num in zip(world_list, node_maxims, var_targets, eval_names, eval_nums):
             env = CreateEnv(world_name, max_nodes=node_maxim, nfm_func_name = config['nfm_func'], var_targets=var_target, remove_world_pool=config['remove_paths'], apply_wrappers=False)
@@ -256,14 +254,15 @@ def main(args):
                     a = SimulateAutomaticMode_DQN(env, policy, t_suffix=False, entries=entries)
                     if a == 'Q': break
             
-            senv=SuperEnv([env], {1:0}, node_maxim, probs=[1])
+            #evalenv=SuperEnv([env], {1:0}, node_maxim, probs=[1])
+            evalenv=[env]
             #evalName='MetroU0_e1t31_vartarget_eval'
             evalName=eval_name
             n_eval=eval_num
             evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
             for seed in config['seedrange']:
                 logdir=config['logdir']+'/SEED'+str(seed)
-                result = evaluate(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=senv, eval_subdir=evalName, n_eval=n_eval)
+                result = evaluate(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=evalenv, eval_subdir=evalName, n_eval=n_eval)
                 #result = evaluate(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=[env], eval_subdir=evalName)
                 num_unique_graphs, num_graph_instances, avg_return, success_rate = result
                 evalResults[evalName]['num_graphs.........'].append(num_unique_graphs)

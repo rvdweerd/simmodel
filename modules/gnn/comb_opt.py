@@ -13,9 +13,6 @@ from modules.rl.rl_policy import GNN_s2v_Policy, ShortestPathPolicy, EpsilonGree
 from modules.rl.rl_algorithms import q_learning_exhaustive
 from modules.rl.rl_utils import EvaluatePolicy, EvalArgs1, EvalArgs2, EvalArgs3, GetFullCoverageSample
 from modules.sim.simdata_utils import SimulateInteractiveMode
-from modules.gnn.gat.models.definitions.gat import GAT as GAT_gord
-from modules.gnn.gat.utils.constants import *
-import modules.gnn.gat.utils.utils as utils
 from torch_geometric.data import Data, Batch
 from torch_geometric.nn.models import GAT
 from scipy.sparse import csr_matrix
@@ -48,27 +45,23 @@ Experience = namedtuple('Experience', ( \
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
-# def dense_to_sparse(adj):
-#     r"""Converts a dense adjacency matrix to a sparse adjacency matrix defined
-#     by edge indices and edge attributes.
+from torch_geometric.nn.conv import MessagePassing, GATv2Conv
+from torch_geometric.nn.models.basic_gnn import BasicGNN
+class GATv2(BasicGNN):
+    r"""
+    """
+    def init_conv(self, in_channels: int, out_channels: int,
+                  **kwargs) -> MessagePassing:
 
-#     Args:
-#         adj (Tensor): The dense adjacency matrix.
-#      :rtype: (:class:`LongTensor`, :class:`Tensor`)
-#     """
-#     assert adj.dim() >= 2 and adj.dim() <= 3
-#     assert adj.size(-1) == adj.size(-2)
+        kwargs = copy.copy(kwargs)
+        if 'heads' in kwargs and out_channels % kwargs['heads'] != 0:
+            kwargs['heads'] = 1
+        if 'concat' not in kwargs or kwargs['concat']:
+            out_channels = out_channels // kwargs.get('heads', 1)
 
-#     index = adj.nonzero(as_tuple=True)
-#     edge_attr = adj[index]
+        return GATv2Conv(in_channels, out_channels, dropout=self.dropout,
+                       **kwargs)
 
-#     if len(index) == 3:
-#         batch = index[0] * adj.size(-1)
-#         index = (batch + index[1], batch + index[2])
-
-#     return torch.stack(index, dim=0), edge_attr
-
-#from torch.nn.utils.rnn import pad_sequence
 class QNet_GAT(nn.Module):
     """ Graph Attention based Q function
     """    
@@ -158,73 +151,29 @@ class QNet_GAT(nn.Module):
         assert total == sum(p.numel() for p in self.parameters() if p.requires_grad)
         return total
 
-class QNet_GAT_gord(nn.Module):
-    """ Graph Attention based Q function
-    """    
-    
+class QNet_GATv2(QNet_GAT):
     def __init__(self, config):
         """ emb_dim: embedding dimension p
             T: number of iterations for the graph embedding
         """
-        super(QNet_GAT_gord, self).__init__()
-        self.emb_dim    = config['emb_dim']//2
+        super(QNet_GATv2, self).__init__(config)
+        self.emb_dim    = config['emb_dim']
         self.num_layers = config['emb_iter_T']
         self.node_dim   = config['node_dim']
-        
-        self.gat = GAT_gord(
-            num_of_layers         = self.num_layers,#config['num_of_layers'],
-            num_heads_per_layer   = [2]*self.num_layers,#config['num_heads_per_layer'],
-            num_features_per_layer= [self.node_dim] + [self.emb_dim]*self.num_layers,#config['num_features_per_layer'],
-            add_skip_connection   = False,#config['add_skip_connection'],
-            bias                  = True,#config['bias'],
-            dropout               = 0.,#05,#config['dropout'],
-            layer_type            = LayerType.IMP3,#config['layer_type'],
-            log_attention_weights = False  # no need to store attentions, used only in playground.py for visualization
+        self.norm_agg = config['norm_agg']
+        kwargs={'concat':True}
+        self.gat = GATv2(
+            in_channels = self.node_dim,
+            hidden_channels = self.emb_dim,
+            num_layers = 5,
+            out_channels = self.emb_dim,
+            **kwargs
         ).to(device)
         self.theta5 = nn.Linear(2*self.emb_dim, 1, True, dtype=torch.float32)
         self.theta6 = nn.Linear(self.emb_dim, self.emb_dim, True, dtype=torch.float32)
         self.theta7 = nn.Linear(self.emb_dim, self.emb_dim, True, dtype=torch.float32)     
 
         self.numTrainableParameters()
-
-    def forward(self, xv, Ws, pyg_data):
-        # xv: The node features (batch_size, num_nodes, node_dim)
-        # Ws: The graphs (batch_size, num_nodes, num_nodes)
-        # pyg_data: pytorch geometric Batch
-
-        #demo: unbatch (will vectorize later)
-        batch_size=xv.shape[0]
-        num_nodes=xv.shape[1]
-        out=[]
-        for i in range(batch_size):
-            edge_index= torch_geometric.utils.dense_to_sparse(Ws[i])[0]
-            graphdata = (xv[i], edge_index)
-            nodes_unnormalized_scores = self.gat(graphdata)[0] # yields (N,emb_dim)
-            out.append(nodes_unnormalized_scores)
-
-        mu=torch.stack(out)
-        """ prediction
-        """
-        # we repeat the global state (summed over nodes) for each node, 
-        # in order to concatenate it to local states later
-        global_state = self.theta6(torch.sum(mu, dim=1, keepdim=True).repeat(1, num_nodes, 1))
-        
-        local_action = self.theta7(mu)  # (batch_dim, nr_nodes, emb_dim)
-            
-        out = F.relu(torch.cat([global_state, local_action], dim=2))
-        return self.theta5(out).squeeze(dim=2)
-
-    def numTrainableParameters(self):
-        print('Qnet size:')
-        print('------------------------------------------')
-        total = 0
-        for name, p in self.named_parameters():
-            total += np.prod(p.shape)
-            print("{:24s} {:12s} requires_grad={}".format(name, str(list(p.shape)), p.requires_grad))
-        print("Total number of parameters: {}".format(total))
-        print('------------------------------------------')
-        assert total == sum(p.numel() for p in self.parameters() if p.requires_grad)
-        return total
 
 class QNet(nn.Module):
     """ The neural net that will parameterize the function Q(s, a)
@@ -323,22 +272,6 @@ class QNet(nn.Module):
         assert total == sum(p.numel() for p in self.parameters() if p.requires_grad)
         return total
 
-class QNet_xW(QNet):
-    #def __init__(self, config):
-        #super(QNet_xW, self).__init__()
-    def forward(self, x):
-        dims=x.dim()
-        n=x.shape[dims-2]
-        w=x.shape[-1]-n
-        # print('x_shape',x.shape)
-        # print('dims',x.dim())
-        # print('n',n)
-        # print('w',w)
-        xv, W = torch.split(x,[w,n],dim=dims-1)
-        #xv=xv.to(device)
-        #W=W.to(device)
-        return super(QNet_xW, self).forward(xv,W)
-
 class QFunction():
     def __init__(self, model, optimizer, lr_scheduler):
         self.model = model  # The actual QNet
@@ -424,6 +357,8 @@ def init_model(config, fname=None):
         Q_net = QNet(config).to(device)
     elif config['qnet'] == 'gat':
         Q_net = QNet_GAT(config).to(device)
+    elif config['qnet'] == 'gat2':
+        Q_net = QNet_GATv2(config).to(device)
     else:
         assert False
     optimizer = optim.Adam(Q_net.parameters(), config['lr_init'])
@@ -519,7 +454,7 @@ def train(seed=0, config=None, env_all=None):
         current_state = env.state
         done=False   
         current_state_tsr = env.nfm.clone() if config['qnet']=='s2v' else zerovec
-        current_pyg_data = Data(x=env.nfm.clone(), edge_index=env.sp.EI.clone()) if config['qnet']=='gat' else zerovec
+        current_pyg_data = Data(x=env.nfm.clone(), edge_index=env.sp.EI.clone()) if 'gat' in config['qnet'] else zerovec
         # Note: nfm = Graph Feature Matrix (FxV), columns are the node features, managed by the environment
         # It's currently defined (for each node) as:
         #   [.] node number
@@ -569,7 +504,7 @@ def train(seed=0, config=None, env_all=None):
             _, reward, done, info = env.step(action)
             next_state = env.state
             next_state_tsr = env.nfm.clone() if config['qnet']=='s2v' else zerovec
-            next_pyg_data = Data(x=env.nfm.clone(), edge_index=env.sp.EI.clone()) if config['qnet']=='gat' else zerovec
+            next_pyg_data = Data(x=env.nfm.clone(), edge_index=env.sp.EI.clone()) if 'gat' in config['qnet'] else zerovec
 
             # store rewards and states obtained along this episode:
             states.append(next_state)
@@ -586,7 +521,7 @@ def train(seed=0, config=None, env_all=None):
                 memory.remember(Experience( state          = states[-(N_STEP_QL+1)],
                                             state_tsr      = nn.functional.pad(states_tsrs[-(N_STEP_QL+1)],(0,0,0,Psize)) if config['qnet']=='s2v' else zerovec,
                                             W              = nn.functional.pad(env.sp.W,(0,Psize,0,Psize)) if config['qnet']=='s2v' else zerovec,
-                                            pyg_data       = pyg_objects[-(N_STEP_QL+1)] if config['qnet']=='gat' else zerovec,
+                                            pyg_data       = pyg_objects[-(N_STEP_QL+1)] if 'gat' in config['qnet'] else zerovec,
                                             action         = actions[-N_STEP_QL],
                                             action_nodeselect=actions_nodeselect[-N_STEP_QL],
                                             done           = dones[-1], 
@@ -601,7 +536,7 @@ def train(seed=0, config=None, env_all=None):
                     memory.remember(Experience( state       = states[-(n+1)],
                                                 state_tsr   = nn.functional.pad(states_tsrs[-(n+1)],(0,0,0,Psize)) if config['qnet']=='s2v' else zerovec,
                                                 W           = nn.functional.pad(env.sp.W,(0,Psize,0,Psize)) if config['qnet']=='s2v' else zerovec,
-                                                pyg_data    = pyg_objects[-(n+1)] if config['qnet']=='gat' else zerovec,
+                                                pyg_data    = pyg_objects[-(n+1)] if 'gat' in config['qnet'] else zerovec,
                                                 action      = actions[-n],
                                                 action_nodeselect=actions_nodeselect[-n], 
                                                 done=True,
@@ -623,7 +558,7 @@ def train(seed=0, config=None, env_all=None):
                 
                 batch_states_tsrs = [e.state_tsr for e in experiences] if config['qnet']=='s2v' else [zerovec]
                 batch_Ws = [ e.W for e in experiences] if config['qnet']=='s2v' else [zerovec]
-                batch_pyg_data = [ e.pyg_data for e in experiences] if config['qnet']=='gat' else [zerovec]
+                batch_pyg_data = [ e.pyg_data for e in experiences] if 'gat' in config['qnet'] else [zerovec]
                 batch_actions = [e.action_nodeselect for e in experiences]
                 batch_targets = []
                 
@@ -834,7 +769,7 @@ def evaluate(logdir, info=False, config=None, env_all=None, eval_subdir='.', n_e
             num_worlds_requested = 10
             once_every = max(1,len(env_all)//num_worlds_requested)
             if i % once_every ==0:
-                plotlist = GetFullCoverageSample(returns, env.world_pool, bins=3, n=3)
+                plotlist = GetFullCoverageSample(returns, env.world_pool, bins=3, n=6)
                 EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgs2, silent_mode=False, plot_each_timestep=False)
             R+=returns 
             S+=solves
