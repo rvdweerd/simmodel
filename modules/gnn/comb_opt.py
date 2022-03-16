@@ -576,7 +576,7 @@ def train(seed=0, config=None, env_all=None):
                 if grad_update_count % config['tau'] == 0:
                     #Q_func_target.model.load_state_dict(torch.load(Q_func.model.state.dict()))
                     Q_func_target.model = copy.deepcopy(Q_func.model)
-                    print('Target network updated, epi=',episode,'grad_update_count=',grad_update_count)
+                    print('Target network updated, epi=',episode,'grad_update_count=',grad_update_count, 'best_medianR=',current_max_Return)
 
 
 
@@ -587,9 +587,9 @@ def train(seed=0, config=None, env_all=None):
         """ Save model when we reach a new low average path length
         """
         #med_length = np.median(path_length_ratios[-100:])
-        if (len(total_rewards)+1) % 5 == 0: # check every 5 episodes
+        if (len(total_rewards)+1) % config['bsize'] == 0: # check every batchsize episodes
             if config['optim_target']=='returns': # we seek to maximize the returns per episode
-                mean_Return = int(np.mean(total_rewards[-10:])*100)/100
+                mean_Return = int(np.mean(total_rewards[-config['bsize']:])*100)/100
                 if mean_Return >= current_max_Return:
                     save_best_only = (mean_Return == current_max_Return)
                     current_max_Return = mean_Return
@@ -599,7 +599,7 @@ def train(seed=0, config=None, env_all=None):
                 if mean_Ratio <= current_min_Ratio:
                     save_best_only = (mean_Ratio == current_min_Ratio)
                     current_min_Ratio = mean_Ratio
-                    checkpoint_model(Q_net, optimizer, lr_scheduler, loss, episode, mean_Ratio, logdir, best_only=save_best_only)
+                    checkpoint_model(Q_net, optimizer,d lr_scheduler, loss, episode, mean_Ratio, logdir, best_only=save_best_only)
             else:
                 assert False
 
