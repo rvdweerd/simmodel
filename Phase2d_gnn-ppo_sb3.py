@@ -33,15 +33,15 @@ if __name__ == '__main__':
     eval  = args.eval
     test = args.test
 
-    MAX_NODES = config['max_nodes']
-    EMB_DIM = config['emb_dim']
-    EMB_ITER_T = config['emb_iter_T']
+    MAX_NODES   = config['max_nodes']
+    EMB_DIM     = config['emb_dim']
+    EMB_ITER_T  = config['emb_iter_T']
     TOTAL_TIME_STEPS = config['num_step']
-    SEED0 = config['seed0']
-    NUMSEEDS = config['numseeds']
-    LOGDIR = config['logdir']
-    NODE_DIM = config['node_dim']
-    env_train = config['env_train']
+    SEED0       = config['seed0']
+    NUMSEEDS    = config['numseeds']
+    LOGDIR      = config['logdir']
+    NODE_DIM    = config['node_dim']
+    env_train   = config['env_train']
 
     if train:
         obs=env_train.reset()

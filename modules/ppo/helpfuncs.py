@@ -185,7 +185,7 @@ def get_logdirs(config):
                 '/solvselect=' + config['solve_select']+'_edgeblock='+str(config['edge_blocking'])+'/' +\
                 config['scenario_name']
     logdir = rootdir+'/'+ \
-                config['nfm_func_name'] +'/'+ \
+                config['nfm_func'] +'/'+ \
                 's2v_layers='+str(config['s2v_layers']) + \
                 '_emb='+str(config['emb_dim']) + \
                 '_itT='+str(config['emb_iter_T']) + \

@@ -376,8 +376,8 @@ def get_train_configs(runname, load_trainset=True):
         config[key]['solve_select']  = 'both'
         config[key]['edge_blocking'] = True
         config[key]['scenario_name'] = ''
-        config[key]['nfm_func'] = 'NFM_ev_ec_t_um_us'
-        config[key]['node_dim'] = 5    
+        config[key]['nfm_func'] = 'NFM_ev_ec_t_dt_at_um_us'
+        config[key]['node_dim'] = 7    
         config[key]['s2v_layers']    = 2
         config[key]['emb_dim']       = 64
         config[key]['emb_iter_T']    = 5
@@ -389,9 +389,9 @@ def get_train_configs(runname, load_trainset=True):
         config[key]['rootdir'] = rootdir
         config[key]['logdir'] = logdir
         global_env=[]
-        env = CreateEnv('MetroU3_e17tborder_FixedEscapeInit',max_nodes=33,var_targets=None, remove_world_pool=False)
+        env = CreateEnv('MetroU3_e17tborder_FixedEscapeInit',max_nodes=33,nfm_func_name=config[key]['nfm_func'], var_targets=None, remove_world_pool=False)
         global_env.append(env)
-        env = CreateEnv('MetroU3_e17tborder_FixedEscapeInit',max_nodes=33,var_targets=[1,5], remove_world_pool=True)
+        env = CreateEnv('MetroU3_e17tborder_FixedEscapeInit',max_nodes=33,nfm_func_name=config[key]['nfm_func'], var_targets=[1,5], remove_world_pool=True)
         global_env.append(env)
         env=SuperEnv(global_env, None, max_possible_num_nodes = 33)
         config[key]['env_train'] = env    
@@ -423,7 +423,7 @@ def get_train_configs(runname, load_trainset=True):
         config[runname]['train_on']      = 'ContructedSuperSet_noU'
         config[runname]['solve_select']  = 'solvable'
         config[runname]['edge_blocking'] = True
-        config[runname]['scenario_name'] = ''
+        config[runname]['scenario_name'] = 'TEST'
         config[runname]['nfm_func'] = 'NFM_ec_dtscaled'
         config[runname]['node_dim'] = 2
         config[runname]['s2v_layers']    = 2

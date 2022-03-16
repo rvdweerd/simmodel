@@ -5,8 +5,6 @@ import copy
 import torch
 import networkx as nx
 
-
-
 class NFM_ev_t():
     def __init__(self):
         self.name='nfm-ev-t'
@@ -133,25 +131,6 @@ class NFM_ev_ec_t_u():
         eo.nfm[:,3] = 0     
         for u in eo.state[1:]:
             eo.nfm[u,3] += 1
-
-# class NFM_ev_ec_t_um_us_xW(NFM_ev_ec_t_um_us):
-#     def __init__(self):
-#         self.name='nfm-ev-ec-t-um-us_xW'
-#         self.F=5
-#         # Inherited, concats Adj matrix W to the output (used in bolts dqn)
-#         # Features:
-#         # 0. visited by e
-#         # 1. current e
-#         # 2. target node
-#         # 3. u positions (on the move)
-#         # 4. u positions (when settled)
-#     def init(self, eo):
-#         eo.F = 5
-#         eo.nfm0 = torch.concat((torch.zeros((eo.sp.V,eo.F),dtype=torch.float32),torch.tensor(eo.sp.W, dtype=torch.float32)),dim=1)
-#         # Set target nodes
-#         if len(eo.sp.target_nodes) > 0:
-#             eo.nfm0[np.array(list(eo.sp.target_nodes)),2] = 1
-#         eo.nfm  = copy.deepcopy(eo.nfm0)
 
 class NFM_ec_dtscaled():
     def __init__(self):

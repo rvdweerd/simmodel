@@ -3,9 +3,9 @@
 # ## BATCH
 train="True"
 eval="False"
-test="True"
-nr="ppo5r"
-for run in {"SuperSet_noU",}
+test="False"
+nr="ppo1"
+for run in {"train_on_metro",}
 #"RunB","RunC","RunD","RunE","train_on_metro"}
 do
         tmux new-session -d -s $nr$run
