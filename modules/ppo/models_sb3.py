@@ -34,16 +34,16 @@ class Struc2Vec(BaseFeaturesExtractor):
     :param features_dim: (int) Number of features extracted.
         This corresponds to the number of unit for the last layer.
     """
-    def __init__(self, observation_space: gym.spaces.Box, emb_dim, emb_iter_T, node_dim):#, num_nodes):
-        num_nodes=observation_space.shape[0]
-        features_dim: int = num_nodes * (emb_dim+1) #MUST BE NUM_NODES*(EMB_DIM+1), reacheble nodes vec concatenated
+    def __init__(self, observation_space: gym.spaces.Dict, emb_dim, emb_iter_T, node_dim):#, num_nodes):
+        max_num_nodes=observation_space.spaces['W'].shape[0]
+        features_dim: int = max_num_nodes * (emb_dim+1) #MUST BE NUM_NODES*(EMB_DIM+1), reacheble nodes vec concatenated
         super(Struc2Vec, self).__init__(observation_space, features_dim)
         
         
         # Incoming: (bsize, num_nodes, (F+num_nodes+1))      
         # Compute shape by doing one forward pass
-        incoming_tensor_example = torch.as_tensor(observation_space.sample()[None]).float()
-        self.fdim = features_dim
+        #incoming_tensor_example = torch.as_tensor(observation_space.sample()[None]).float()
+        self.fdim           = features_dim
         self.emb_dim        = emb_dim
         self.T              = emb_iter_T
         self.node_dim       = node_dim
@@ -81,14 +81,14 @@ class Struc2Vec(BaseFeaturesExtractor):
         
         return mu
 
-    def forward(self, observations: torch.Tensor) -> torch.Tensor:
-        num_nodes = observations.shape[1]
-        node_dim = observations.shape[2]-1-num_nodes
-        nfm, W, reachable_nodes = torch.split(observations,[node_dim, num_nodes, 1],2)
-        mu = self.struc2vec(nfm, W) # (batch_size, nr_nodes, emb_dim)      
-        mu=torch.cat((mu,reachable_nodes),dim=2)
+    def forward(self, observations):# -> torch.Tensor:
+        num_nodes_padded = observations['W'].shape[1]
+        node_dim = observations['nfm'].shape[2]
+        
+        mu = self.struc2vec(observations['nfm'], observations['W']) # (batch_size, nr_nodes, emb_dim)      
+        mu=torch.cat((mu,observations['reachable_nodes']),dim=2)
 
-        bsize=observations.shape[0]
+        bsize=observations['W'].shape[0]
         mu_flat = mu.reshape(bsize,-1)
         assert self.fdim == self.features_dim
         assert mu_flat.shape[-1] == self.fdim

@@ -8,7 +8,7 @@ from sb3_contrib.common.maskable.utils import get_action_masks
 from sb3_contrib.common.maskable.evaluation import evaluate_policy
 from modules.rl.rl_utils import EvaluatePolicy, EvalArgs1, EvalArgs2, EvalArgs3, GetFullCoverageSample
 from modules.gnn.nfm_gen import NFM_ec_t, NFM_ec_t_dt_at, NFM_ev_ec_t_dt_at_um_us, NFM_ec_dt, NFM_ec_dtscaled, NFM_ev_t, NFM_ev_ec_t, NFM_ev_ec_t_um_us, NFM_ev_ec_t_u
-from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsWrapper, VarTargetWrapper
+from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsWrapper, PPO_ObsDictWrapper, VarTargetWrapper
 from modules.sim.graph_factory import GetWorldSet, LoadData
 from modules.rl.environments import GraphWorld
 from modules.rl.rl_custom_worlds import GetCustomWorld
@@ -69,8 +69,9 @@ def CreateEnv(world_name, max_nodes=9, nfm_func_name = 'NFM_ev_ec_t_um_us', var_
     if var_targets is not None:
         env = VarTargetWrapper(env, var_targets)
     if apply_wrappers:
-        env = PPO_ObsWrapper(env, max_possible_num_nodes = max_nodes)        
-        env = PPO_ActWrapper(env)        
+        #env = PPO_ObsWrapper(env, max_possible_num_nodes = max_nodes)        
+        env = PPO_ObsDictWrapper(env, max_possible_num_nodes = max_nodes)
+        env = PPO_ActWrapper(env) 
     return env
 
 def check_custom_position_probs(env,ppo_policy,hashint=None,entry=None,targetnodes=[1],epath=[4],upaths=[[6]],max_nodes=0,logdir='test'):    
