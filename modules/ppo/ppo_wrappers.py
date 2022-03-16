@@ -4,8 +4,8 @@ import torch
 import torch.nn as nn 
 import numpy as np
 import random
-MAX_NODES=10000
-MAX_EDGES=30000
+MAX_NODES=100
+MAX_EDGES=300
 
 class VarTargetWrapper(Wrapper):
     def __init__(self, env, var_targets):
@@ -78,11 +78,11 @@ class PPO_ObsDictWrapper(ObservationWrapper):
         dspaces  = {
             'nfm':      spaces.Box(0., self.sp.V, shape=(self.max_nodes, self.F), dtype=np.float32),
             'W':        spaces.Box(0., 1., shape=(self.max_nodes, self.max_nodes), dtype=np.float32),
-            'reachable':spaces.Box(0., 1., shape=(self.max_nodes, 1), dtype=np.float32),
+            'reachable_nodes':spaces.Box(0., 1., shape=(self.max_nodes, 1), dtype=np.float32),
             'pygx':     spaces.Box(0., self.sp.V, shape=(self.max_nodes, self.F), dtype=np.float32),
             'pygei':    spaces.Box(0., self.max_nodes, shape=(2,MAX_EDGES), dtype=np.float32),
-            'num_nodes':spaces.Discrete(1),
-            'num_edges':spaces.Discrete(1),
+            'num_nodes':spaces.Box(0.,MAX_NODES,shape=(1,),dtype=np.float32),
+            'num_edges':spaces.Box(0.,MAX_EDGES,shape=(1,),dtype=np.float32),
         }
 
         self.observation_space= spaces.Dict(dspaces)
@@ -120,7 +120,7 @@ class PPO_ObsDictWrapper(ObservationWrapper):
         obs = {
             'nfm':      nfm,
             'W':        W,
-            'reachable':reachable,
+            'reachable_nodes':reachable,
             'pygx':     pygx,
             'pygei':    pygei,
             'num_nodes':self.sp.V,
