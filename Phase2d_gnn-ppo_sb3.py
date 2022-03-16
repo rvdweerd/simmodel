@@ -69,7 +69,7 @@ if __name__ == '__main__':
                 policy_kwargs = policy_kwargs, verbose=2, tensorboard_log=logdir_+"/tb/")
 
             print_parameters(model.policy)
-            model.learn(total_timesteps = TOTAL_TIME_STEPS, callback=[TestCallBack()])#,eval_callback]) #,wandb_callback])
+            model.learn(total_timesteps = TOTAL_TIME_STEPS)#, callback=[TestCallBack()])#,eval_callback]) #,wandb_callback])
             # run.finish()
             model.save(logdir_+"/saved_models/model_last")
             model.policy.save(logdir_+"/saved_models/policy_last")    
