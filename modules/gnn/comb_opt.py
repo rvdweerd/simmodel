@@ -599,7 +599,7 @@ def train(seed=0, config=None, env_all=None):
                 if mean_Ratio <= current_min_Ratio:
                     save_best_only = (mean_Ratio == current_min_Ratio)
                     current_min_Ratio = mean_Ratio
-                    checkpoint_model(Q_net, optimizer,d lr_scheduler, loss, episode, mean_Ratio, logdir, best_only=save_best_only)
+                    checkpoint_model(Q_net, optimizer, lr_scheduler, loss, episode, mean_Ratio, logdir, best_only=save_best_only)
             else:
                 assert False
 
