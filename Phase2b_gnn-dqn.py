@@ -68,7 +68,7 @@ def GetConfig(args):
 
 def main(args):
     config=GetConfig(args)
-
+    print('device',device)
     #
     #   Load and test trainset
     #
