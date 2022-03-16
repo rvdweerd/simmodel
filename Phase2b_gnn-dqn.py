@@ -62,6 +62,8 @@ def GetConfig(args):
     config['seed0']=args.seed0
     config['numseeds']=args.num_seeds
     config['seedrange']=range(config['seed0'], config['seed0']+config['numseeds'])
+    print('seedrange')
+    for i in config['seedrange']: print(i)
     return config
 
 def main(args):

@@ -191,15 +191,8 @@ class QNet(nn.Module):
         self.T = config['emb_iter_T']
         self.norm_agg=config['norm_agg']
 
-        # We use 5 dimensions for representing the nodes' states:
-        # * A binary variable indicating whether the node has been visited
-        # * A binary variable indicating whether the node is the first of the visited sequence
-        # * A binary variable indicating whether the node is the last of the visited sequence
-        # * The node number //The (x, y) coordinates of the node.
-        self.node_dim = config['node_dim']
-        
-        # We can have an extra layer after theta_1 (for the sake of example to make the network deeper)
-        #nr_extra_layers_1 = config['num_extra_layers']
+        # Dimensions for representing the nodes' states:
+        self.node_dim = config['node_dim']      
         
         # Build the learnable affine maps:
         self.theta1a = nn.Linear(self.node_dim, self.emb_dim, True, dtype=torch.float32)#.to(device)
@@ -224,7 +217,7 @@ class QNet(nn.Module):
         batch_size = xv.shape[0]
         
         # pre-compute 1-0 connection matrices masks (batch_size, num_nodes, num_nodes)
-        conn_matrices = torch.where(Ws > 0, torch.ones_like(Ws), torch.zeros_like(Ws)).to(device)
+        conn_matrices = Ws#torch.where(Ws > 0, torch.ones_like(Ws), torch.zeros_like(Ws)).to(device)
         
         # Graph embedding
         # Note: we first compute s1 and s3 once, as they are not dependent on mu
@@ -246,15 +239,17 @@ class QNet(nn.Module):
         """
         # we repeat the global state (summed over nodes) for each node, 
         # in order to concatenate it to local states later
+        ptr = pyg_data.ptr.detach().cpu().numpy()
+        n = [(r-l) for r,l in zip(ptr[1:], ptr[:-1])] # list of #nodes of each graph in the batch
+        lst = []
+        for i in range(len(n)):
+            lst+=[i]*n[i] + [len(n)]*(num_nodes_padded-n[i])
+        lst=torch.tensor(lst,dtype=torch.int64,device=device)
         if self.norm_agg:
-            ptr = pyg_data.ptr.detach().cpu().numpy()
-            s = [1/(r-l) for r,l in zip(ptr[1:], ptr[:-1])] # list of #nodes of each graph in the batch
-            nodesizes=torch.tensor(s,dtype=torch.float32,device=device)[:,None,None] #(bsize,1,1)
-            agg=torch.sum(mu, dim=1, keepdim=True) # (bsize,1,emb_dim)
-            normagg=agg*nodesizes # normalized graph representations, (bsize,1,emb_dim)
-            global_state = self.theta6(normagg.repeat(1, num_nodes_padded, 1)) # (bsize,max_num_nodes,emb_dim)
+            normagg = scatter_mean(mu.reshape(-1,self.emb_dim), lst, dim=0)[:-1]
         else:
-            global_state = self.theta6((torch.sum(mu, dim=1, keepdim=True)).repeat(1, num_nodes_padded, 1))
+            normagg = scatter_add(mu.reshape(-1,self.emb_dim), lst, dim=0)[:-1]
+        global_state = self.theta6(normagg.repeat(1, num_nodes_padded, 1)) # (bsize,max_num_nodes,emb_dim)
         local_action = self.theta7(mu)  # (batch_dim, nr_nodes, emb_dim)
             
         out = F.relu(torch.cat([global_state, local_action], dim=2))
@@ -425,6 +420,7 @@ def train(seed=0, config=None, env_all=None):
     total_rewards=[]
     grad_update_count=0
     zerovec=torch.tensor([0],dtype=torch.float32)
+    #zerodat=Data(x=zerovec,edge_index=[0,0])
 
     seed_everything(seed) # 
     # Create module, optimizer, LR scheduler, and Q-function
@@ -454,7 +450,7 @@ def train(seed=0, config=None, env_all=None):
         current_state = env.state
         done=False   
         current_state_tsr = env.nfm.clone() if config['qnet']=='s2v' else zerovec
-        current_pyg_data = Data(x=env.nfm.clone(), edge_index=env.sp.EI.clone()) if 'gat' in config['qnet'] else zerovec
+        current_pyg_data = Data(x=env.nfm.clone(), edge_index=env.sp.EI.clone()) if 'gat' in config['qnet'] else Data(torch.ones(env.sp.V),[0,0])
         # Note: nfm = Graph Feature Matrix (FxV), columns are the node features, managed by the environment
         # It's currently defined (for each node) as:
         #   [.] node number
@@ -504,7 +500,7 @@ def train(seed=0, config=None, env_all=None):
             _, reward, done, info = env.step(action)
             next_state = env.state
             next_state_tsr = env.nfm.clone() if config['qnet']=='s2v' else zerovec
-            next_pyg_data = Data(x=env.nfm.clone(), edge_index=env.sp.EI.clone()) if 'gat' in config['qnet'] else zerovec
+            next_pyg_data = Data(x=env.nfm.clone(), edge_index=env.sp.EI.clone()) if 'gat' in config['qnet'] else Data(torch.ones(env.sp.V),[0,0])
 
             # store rewards and states obtained along this episode:
             states.append(next_state)
@@ -521,7 +517,7 @@ def train(seed=0, config=None, env_all=None):
                 memory.remember(Experience( state          = states[-(N_STEP_QL+1)],
                                             state_tsr      = nn.functional.pad(states_tsrs[-(N_STEP_QL+1)],(0,0,0,Psize)) if config['qnet']=='s2v' else zerovec,
                                             W              = nn.functional.pad(env.sp.W,(0,Psize,0,Psize)) if config['qnet']=='s2v' else zerovec,
-                                            pyg_data       = pyg_objects[-(N_STEP_QL+1)] if 'gat' in config['qnet'] else zerovec,
+                                            pyg_data       = pyg_objects[-(N_STEP_QL+1)], #if 'gat' in config['qnet'] else zerodat,
                                             action         = actions[-N_STEP_QL],
                                             action_nodeselect=actions_nodeselect[-N_STEP_QL],
                                             done           = dones[-1], 
@@ -530,13 +526,13 @@ def train(seed=0, config=None, env_all=None):
                                             next_state_tsr = nn.functional.pad(next_state_tsr,(0,0,0,Psize)) if config['qnet']=='s2v' else zerovec,
                                             next_pyg_data  = next_pyg_data,
                                             next_state_neighbors= env.neighbors[next_state[0]] ))
-                
+
             if done:
                 for n in range(1, min(N_STEP_QL, len(states))):
                     memory.remember(Experience( state       = states[-(n+1)],
                                                 state_tsr   = nn.functional.pad(states_tsrs[-(n+1)],(0,0,0,Psize)) if config['qnet']=='s2v' else zerovec,
                                                 W           = nn.functional.pad(env.sp.W,(0,Psize,0,Psize)) if config['qnet']=='s2v' else zerovec,
-                                                pyg_data    = pyg_objects[-(n+1)] if 'gat' in config['qnet'] else zerovec,
+                                                pyg_data    = pyg_objects[-(n+1)], #if 'gat' in config['qnet'] else zerodat,
                                                 action      = actions[-n],
                                                 action_nodeselect=actions_nodeselect[-n], 
                                                 done=True,
@@ -558,7 +554,7 @@ def train(seed=0, config=None, env_all=None):
                 
                 batch_states_tsrs = [e.state_tsr for e in experiences] if config['qnet']=='s2v' else [zerovec]
                 batch_Ws = [ e.W for e in experiences] if config['qnet']=='s2v' else [zerovec]
-                batch_pyg_data = [ e.pyg_data for e in experiences] if 'gat' in config['qnet'] else [zerovec]
+                batch_pyg_data = [ e.pyg_data for e in experiences] #if 'gat' in config['qnet'] else [zerodat]
                 batch_actions = [e.action_nodeselect for e in experiences]
                 batch_targets = []
                 
