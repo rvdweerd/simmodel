@@ -10,6 +10,7 @@ from modules.gnn.comb_opt import init_model
 from modules.rl.rl_policy import GNN_s2v_Policy
 from modules.ppo.helpfuncs import CreateEnv
 import numpy as np
+import random
 import torch
 import argparse
 from Phase2d_construct_sets import ConstructTrainSet
@@ -227,21 +228,36 @@ def main(args):
         evalResults={}
 
         world_list=[
-            #'Manhattan5x5_DuplicateSetB',
-            #'Manhattan3x3_WalkAround',
-            #'MetroU3_e1t31_FixedEscapeInit', 
+            'Manhattan5x5_DuplicateSetB',
+            'Manhattan3x3_WalkAround',
+            'MetroU3_e1t31_FixedEscapeInit', 
             'NWB_test_FixedEscapeInit',
             'NWB_test_VariableEscapeInit',
             'NWB_UTR_FixedEscapeInit',
-            'NWB_UTR_VariableEscapeInit',
+            'NWB_UTR_VariableEscapeInit',            
+            'full_solvable_3x3subs',
+            'NWB_ROT_FixedEscapeInit',
+            'NWB_ROT_VariableEscapeInit',
+            'MetroU3_e17tborder_FixedEscapeInit',
+            'MetroU3_e17tborder_VariableEscapeInit',
+            'Manhattan5x5_FixedEscapeInit',
+            'Manhattan5x5_VariableEscapeInit',
+            'SparseManhattan5x5',
             ]
-        node_maxims = [0,0,0,0]
-        var_targets=[ None,None,None,None]
-        eval_names = world_list
-        eval_nums = [10,10,10,10]
+        #node_maxims = [0,0,0,0]
+        #var_targets=[ None,None,None,None]
+        #eval_names = world_list
+        #eval_nums = [10,10,10,10]
 
-        for world_name, node_maxim, var_target, eval_name, eval_num in zip(world_list, node_maxims, var_targets, eval_names, eval_nums):
-            env = CreateEnv(world_name, max_nodes=node_maxim, nfm_func_name = config['nfm_func'], var_targets=var_target, remove_world_pool=config['remove_paths'], apply_wrappers=False)
+        for world_name in world_list:
+            evalName=world_name
+            if world_name == 'full_solvable_3x3subs':
+                Etest=[0,1,2,3,4,5,6,7,8,9,10]
+                Utest=[1,2,3]
+                evalenv, _, _, _  = GetWorldSet('etUte0U0', 'nfm', U=Utest, E=Etest, edge_blocking=config['edge_blocking'], solve_select=config['solve_select'], reject_duplicates=False, nfm_func=modules.gnn.nfm_gen.nfm_funcs[config['nfm_func']])
+            else:
+                env = CreateEnv(world_name, max_nodes=0, nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=config['remove_paths'], apply_wrappers=False)
+                evalenv=[env]
             #env = CreateEnv('NWB_test_FixedEscapeInit',max_nodes=975,nfm_func_name = config['nfm_func'],var_targets=None, remove_world_pool=True, apply_wrappers=False)
             #env = CreateEnv('MetroU3_e17tborder_FixedEscapeInit',max_nodes=33,nfm_func_name = config['nfm_func'],var_targets=[1,1], remove_world_pool=True, apply_wrappers=False)
             #env = CreateEnv('MetroU3_e1t31_FixedEscapeInit',max_nodes=33,nfm_func_name = config['nfm_func'],var_targets=[1,1], remove_world_pool=True, apply_wrappers=False)        
@@ -253,18 +269,19 @@ def main(args):
                 policy=GNN_s2v_Policy(Q_func)
                 while True:
                     entries=None#[5012,218,3903]
+                    env = random.choice(evalenv)
                     a = SimulateAutomaticMode_DQN(env, policy, t_suffix=False, entries=entries)
                     if a == 'Q': break
             
             #evalenv=SuperEnv([env], {1:0}, node_maxim, probs=[1])
-            evalenv=[env]
+            #evalenv=[env]
             #evalName='MetroU0_e1t31_vartarget_eval'
-            evalName=eval_name
-            n_eval=eval_num
+            #evalName=eval_name
+            #n_eval=eval_num
             evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
             for seed in config['seedrange']:
                 logdir=config['logdir']+'/SEED'+str(seed)
-                result = evaluate(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=evalenv, eval_subdir=evalName, n_eval=n_eval)
+                result = evaluate(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=evalenv, eval_subdir=evalName)
                 #result = evaluate(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=[env], eval_subdir=evalName)
                 num_unique_graphs, num_graph_instances, avg_return, success_rate = result
                 evalResults[evalName]['num_graphs.........'].append(num_unique_graphs)

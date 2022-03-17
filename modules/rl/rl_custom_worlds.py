@@ -1,6 +1,8 @@
 import modules.sim.simdata_utils as su
 from modules.rl.rl_utils import CreateDuplicatesTrainsets
 from modules.rl.environments import GraphWorld
+from modules.sim.graph_factory import GetWorldSet
+import modules.gnn.nfm_gen
 import networkx as nx
 
     
@@ -210,7 +212,6 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         assert not conf['obj']['G'].is_directed()
         env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
         return env       
-
 
 def CreateWorlds(run_world_names, make_reflexive=True, state_repr='et', state_enc='nodes'):
     worlds=[]

@@ -240,20 +240,33 @@ class QNet(nn.Module):
         # we repeat the global state (summed over nodes) for each node, 
         # in order to concatenate it to local states later
         ptr = pyg_data.ptr.detach().cpu().numpy()
-        n = [(r-l) for r,l in zip(ptr[1:], ptr[:-1])] # list of #nodes of each graph in the batch
-        lst = []
-        for i in range(len(n)):
-            lst+=[i]*n[i] + [len(n)]*(num_nodes_padded-n[i])
-        lst=torch.tensor(lst,dtype=torch.int64,device=device)
+        splitter_STAR = list(ptr[1:]-ptr[:-1])
+        #n = [(r-l) for r,l in zip(ptr[1:], ptr[:-1])] # list of #nodes of each graph in the batch
+        #lst = []
+        select=[]
+        #Reduce=False
+        for i in range(len(splitter_STAR)):
+            #lst+=[i]*n[i] + [len(n)]*(num_nodes_padded-n[i])
+            select+=[True]*splitter_STAR[i]+[False]*(num_nodes_padded-splitter_STAR[i])
+            #if n[i] != num_nodes_padded: Reduce=True
+        #lst=torch.tensor(lst,dtype=torch.int64,device=device)
+        mu_raw = mu.reshape(-1,self.emb_dim)[select]
+        
         if self.norm_agg:
-            normagg = scatter_mean(mu.reshape(-1,self.emb_dim), lst, dim=0)[:-1]
+            mu_meanpool = scatter_mean(mu_raw,pyg_data.batch,dim=0) # (bsize,emb_dim)
+            mu_meanpool_expanded = torch.repeat_interleave(mu_meanpool,torch.tensor(splitter_STAR,dtype=torch.int64,device=device),dim=0) #(sum of num_nodes in the batch, emb_dim)
+            global_state_STAR = self.theta6(mu_meanpool_expanded)
         else:
-            normagg = scatter_add(mu.reshape(-1,self.emb_dim), lst, dim=0)[:-1]
-        global_state = self.theta6(normagg.repeat(1, num_nodes_padded, 1)) # (bsize,max_num_nodes,emb_dim)
-        local_action = self.theta7(mu)  # (batch_dim, nr_nodes, emb_dim)
-            
-        out = F.relu(torch.cat([global_state, local_action], dim=2))
-        return self.theta5(out).squeeze(dim=2)
+            mu_maxpool = scatter_add(mu_raw,pyg_data.batch,dim=0) # (bsize,emb_dim)
+            mu_maxpool_expanded = torch.repeat_interleave(mu_maxpool,torch.tensor(splitter_STAR,dtype=torch.int64,device=device),dim=0) #(sum of num_nodes in the batch, emb_dim)
+            global_state_STAR = self.theta6(mu_maxpool_expanded)
+        
+        local_action_STAR = self.theta7(mu_raw)  # (sum of num_nodes in the batch, emb_dim)
+
+        out_STAR = F.relu(torch.cat([global_state_STAR, local_action_STAR], dim=1)) # (sum of num_nodes in the batch, 2*emb_dim)
+        out_STAR = self.theta5(out_STAR).squeeze() # (sum of num_nodes in the batch)
+
+        return out_STAR
 
     def numTrainableParameters(self):
         print('Qnet size:')
@@ -327,7 +340,7 @@ class QFunction():
         
         # the rewards estimated by Q for the given actions
         #estimated_rewards = self.model(xv, Ws_tsr)[range(len(actions)), actions]
-        qvals_STAR = self.model(xv, Ws_tsr, pyg_batch) # (bsize, max_num_nodes)
+        qvals_STAR = self.model(xv, Ws_tsr, pyg_batch) # (bsize * max_num_nodes)
         #actionselect = torch.tensor(actions,dtype=torch.int64,device=device)[:,None] #(bsize,1)
         #estimated_rewards = torch.gather(qvals, 1, actionselect).squeeze() #(bsize)
         #estimated_rewards = torch.gather(self.model(xv, Ws_tsr, pyg_batch), 1, torch.tensor(actions,dtype=torch.int64,device=device)[:,None]).squeeze()
@@ -335,6 +348,7 @@ class QFunction():
 
         actionselect_STAR = torch.tensor(actions,dtype=torch.int64,device=device) + pyg_batch.ptr[:-1]
         estimated_rewards_STAR = qvals_STAR[actionselect_STAR]
+        #estimated_rewards_STAR = torch.gather(qvals_STAR,1,actionselect_STAR[:,None])
 
         loss = self.loss_fn(estimated_rewards_STAR, torch.tensor(targets, device=device))
         loss_val = loss.detach().cpu().item()
