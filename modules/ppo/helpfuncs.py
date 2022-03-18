@@ -14,6 +14,8 @@ from modules.rl.environments import GraphWorld
 from modules.rl.rl_custom_worlds import GetCustomWorld
 from modules.rl.environments import SuperEnv
 from modules.rl.rl_plotting import PlotEUPathsOnGraph_
+from modules.ppo.models_sb3 import s2v_ActorCriticPolicy, Struc2Vec, DeployablePPOPolicy
+from modules.rl.rl_policy import ActionMaskedPolicySB3_PPO
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
@@ -135,28 +137,31 @@ def eval_simple(saved_policy,env):
                 obs = env.reset()
 
 
-def evaluate_ppo(logdir, policy, info=False, config=None, env=None, eval_subdir='.', n_eval=1000):
+def evaluate_ppo(logdir, info=False, config=None, env=None, eval_subdir='.', n_eval=1000):
     if env==None: return 0,0,0,0   
     try:
         if env==None or len(env)==0:
             return 0,0,0,0
     except:
         pass
-    
-    logdir=logdir+'/'+eval_subdir
-    
+    evaldir=logdir+'/'+eval_subdir
     R=[]
     S=[]
     
     if type(env) == list:
         if len(env)==0: return 0,0,0,0
         for i,e in enumerate(tqdm.tqdm(env)):
-            l, returns, c, solves = EvaluatePolicy(e, policy, e.world_pool, print_runs=False, save_plots=False, logdir=logdir, eval_arg_func=EvalArgs3, silent_mode=True)
+
+            saved_policy = s2v_ActorCriticPolicy.load(logdir+"/saved_models/policy_last")
+            saved_policy_deployable=DeployablePPOPolicy(e, saved_policy)
+            ppo_policy = ActionMaskedPolicySB3_PPO(saved_policy_deployable, deterministic=True)
+
+            l, returns, c, solves = EvaluatePolicy(e, ppo_policy, e.world_pool, print_runs=False, save_plots=False, logdir=evaldir, eval_arg_func=EvalArgs3, silent_mode=True)
             num_worlds_requested = 10
             once_every = max(1,len(env)//num_worlds_requested)
             if i % once_every ==0:
                 plotlist = GetFullCoverageSample(returns, e.world_pool, bins=3, n=3)
-                EvaluatePolicy(e, policy, plotlist, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgs3, silent_mode=False, plot_each_timestep=False)
+                EvaluatePolicy(e, ppo_policy, plotlist, print_runs=True, save_plots=True, logdir=evaldir, eval_arg_func=EvalArgs3, silent_mode=False, plot_each_timestep=False)
             R+=returns 
             S+=solves
 
@@ -164,8 +169,12 @@ def evaluate_ppo(logdir, policy, info=False, config=None, env=None, eval_subdir=
     # assume env_all is a superenv
         full_eval_list = [i for i in range(n_eval)]
         plot_eval_list = [i for i in range(30)]
-        l, returns, c, solves = EvaluatePolicy(env, policy, full_eval_list, print_runs=False, save_plots=False, logdir=logdir, eval_arg_func=EvalArgs3, silent_mode=True)
-        EvaluatePolicy(env, policy, plot_eval_list, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgs3, silent_mode=False, plot_each_timestep=False)
+        saved_policy = s2v_ActorCriticPolicy.load(logdir+"/saved_models/policy_last")
+        saved_policy_deployable=DeployablePPOPolicy(env, saved_policy)
+        ppo_policy = ActionMaskedPolicySB3_PPO(saved_policy_deployable, deterministic=True)
+
+        l, returns, c, solves = EvaluatePolicy(env, ppo_policy, full_eval_list, print_runs=False, save_plots=False, logdir=logdir, eval_arg_func=EvalArgs3, silent_mode=True)
+        EvaluatePolicy(env, ppo_policy, plot_eval_list, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgs3, silent_mode=False, plot_each_timestep=False)
         R+=returns 
         S+=solves
     

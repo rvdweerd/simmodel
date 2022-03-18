@@ -34,7 +34,7 @@
                     "--solve_select","solvable",
                     "--edge_blocking","True",
                     "--max_nodes","25",
-                    "--demoruns","False",
+                    "--demoruns","True",
                     "--pursuit","Uon",
 
                     // // ARGS FOR DQN

@@ -1,6 +1,7 @@
 import argparse
 import numpy as np
 import torch
+import random
 from sb3_contrib import MaskablePPO
 from modules.sim.graph_factory import GetWorldSet
 from modules.gnn.comb_opt import evaluate_spath_heuristic
@@ -10,10 +11,9 @@ from modules.ppo.callbacks_sb3 import SimpleCallback, TestCallBack
 from modules.ppo.models_sb3 import s2v_ActorCriticPolicy, Struc2Vec, DeployablePPOPolicy
 from modules.rl.rl_policy import ActionMaskedPolicySB3_PPO
 from modules.rl.environments import SuperEnv
-from modules.sim.simdata_utils import SimulateInteractiveMode_PPO
 import modules.gnn.nfm_gen
 from modules.gnn.construct_trainsets import ConstructTrainSet, get_train_configs
-from modules.sim.simdata_utils import SimulateInteractiveMode
+from modules.sim.simdata_utils import SimulateInteractiveMode, SimulateAutomaticMode_PPO
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def GetConfig(args):
@@ -265,9 +265,9 @@ def main(args):
         # eval_nums = [1, 1000,200]
         evalResults={}
         world_dict={
-            'Manhattan5x5_DuplicateSetB':25,
-            'Manhattan3x3_WalkAround':9,
-            'MetroU3_e1t31_FixedEscapeInit':33, 
+            #'Manhattan5x5_DuplicateSetB':25,
+            #'Manhattan3x3_WalkAround':9,
+            #'MetroU3_e1t31_FixedEscapeInit':33, 
             'full_solvable_3x3subs':9,
             'Manhattan5x5_FixedEscapeInit':25,
             'Manhattan5x5_VariableEscapeInit':25,
@@ -289,21 +289,30 @@ def main(args):
             if world_name == "full_solvable_3x3subs":
                 Etest=[0,1,2,3,4,5,6,7,8,9,10]
                 Utest=[1,2,3]
-                evalenv, _, _, _  = GetWorldSet('etUte0U0', 'nfm', U=Utest, E=Etest, edge_blocking=config['edge_blocking'], solve_select=config['solve_select'], reject_duplicates=False, nfm_func=modules.gnn.nfm_gen.nfm_funcs[config['nfm_func']])
+                evalenv, _, _, _  = GetWorldSet('etUte0U0', 'nfm', U=Utest, E=Etest, edge_blocking=config['edge_blocking'], solve_select=config['solve_select'], reject_duplicates=False, nfm_func=modules.gnn.nfm_gen.nfm_funcs[config['nfm_func']], apply_wrappers=True, maxnodes=world_dict[world_name])
             else:
                 env = CreateEnv(world_name, max_nodes=world_dict[world_name], nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=config['remove_paths'], apply_wrappers=True)
                 evalenv=[env]
+
+            if config['demoruns']:
+                saved_model = MaskablePPO.load(config['logdir']+'/SEED'+str(config['seed0'])+"/saved_models/model_last")
+                saved_policy = s2v_ActorCriticPolicy.load(config['logdir']+'/SEED'+str(config['seed0'])+"/saved_models/policy_last")
+                saved_policy_deployable=DeployablePPOPolicy(env, saved_policy)
+                ppo_policy = ActionMaskedPolicySB3_PPO(saved_policy_deployable, deterministic=True)
+                while True:
+                    entries=None#[5012,218,3903]
+                    demo_env = random.choice(evalenv)
+                    a = SimulateAutomaticMode_PPO(demo_env, ppo_policy, t_suffix=False, entries=entries)
+                    if a == 'Q': break
+
+
 
             #custom_env = CreateEnv(world_name, max_nodes=node_maxim, nfm_func_name = config['nfm_func'], var_targets=var_target, remove_world_pool=True, apply_wrappers=True)
             #senv=SuperEnv([custom_env],{1:0},node_maxim,probs=[1])        
             #n_eval=eval_num
             evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
             for seed in config['seedrange']:
-                saved_policy = s2v_ActorCriticPolicy.load(config['logdir']+'/SEED'+str(seed)+"/saved_models/policy_last")
-                saved_policy_deployable=DeployablePPOPolicy(env, saved_policy)
-                ppo_policy = ActionMaskedPolicySB3_PPO(saved_policy_deployable, deterministic=True)
-                #result = evaluate_ppo(logdir=config['logdir']+'/SEED'+str(seed), policy=ppo_policy, config=config, env=[custom_env], eval_subdir=evalName)
-                result = evaluate_ppo(logdir=config['logdir']+'/SEED'+str(seed), policy=ppo_policy, config=config, env=evalenv, eval_subdir=evalName)
+                result = evaluate_ppo(logdir=config['logdir']+'/SEED'+str(seed), config=config, env=evalenv, eval_subdir=evalName)
                 num_unique_graphs, num_graph_instances, avg_return, success_rate = result
                 evalResults[evalName]['num_graphs.........'].append(num_unique_graphs)
                 evalResults[evalName]['num_graph_instances'].append(num_graph_instances)

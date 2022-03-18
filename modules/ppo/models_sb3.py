@@ -417,7 +417,7 @@ class DeployablePPOPolicy(nn.Module):
         return distro
 
     def predict_values(self, obs):
-        obs=obs.to(device)
+        #obs=obs.to(device)
         raw_logits, value = self.forward(obs)
         return value
 

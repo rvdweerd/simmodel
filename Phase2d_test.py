@@ -54,14 +54,7 @@ env = CreateEnv('NWB_test_VariableEscapeInit',nfm_func_name =config['nfm_func_na
 ## Load pre-saved model
 saved_model = MaskablePPO.load(logdir+'/SEED'+str(seed)+"/saved_models/model_last")
 saved_policy = s2v_ActorCriticPolicy.load(logdir+'/SEED'+str(seed)+"/saved_models/policy_last")
-
-
-
-
 saved_policy_deployable=DeployablePPOPolicy(env, saved_policy)
-
-
-#ppo_policy = ActionMaskedPolicySB3_PPO(saved_policy, deterministic=True)
 ppo_policy = ActionMaskedPolicySB3_PPO(saved_policy_deployable, deterministic=True)
 
 

@@ -4,7 +4,7 @@ import random
 import networkx as nx
 import pickle
 from modules.rl.environments import GraphWorld #, GraphWorldFromDatabank
-from modules.ppo.ppo_wrappers import VarTargetWrapper
+from modules.ppo.ppo_wrappers import VarTargetWrapper, PPO_ObsDictWrapper, PPO_ActWrapper
 import copy
 
 def rand_key(p):
@@ -189,7 +189,7 @@ def GetConfig(u=2):
     }
     return config
 
-def GetWorldSet(state_repr = 'et', state_enc  = 'tensors', U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_duplicates=True, nfm_func=None, var_targets=None, remove_paths=False):
+def GetWorldSet(state_repr = 'et', state_enc  = 'tensors', U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_duplicates=True, nfm_func=None, var_targets=None, remove_paths=False, apply_wrappers=False, maxnodes=0):
     config=GetConfig(u=2)#only needed to find datafile
     databank_full, register_full, solvable = LoadData(edge_blocking = edge_blocking)
     
@@ -197,6 +197,11 @@ def GetWorldSet(state_repr = 'et', state_enc  = 'tensors', U=[1,2,3], E=[i for i
     env0 = GraphWorld(config, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
     if var_targets is not None:
         env0 = VarTargetWrapper(env0)
+    if apply_wrappers:
+        env0=PPO_ObsDictWrapper(env0, max_possible_num_nodes = maxnodes)        
+        env0=PPO_ActWrapper(env0)        
+
+
 
     env0.capture_on_edges = edge_blocking
     all_envs=[]
