@@ -388,9 +388,9 @@ class DeployablePPOPolicy(nn.Module):
     def predict(self, obs, deterministic=True, action_masks=None):
         # obs comes in as (bsize,nodes,(V+F+1)), action masks as (nodes,)
         assert self.device == device
-        obs=obs.to(device)
+        #obs=obs.to(device)
         raw_logits, value = self.forward(obs)
-        m=torch.as_tensor(action_masks, dtype=torch.bool, device=device)
+        m=torch.as_tensor(action_masks, dtype=torch.bool, device=device).squeeze()
         HUGE_NEG = torch.tensor(-torch.inf, dtype=torch.float32, device=device)
         logits = torch.where(m,raw_logits.squeeze(),HUGE_NEG)
         if deterministic:
@@ -403,9 +403,14 @@ class DeployablePPOPolicy(nn.Module):
     def get_distribution(self, obs):
         # obs comes in as
         #return torch.categorical
-        obs=obs.to(device)
+        #obs=obs.to(device)
         raw_logits, value = self.forward(obs)
-        m=obs[:,:,-1].to(torch.bool)
+
+
+        m=obs['reachable_nodes'].to(torch.bool)
+        #m=obs[:,:,-1].to(torch.bool)
+
+        
         HUGE_NEG = torch.tensor(-torch.inf, dtype=torch.float32, device=device)
         prob_logits = torch.where(m.squeeze(), raw_logits.squeeze(-1), HUGE_NEG)
         distro=Categorical(logits=prob_logits)

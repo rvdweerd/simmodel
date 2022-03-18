@@ -435,11 +435,20 @@ class ActionMaskedPolicySB3_PPO(Policy):
 
     def sample_greedy_action(self, obs, available_actions, printing=False):
         with torch.no_grad():            
-            neighboring_nodes = obs[:,-1].nonzero().squeeze().to(device)
-            action_masks=obs[:,-1]
-            obs = obs[None,:]
+            neighboring_nodes = obs['reachable_nodes'].squeeze().nonzero().squeeze().to(device)
+            action_masks=obs['reachable_nodes'].to(device)
+            #obs = obs[None,:]
+            obs['num_nodes']=torch.tensor([obs['num_nodes']])[None,:]
+            obs['num_edges']=torch.tensor([obs['num_edges']])[None,:]
+            obs['nfm']=obs['nfm'][None,:,:]
+            obs['W']=obs['W'][None,:,:]
+            obs['reachable_nodes']=obs['reachable_nodes'][None,:,:]
+
+            for k,v in obs.items():
+                obs[k] = v.to(device)
+
             action, _states = self.model.predict(obs, deterministic=True, action_masks=action_masks)
-            obs=obs.to(device)
+            #obs=obs.to(device)
             
             self.probs = F.softmax(self.model.get_distribution(obs).log_prob(neighboring_nodes),dim=0).detach().cpu().numpy()
             if printing:

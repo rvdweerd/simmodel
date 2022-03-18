@@ -137,6 +137,12 @@ def eval_simple(saved_policy,env):
 
 def evaluate_ppo(logdir, policy, info=False, config=None, env=None, eval_subdir='.', n_eval=1000):
     if env==None: return 0,0,0,0   
+    try:
+        if env==None or len(env)==0:
+            return 0,0,0,0
+    except:
+        pass
+    
     logdir=logdir+'/'+eval_subdir
     
     R=[]
