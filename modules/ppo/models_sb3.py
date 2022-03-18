@@ -25,6 +25,7 @@ from modules.rl.environments import SuperEnv
 from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsWrapper
 #import modules.sim.simdata_utils as su
 from modules.rl.rl_custom_worlds import GetCustomWorld
+from torch_scatter import scatter_mean, scatter_add
 from typing import Callable, Dict, List, Optional, Tuple, Type, Union
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -43,6 +44,7 @@ class Struc2Vec(BaseFeaturesExtractor):
         # Incoming: (bsize, num_nodes, (F+num_nodes+1))      
         # Compute shape by doing one forward pass
         #incoming_tensor_example = torch.as_tensor(observation_space.sample()[None]).float()
+        self.norm_agg = True
         self.fdim           = features_dim
         self.emb_dim        = emb_dim
         self.T              = emb_iter_T
@@ -84,15 +86,66 @@ class Struc2Vec(BaseFeaturesExtractor):
     def forward(self, observations):# -> torch.Tensor:
         num_nodes_padded = observations['W'].shape[1]
         node_dim = observations['nfm'].shape[2]
-        
-        mu = self.struc2vec(observations['nfm'], observations['W']) # (batch_size, nr_nodes, emb_dim)      
-        mu=torch.cat((mu,observations['reachable_nodes']),dim=2)
-
         bsize=observations['W'].shape[0]
+        if bsize>1:
+            k=0
+        
+        nfm=observations['nfm'] # (bsize,numnodes,emb_dim)
+        W=observations['W']     # (bsize,numnodes,numnodes)
+        pygei = observations['pygei'] #(bsize,2,MAX_NUM_EDGES)
+        pygx = observations['pygx'] #(bsize,numnodes,emb_dim)
+        reachable_nodes = observations['reachable_nodes'] #(bsize,numnodes,1)
+        num_nodes=observations['num_nodes'] #(bsize,1)
+        num_edges=observations['num_edges'] #(bsize,1)
+
+        mu = self.struc2vec(nfm, W) # (batch_size, nr_nodes, emb_dim)      
+        
+        select=[]
+        batch=[]
+        #Reduce=False
+        for i in range(len(num_nodes)):
+            #lst+=[i]*n[i] + [len(n)]*(num_nodes_padded-n[i])
+            select+=[True]*int(num_nodes[i])+[False]*(num_nodes_padded-int(num_nodes[i]))
+            batch+=[i]*int(num_nodes[i])
+        mu_raw = mu.reshape(-1,self.emb_dim)[select]
+        batch=torch.tensor(batch,dtype=torch.int64,device=device)
+
+        if self.norm_agg:
+            mu_meanpool = scatter_mean(mu_raw,batch,dim=0) # (bsize,emb_dim)
+            #mu_meanpool_expanded = torch.repeat_interleave(mu_meanpool,torch.tensor(num_nodes,dtype=torch.int64,device=device),dim=0) #(sum of num_nodes in the batch, emb_dim)
+            #global_state_STAR = self.theta6(mu_meanpool_expanded)
+        else:
+            assert False
+            mu_maxpool = scatter_add(mu_raw,batch,dim=0) # (bsize,emb_dim)
+            #mu_maxpool_expanded = torch.repeat_interleave(mu_maxpool,torch.tensor(num_nodes,dtype=torch.int64,device=device),dim=0) #(sum of num_nodes in the batch, emb_dim)
+            #global_state_STAR = self.theta6(mu_maxpool_expanded)
+
+
+        mu_serialized1=torch.cat((mu,observations['reachable_nodes']),dim=2) #(bsize,numnodes,emb_dim+1)
+        mu_serialized2=torch.cat((mu_meanpool,num_nodes),dim=1)[:,None,:] #(bsize,1,emb_dim+1)
+        mu_serialized=torch.cat((mu_serialized1,mu_serialized2),dim=1) #(bsize,numnodes+1,emb_dim+1)
+
+        s0,s1,s2 = mu_serialized.shape
+        a,b=torch.split(mu_serialized,[s2-1,1],dim=2)
+        mu_deserialized, mu_mp_deserialized = torch.split(a,[s1-1,1],dim=1)
+        mu_mp_deserialized = mu_mp_deserialized.squeeze()
+        reachable_nodes_deserialized, num_nodes_deserialized = torch.split(b,[num_nodes_padded,1],dim=1)
+        num_nodes_deserialized = num_nodes_deserialized.squeeze(2)
+        assert s0 == bsize
+        assert (s2-1)==self.emb_dim
+        assert (s1-1)==num_nodes_padded
+        assert torch.allclose(mu,mu_deserialized)
+        assert torch.allclose(mu_meanpool,mu_mp_deserialized)
+        assert torch.allclose(reachable_nodes,reachable_nodes_deserialized)
+        assert torch.allclose(num_nodes,num_nodes_deserialized)
+
+        mu=torch.cat((mu,observations['reachable_nodes']),dim=2)
         mu_flat = mu.reshape(bsize,-1)
         assert self.fdim == self.features_dim
         assert mu_flat.shape[-1] == self.fdim
+        
         return mu_flat
+        #return mu_serialized
 
 
 class s2v_ACNetwork(nn.Module):
