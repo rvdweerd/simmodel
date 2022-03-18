@@ -15,15 +15,15 @@ etrain_="0123456789"
 utrain="1,2,3"
 utrain_="123"
 #qnet="s2v"
-train_on="M3M5Mix"
-#train_on="NWB_AMS"
+#train_on="M3M5Mix"
+train_on="NWB_AMS"
 #train_on="MixAll33"
 pursuit="Uon"
 solveselect='solvable'
 edgeblock="True"
 nfm="NFM_ev_ec_t_dt_at_um_us"
 itt=5
-max_nodes=25
+max_nodes=0
 demoruns="False"
 #seed0=1
 numseeds=5
@@ -33,7 +33,7 @@ for seed0 in {"1",}
 #"2","3","4","5"}
 #"NFM_ec_t","NFM_ec_dtscaled"}
 do
-    for qnet in {"s2v",}
+    for qnet in {"gat2",}
     do
         tmux new-session -d -s "${qnet}test1-${seed0}"
         tmux send-keys -t "${qnet}test1-${seed0}" "conda activate rlcourse-sb3c" Enter

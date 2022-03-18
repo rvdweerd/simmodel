@@ -10,7 +10,7 @@ from modules.rl.rl_policy import ActionMaskedPolicySB3_PPO
 from modules.ppo.models_sb3 import s2v_ActorCriticPolicy, Struc2Vec, DeployablePPOPolicy
 #from modules.ppo.ppo_wrappers import VarTargetWrapper
 from sb3_contrib import MaskablePPO
-from Phase2d_construct_sets import ConstructTrainSet, get_train_configs
+from modules.gnn.construct_trainsets import ConstructTrainSet, get_train_configs
 from modules.sim.simdata_utils import SimulateInteractiveMode_PPO, SimulateAutomaticMode_PPO
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 

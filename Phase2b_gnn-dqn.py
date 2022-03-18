@@ -13,7 +13,7 @@ import numpy as np
 import random
 import torch
 import argparse
-from Phase2d_construct_sets import ConstructTrainSet
+from modules.gnn.construct_trainsets import ConstructTrainSet
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def GetConfig(args):

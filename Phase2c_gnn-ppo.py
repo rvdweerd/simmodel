@@ -4,63 +4,90 @@ import torch
 from sb3_contrib import MaskablePPO
 from modules.gnn.comb_opt import evaluate_spath_heuristic
 from modules.rl.rl_utils import EvaluatePolicy, print_parameters, GetFullCoverageSample, NpWrapper
-from modules.ppo.helpfuncs import get_super_env, CreateEnv, eval_simple, evaluate_ppo, get_logdirs
+from modules.ppo.helpfuncs import get_super_env, CreateEnv, eval_simple, evaluate_ppo#, get_logdirs
 from modules.ppo.callbacks_sb3 import SimpleCallback, TestCallBack
 from modules.ppo.models_sb3 import s2v_ActorCriticPolicy, Struc2Vec, DeployablePPOPolicy
 from modules.rl.rl_policy import ActionMaskedPolicySB3_PPO
 from modules.rl.environments import SuperEnv
 from modules.sim.simdata_utils import SimulateInteractiveMode_PPO
-from Phase2d_construct_sets import ConstructTrainSet, get_train_configs
+import modules.gnn.nfm_gen
+from modules.gnn.construct_trainsets import ConstructTrainSet, get_train_configs
+from modules.sim.simdata_utils import SimulateInteractiveMode
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)    
-    parser.add_argument('--run_name', type=str)
-    parser.add_argument('--train', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
-    parser.add_argument('--eval', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])   
-    parser.add_argument('--test', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])   
+def GetConfig(args):
+    config={}
+    config['train_on'] = args.train_on
+    config['max_nodes'] = args.max_nodes
+    config['remove_paths'] = args.pursuit == 'Uoff'
+    assert args.pursuit in ['Uoff','Uon']
+    config['reject_u_duplicates'] = False
+    config['solve_select'] = args.solve_select # only solvable worlds (so best achievable performance is 100%)
+    config['nfm_func']     = args.nfm_func
+    config['edge_blocking']= args.edge_blocking
+    config['node_dim']     = modules.gnn.nfm_gen.nfm_funcs[args.nfm_func].F
+    config['demoruns']     = args.demoruns
+    config['qnet']         = args.qnet
+    config['norm_agg']     = args.norm_agg
+    config['emb_dim']      = args.emb_dim
+    config['emb_iter_T']   = args.emb_itT 
+    config['optim_target'] = args.optim_target
+    #config['num_episodes'] = args.num_epi 
+    #config['memory_size']  = args.mem_size 
+    config['num_step']     = args.num_step
+    #config['bsize']        = 32        
+    #config['gamma']        = .9        
+    #config['lr_init']      = 1e-3      
+    #config['lr_decay']     = 0.99999    
+    #config['tau']          = args.tau  # num grad steps for each target network update
+    #config['eps_0']        = 1.        
+    #config['eps_min']      = 0.1
+    #config['epi_min']      = .9        # reach eps_min at % of episodes # .9
+    #config['eps_decay']    = 1 - np.exp(np.log(config['eps_min'])/(config['epi_min']*config['num_episodes']))
+    config['rootdir']='./results/results_Phase2/Pathfinding/ppo/'+ \
+                                config['train_on']+'_'+args.pursuit+'/'+ \
+                                config['solve_select']+'_edgeblock'+str(config['edge_blocking'])+'/'+\
+                                config['qnet']+'_normagg'+str(config['norm_agg'])
+    config['logdir']        = config['rootdir'] + '/' +\
+                                config['nfm_func']+'/'+ \
+                                'emb'+str(config['emb_dim']) + \
+                                '_itT'+str(config['emb_iter_T']) + \
+                                '_nstep'+str(config['num_step'])
+    config['seed0']=args.seed0
+    config['numseeds']=args.num_seeds
+    config['seedrange']=range(config['seed0'], config['seed0']+config['numseeds'])
+    print('seedrange')
+    for i in config['seedrange']: print(i)
+    return config
 
-
-    args=parser.parse_args()
-    run_name = args.run_name
-    
+def main(args):
+    config=GetConfig(args)
+    #env_train   = config['env_train']
     if args.train or args.eval:
-        train_configs=get_train_configs(run_name,load_trainset=True)
-    else:
-        train_configs=get_train_configs(run_name,load_trainset=False)
-    config=train_configs[run_name]
-    train = args.train
-    eval  = args.eval
-    test = args.test
+        senv, env_all_train_list = ConstructTrainSet(config, apply_wrappers=True, remove_paths=config['remove_paths'], tset=config['train_on']) #TODO check
+        #env_all_train = [senv]
+        if config['demoruns']:
+            while True:
+                a = SimulateInteractiveMode(senv, filesave_with_time_suffix=False)
+                if a == 'Q': break
 
-    MAX_NODES   = config['max_nodes']
-    EMB_DIM     = config['emb_dim']
-    EMB_ITER_T  = config['emb_iter_T']
-    TOTAL_TIME_STEPS = config['num_step']
-    SEED0       = config['seed0']
-    NUMSEEDS    = config['numseeds']
-    LOGDIR      = config['logdir']
-    NODE_DIM    = config['node_dim']
-    env_train   = config['env_train']
-
-    if train:
-        obs=env_train.reset()
-        assert NODE_DIM == env_train.F
+    if args.train:
+        #obs=senv.reset()
+        assert config['node_dim'] == senv.F
 
         policy_kwargs = dict(
             features_extractor_class = Struc2Vec,
-            features_extractor_kwargs = dict(emb_dim=EMB_DIM, emb_iter_T=EMB_ITER_T, node_dim=NODE_DIM),#, num_nodes=MAX_NODES),
+            features_extractor_kwargs = dict(emb_dim=config['emb_dim'], emb_iter_T=config['emb_iter_T'], node_dim=config['node_dim']),#, num_nodes=MAX_NODES),
             # NOTE: FOR THIS TO WORK, NEED TO ADJUST sb3 policies.py
             #           def proba_distribution_net(self, latent_dim: int) -> nn.Module:
             #       to create a linear layer that maps to 1-dim instead of self.action_dim
             #       reason: our model is invariant to the action space (number of nodes in the graph) 
         )
 
-        for seed in range(SEED0, SEED0+NUMSEEDS):
-            logdir_ = LOGDIR+'/SEED'+str(seed)
+        for seed in config['seedrange']:
+            logdir_ = config['logdir']+'/SEED'+str(seed)
 
-
-            model = MaskablePPO(s2v_ActorCriticPolicy, env_train, \
+            model = MaskablePPO(s2v_ActorCriticPolicy, senv, \
                 #learning_rate=1e-4,\
                 seed=seed, \
                 #batch_size=128, \
@@ -69,12 +96,12 @@ if __name__ == '__main__':
                 policy_kwargs = policy_kwargs, verbose=2, tensorboard_log=logdir_+"/tb/")
 
             print_parameters(model.policy)
-            model.learn(total_timesteps = TOTAL_TIME_STEPS)#, callback=[TestCallBack()])#,eval_callback]) #,wandb_callback])
+            model.learn(total_timesteps = config['num_step'], callback=[TestCallBack()])#,eval_callback]) #,wandb_callback])
             # run.finish()
             model.save(logdir_+"/saved_models/model_last")
             model.policy.save(logdir_+"/saved_models/policy_last")    
 
-    if eval:
+    if args.eval:
         evalResults={}
         test_heuristics              = False
         test_full_trainset           = False
@@ -92,11 +119,11 @@ if __name__ == '__main__':
             evalName='trainset_eval'
             evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
 
-            for seed in range(SEED0, SEED0+NUMSEEDS):
-                saved_policy = s2v_ActorCriticPolicy.load(LOGDIR+'/SEED'+str(seed)+"/saved_models/policy_last")
+            for seed in config['seedrange']:
+                saved_policy = s2v_ActorCriticPolicy.load(config['logdir']+'/SEED'+str(seed)+"/saved_models/policy_last")
                 policy = ActionMaskedPolicySB3_PPO(saved_policy, deterministic=True)
 
-                result = evaluate_ppo(logdir=LOGDIR+'/SEED'+str(seed), policy=policy, config=config, env=env_train, eval_subdir=evalName, n_eval=5000)
+                result = evaluate_ppo(logdir=config['logdir']+'/SEED'+str(seed), policy=policy, config=config, env=env_train, eval_subdir=evalName, n_eval=5000)
                 num_unique_graphs, num_graph_instances, avg_return, success_rate = result
                 evalResults[evalName]['num_graphs.........'].append(num_unique_graphs)
                 evalResults[evalName]['num_graph_instances'].append(num_graph_instances)
@@ -112,8 +139,8 @@ if __name__ == '__main__':
             config['solve_select']='solvable'
             _, env_all_test = get_super_env(Uselected=Utest, Eselected=Etest, config=config)
          
-            for seed in range(SEED0, SEED0+NUMSEEDS):
-                saved_policy = s2v_ActorCriticPolicy.load(LOGDIR+'/SEED'+str(seed)+"/saved_models/policy_last")
+            for seed in config['seedrange']:
+                saved_policy = s2v_ActorCriticPolicy.load(config['logdir']+'/SEED'+str(seed)+"/saved_models/policy_last")
                 policy = ActionMaskedPolicySB3_PPO(saved_policy, deterministic=True)
 
                 result = evaluate_ppo(logdir=config['logdir']+'/SEED'+str(seed), policy=policy, config=config, env=env_all_test, eval_subdir=evalName)
@@ -130,8 +157,8 @@ if __name__ == '__main__':
             evalName='graphsegments_eval'
             config['solve_select']='solvable'
             evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
-            for seed in range(SEED0, SEED0+NUMSEEDS):
-                saved_policy = s2v_ActorCriticPolicy.load(LOGDIR+'/SEED'+str(seed)+"/saved_models/policy_last")
+            for seed in config['seedrange']:
+                saved_policy = s2v_ActorCriticPolicy.load(config['logdir']+'/SEED'+str(seed)+"/saved_models/policy_last")
                 policy = ActionMaskedPolicySB3_PPO(saved_policy, deterministic=True)
                 success_matrix   =[]
                 num_graphs_matrix=[]
@@ -201,8 +228,8 @@ if __name__ == '__main__':
                 custom_env=CreateEnv(world_name=world_name, max_nodes=config['max_nodes'])
                 #custom_env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
                 #custom_env.redefine_nfm(nfm_func)
-                for seed in range(SEED0, SEED0+NUMSEEDS):
-                    saved_policy = s2v_ActorCriticPolicy.load(LOGDIR+'/SEED'+str(seed)+"/saved_models/policy_last")
+                for seed in config['seedrange']:
+                    saved_policy = s2v_ActorCriticPolicy.load(config['logdir']+'/SEED'+str(seed)+"/saved_models/policy_last")
                     policy = ActionMaskedPolicySB3_PPO(saved_policy, deterministic=True)
 
                     result = evaluate_ppo(logdir=config['logdir']+'/SEED'+str(seed), policy=policy, config=config, env=[custom_env], eval_subdir=evalName)
@@ -225,7 +252,7 @@ if __name__ == '__main__':
                 printing('  std over seeds: '+str(np.std(values)))
                 printing('  per seed: '+str(np.array(values))+'\n')
     
-    if test:
+    if args.test:
         world_list=['Manhattan3x3_WalkAround',
                     'MetroU3_e1t31_FixedEscapeInit', 
                     'NWB_test_VariableEscapeInit']
@@ -246,8 +273,8 @@ if __name__ == '__main__':
             senv=SuperEnv([custom_env],{1:0},node_maxim,probs=[1])        
             n_eval=eval_num
             evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
-            for seed in range(SEED0, SEED0+NUMSEEDS):
-                saved_policy = s2v_ActorCriticPolicy.load(LOGDIR+'/SEED'+str(seed)+"/saved_models/policy_last")
+            for seed in config['seedrange']:
+                saved_policy = s2v_ActorCriticPolicy.load(config['logdir']+'/SEED'+str(seed)+"/saved_models/policy_last")
                 saved_policy_deployable=DeployablePPOPolicy(custom_env, saved_policy)
                 ppo_policy = ActionMaskedPolicySB3_PPO(saved_policy_deployable, deterministic=True)
                 #result = evaluate_ppo(logdir=config['logdir']+'/SEED'+str(seed), policy=ppo_policy, config=config, env=[custom_env], eval_subdir=evalName)
@@ -271,3 +298,25 @@ if __name__ == '__main__':
                 printing('  std over seeds: '+str(np.std(values)))
                 printing('  per seed: '+str(np.array(values))+'\n')
 
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)    
+    parser.add_argument('--train_on', default='None', type=str)
+    parser.add_argument('--emb_dim', default=32, type=int)
+    parser.add_argument('--emb_itT', default=2, type=int)
+    parser.add_argument('--nfm_func', default='NFM_ev_ec_t', type=str)
+    parser.add_argument('--qnet', default='None', type=str)
+    parser.add_argument('--norm_agg', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
+    parser.add_argument('--optim_target', default='None', type=str)
+    parser.add_argument('--num_step', default=10000, type=int)
+    parser.add_argument('--train', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
+    parser.add_argument('--eval', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])   
+    parser.add_argument('--test', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])       
+    parser.add_argument('--num_seeds', default=5, type=int)
+    parser.add_argument('--seed0', default=10, type=int)
+    parser.add_argument('--solve_select', default='solvable', type=str)
+    parser.add_argument('--edge_blocking', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
+    parser.add_argument('--max_nodes', default=9, type=int)
+    parser.add_argument('--demoruns', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
+    parser.add_argument('--pursuit', default='Uon', type=str)
+    args=parser.parse_args()
+    main(args)
