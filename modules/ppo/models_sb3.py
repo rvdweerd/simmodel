@@ -85,18 +85,18 @@ class Struc2Vec(BaseFeaturesExtractor):
 
     def forward(self, observations):# -> torch.Tensor:
         num_nodes_padded = observations['W'].shape[1]
-        node_dim = observations['nfm'].shape[2]
-        bsize=observations['W'].shape[0]
-        if bsize>1:
-            k=0
+        #node_dim = observations['nfm'].shape[2]
+        #bsize=observations['W'].shape[0]
+        # if bsize>1:
+        #     k=0
         
         nfm=observations['nfm'] # (bsize,numnodes,emb_dim)
         W=observations['W']     # (bsize,numnodes,numnodes)
-        pygei = observations['pygei'] #(bsize,2,MAX_NUM_EDGES)
-        pygx = observations['pygx'] #(bsize,numnodes,emb_dim)
-        reachable_nodes = observations['reachable_nodes'] #(bsize,numnodes,1)
+        #pygei = observations['pygei'] #(bsize,2,MAX_NUM_EDGES)
+        #pygx = observations['pygx'] #(bsize,numnodes,emb_dim)
+        #reachable_nodes = observations['reachable_nodes'] #(bsize,numnodes,1)
         num_nodes=observations['num_nodes'] #(bsize,1)
-        num_edges=observations['num_edges'] #(bsize,1)
+        #num_edges=observations['num_edges'] #(bsize,1)
 
         mu = self.struc2vec(nfm, W) # (batch_size, nr_nodes, emb_dim)      
         
@@ -125,27 +125,28 @@ class Struc2Vec(BaseFeaturesExtractor):
         mu_serialized2=torch.cat((mu_meanpool,num_nodes),dim=1)[:,None,:] #(bsize,1,emb_dim+1)
         mu_serialized=torch.cat((mu_serialized1,mu_serialized2),dim=1) #(bsize,numnodes+1,emb_dim+1)
 
-        s0,s1,s2 = mu_serialized.shape
-        a,b=torch.split(mu_serialized,[s2-1,1],dim=2)
-        mu_deserialized, mu_mp_deserialized = torch.split(a,[s1-1,1],dim=1)
-        mu_mp_deserialized = mu_mp_deserialized.squeeze()
-        reachable_nodes_deserialized, num_nodes_deserialized = torch.split(b,[num_nodes_padded,1],dim=1)
-        num_nodes_deserialized = num_nodes_deserialized.squeeze(2)
-        assert s0 == bsize
-        assert (s2-1)==self.emb_dim
-        assert (s1-1)==num_nodes_padded
-        assert torch.allclose(mu,mu_deserialized)
-        assert torch.allclose(mu_meanpool,mu_mp_deserialized)
-        assert torch.allclose(reachable_nodes,reachable_nodes_deserialized)
-        assert torch.allclose(num_nodes,num_nodes_deserialized)
+        # # test serialization
+        # s0,s1,s2 = mu_serialized.shape
+        # a,b=torch.split(mu_serialized,[s2-1,1],dim=2)
+        # mu_deserialized, mu_mp_deserialized = torch.split(a,[s1-1,1],dim=1)
+        # mu_mp_deserialized = mu_mp_deserialized.squeeze()
+        # reachable_nodes_deserialized, num_nodes_deserialized = torch.split(b,[num_nodes_padded,1],dim=1)
+        # num_nodes_deserialized = num_nodes_deserialized.squeeze(2)
+        # assert s0 == bsize
+        # assert (s2-1)==self.emb_dim
+        # assert (s1-1)==num_nodes_padded
+        # assert torch.allclose(mu,mu_deserialized)
+        # assert torch.allclose(mu_meanpool,mu_mp_deserialized)
+        # assert torch.allclose(reachable_nodes,reachable_nodes_deserialized)
+        # assert torch.allclose(num_nodes,num_nodes_deserialized)
 
-        mu=torch.cat((mu,observations['reachable_nodes']),dim=2)
-        mu_flat = mu.reshape(bsize,-1)
-        assert self.fdim == self.features_dim
-        assert mu_flat.shape[-1] == self.fdim
+        # mu=torch.cat((mu,observations['reachable_nodes']),dim=2)
+        # mu_flat = mu.reshape(bsize,-1)
+        # assert self.fdim == self.features_dim
+        # assert mu_flat.shape[-1] == self.fdim
         
-        return mu_flat
-        #return mu_serialized
+        #return mu_flat
+        return mu_serialized
 
 
 class s2v_ACNetwork(nn.Module):
@@ -186,21 +187,34 @@ class s2v_ACNetwork(nn.Module):
         self.theta6_v = nn.Linear(self.emb_dim, self.emb_dim, True)#, dtype=torch.float32)
         self.theta7_v = nn.Linear(self.emb_dim, self.emb_dim, True)#, dtype=torch.float32)
 
+    def _deserialize(self, features):
+        s0,s1,s2 = features.shape
+        a,b=torch.split(features,[s2-1,1],dim=2)
+        mu, mu_mp = torch.split(a,[s1-1,1],dim=1)
+        mu_mp = mu_mp.squeeze()
+        reachable_nodes, num_nodes = torch.split(b,[s1-1,1],dim=1)
+        num_nodes = num_nodes.squeeze(2)
+        num_nodes_padded = s1-1
+        emb_dim = s2-1
+        bsize=s0
+        return mu, mu_mp, reachable_nodes, num_nodes, num_nodes_padded, emb_dim, bsize
 
     def forward(self, features: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         :return: (th.Tensor, th.Tensor) latent_policy, latent_value of the specified network.
             If all layers are shared, then ``latent_policy == latent_value``
         """
-        num_nodes=features.shape[1]//(self.emb_dim+1)
-        return self.forward_actor(features,num_nodes), self.forward_critic(features,num_nodes)
+        #num_nodes=features.shape[1]//(self.emb_dim+1)
+        mu, mu_mp, reachable_nodes, num_nodes, num_nodes_padded, emb_dim, bsize = self._deserialize(features)
+        
+        return  self.forward_actor(  features, mu, num_nodes_padded), \
+                self.forward_critic( features, mu, reachable_nodes, num_nodes_padded)
 
-    def forward_actor(self, features: torch.Tensor, num_nodes: int) -> torch.Tensor:
-        #num_nodes = features.shape[1]//(self.emb_dim+1)
-        mu_rn = features.reshape(features.shape[0], num_nodes, self.emb_dim+1)  # (batch_size, nr_nodes, emb_dim+1)
-        mu, reachable_nodes = torch.split(mu_rn,[self.emb_dim, 1],2)
+    def forward_actor(self, features: torch.Tensor, mu=None, num_nodes_padded=None) -> torch.Tensor:
+        if mu==None:
+            mu, mu_mp, reachable_nodes, num_nodes, num_nodes_padded, emb_dim, bsize = self._deserialize(features)
 
-        global_state = self.theta6_pi(torch.sum(mu, dim=1, keepdim=True).repeat(1, num_nodes, 1))
+        global_state = self.theta6_pi(torch.sum(mu, dim=1, keepdim=True).repeat(1, num_nodes_padded, 1))
         local_action = self.theta7_pi(mu)  # (batch_dim, nr_nodes, emb_dim)
         rep = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (batch_dim, nr_nodes, 2*emb_dim)
         
@@ -210,12 +224,11 @@ class s2v_ACNetwork(nn.Module):
         
         #return F.relu(prob_logits) # (bsize, num_nodes) TODO CHECK: extra nonlinearity useful?
 
-    def forward_critic(self, features: torch.Tensor, num_nodes: int) -> torch.Tensor:
-        #mu = features.reshape(-1, self.num_nodes, self.emb_dim)  # (batch_size, nr_nodes, emb_dim)
-        mu_rn = features.reshape(-1, num_nodes, self.emb_dim+1)  # (batch_size, nr_nodes, emb_dim+1)
-        mu, reachable_nodes = torch.split(mu_rn,[self.emb_dim, 1],2)
+    def forward_critic(self, features: torch.Tensor, mu=None, reachable_nodes=None, num_nodes_padded=None) -> torch.Tensor:
+        if mu == None:
+            mu, mu_mp, reachable_nodes, num_nodes, num_nodes_padded, emb_dim, bsize = self._deserialize(features)
 
-        global_state = self.theta6_v(torch.sum(mu, dim=1, keepdim=True).repeat(1, num_nodes, 1))
+        global_state = self.theta6_v(torch.sum(mu, dim=1, keepdim=True).repeat(1, num_nodes_padded, 1))
         local_action = self.theta7_v(mu)  # (batch_dim, nr_nodes, emb_dim)
         rep = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (batch_dim, nr_nodes, 2*emb_dim)
         qvals = self.theta5_v(rep).squeeze(-1) # (batch_dim, nr_nodes)
