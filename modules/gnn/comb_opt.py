@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from modules.dqn.dqn_utils import seed_everything
 from modules.rl.rl_policy import GNN_s2v_Policy, ShortestPathPolicy, EpsilonGreedyPolicy
 from modules.rl.rl_algorithms import q_learning_exhaustive
-from modules.rl.rl_utils import EvaluatePolicy, EvalArgs1, EvalArgs2, EvalArgs3, GetFullCoverageSample
+from modules.rl.rl_utils import EvaluatePolicy, EvalArgs1, EvalArgs2, EvalArgs3, EvalArgsSP, GetFullCoverageSample
 from modules.sim.simdata_utils import SimulateInteractiveMode
 from torch_geometric.data import Data, Batch
 from torch_geometric.nn.models import GAT
@@ -425,7 +425,6 @@ class Memory(object):
     def __len__(self):
         return min(self.nr_inserts, self.capacity)
 
-
 def train(seed=0, config=None, env_all=None):
     # Storing metrics about training:
     found_solutions = dict()  # episode --> (W, solution)
@@ -719,12 +718,12 @@ def evaluate_spath_heuristic(logdir, config, env_all, n_eval=20000):
         for i,env in enumerate(tqdm.tqdm(env_all)):
             policy=ShortestPathPolicy(env,weights='equal')
             #env.encode = env.encode_nfm
-            l, returns, c, solves = EvaluatePolicy(env, policy,env.world_pool, print_runs=False, save_plots=False, logdir=logdir, eval_arg_func=EvalArgs3, silent_mode=True)
+            l, returns, c, solves = EvaluatePolicy(env, policy,env.world_pool, print_runs=False, save_plots=False, logdir=logdir, eval_arg_func=EvalArgsSP, silent_mode=True)
             num_worlds_requested = 10
             once_every = max(1,len(env_all)//num_worlds_requested)
             if i % once_every ==0:
                 plotlist = GetFullCoverageSample(returns, env.world_pool, bins=10, n=15)
-                EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgs3, silent_mode=False, plot_each_timestep=False)
+                EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=logdir, eval_arg_func=EvalArgsSP, silent_mode=False, plot_each_timestep=False)
             R+=returns 
             S+=solves
             print('Env',i,'Number of instances:',len(returns),'Cumulative insances:',len(R))
@@ -751,8 +750,6 @@ def evaluate_spath_heuristic(logdir, config, env_all, n_eval=20000):
     printing('---------------------------------------')
     for k,v in config.items():
         printing(k+' '+str(v))
-
-
 
 def evaluate(logdir, info=False, config=None, env_all=None, eval_subdir='.', n_eval=1000):
     #Test(config)

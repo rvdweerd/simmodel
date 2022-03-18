@@ -32,6 +32,12 @@ def EvalArgs3(env):
     # this is used when observation wrappers are used
     return env.observation(None), env.availableActionsInCurrentState()
 
+def EvalArgsSP(env):
+    # return next node in shortest path and current node
+    if len(env.sp.spath_to_target) == 1:
+        return (env.neighbors[env.state[0]][0], env.state[0]), None
+    return (env.sp.spath_to_target[env.global_t+1], env.state[0]), None
+
 
 def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, logdir='./temp', has_Q_table=False, eval_arg_func=EvalArgs1, silent_mode=False, plot_each_timestep=True):
     # Escaper chooses random neighboring nodes until temination

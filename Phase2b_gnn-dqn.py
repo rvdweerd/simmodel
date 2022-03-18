@@ -230,18 +230,18 @@ def main(args):
             # 'Manhattan5x5_DuplicateSetB',
             # 'Manhattan3x3_WalkAround',
             # 'MetroU3_e1t31_FixedEscapeInit', 
-            # 'NWB_test_FixedEscapeInit',
-            # 'NWB_test_VariableEscapeInit',
-            # 'NWB_UTR_FixedEscapeInit',
-            # 'NWB_UTR_VariableEscapeInit',            
             # 'full_solvable_3x3subs',
-            #'NWB_ROT_FixedEscapeInit',
+            'Manhattan5x5_FixedEscapeInit',
+            'Manhattan5x5_VariableEscapeInit',
+            'MetroU3_e17tborder_FixedEscapeInit',
+            'MetroU3_e17tborder_VariableEscapeInit',
+            'NWB_ROT_FixedEscapeInit',
             'NWB_ROT_VariableEscapeInit',
-            # 'MetroU3_e17tborder_FixedEscapeInit',
-            # 'MetroU3_e17tborder_VariableEscapeInit',
-            # 'Manhattan5x5_FixedEscapeInit',
-            # 'Manhattan5x5_VariableEscapeInit',
-            # 'SparseManhattan5x5',
+            'NWB_test_FixedEscapeInit',
+            'NWB_test_VariableEscapeInit',
+            'NWB_UTR_FixedEscapeInit',
+            'NWB_UTR_VariableEscapeInit',            
+            'SparseManhattan5x5',
             ]
         #node_maxims = [0,0,0,0]
         #var_targets=[ None,None,None,None]
@@ -263,10 +263,10 @@ def main(args):
             #env = CreateEnv('MetroU3_e17tborder_VariableEscapeInit',max_nodes=33,nfm_func_name = config['nfm_func'],var_targets=None, remove_world_pool=True, apply_wrappers=False)        
             #env, env_all_train_list = ConstructTrainSet(config, apply_wrappers=False, remove_paths=config['remove_paths'], tset=config['train_on']) #TODO check
 
-            calcHeur=True
-            if calcHeur:
-                evaluate_spath_heuristic(logdir=config['rootdir']+'/heur/spath', config=config, env_all=evalenv)
-            continue
+            # calcHeur=True
+            # if calcHeur:
+            #     evaluate_spath_heuristic(logdir=config['rootdir']+'/heur/'+evalName, config=config, env_all=evalenv)
+            # continue
             if config['demoruns']:
                 Q_func, Q_net, optimizer, lr_scheduler = init_model(config,fname=config['logdir']+'/SEED'+str(config['seed0'])+'/best_model.tar')
                 policy=GNN_s2v_Policy(Q_func)

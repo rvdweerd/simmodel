@@ -175,6 +175,8 @@ class ShortestPathPolicy(Policy):
         return self.sample_greedy_action(s, available_actions)
 
     def sample_greedy_action(self, s, available_actions=None):
+        action = self.env.neighbors[s[1]].index(int(s[0]))
+        return action, None
         if type(s) == np.ndarray:
             source_node_label = int(np.where(s[:self.env.sp.V]>0)[0])
         elif type(s) == tuple:
@@ -186,7 +188,10 @@ class ShortestPathPolicy(Policy):
             for target_node_label in self.env.sp.target_nodes:
                 target_node_coord = self.env.sp.labels2coord[target_node_label]
                 source_node_coord = self.env.sp.labels2coord[source_node_label]
-                cost, path = nx.single_source_dijkstra(self.G, source_node_coord, target_node_coord, weight='weight')
+                try:
+                    cost, path = nx.single_source_dijkstra(self.G, source_node_coord, target_node_coord, weight='weight')
+                except:
+                    continue
                 if cost < min_cost:
                     best_path=path
                     min_cost = cost
