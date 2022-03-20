@@ -22,7 +22,7 @@
                     "--emb_dim","64",
                     "--emb_itT","5",
                     "--nfm_func","NFM_ev_ec_t_dt_at_um_us",
-                    "--qnet","s2v",
+                    "--qnet","gat2",
                     "--norm_agg","True",
                     "--optim_target","returns",
                     "--num_step","200000",

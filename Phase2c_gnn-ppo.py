@@ -8,7 +8,8 @@ from modules.gnn.comb_opt import evaluate_spath_heuristic
 from modules.rl.rl_utils import EvaluatePolicy, print_parameters, GetFullCoverageSample, NpWrapper
 from modules.ppo.helpfuncs import get_super_env, CreateEnv, eval_simple, evaluate_ppo#, get_logdirs
 from modules.ppo.callbacks_sb3 import SimpleCallback, TestCallBack
-from modules.ppo.models_sb3 import s2v_ActorCriticPolicy, Struc2VecExtractor, DeployablePPOPolicy
+from modules.ppo.models_sb3_s2v import s2v_ActorCriticPolicy, Struc2VecExtractor, DeployablePPOPolicy
+from modules.ppo.models_sb3_gat2 import Gat2_ActorCriticPolicy, Gat2Extractor, DeployablePPOPolicy_gat2
 from modules.rl.rl_policy import ActionMaskedPolicySB3_PPO
 from modules.rl.environments import SuperEnv
 import modules.gnn.nfm_gen
@@ -77,7 +78,7 @@ def main(args):
         assert config['node_dim'] == senv.F
 
         policy_kwargs = dict(
-            features_extractor_class = Struc2VecExtractor,
+            features_extractor_class = Struc2VecExtractor if config['qnet']=='s2v' else Gat2Extractor,
             features_extractor_kwargs = dict(emb_dim=config['emb_dim'], emb_iter_T=config['emb_iter_T'], node_dim=config['node_dim']),#, num_nodes=MAX_NODES),
             # NOTE: FOR THIS TO WORK, NEED TO ADJUST sb3 policies.py
             #           def proba_distribution_net(self, latent_dim: int) -> nn.Module:
@@ -88,7 +89,8 @@ def main(args):
         for seed in config['seedrange']:
             logdir_ = config['logdir']+'/SEED'+str(seed)
 
-            model = MaskablePPO(s2v_ActorCriticPolicy, senv, \
+            model = MaskablePPO(policy = s2v_ActorCriticPolicy if config['qnet']=='s2v' else Gat2_ActorCriticPolicy, \
+                env = senv, \
                 #learning_rate=1e-4,\
                 seed=seed, \
                 #batch_size=128, \
@@ -145,9 +147,14 @@ def main(args):
 
             if config['demoruns']:
                 saved_model = MaskablePPO.load(config['logdir']+'/SEED'+str(config['seed0'])+"/saved_models/model_last")
-                saved_policy = s2v_ActorCriticPolicy.load(config['logdir']+'/SEED'+str(config['seed0'])+"/saved_models/policy_last")
-                saved_policy_deployable=DeployablePPOPolicy(env, saved_policy)
-                ppo_policy = ActionMaskedPolicySB3_PPO(saved_policy_deployable, deterministic=True)
+                if config['qnet']=='s2v':
+                    saved_policy = s2v_ActorCriticPolicy.load(config['logdir']+'/SEED'+str(config['seed0'])+"/saved_models/policy_last")
+                    saved_policy_deployable=DeployablePPOPolicy(env, saved_policy)
+                    ppo_policy = ActionMaskedPolicySB3_PPO(saved_policy_deployable, deterministic=True)
+                else:
+                    saved_policy = Gat2_ActorCriticPolicy.load(config['logdir']+'/SEED'+str(config['seed0'])+"/saved_models/policy_last")
+                    saved_policy_deployable=DeployablePPOPolicy_gat2(env, saved_policy)
+                    ppo_policy = ActionMaskedPolicySB3_PPO(saved_policy_deployable, deterministic=True)
                 while True:
                     entries=None#[5012,218,3903]
                     demo_env = random.choice(evalenv)

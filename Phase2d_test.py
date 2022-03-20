@@ -7,7 +7,7 @@ import torch
 from modules.ppo.helpfuncs import get_super_env, CreateEnv, eval_simple, evaluate_ppo, check_custom_position_probs
 from modules.rl.environments import SuperEnv
 from modules.rl.rl_policy import ActionMaskedPolicySB3_PPO
-from modules.ppo.models_sb3 import s2v_ActorCriticPolicy, Struc2Vec, DeployablePPOPolicy
+from modules.ppo.models_sb3_s2v import s2v_ActorCriticPolicy, Struc2Vec, DeployablePPOPolicy
 #from modules.ppo.ppo_wrappers import VarTargetWrapper
 from sb3_contrib import MaskablePPO
 from modules.gnn.construct_trainsets import ConstructTrainSet, get_train_configs
