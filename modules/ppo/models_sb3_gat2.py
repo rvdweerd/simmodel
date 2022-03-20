@@ -1,4 +1,5 @@
 import gym
+import copy
 import numpy as np
 import torch
 import torch.nn as nn 
@@ -6,9 +7,27 @@ import torch.nn.functional as F
 from torch.distributions.categorical import Categorical
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
+from torch_geometric.nn.conv import MessagePassing, GATv2Conv
+from torch_geometric.nn.models.basic_gnn import BasicGNN
+from torch_geometric.data import Data, Batch
 from torch_scatter import scatter_mean, scatter_add
 from typing import Callable, Dict, List, Optional, Tuple, Type, Union
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+class GATv2(BasicGNN):
+    r"""
+    """
+    def init_conv(self, in_channels: int, out_channels: int,
+                  **kwargs) -> MessagePassing:
+
+        kwargs = copy.copy(kwargs)
+        if 'heads' in kwargs and out_channels % kwargs['heads'] != 0:
+            kwargs['heads'] = 1
+        if 'concat' not in kwargs or kwargs['concat']:
+            out_channels = out_channels // kwargs.get('heads', 1)
+
+        return GATv2Conv(in_channels, out_channels, dropout=self.dropout,
+                       **kwargs)
 
 class Gat2Extractor(BaseFeaturesExtractor):
     """
@@ -30,103 +49,55 @@ class Gat2Extractor(BaseFeaturesExtractor):
         self.emb_dim        = emb_dim
         self.T              = emb_iter_T
         self.node_dim       = node_dim
-        self.theta1a    = nn.Linear(self.node_dim, self.emb_dim, True)#, dtype=torch.float32)
-        self.theta1b    = nn.Linear(self.emb_dim, self.emb_dim, True)#, dtype=torch.float32)
-        self.theta2     = nn.Linear(self.emb_dim, self.emb_dim, True)#, dtype=torch.float32)
-        self.theta3     = nn.Linear(self.emb_dim, self.emb_dim, True)#, dtype=torch.float32)
-        self.theta4     = nn.Linear(1, self.emb_dim, True)#, dtype=torch.float32)
-
-    def get_embeddings(self, xv, Ws):
-        # xv: The node features (batch_size, num_nodes, node_dim)
-        # Ws: The graphs (batch_size, num_nodes, num_nodes)
-        num_nodes = xv.shape[1]
-        batch_size = xv.shape[0]
-        
-        # pre-compute 1-0 connection matrices masks (batch_size, num_nodes, num_nodes)
-        #conn_matrices = torch.where(Ws > 0, torch.ones_like(Ws), torch.zeros_like(Ws)).to(device)
-        conn_matrices = Ws # we have only edge weights of 1
-
-        # Graph embedding
-        # Note: we first compute s1 and s3 once, as they are not dependent on mu
-        mu = torch.zeros(batch_size, num_nodes, self.emb_dim,device=device)#, dtype=torch.float32)#,device=device)
-        #s1 = self.theta1a(xv)  # (batch_size, num_nodes, emb_dim)
-        s1 = self.theta1b(F.relu(self.theta1a(xv)))  # (batch_size, num_nodes, emb_dim)
-        #for layer in self.theta1_extras:
-        #    s1 = layer(F.relu(s1))  # we apply the extra layer
-        
-        s3_1 = F.relu(self.theta4(Ws.unsqueeze(3)))  # (batch_size, nr_nodes, nr_nodes, emb_dim) - each "weigth" is a p-dim vector        
-        s3_2 = torch.sum(s3_1, dim=1)  # (batch_size, nr_nodes, emb_dim) - the embedding for each node
-        s3 = self.theta3(s3_2)  # (batch_size, nr_nodes, emb_dim)
-        
-        for t in range(self.T):
-            s2 = self.theta2(conn_matrices.matmul(mu))    
-            mu = F.relu(s1 + s2 + s3) # (batch_size, nr_nodes, emb_dim)
-        
-        return mu
+        kwargs={'concat':True}
+        self.gat = GATv2(
+            in_channels = self.node_dim,
+            hidden_channels = self.emb_dim,
+            num_layers = 5,
+            out_channels = self.emb_dim,
+            **kwargs
+        ).to(device)        
 
     def forward(self, observations):# -> torch.Tensor:
         num_nodes_padded = observations['W'].shape[1]
-        #node_dim = observations['nfm'].shape[2]
-        #bsize=observations['W'].shape[0]
-        # if bsize>1:
-        #     k=0
-        
-        nfm=observations['nfm'] # (bsize,numnodes,emb_dim)
-        W=observations['W']     # (bsize,numnodes,numnodes)
-        #pygei = observations['pygei'] #(bsize,2,MAX_NUM_EDGES)
-        #pygx = observations['pygx'] #(bsize,numnodes,emb_dim)
-        #reachable_nodes = observations['reachable_nodes'] #(bsize,numnodes,1)
+        #nfm=observations['nfm'] # (bsize,numnodes,emb_dim)
+        #W=observations['W']     # (bsize,numnodes,numnodes)
+        pygei = observations['pygei'] #(bsize,2,MAX_NUM_EDGES)
+        pygx = observations['pygx'] #(bsize,numnodes,emb_dim)
+        reachable_nodes = observations['reachable_nodes'] #(bsize,numnodes,1)
         num_nodes=observations['num_nodes'] #(bsize,1)
-        #num_edges=observations['num_edges'] #(bsize,1)
+        num_edges=observations['num_edges'] #(bsize,1)
+        bsize=len(num_nodes)
 
-        mu = self.get_embeddings(nfm, W) # (batch_size, nr_nodes, emb_dim)      
-        
+        # Build pyg data batch
+        #X=[]
+        #EI=[]
         select=[]
-        batch=[]
-        #Reduce=False
-        for i in range(len(num_nodes)):
-            #lst+=[i]*n[i] + [len(n)]*(num_nodes_padded-n[i])
+        pyg_list=[]
+        for i in range(bsize):
             select+=[True]*int(num_nodes[i])+[False]*(num_nodes_padded-int(num_nodes[i]))
-            batch+=[i]*int(num_nodes[i])
-        mu_raw = mu.reshape(-1,self.emb_dim)[select]
-        batch=torch.tensor(batch,dtype=torch.int64,device=device)
+            pyg_list.append(Data(
+                pygx[i][:int(num_nodes[i].detach().item()) ],
+                pygei[i][:,:int(num_edges[i].detach().item())].to(torch.int64)
+            ))
+        pyg_data = Batch.from_data_list(pyg_list)
+        mu_raw = self.gat(pyg_data.x, pyg_data.edge_index) # (nr_nodes in batch, emb_dim)      
+        
+        reach_nodes_enc = reachable_nodes.reshape(-1)[select][:,None]
+
+        num_nodes_enc = torch.zeros(mu_raw.shape[0],1).to(device)
+        num_nodes_enc[-1,0]=bsize
+        num_nodes_enc[:bsize,0]=num_nodes.clone().squeeze()
 
         if self.norm_agg:
-            mu_meanpool = scatter_mean(mu_raw,batch,dim=0) # (bsize,emb_dim)
-            #mu_meanpool_expanded = torch.repeat_interleave(mu_meanpool,torch.tensor(num_nodes,dtype=torch.int64,device=device),dim=0) #(sum of num_nodes in the batch, emb_dim)
+            mu_meanpool = scatter_mean(mu_raw,pyg_data.batch,dim=0) # (bsize,emb_dim)
+            mu_meanpool_expanded = torch.repeat_interleave(mu_meanpool,num_nodes.squeeze().to(torch.int64),dim=0) #(sum of num_nodes in the batch, emb_dim)
             #global_state_STAR = self.theta6(mu_meanpool_expanded)
         else:
             assert False
-            mu_maxpool = scatter_add(mu_raw,batch,dim=0) # (bsize,emb_dim)
-            #mu_maxpool_expanded = torch.repeat_interleave(mu_maxpool,torch.tensor(num_nodes,dtype=torch.int64,device=device),dim=0) #(sum of num_nodes in the batch, emb_dim)
-            #global_state_STAR = self.theta6(mu_maxpool_expanded)
-
-
-        mu_serialized1=torch.cat((mu,observations['reachable_nodes']),dim=2) #(bsize,numnodes,emb_dim+1)
-        mu_serialized2=torch.cat((mu_meanpool,num_nodes),dim=1)[:,None,:] #(bsize,1,emb_dim+1)
-        mu_serialized=torch.cat((mu_serialized1,mu_serialized2),dim=1) #(bsize,numnodes+1,emb_dim+1)
-
-        # # test serialization
-        # s0,s1,s2 = mu_serialized.shape
-        # a,b=torch.split(mu_serialized,[s2-1,1],dim=2)
-        # mu_deserialized, mu_mp_deserialized = torch.split(a,[s1-1,1],dim=1)
-        # mu_mp_deserialized = mu_mp_deserialized.squeeze()
-        # reachable_nodes_deserialized, num_nodes_deserialized = torch.split(b,[num_nodes_padded,1],dim=1)
-        # num_nodes_deserialized = num_nodes_deserialized.squeeze(2)
-        # assert s0 == bsize
-        # assert (s2-1)==self.emb_dim
-        # assert (s1-1)==num_nodes_padded
-        # assert torch.allclose(mu,mu_deserialized)
-        # assert torch.allclose(mu_meanpool,mu_mp_deserialized)
-        # assert torch.allclose(reachable_nodes,reachable_nodes_deserialized)
-        # assert torch.allclose(num_nodes,num_nodes_deserialized)
-
-        # mu=torch.cat((mu,observations['reachable_nodes']),dim=2)
-        # mu_flat = mu.reshape(bsize,-1)
-        # assert self.fdim == self.features_dim
-        # assert mu_flat.shape[-1] == self.fdim
         
-        #return mu_flat
+        mu_serialized=torch.cat((mu_raw,mu_meanpool_expanded,num_nodes_enc,reach_nodes_enc),dim=1) #(num_nodes in batch, 2*emb_dim+2)
+
         return mu_serialized
 
 
@@ -169,16 +140,11 @@ class Gat2_ACNetwork(nn.Module):
         self.theta7_v = nn.Linear(self.emb_dim, self.emb_dim, True)#, dtype=torch.float32)
 
     def _deserialize(self, features):
-        s0,s1,s2 = features.shape
-        a,b=torch.split(features,[s2-1,1],dim=2)
-        mu, mu_mp = torch.split(a,[s1-1,1],dim=1)
-        mu_mp = mu_mp.squeeze()
-        reachable_nodes, num_nodes = torch.split(b,[s1-1,1],dim=1)
-        num_nodes = num_nodes.squeeze(2)
-        num_nodes_padded = s1-1
-        emb_dim = s2-1
-        bsize=s0
-        return mu, mu_mp, reachable_nodes, num_nodes, num_nodes_padded, emb_dim, bsize
+        mu_raw, mu_meanpool_expanded, nnenc=torch.split(features,[self.emb_dim,self.emb_dim,1],dim=1)
+        bsize=nnenc[-1,0]
+        num_nodes=nnenc[:bsize,0]
+        
+        return mu_raw, mu_meanpool_expanded, num_nodes, bsize
 
     def forward(self, features: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
@@ -186,17 +152,17 @@ class Gat2_ACNetwork(nn.Module):
             If all layers are shared, then ``latent_policy == latent_value``
         """
         #num_nodes=features.shape[1]//(self.emb_dim+1)
-        mu, mu_mp, reachable_nodes, num_nodes, num_nodes_padded, emb_dim, bsize = self._deserialize(features)
+        mu_raw, mu_meanpool_expanded, num_nodes, bsize = self._deserialize(features)
         
-        return  self.forward_actor(  features, mu, num_nodes_padded), \
-                self.forward_critic( features, mu, reachable_nodes, num_nodes_padded)
+        return  self.forward_actor(  features, mu_raw, mu_meanpool_expanded, num_nodes, bsize), \
+                self.forward_critic( features, mu_raw, mu_meanpool_expanded, num_nodes, bsize)
 
-    def forward_actor(self, features: torch.Tensor, mu=None, num_nodes_padded=None) -> torch.Tensor:
-        if mu==None:
-            mu, mu_mp, reachable_nodes, num_nodes, num_nodes_padded, emb_dim, bsize = self._deserialize(features)
+    def forward_actor(self, features: torch.Tensor, mu_raw=None, mu_meanpool_expande=None, num_nodes=None, bsize=None) -> torch.Tensor:
+        if mu_raw==None:
+            mu_raw, mu_meanpool_expanded, num_nodes, bsize = self._deserialize(features)
 
-        global_state = self.theta6_pi(torch.sum(mu, dim=1, keepdim=True).repeat(1, num_nodes_padded, 1))
-        local_action = self.theta7_pi(mu)  # (batch_dim, nr_nodes, emb_dim)
+        global_state = self.theta6_pi(torch.sum(mu_raw, dim=1, keepdim=True).repeat(1, num_nodes, 1))
+        local_action = self.theta7_pi(mu_raw)  # (batch_dim, nr_nodes, emb_dim)
         rep = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (batch_dim, nr_nodes, 2*emb_dim)
         
         # Extra linear layer in sb3?
@@ -205,12 +171,12 @@ class Gat2_ACNetwork(nn.Module):
         
         #return F.relu(prob_logits) # (bsize, num_nodes) TODO CHECK: extra nonlinearity useful?
 
-    def forward_critic(self, features: torch.Tensor, mu=None, reachable_nodes=None, num_nodes_padded=None) -> torch.Tensor:
-        if mu == None:
-            mu, mu_mp, reachable_nodes, num_nodes, num_nodes_padded, emb_dim, bsize = self._deserialize(features)
+    def forward_critic(self, features: torch.Tensor, mu_raw=None, mu_meanpool_expande=None, num_nodes=None, bsize=None) -> torch.Tensor:
+        if mu_raw == None:
+            mu_raw, mu_meanpool_expanded, num_nodes, bsize = self._deserialize(features)
 
-        global_state = self.theta6_v(torch.sum(mu, dim=1, keepdim=True).repeat(1, num_nodes_padded, 1))
-        local_action = self.theta7_v(mu)  # (batch_dim, nr_nodes, emb_dim)
+        global_state = self.theta6_v(torch.sum(mu_raw, dim=1, keepdim=True).repeat(1, num_nodes, 1))
+        local_action = self.theta7_v(mu_raw)  # (batch_dim, nr_nodes, emb_dim)
         rep = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (batch_dim, nr_nodes, 2*emb_dim)
         qvals = self.theta5_v(rep).squeeze(-1) # (batch_dim, nr_nodes)
         reachable_nodes = reachable_nodes.type(torch.BoolTensor)
