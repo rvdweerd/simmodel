@@ -3,8 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from modules.ppo.helpfuncs import get_super_env, CreateEnv, eval_simple, evaluate_ppo#, get_logdirs
 from modules.rl.environments import SuperEnv
-from modules.rl.rl_policy import ActionMaskedPolicySB3_PPO
-from modules.ppo.models_sb3 import s2v_ActorCriticPolicy, Struc2Vec
+#from modules.rl.rl_policy import ActionMaskedPolicySB3_PPO
+#from modules.ppo.models_sb3 import s2v_ActorCriticPolicy, Struc2VecExtractor
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M5Mix'):
@@ -267,7 +267,7 @@ def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M
             probs=probs)
 
     if tset == 'TEST':
-        env, _ = get_super_env(Uselected=[2], Eselected=[6,9], config=config, var_targets=None, apply_wrappers=apply_wrappers, remove_paths=remove_paths)
+        env, _ = get_super_env(Uselected=[2], Eselected=[3,6,9], config=config, var_targets=None, apply_wrappers=apply_wrappers, remove_paths=remove_paths)
         env_all_list += env.all_env
         global_env.append(env)
         probs.append(1)

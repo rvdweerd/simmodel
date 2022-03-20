@@ -29,7 +29,7 @@ from torch_scatter import scatter_mean, scatter_add
 from typing import Callable, Dict, List, Optional, Tuple, Type, Union
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-class Struc2Vec(BaseFeaturesExtractor):
+class Struc2VecExtractor(BaseFeaturesExtractor):
     """
     :param observation_space: (gym.Space)
     :param features_dim: (int) Number of features extracted.
@@ -38,7 +38,7 @@ class Struc2Vec(BaseFeaturesExtractor):
     def __init__(self, observation_space: gym.spaces.Dict, emb_dim, emb_iter_T, node_dim):#, num_nodes):
         max_num_nodes=observation_space.spaces['W'].shape[0]
         features_dim: int = max_num_nodes * (emb_dim+1) #MUST BE NUM_NODES*(EMB_DIM+1), reacheble nodes vec concatenated
-        super(Struc2Vec, self).__init__(observation_space, features_dim)
+        super(Struc2VecExtractor, self).__init__(observation_space, features_dim)
         
         
         # Incoming: (bsize, num_nodes, (F+num_nodes+1))      
@@ -55,7 +55,7 @@ class Struc2Vec(BaseFeaturesExtractor):
         self.theta3     = nn.Linear(self.emb_dim, self.emb_dim, True)#, dtype=torch.float32)
         self.theta4     = nn.Linear(1, self.emb_dim, True)#, dtype=torch.float32)
 
-    def struc2vec(self, xv, Ws):
+    def get_embeddings(self, xv, Ws):
         # xv: The node features (batch_size, num_nodes, node_dim)
         # Ws: The graphs (batch_size, num_nodes, num_nodes)
         num_nodes = xv.shape[1]
@@ -98,7 +98,7 @@ class Struc2Vec(BaseFeaturesExtractor):
         num_nodes=observations['num_nodes'] #(bsize,1)
         #num_edges=observations['num_edges'] #(bsize,1)
 
-        mu = self.struc2vec(nfm, W) # (batch_size, nr_nodes, emb_dim)      
+        mu = self.get_embeddings(nfm, W) # (batch_size, nr_nodes, emb_dim)      
         
         select=[]
         batch=[]
@@ -238,74 +238,71 @@ class s2v_ACNetwork(nn.Module):
         return v.unsqueeze(-1) # (bsize,)
 
 
-from stable_baselines3.common.policies import BasePolicy
-from stable_baselines3.common.torch_layers import (
-    BaseFeaturesExtractor,
-    CombinedExtractor,
-    FlattenExtractor,
-    MlpExtractor,
-    NatureCNN,
-    )
-from stable_baselines3.common.type_aliases import Schedule
-from torch import nn
-import torch as th
-from functools import partial
-from sb3_contrib.common.maskable.distributions import MaskableDistribution, make_masked_proba_distribution
-from typing import Any, Dict, List, Optional, Tuple, Type, Union
+# from stable_baselines3.common.policies import BasePolicy
+# from stable_baselines3.common.torch_layers import (
+#     BaseFeaturesExtractor,
+#     CombinedExtractor,
+#     FlattenExtractor,
+#     MlpExtractor,
+#     NatureCNN,
+#     )
+# from stable_baselines3.common.type_aliases import Schedule
+# from torch import nn
+# import torch as th
+# from functools import partial
+# from sb3_contrib.common.maskable.distributions import MaskableDistribution, make_masked_proba_distribution
+# from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
-class MaskableActorCriticPolicy_nodeinvar(MaskableActorCriticPolicy):
-    def __init__(
-        self,
-        observation_space: gym.spaces.Space,
-        action_space: gym.spaces.Space,
-        lr_schedule: Schedule,
-        net_arch: Optional[List[Union[int, Dict[str, List[int]]]]] = None,
-        activation_fn: Type[nn.Module] = nn.Tanh,
-        ortho_init: bool = True,
-        features_extractor_class: Type[BaseFeaturesExtractor] = FlattenExtractor,
-        features_extractor_kwargs: Optional[Dict[str, Any]] = None,
-        normalize_images: bool = True,
-        optimizer_class: Type[th.optim.Optimizer] = th.optim.Adam,
-        optimizer_kwargs: Optional[Dict[str, Any]] = None,
-    ):
-        super().__init__(
-            observation_space, 
-            action_space,
-            lr_schedule,
-            net_arch,
-            activation_fn,
-            ortho_init,
-            features_extractor_class,
-            features_extractor_kwargs,
-            normalize_images,
-            optimizer_class,
-            optimizer_kwargs
-        )
-        # Default network architecture, from stable-baselines
-        if net_arch is None:
-            if features_extractor_class == NatureCNN:
-                net_arch = []
-            else:
-                #net_arch = [dict(pi=[64, 64], vf=[64, 64])]
-                net_arch = []#dict(pi=[64, 64], vf=[64, 64])]
+# class MaskableActorCriticPolicy_nodeinvar(MaskableActorCriticPolicy):
+#     def __init__(
+#         self,
+#         observation_space: gym.spaces.Space,
+#         action_space: gym.spaces.Space,
+#         lr_schedule: Schedule,
+#         net_arch: Optional[List[Union[int, Dict[str, List[int]]]]] = None,
+#         activation_fn: Type[nn.Module] = nn.Tanh,
+#         ortho_init: bool = True,
+#         features_extractor_class: Type[BaseFeaturesExtractor] = FlattenExtractor,
+#         features_extractor_kwargs: Optional[Dict[str, Any]] = None,
+#         normalize_images: bool = True,
+#         optimizer_class: Type[th.optim.Optimizer] = th.optim.Adam,
+#         optimizer_kwargs: Optional[Dict[str, Any]] = None,
+#     ):
+#         super().__init__(
+#             observation_space, 
+#             action_space,
+#             lr_schedule,
+#             net_arch,
+#             activation_fn,
+#             ortho_init,
+#             features_extractor_class,
+#             features_extractor_kwargs,
+#             normalize_images,
+#             optimizer_class,
+#             optimizer_kwargs
+#         )
+#         # Default network architecture, from stable-baselines
+#         if net_arch is None:
+#             if features_extractor_class == NatureCNN:
+#                 net_arch = []
+#             else:
+#                 #net_arch = [dict(pi=[64, 64], vf=[64, 64])]
+#                 net_arch = []#dict(pi=[64, 64], vf=[64, 64])]
 
-        self.net_arch = net_arch
-        self.activation_fn = activation_fn
-        self.ortho_init = ortho_init
+#         self.net_arch = net_arch
+#         self.activation_fn = activation_fn
+#         self.ortho_init = ortho_init
 
-        self.features_extractor = features_extractor_class(self.observation_space, **self.features_extractor_kwargs)
-        self.features_dim = self.features_extractor.features_dim
+#         self.features_extractor = features_extractor_class(self.observation_space, **self.features_extractor_kwargs)
+#         self.features_dim = self.features_extractor.features_dim
 
-        self.normalize_images = normalize_images
-        # Action distribution
-        self.action_dist = make_masked_proba_distribution(action_space)
+#         self.normalize_images = normalize_images
+#         # Action distribution
+#         self.action_dist = make_masked_proba_distribution(action_space)
 
-        self._build(lr_schedule)
+#         self._build(lr_schedule)
 
     
-
-
-
 class s2v_ActorCriticPolicy(MaskableActorCriticPolicy):
     def __init__(
         self,
@@ -364,8 +361,8 @@ class DeployablePPOPolicy(nn.Module):
     def __init__(self, env, trained_policy):
         super(DeployablePPOPolicy, self).__init__()
         self.device=device
-        self.struc2vec = Struc2Vec(env.observation_space,64,5,env.F).to(device)
-        self.struc2vec.load_state_dict(trained_policy.features_extractor.state_dict())
+        self.struc2vec_extractor = Struc2VecExtractor(env.observation_space,64,5,env.F).to(device)
+        self.struc2vec_extractor.load_state_dict(trained_policy.features_extractor.state_dict())
         
         self.s2vACnet = s2v_ACNetwork(64,1,1,64).to(device)
         self.s2vACnet.load_state_dict(trained_policy.mlp_extractor.state_dict())
@@ -379,7 +376,7 @@ class DeployablePPOPolicy(nn.Module):
 
     def forward(self, obs):
         #obs = obs[None,:].to(device)
-        y=self.struc2vec(obs)
+        y=self.struc2vec_extractor(obs)
         a,b=self.s2vACnet(y)
         logits=self.pnet(a)
         value=self.vnet(b)

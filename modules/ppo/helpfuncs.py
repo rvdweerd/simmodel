@@ -14,7 +14,7 @@ from modules.rl.environments import GraphWorld
 from modules.rl.rl_custom_worlds import GetCustomWorld
 from modules.rl.environments import SuperEnv
 from modules.rl.rl_plotting import PlotEUPathsOnGraph_
-from modules.ppo.models_sb3 import s2v_ActorCriticPolicy, Struc2Vec, DeployablePPOPolicy
+from modules.ppo.models_sb3 import s2v_ActorCriticPolicy, Struc2VecExtractor, DeployablePPOPolicy
 from modules.rl.rl_policy import ActionMaskedPolicySB3_PPO
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
