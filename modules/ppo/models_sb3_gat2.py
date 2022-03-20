@@ -53,7 +53,7 @@ class Gat2Extractor(BaseFeaturesExtractor):
         self.gat = GATv2(
             in_channels = self.node_dim,
             hidden_channels = self.emb_dim,
-            num_layers = 5,
+            num_layers = emb_iter_T,
             out_channels = self.emb_dim,
             **kwargs
         ).to(device)        
@@ -67,8 +67,10 @@ class Gat2Extractor(BaseFeaturesExtractor):
         reachable_nodes = observations['reachable_nodes'] #(bsize,numnodes,1)
         num_nodes=observations['num_nodes'] #(bsize,1)
         num_edges=observations['num_edges'] #(bsize,1)
+        assert num_edges.max() < pygei.shape[-1]
         bsize=len(num_nodes)
-
+        if bsize>1:
+            k=0
         # Build pyg data batch
         #X=[]
         #EI=[]
@@ -117,7 +119,7 @@ class Gat2_ACNetwork(nn.Module):
         last_layer_dim_pi: int = 64,
         last_layer_dim_vf: int = 64,
         emb_dim: int =0,
-        #num_nodes: int=0,
+        max_num_nodes: int=0,
     ):
         super(Gat2_ACNetwork, self).__init__()
 
@@ -127,7 +129,7 @@ class Gat2_ACNetwork(nn.Module):
         self.latent_dim_vf = last_layer_dim_vf
         self.feature_dim = feature_dim
         self.emb_dim = emb_dim
-        #self.num_nodes = num_nodes
+        self.max_num_nodes = max_num_nodes
 
         # Policy network parameters
         self.theta5_pi = nn.Linear(2*self.emb_dim, 1, True)#, dtype=torch.float32)
@@ -140,11 +142,11 @@ class Gat2_ACNetwork(nn.Module):
         self.theta7_v = nn.Linear(self.emb_dim, self.emb_dim, True)#, dtype=torch.float32)
 
     def _deserialize(self, features):
-        mu_raw, mu_meanpool_expanded, nnenc=torch.split(features,[self.emb_dim,self.emb_dim,1],dim=1)
-        bsize=nnenc[-1,0]
-        num_nodes=nnenc[:bsize,0]
+        mu_raw, mu_meanpool_expanded, num_nodes_enc, reach_nodes_enc = torch.split(features,[self.emb_dim,self.emb_dim,1,1],dim=1)
+        bsize=int(num_nodes_enc[-1,0].detach().item())
+        num_nodes=num_nodes_enc[:bsize,0]
         
-        return mu_raw, mu_meanpool_expanded, num_nodes, bsize
+        return mu_raw, mu_meanpool_expanded, num_nodes, reach_nodes_enc, bsize
 
     def forward(self, features: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
@@ -152,35 +154,51 @@ class Gat2_ACNetwork(nn.Module):
             If all layers are shared, then ``latent_policy == latent_value``
         """
         #num_nodes=features.shape[1]//(self.emb_dim+1)
-        mu_raw, mu_meanpool_expanded, num_nodes, bsize = self._deserialize(features)
-        
-        return  self.forward_actor(  features, mu_raw, mu_meanpool_expanded, num_nodes, bsize), \
-                self.forward_critic( features, mu_raw, mu_meanpool_expanded, num_nodes, bsize)
+        mu_raw, mu_meanpool_expanded, num_nodes, reach_nodes, bsize = self._deserialize(features)
+        if bsize>1:
+            k=0
+        return  self.forward_actor(  features, mu_raw, mu_meanpool_expanded, num_nodes, reach_nodes, bsize), \
+                self.forward_critic( features, mu_raw, mu_meanpool_expanded, num_nodes, reach_nodes, bsize)
 
-    def forward_actor(self, features: torch.Tensor, mu_raw=None, mu_meanpool_expande=None, num_nodes=None, bsize=None) -> torch.Tensor:
+    def forward_actor(self, features: torch.Tensor, mu_raw=None, mu_meanpool_expanded=None, num_nodes=None, reach_nodes=None, bsize=None) -> torch.Tensor:
         if mu_raw==None:
-            mu_raw, mu_meanpool_expanded, num_nodes, bsize = self._deserialize(features)
+            mu_raw, mu_meanpool_expanded, num_nodes, reach_nodes, bsize = self._deserialize(features)
 
-        global_state = self.theta6_pi(torch.sum(mu_raw, dim=1, keepdim=True).repeat(1, num_nodes, 1))
-        local_action = self.theta7_pi(mu_raw)  # (batch_dim, nr_nodes, emb_dim)
-        rep = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (batch_dim, nr_nodes, 2*emb_dim)
+        global_state = self.theta6_pi(mu_meanpool_expanded) # yields (#nodes in batch, emb_dim)
+        local_action = self.theta7_pi(mu_raw)  # yields (#nodes in batch, emb_dim)
+        rep = F.relu(torch.cat([global_state, local_action], dim=1)) # concat creates (#nodes in batch, 2*emb_dim)
         
+        if bsize>1:
+            k=0
+
         # Extra linear layer in sb3?
         prob_logits = self.theta5_pi(rep)#.squeeze(dim=2) # (batch_dim, nr_nodes)
-        return prob_logits # (bsize, num_nodes,1)
-        
-        #return F.relu(prob_logits) # (bsize, num_nodes) TODO CHECK: extra nonlinearity useful?
+        #max_num_nodes = int(num_nodes.max().detach().item())
 
-    def forward_critic(self, features: torch.Tensor, mu_raw=None, mu_meanpool_expande=None, num_nodes=None, bsize=None) -> torch.Tensor:
+        # add back batch dimension 
+        splitter = num_nodes.detach().cpu().to(torch.int64).tolist()
+        prob_logits = torch.nn.utils.rnn.pad_sequence(prob_logits.split(splitter, dim=0), batch_first=True, padding_value=-1e20) # (bsize, max_num_nodes, 1)
+        p = self.max_num_nodes - prob_logits.shape[1]
+        prob_logits = torch.nn.functional.pad(prob_logits,(0,0,0,p),value=-1e20)
+        return prob_logits
+
+    def forward_critic(self, features: torch.Tensor, mu_raw=None, mu_meanpool_expanded=None, num_nodes=None, reach_nodes=None, bsize=None) -> torch.Tensor:
         if mu_raw == None:
-            mu_raw, mu_meanpool_expanded, num_nodes, bsize = self._deserialize(features)
+            mu_raw, mu_meanpool_expanded, num_nodes, reach_nodes, bsize = self._deserialize(features)
 
-        global_state = self.theta6_v(torch.sum(mu_raw, dim=1, keepdim=True).repeat(1, num_nodes, 1))
-        local_action = self.theta7_v(mu_raw)  # (batch_dim, nr_nodes, emb_dim)
-        rep = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (batch_dim, nr_nodes, 2*emb_dim)
+        global_state = self.theta6_pi(mu_meanpool_expanded) # yields (#nodes in batch, emb_dim)
+        local_action = self.theta7_pi(mu_raw)  # yields (#nodes in batch, emb_dim)
+        rep = F.relu(torch.cat([global_state, local_action], dim=1)) # concat creates (#nodes in batch, 2*emb_dim)     
+        
         qvals = self.theta5_v(rep).squeeze(-1) # (batch_dim, nr_nodes)
-        reachable_nodes = reachable_nodes.type(torch.BoolTensor)
-        qvals[~reachable_nodes.squeeze(-1)] = -torch.inf
+        reachable_nodes = reach_nodes.squeeze().type(torch.BoolTensor)
+        qvals[~reachable_nodes] = -1e20#torch.inf
+
+        if bsize>1:
+            k=0
+
+        splitter = num_nodes.detach().cpu().to(torch.int64).tolist()
+        qvals=torch.nn.utils.rnn.pad_sequence(qvals.split(splitter, dim=0), batch_first=True, padding_value=-1e20)
         v=torch.max(qvals,dim=1)[0]
         return v.unsqueeze(-1) # (bsize,)
 
@@ -282,7 +300,7 @@ class Gat2_ActorCriticPolicy(MaskableActorCriticPolicy):
         emb_dim=self.features_extractor_kwargs['emb_dim']
         node_dim=self.features_extractor_kwargs['node_dim']
         #max_num_nodes=self.features_extractor_kwargs['num_nodes']
-        self.mlp_extractor = Gat2_ACNetwork(self.features_dim, 1, 1, emb_dim)# max_num_nodes)
+        self.mlp_extractor = Gat2_ACNetwork(self.features_dim, 1, 1, emb_dim, self.action_space.n)
         
         # emb_dim = self.features_extractor_kwargs['emb_dim']
         # emb_iter_T = self.features_extractor_kwargs['emb_iter_T']
@@ -335,7 +353,7 @@ class DeployablePPOPolicy_gat2(nn.Module):
         #obs=obs.to(device)
         raw_logits, value = self.forward(obs)
         m=torch.as_tensor(action_masks, dtype=torch.bool, device=device).squeeze()
-        HUGE_NEG = torch.tensor(-torch.inf, dtype=torch.float32, device=device)
+        HUGE_NEG = torch.tensor(-1e20, dtype=torch.float32, device=device)
         logits = torch.where(m,raw_logits.squeeze(),HUGE_NEG)
         if deterministic:
             action = torch.argmax(logits)
@@ -355,7 +373,7 @@ class DeployablePPOPolicy_gat2(nn.Module):
         #m=obs[:,:,-1].to(torch.bool)
 
         
-        HUGE_NEG = torch.tensor(-torch.inf, dtype=torch.float32, device=device)
+        HUGE_NEG = torch.tensor(-1e20, dtype=torch.float32, device=device)
         prob_logits = torch.where(m.squeeze(), raw_logits.squeeze(-1), HUGE_NEG)
         distro=Categorical(logits=prob_logits)
         return distro

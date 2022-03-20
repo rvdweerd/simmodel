@@ -701,7 +701,7 @@ def SimulateAutomaticMode_DQN(env, dqn_policy, t_suffix=True, entries=None):
         input('')
     return a
 
-def SimulateInteractiveMode_PPO(env, model=None, t_suffix=True, entry=None):
+def SimulateInteractiveMode_PPO(env, model=None, filesave_with_time_suffix=True, entry=None):
     if entry is not None:
         obs=env.reset(entry)
     else:
@@ -710,8 +710,8 @@ def SimulateInteractiveMode_PPO(env, model=None, t_suffix=True, entry=None):
     s=env.state
     done=False
     R=0
-    env.render(mode=None, fname="results/test", t_suffix=t_suffix)
-    env.render(mode=None, fname="results/test", t_suffix=True)
+    env.render(mode=None, fname="results/test", t_suffix=filesave_with_time_suffix)
+    #env.render(mode=None, fname="results/test", t_suffix=True)
     endepi=False
     while not done:
         print('e position:',env.state[0],env.sp.labels2coord[env.state[0]])
@@ -760,13 +760,11 @@ def SimulateInteractiveMode_PPO(env, model=None, t_suffix=True, entry=None):
         #a=n.index(int(a))
         obs,r,done,_=env.step(int(a))
         s=env.state
-        env.render_eupaths(mode=None, fname="results/test", t_suffix=t_suffix, last_step_only=True)
-        env.render_eupaths(mode=None, fname="results/test", t_suffix=True, last_step_only=True)
+        env.render_eupaths(mode=None, fname="results/test", t_suffix=filesave_with_time_suffix, last_step_only=True)
         R+=r
     print('\n******************** done, reward='+str(R),'**********************')
     #input('> Press any key to continue')
-    env.render_eupaths(mode=None, fname="results/final", t_suffix=t_suffix)
-    env.render_eupaths(mode=None, fname="results/final", t_suffix=True)
+    env.render_eupaths(mode=None, fname="results/final", t_suffix=filesave_with_time_suffix)
     input('> Press any key to continue')
     print('\n')
     return a

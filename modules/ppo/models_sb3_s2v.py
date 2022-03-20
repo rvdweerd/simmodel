@@ -206,7 +206,8 @@ class s2v_ACNetwork(nn.Module):
         """
         #num_nodes=features.shape[1]//(self.emb_dim+1)
         mu, mu_mp, reachable_nodes, num_nodes, num_nodes_padded, emb_dim, bsize = self._deserialize(features)
-        
+        if bsize>1:
+            k=0
         return  self.forward_actor(  features, mu, num_nodes_padded), \
                 self.forward_critic( features, mu, reachable_nodes, num_nodes_padded)
 
@@ -388,7 +389,7 @@ class DeployablePPOPolicy(nn.Module):
         #obs=obs.to(device)
         raw_logits, value = self.forward(obs)
         m=torch.as_tensor(action_masks, dtype=torch.bool, device=device).squeeze()
-        HUGE_NEG = torch.tensor(-torch.inf, dtype=torch.float32, device=device)
+        HUGE_NEG = torch.tensor(-1e20, dtype=torch.float32, device=device)
         logits = torch.where(m,raw_logits.squeeze(),HUGE_NEG)
         if deterministic:
             action = torch.argmax(logits)
@@ -408,7 +409,7 @@ class DeployablePPOPolicy(nn.Module):
         #m=obs[:,:,-1].to(torch.bool)
 
         
-        HUGE_NEG = torch.tensor(-torch.inf, dtype=torch.float32, device=device)
+        HUGE_NEG = torch.tensor(-1e20, dtype=torch.float32, device=device)
         prob_logits = torch.where(m.squeeze(), raw_logits.squeeze(-1), HUGE_NEG)
         distro=Categorical(logits=prob_logits)
         return distro
