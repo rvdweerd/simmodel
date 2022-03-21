@@ -29,7 +29,7 @@
                     "--eval","False",
                     "--test","False",
                     "--num_seeds","1",
-                    "--seed0","4",
+                    "--seed0","1",
                     "--solve_select","solvable",
                     "--edge_blocking","True",
                     "--max_nodes","25",

@@ -6,7 +6,7 @@ import pickle
 def convert_IMApkl_to_graphml():
     sourcedir='datasets/G_nwb/1.IMApkl/'
     targetdir='datasets/G_nwb/2.IMAgraphml/'
-    filename='G_UTR_1km_V=1191'
+    filename='G_test'
     G=nx.read_gpickle(sourcedir+filename+'.pkl') 
     nodelist=[]
     coord2id={}
@@ -182,6 +182,6 @@ def get_center_and_boundary_nodes(nodes={}, margins=[.1,.1,.1,.1]):
     # nx.draw_networkx_nodes(G, pos_xy, node_size=10, node_color=colorlist, edgecolors='black', alpha=1.)#alhpa=.6
     # plt.savefig('datasets/G_nwb/3.GEPHIgraphml/test_xy.png')
 
-#convert_IMApkl_to_graphml()
+convert_IMApkl_to_graphml()
 #plot_raw_Gephi()
-convert_Gephi_graphml_to_SIM()
+#convert_Gephi_graphml_to_SIM()

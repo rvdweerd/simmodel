@@ -443,7 +443,8 @@ class ActionMaskedPolicySB3_PPO(Policy):
             obs['nfm']=obs['nfm'][None,:,:]
             obs['W']=obs['W'][None,:,:]
             obs['reachable_nodes']=obs['reachable_nodes'][None,:,:]
-
+            obs['pygx']=obs['pygx'][None,:,:]
+            obs['pygei']=obs['pygei'][None,:,:]
             for k,v in obs.items():
                 obs[k] = v.to(device)
 

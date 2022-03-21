@@ -1,17 +1,17 @@
 #!/bin/bash
 
 # ## BATCH
-train_on="M3M5Mix"
+#train_on="M3M5Mix"
 #train_on="NWB_AMS"
 #train_on="MixAll33"
-#train_on="TEST"
+train_on="TEST"
 emb=64
 itt=5
 nfm="NFM_ev_ec_t_dt_at_um_us"
 #qnet="s2v"
 norm_agg="True"
 optim='returns'
-nstep=200000 #200000
+nstep=50000 #200000
 train="True"
 eval="False"
 test="False"
@@ -19,11 +19,11 @@ numseeds=1
 #seed0=1
 solveselect='solvable'
 edgeblock="True"
-max_nodes=25
-demoruns="False"
+max_nodes=9
+demoruns="True"
 pursuit="Uon"
 
-for seed0 in {"1",}
+for seed0 in {"3",}
 #"2","3","4","5"}
 #"NFM_ec_t","NFM_ec_dtscaled"}
 do

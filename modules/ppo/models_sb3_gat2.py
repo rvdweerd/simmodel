@@ -29,6 +29,8 @@ class GATv2(BasicGNN):
         return GATv2Conv(in_channels, out_channels, dropout=self.dropout,
                        **kwargs)
 
+
+
 class Gat2Extractor(BaseFeaturesExtractor):
     """
     :param observation_space: (gym.Space)
@@ -56,14 +58,15 @@ class Gat2Extractor(BaseFeaturesExtractor):
             num_layers = emb_iter_T,
             out_channels = self.emb_dim,
             **kwargs
-        ).to(device)        
+        ).to(device)      
+        self.numTrainableParameters()  
 
     def forward(self, observations):# -> torch.Tensor:
         num_nodes_padded = observations['W'].shape[1]
         #nfm=observations['nfm'] # (bsize,numnodes,emb_dim)
         #W=observations['W']     # (bsize,numnodes,numnodes)
         pygei = observations['pygei'] #(bsize,2,MAX_NUM_EDGES)
-        pygx = observations['pygx'] #(bsize,numnodes,emb_dim)
+        pygx = observations['pygx'] #(bsize,numnodes,node_dim)
         reachable_nodes = observations['reachable_nodes'] #(bsize,numnodes,1)
         num_nodes=observations['num_nodes'] #(bsize,1)
         num_edges=observations['num_edges'] #(bsize,1)
@@ -79,8 +82,8 @@ class Gat2Extractor(BaseFeaturesExtractor):
         for i in range(bsize):
             select+=[True]*int(num_nodes[i])+[False]*(num_nodes_padded-int(num_nodes[i]))
             pyg_list.append(Data(
-                pygx[i][:int(num_nodes[i].detach().item()) ],
-                pygei[i][:,:int(num_edges[i].detach().item())].to(torch.int64)
+                pygx[i][:int(num_nodes[i]) ],
+                pygei[i][:,:int(num_edges[i])].to(torch.int64)
             ))
         pyg_data = Batch.from_data_list(pyg_list)
         mu_raw = self.gat(pyg_data.x, pyg_data.edge_index) # (nr_nodes in batch, emb_dim)      
@@ -101,6 +104,19 @@ class Gat2Extractor(BaseFeaturesExtractor):
         mu_serialized=torch.cat((mu_raw,mu_meanpool_expanded,num_nodes_enc,reach_nodes_enc),dim=1) #(num_nodes in batch, 2*emb_dim+2)
 
         return mu_serialized
+
+    def numTrainableParameters(self):
+        print('PPO model (pi and v) size:')
+        print('------------------------------------------')
+        total = 0
+        for name, p in self.named_parameters():
+            total += np.prod(p.shape)
+            print("{:24s} {:12s} requires_grad={}".format(name, str(list(p.shape)), p.requires_grad))
+        print("Total number of parameters: {}".format(total))
+        print('------------------------------------------')
+        assert total == sum(p.numel() for p in self.parameters() if p.requires_grad)
+        return total
+
 
 
 class Gat2_ACNetwork(nn.Module):
@@ -143,7 +159,7 @@ class Gat2_ACNetwork(nn.Module):
 
     def _deserialize(self, features):
         mu_raw, mu_meanpool_expanded, num_nodes_enc, reach_nodes_enc = torch.split(features,[self.emb_dim,self.emb_dim,1,1],dim=1)
-        bsize=int(num_nodes_enc[-1,0].detach().item())
+        bsize=int(num_nodes_enc[-1,0])
         num_nodes=num_nodes_enc[:bsize,0]
         
         return mu_raw, mu_meanpool_expanded, num_nodes, reach_nodes_enc, bsize
@@ -176,9 +192,10 @@ class Gat2_ACNetwork(nn.Module):
         #max_num_nodes = int(num_nodes.max().detach().item())
 
         # add back batch dimension 
-        splitter = num_nodes.detach().cpu().to(torch.int64).tolist()
+        splitter = tuple(num_nodes.to(torch.int64))
         prob_logits = torch.nn.utils.rnn.pad_sequence(prob_logits.split(splitter, dim=0), batch_first=True, padding_value=-1e20) # (bsize, max_num_nodes, 1)
         p = self.max_num_nodes - prob_logits.shape[1]
+        assert p>=0
         prob_logits = torch.nn.functional.pad(prob_logits,(0,0,0,p),value=-1e20)
         return prob_logits
 
@@ -197,7 +214,7 @@ class Gat2_ACNetwork(nn.Module):
         if bsize>1:
             k=0
 
-        splitter = num_nodes.detach().cpu().to(torch.int64).tolist()
+        splitter = tuple(num_nodes.to(torch.int64))
         qvals=torch.nn.utils.rnn.pad_sequence(qvals.split(splitter, dim=0), batch_first=True, padding_value=-1e20)
         v=torch.max(qvals,dim=1)[0]
         return v.unsqueeze(-1) # (bsize,)
@@ -323,13 +340,13 @@ class Gat2_ActorCriticPolicy(MaskableActorCriticPolicy):
 #from modules.ppo.models_sb3 import s2v_ACNetwork
 class DeployablePPOPolicy_gat2(nn.Module):
     # implemented invariant to number of nodes
-    def __init__(self, env, trained_policy):
+    def __init__(self, env, trained_policy, max_num_nodes=-1):
         super(DeployablePPOPolicy_gat2, self).__init__()
         self.device=device
         self.gat2_extractor = Gat2Extractor(env.observation_space,64,5,env.F).to(device)
         self.gat2_extractor.load_state_dict(trained_policy.features_extractor.state_dict())
         
-        self.gat2ACnet = Gat2_ACNetwork(64,1,1,64).to(device)
+        self.gat2ACnet = Gat2_ACNetwork(-1,1,1,64,max_num_nodes).to(device)
         self.gat2ACnet.load_state_dict(trained_policy.mlp_extractor.state_dict())
 
         self.pnet = nn.Linear(1,1,True).to(device)
@@ -341,8 +358,8 @@ class DeployablePPOPolicy_gat2(nn.Module):
 
     def forward(self, obs):
         #obs = obs[None,:].to(device)
-        y=self.gat2_extractor(obs)
-        a,b=self.gat2ACnet(y)
+        mu_serialized = self.gat2_extractor(obs)
+        a,b=self.gat2ACnet(mu_serialized)
         logits=self.pnet(a)
         value=self.vnet(b)
         return logits, value

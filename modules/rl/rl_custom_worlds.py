@@ -55,7 +55,7 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         env.iratios=[1.]
         env.all_worlds=[0]
         env.world_pool=[0]
-        env.redefine_goal_nodes([6,3,4])
+        env.redefine_goal_nodes([6])
         env.reset()
         return env
     if world_name == 'Manhattan5x5_DuplicateSetA':

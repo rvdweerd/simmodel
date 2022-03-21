@@ -15,6 +15,7 @@ from modules.rl.environments import SuperEnv
 import modules.gnn.nfm_gen
 from modules.gnn.construct_trainsets import ConstructTrainSet, get_train_configs
 from modules.sim.simdata_utils import SimulateInteractiveMode, SimulateInteractiveMode_PPO, SimulateAutomaticMode_PPO
+from Phase2c_eval import ManualTest
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def GetConfig(args):
@@ -65,7 +66,7 @@ def GetConfig(args):
 def main(args):
     config=GetConfig(args)
     #env_train   = config['env_train']
-    if args.train or args.eval:
+    if args.train: #or args.eval:
         senv, env_all_train_list = ConstructTrainSet(config, apply_wrappers=True, remove_paths=config['remove_paths'], tset=config['train_on']) #TODO check
         #env_all_train = [senv]
         if config['demoruns']:
@@ -73,8 +74,6 @@ def main(args):
                 a = SimulateInteractiveMode_PPO(senv, filesave_with_time_suffix=False)
                 if a == 'Q': break
 
-    if args.train:
-        #obs=senv.reset()
         assert config['node_dim'] == senv.F
 
         policy_kwargs = dict(
@@ -189,6 +188,9 @@ def main(args):
                 printing('  avg over seeds: '+str(np.mean(values)))
                 printing('  std over seeds: '+str(np.std(values)))
                 printing('  per seed: '+str(np.array(values))+'\n')
+
+    if args.eval:
+        ManualTest(config)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)    
