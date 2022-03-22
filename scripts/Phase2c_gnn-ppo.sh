@@ -23,7 +23,7 @@ max_nodes=9
 demoruns="False"
 pursuit="Uon"
 
-for seed0 in {"11","12","13","14","15"}
+for seed0 in {"1","2","3","4","5"}
 #"NFM_ec_t","NFM_ec_dtscaled"}
 do
     for qnet in {"gat2",}

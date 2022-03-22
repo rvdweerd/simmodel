@@ -55,7 +55,7 @@ class Gat2Extractor(BaseFeaturesExtractor):
         self.gat = GATv2(
             in_channels = self.node_dim,
             hidden_channels = self.emb_dim,
-            heads = 1,
+            heads = 2,
             num_layers = emb_iter_T,
             out_channels = self.emb_dim,
             share_weights = True,
@@ -190,23 +190,24 @@ class Gat2_ACNetwork(nn.Module):
             k=0
 
         # Extra linear layer in sb3?
-        prob_logits = self.theta5_pi(rep)#.squeeze(dim=2) # (batch_dim, nr_nodes)
+        prob_logits_raw = self.theta5_pi(rep)#.squeeze(dim=2) # (batch_dim, nr_nodes)
         #max_num_nodes = int(num_nodes.max().detach().item())
 
-        # container=torch.ones(bsize,self.max_num_nodes,1).to(torch.float32).to(device)*(-1e20)
-        # start=0
-        # for i in range(bsize):
-        #     container[i][:int(num_nodes[i]),:] = prob_logits[start:(start+int(num_nodes[i]))]
-        #     start+=int(num_nodes[i])
-        # return container
+        #add back batch dimension - METHOD 2
+        prob_logits=torch.ones(bsize,self.max_num_nodes,1).to(torch.float32).to(device)*(-1e20)
+        start=0
+        for i in range(bsize):
+            prob_logits[i][:int(num_nodes[i]),:] = prob_logits_raw[start:(start+int(num_nodes[i]))]
+            start+=int(num_nodes[i])
+        return prob_logits #(bsize,max_num_nodes,1)
 
-        # add back batch dimension 
-        splitter = tuple(num_nodes.to(torch.int64))
-        prob_logits = torch.nn.utils.rnn.pad_sequence(prob_logits.split(splitter, dim=0), batch_first=True, padding_value=-1e20) # (bsize, max_num_nodes, 1)
-        p = self.max_num_nodes - prob_logits.shape[1]
-        assert p>=0
-        prob_logits = torch.nn.functional.pad(prob_logits,(0,0,0,p),value=-1e20)
-        return prob_logits
+        # add back batch dimension - METHOD 2
+        # splitter = tuple(num_nodes.to(torch.int64))
+        # prob_logits = torch.nn.utils.rnn.pad_sequence(prob_logits.split(splitter, dim=0), batch_first=True, padding_value=-1e20) # (bsize, max_num_nodes, 1)
+        # p = self.max_num_nodes - prob_logits.shape[1]
+        # assert p>=0
+        # prob_logits = torch.nn.functional.pad(prob_logits,(0,0,0,p),value=-1e20)
+        # return prob_logits
 
     def forward_critic(self, features: torch.Tensor, mu_raw=None, mu_meanpool_expanded=None, num_nodes=None, reach_nodes=None, bsize=None) -> torch.Tensor:
         if mu_raw == None:
@@ -223,85 +224,19 @@ class Gat2_ACNetwork(nn.Module):
         if bsize>1:
             k=0
 
-        # maxsize = int(num_nodes.max())
-        # container=torch.ones(bsize,maxsize).to(torch.float32).to(device)*(-1e20) # (bsize,maxnodes)
-        # start=0
-        # for i in range(bsize):
-        #     container[i][:int(num_nodes[i])] = qvals[start:(start+int(num_nodes[i]))]
-        #     start+=int(num_nodes[i])
-        # v=torch.max(container,dim=1)[0]
+        maxsize = int(num_nodes.max())
+        container=torch.ones(bsize,maxsize).to(torch.float32).to(device)*(-1e20) # (bsize,maxnodes)
+        start=0
+        for i in range(bsize):
+            container[i][:int(num_nodes[i])] = qvals[start:(start+int(num_nodes[i]))]
+            start+=int(num_nodes[i])
+        v=torch.max(container,dim=1)[0]
 
-        splitter = tuple(num_nodes.to(torch.int64))
-        qvals=torch.nn.utils.rnn.pad_sequence(qvals.split(splitter, dim=0), batch_first=True, padding_value=-1e20)
-        v=torch.max(qvals,dim=1)[0]
+        # splitter = tuple(num_nodes.to(torch.int64))
+        # qvals=torch.nn.utils.rnn.pad_sequence(qvals.split(splitter, dim=0), batch_first=True, padding_value=-1e20)
+        # v=torch.max(qvals,dim=1)[0]
         return v.unsqueeze(-1) # (bsize,)
-
-
-# from stable_baselines3.common.policies import BasePolicy
-# from stable_baselines3.common.torch_layers import (
-#     BaseFeaturesExtractor,
-#     CombinedExtractor,
-#     FlattenExtractor,
-#     MlpExtractor,
-#     NatureCNN,
-#     )
-# from stable_baselines3.common.type_aliases import Schedule
-# from torch import nn
-# import torch as th
-# from functools import partial
-# from sb3_contrib.common.maskable.distributions import MaskableDistribution, make_masked_proba_distribution
-# from typing import Any, Dict, List, Optional, Tuple, Type, Union
-
-# class MaskableActorCriticPolicy_nodeinvar(MaskableActorCriticPolicy):
-#     def __init__(
-#         self,
-#         observation_space: gym.spaces.Space,
-#         action_space: gym.spaces.Space,
-#         lr_schedule: Schedule,
-#         net_arch: Optional[List[Union[int, Dict[str, List[int]]]]] = None,
-#         activation_fn: Type[nn.Module] = nn.Tanh,
-#         ortho_init: bool = True,
-#         features_extractor_class: Type[BaseFeaturesExtractor] = FlattenExtractor,
-#         features_extractor_kwargs: Optional[Dict[str, Any]] = None,
-#         normalize_images: bool = True,
-#         optimizer_class: Type[th.optim.Optimizer] = th.optim.Adam,
-#         optimizer_kwargs: Optional[Dict[str, Any]] = None,
-#     ):
-#         super().__init__(
-#             observation_space, 
-#             action_space,
-#             lr_schedule,
-#             net_arch,
-#             activation_fn,
-#             ortho_init,
-#             features_extractor_class,
-#             features_extractor_kwargs,
-#             normalize_images,
-#             optimizer_class,
-#             optimizer_kwargs
-#         )
-#         # Default network architecture, from stable-baselines
-#         if net_arch is None:
-#             if features_extractor_class == NatureCNN:
-#                 net_arch = []
-#             else:
-#                 #net_arch = [dict(pi=[64, 64], vf=[64, 64])]
-#                 net_arch = []#dict(pi=[64, 64], vf=[64, 64])]
-
-#         self.net_arch = net_arch
-#         self.activation_fn = activation_fn
-#         self.ortho_init = ortho_init
-
-#         self.features_extractor = features_extractor_class(self.observation_space, **self.features_extractor_kwargs)
-#         self.features_dim = self.features_extractor.features_dim
-
-#         self.normalize_images = normalize_images
-#         # Action distribution
-#         self.action_dist = make_masked_proba_distribution(action_space)
-
-#         self._build(lr_schedule)
-
-    
+   
 class Gat2_ActorCriticPolicy(MaskableActorCriticPolicy):
     def __init__(
         self,
