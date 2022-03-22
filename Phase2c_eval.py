@@ -18,10 +18,10 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def ManualTest(config):
     # Path directions to best model from ppo experiment
-    runname='test' # bestrun
+    #runname='test' # bestrun
     #runname = 'SuperSet_noU'
     #train_configs=get_train_configs(runname, load_trainset=False)
-    seed = 0 
+    #seed = 0 
     #config = train_configs[runname]
     logdir = config['logdir']
     modeldir = logdir+'/SEED'+str(config['seed0'])+'/saved_models'
@@ -49,8 +49,9 @@ def ManualTest(config):
     ## 3. Individual environment
     #env = CreateEnv('MetroU3_e17tborder_FixedEscapeInit',max_nodes=config['max_nodes'],var_targets=None, remove_world_pool=False)
     #env = CreateEnv('MetroU3_e1t31_FixedEscapeInit',max_nodes=33,nfm_func_name =config['nfm_func'],var_targets=[1,1], remove_world_pool=True)
-    maxnodes=25
-    env = CreateEnv('Manhattan5x5_FixedEscapeInit',max_nodes=maxnodes,nfm_func_name =config['nfm_func'],var_targets=None, remove_world_pool=False, apply_wrappers=True)
+    maxnodes=9
+    #env = CreateEnv('Manhattan5x5_FixedEscapeInit',max_nodes=maxnodes,nfm_func_name =config['nfm_func'],var_targets=None, remove_world_pool=False, apply_wrappers=True)
+    env = CreateEnv('Manhattan3x3_WalkAround',max_nodes=maxnodes,nfm_func_name =config['nfm_func'],var_targets=None, remove_world_pool=False, apply_wrappers=True)
     #env = CreateEnv('NWB_test_VariableEscapeInit',max_nodes=975,nfm_func_name =config['nfm_func'],var_targets=None, remove_world_pool=False, apply_wrappers=True)
     #env = CreateEnv('NWB_test_VariableEscapeInit',nfm_func_name =config['nfm_func'],max_nodes=975,var_targets=None, remove_world_pool=True)
 

@@ -109,12 +109,12 @@ class PPO_ObsDictWrapper(ObservationWrapper):
     def observation(self, observation):
         """convert observation."""
         p = self.max_nodes - self.V
-        nfm = nn.functional.pad(self.nfm,(0,0,0,p))
-        W = nn.functional.pad(self.sp.W,(0,p,0,p))
+        nfm = nn.functional.pad(self.nfm.clone(),(0,0,0,p))
+        W = nn.functional.pad(self.sp.W.clone(),(0,p,0,p))
         reachable = torch.index_select(W, 1, torch.tensor(self.state[0]))
-        pygx = self.nfm
+        pygx = self.nfm.clone()
         pygx = nn.functional.pad(pygx,(0,0,0,p)) # pad downward to (MAX_NODES,F)
-        pygei = self.sp.EI        
+        pygei = self.sp.EI.clone()        
         pygei = nn.functional.pad(pygei,(0,MAX_EDGES - self.sp.EI.shape[1])) # pad rightward to (2,MAX_EDGES)
         #obs = torch.cat((nfm, W, torch.index_select(W, 1, torch.tensor(self.state[0]))),1)
         obs = {

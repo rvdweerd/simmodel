@@ -228,20 +228,20 @@ def main(args):
         evalResults={}
         world_list=[
             # 'Manhattan5x5_DuplicateSetB',
-            # 'Manhattan3x3_WalkAround',
+            'Manhattan3x3_WalkAround',
             # 'MetroU3_e1t31_FixedEscapeInit', 
-            'full_solvable_3x3subs',
-            # 'Manhattan5x5_FixedEscapeInit',
-            # 'Manhattan5x5_VariableEscapeInit',
-            # 'MetroU3_e17tborder_FixedEscapeInit',
-            # 'MetroU3_e17tborder_VariableEscapeInit',
-            # 'NWB_ROT_FixedEscapeInit',
-            # 'NWB_ROT_VariableEscapeInit',
-            # 'NWB_test_FixedEscapeInit',
-            # 'NWB_test_VariableEscapeInit',
-            # 'NWB_UTR_FixedEscapeInit',
-            # 'NWB_UTR_VariableEscapeInit',            
-            # 'SparseManhattan5x5',
+            #'full_solvable_3x3subs',
+            #'Manhattan5x5_FixedEscapeInit',
+            #'Manhattan5x5_VariableEscapeInit',
+            #'MetroU3_e17tborder_FixedEscapeInit',
+            #'MetroU3_e17tborder_VariableEscapeInit',
+            #'NWB_ROT_FixedEscapeInit',
+            #'NWB_ROT_VariableEscapeInit',
+            #'NWB_test_FixedEscapeInit',
+            #'NWB_test_VariableEscapeInit',
+            #'NWB_UTR_FixedEscapeInit',
+            #'NWB_UTR_VariableEscapeInit',            
+            #'SparseManhattan5x5',
             ]
         #node_maxims = [0,0,0,0]
         #var_targets=[ None,None,None,None]

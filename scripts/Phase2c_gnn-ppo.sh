@@ -11,7 +11,7 @@ nfm="NFM_ev_ec_t_dt_at_um_us"
 #qnet="s2v"
 norm_agg="True"
 optim='returns'
-nstep=50000 #200000
+nstep=200000 #200000
 train="True"
 eval="False"
 test="False"
@@ -20,11 +20,10 @@ numseeds=1
 solveselect='solvable'
 edgeblock="True"
 max_nodes=9
-demoruns="True"
+demoruns="False"
 pursuit="Uon"
 
-for seed0 in {"3",}
-#"2","3","4","5"}
+for seed0 in {"11","12","13","14","15"}
 #"NFM_ec_t","NFM_ec_dtscaled"}
 do
     for qnet in {"gat2",}

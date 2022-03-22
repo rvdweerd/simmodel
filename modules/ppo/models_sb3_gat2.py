@@ -55,8 +55,10 @@ class Gat2Extractor(BaseFeaturesExtractor):
         self.gat = GATv2(
             in_channels = self.node_dim,
             hidden_channels = self.emb_dim,
+            heads = 1,
             num_layers = emb_iter_T,
             out_channels = self.emb_dim,
+            share_weights = True,
             **kwargs
         ).to(device)      
         self.numTrainableParameters()  
@@ -191,6 +193,13 @@ class Gat2_ACNetwork(nn.Module):
         prob_logits = self.theta5_pi(rep)#.squeeze(dim=2) # (batch_dim, nr_nodes)
         #max_num_nodes = int(num_nodes.max().detach().item())
 
+        # container=torch.ones(bsize,self.max_num_nodes,1).to(torch.float32).to(device)*(-1e20)
+        # start=0
+        # for i in range(bsize):
+        #     container[i][:int(num_nodes[i]),:] = prob_logits[start:(start+int(num_nodes[i]))]
+        #     start+=int(num_nodes[i])
+        # return container
+
         # add back batch dimension 
         splitter = tuple(num_nodes.to(torch.int64))
         prob_logits = torch.nn.utils.rnn.pad_sequence(prob_logits.split(splitter, dim=0), batch_first=True, padding_value=-1e20) # (bsize, max_num_nodes, 1)
@@ -203,8 +212,8 @@ class Gat2_ACNetwork(nn.Module):
         if mu_raw == None:
             mu_raw, mu_meanpool_expanded, num_nodes, reach_nodes, bsize = self._deserialize(features)
 
-        global_state = self.theta6_pi(mu_meanpool_expanded) # yields (#nodes in batch, emb_dim)
-        local_action = self.theta7_pi(mu_raw)  # yields (#nodes in batch, emb_dim)
+        global_state = self.theta6_v(mu_meanpool_expanded) # yields (#nodes in batch, emb_dim)
+        local_action = self.theta7_v(mu_raw)  # yields (#nodes in batch, emb_dim)
         rep = F.relu(torch.cat([global_state, local_action], dim=1)) # concat creates (#nodes in batch, 2*emb_dim)     
         
         qvals = self.theta5_v(rep).squeeze(-1) # (batch_dim, nr_nodes)
@@ -213,6 +222,14 @@ class Gat2_ACNetwork(nn.Module):
 
         if bsize>1:
             k=0
+
+        # maxsize = int(num_nodes.max())
+        # container=torch.ones(bsize,maxsize).to(torch.float32).to(device)*(-1e20) # (bsize,maxnodes)
+        # start=0
+        # for i in range(bsize):
+        #     container[i][:int(num_nodes[i])] = qvals[start:(start+int(num_nodes[i]))]
+        #     start+=int(num_nodes[i])
+        # v=torch.max(container,dim=1)[0]
 
         splitter = tuple(num_nodes.to(torch.int64))
         qvals=torch.nn.utils.rnn.pad_sequence(qvals.split(splitter, dim=0), batch_first=True, padding_value=-1e20)

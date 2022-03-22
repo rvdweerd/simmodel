@@ -90,11 +90,11 @@ def main(args):
             if config['qnet'] not in ['s2v','gat2']: assert False
             model = MaskablePPO(policy = s2v_ActorCriticPolicy if config['qnet']=='s2v' else Gat2_ActorCriticPolicy, \
                 env = senv, \
-                #learning_rate=5e-4, #3e-4
+                #learning_rate=1e-5, #3e-4
                 #n_steps = 1024, #2048
                 seed=seed, \
                 #n_epochs = 10,#10
-                #batch_size=128, #64
+                #batch_size=5, #64
                 #clip_range=0.1,\    
                 #max_grad_norm=0.1,\
                 policy_kwargs = policy_kwargs, verbose=2, tensorboard_log=logdir_+"/tb/")
