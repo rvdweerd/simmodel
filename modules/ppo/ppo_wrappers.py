@@ -77,8 +77,8 @@ class PPO_ObsFlatWrapper(ObservationWrapper):
         #self.V=env.sp.V
         self.max_nodes = max_possible_num_nodes
         self.max_edges = max_number_edges
-        self.nflat = self.max_nodes * (1+self.F) + self.max_edges * 2 + 2
-        self.observation_space= spaces.Box(0., max(2.,self.sp.U), shape=(self.max_nodes,), dtype=np.float32)
+        self.nflat = self.max_nodes * (1+self.F) + self.max_edges * 2 + 5
+        self.observation_space= spaces.Box(0., max(2.,self.sp.U), shape=(self.nflat,), dtype=np.float32)
         self.action_space     = spaces.Discrete(self.max_nodes) # all possible nodes 
         print('Wrapping the env with a customized observation definition for GNN integration: flattened nfm-W-reachable_nodes-N-E')
         #self.observation_space
@@ -114,17 +114,16 @@ class PPO_ObsFlatWrapper(ObservationWrapper):
                          torch.tensor([self.sp.V, self.max_nodes, num_edges, self.max_edges, self.F]))
                         ,dim=0)
 
-        # TEST
-        # deserialize single obs (:,)
-        num_nodes, max_nodes, num_edge, max_edges, F = obs[-5:].to(torch.int64).tolist()
-        nf,py,re,_ = torch.split(obs,(F*max_nodes, 2*max_edges, max_nodes, 5),dim=0)
-        nf=nf.reshape(max_nodes,-1)[:num_nodes]
-        py=py.reshape(2,-1)[:,:num_edges].to(torch.int64)
-        re=re.reshape(-1,1)[:num_nodes].to(torch.int64)
-        assert nf.shape[1]==F
-        assert torch.allclose(self.nfm,nf)
-        assert torch.allclose(self.sp.EI,py)
-
+        # # TEST
+        # # deserialize single obs (:,)
+        # num_nodes, max_nodes, num_edge, max_edges, F = obs[-5:].to(torch.int64).tolist()
+        # nf,py,re,_ = torch.split(obs,(F*max_nodes, 2*max_edges, max_nodes, 5),dim=0)
+        # nf=nf.reshape(max_nodes,-1)[:num_nodes]
+        # py=py.reshape(2,-1)[:,:num_edges].to(torch.int64)
+        # re=re.reshape(-1,1)[:num_nodes].to(torch.int64)
+        # assert nf.shape[1]==F
+        # assert torch.allclose(self.nfm,nf)
+        # assert torch.allclose(self.sp.EI,py)
         return obs
 
 

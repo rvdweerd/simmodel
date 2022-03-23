@@ -23,11 +23,11 @@ from base64 import b64encode
 from IPython.display import HTML
 from modules.rl.rl_custom_worlds import GetCustomWorld
 import argparse
-#from Phase1_hyperparameters import GetHyperParams_PPO_RNN
+from Phase1_hyperparameters import GetHyperParams_PPO_RNN
 from modules.dqn.dqn_utils import seed_everything
 from modules.rl.rl_utils import GetFullCoverageSample
 
-# Adapted to work with cusomized environment and GNNs from: 
+# Source of this code: 
 # https://gitlab.com/ngoodger/ppo_lstm/-/blob/master/recurrent_ppo.ipynb
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)    
@@ -65,7 +65,7 @@ EVALUATE=args.eval
 TRAIN=args.train
 print(TRAIN)
 NUM_SEEDS=args.num_seeds
-#hp_lookup=GetHyperParams_PPO_RNN(WORLD_NAME)
+hp_lookup=GetHyperParams_PPO_RNN(WORLD_NAME)
 # Save metrics for viewing with tensorboard.
 SAVE_METRICS_TENSORBOARD = True
 # Save actor & critic parameters for viewing in tensorboard.
@@ -89,33 +89,31 @@ ENV_MASK_VELOCITY = False
 exp_rootdir='./results/PPO-RNN/'+WORLD_NAME+'/'+STATE_REPR+'/'
 WORKSPACE_PATH = exp_rootdir
 
-# Default Hyperparameters                                           
+# Default Hyperparameters                                           For PauseFreeWold   For MetroU3_e17_FixedEscapeInit
 SCALE_REWARD:         float = 1. 
 MIN_REWARD:           float = -15.                                  
-HIDDEN_SIZE:          float = 128
-LIN_SIZE:             float = [128,128,64]
-BATCH_SIZE:           int   = 32                
+HIDDEN_SIZE:          float = hp_lookup['HIDDEN_SIZE'][STATE_REPR]  # 128?
+LIN_SIZE:             float = hp_lookup['LIN_SIZE'][STATE_REPR]     # 128               128 3 layers
+BATCH_SIZE:           int   = hp_lookup['BATCH_SIZE'][STATE_REPR]   # 80                64
 DISCOUNT:             float = 0.99
 GAE_LAMBDA:           float = 0.95
 PPO_CLIP:             float = 0.2#0.1                                   
 PPO_EPOCHS:           int   = 10
 MAX_GRAD_NORM:        float = 1.#.5                                    
 ENTROPY_FACTOR:       float = 0.
-ACTOR_LEARNING_RATE:  float = 1e-4
-CRITIC_LEARNING_RATE: float = 1e-4
-RECURRENT_SEQ_LEN:    int = 2                 
-RECURRENT_LAYERS:     int = 1                                       
-ROLLOUT_STEPS:        int = 400
-PARALLEL_ROLLOUTS:    int = 6
-PATIENCE:             int = 500
-TRAINABLE_STD_DEV:    bool = False
-INIT_LOG_STD_DEV:     float = 0.
-EVAL_DETERMINISTIC:   bool = True
-SAMPLE_MULTIPLIER:    int  = 1
+ACTOR_LEARNING_RATE:  float = hp_lookup['ACTOR_LEARNING_RATE'][STATE_REPR]                                
+CRITIC_LEARNING_RATE: float = hp_lookup['CRITIC_LEARNING_RATE'][STATE_REPR]                                
+RECURRENT_SEQ_LEN:    int = hp_lookup['RECURRENT_SEQ_LEN'][STATE_REPR]# 2                 2
+RECURRENT_LAYERS:     int = 1                                       # 1     
+ROLLOUT_STEPS:        int = hp_lookup['ROLLOUT_STEPS'][STATE_REPR]  # 40               400
+PARALLEL_ROLLOUTS:    int = hp_lookup['PARALLEL_ROLLOUTS'][STATE_REPR]# 4                 6
+PATIENCE:             int = hp_lookup['PATIENCE'][STATE_REPR]        # 200
+TRAINABLE_STD_DEV:    bool = False                                  # False
+INIT_LOG_STD_DEV:     float = 0.                                    # 0.
+EVAL_DETERMINISTIC:   bool = hp_lookup['EVAL_DETERMINISTIC'][STATE_REPR]
+SAMPLE_MULTIPLIER:    int  = hp_lookup['SAMPLE_MULTIPLIER'][STATE_REPR]
 # WARMUP=5000
 #GLOBAL_COUNT=0
-_INVALID_TAG_CHARACTERS = re.compile(r"[^-/\w\.]")
-BASE_CHECKPOINT_PATH = f"{WORKSPACE_PATH}/checkpoints/"
 
 @dataclass
 class HyperParameters():
@@ -139,7 +137,10 @@ class HyperParameters():
     # Apply to continous action spaces only 
     trainable_std_dev:    bool = TRAINABLE_STD_DEV
     init_log_std_dev:     float = INIT_LOG_STD_DEV
+
+#hp = HyperParameters(parallel_rollouts=32, rollout_steps=1024, batch_size=1024, recurrent_seq_len=8, trainable_std_dev=True,  patience=1000)
 hp = HyperParameters(parallel_rollouts=PARALLEL_ROLLOUTS, rollout_steps=ROLLOUT_STEPS, batch_size=BATCH_SIZE, recurrent_seq_len=RECURRENT_SEQ_LEN, trainable_std_dev=TRAINABLE_STD_DEV,  patience=PATIENCE)
+
 batch_count = hp.parallel_rollouts * hp.rollout_steps / hp.recurrent_seq_len / hp.batch_size
 print(f"batch_count: {batch_count}")
 assert batch_count >= 1., "Less than 1 batch per trajectory.  Are you sure that's what you want?"
@@ -167,6 +168,10 @@ def compute_advantages(rewards, values, discount, gae_lambda):
         advs[i] = advs[i + 1] * multiplier  + deltas[i]
     return advs[:-1]
 
+_INVALID_TAG_CHARACTERS = re.compile(r"[^-/\w\.]")
+BASE_CHECKPOINT_PATH = f"{WORKSPACE_PATH}/checkpoints/"
+#BASE_CHECKPOINT_PATH = f"{WORKSPACE_PATH}checkpoints/"
+
 def save_parameters(writer, tag, model, batch_idx):
     """
     Save model parameters for tensorboard.
@@ -189,42 +194,20 @@ def save_parameters(writer, tag, model, batch_idx):
         else:
             writer.add_scalar("{}_{}{}".format(tag, k, shape_formatted), v.data, batch_idx)
             
-def get_env_space(env):
+def get_env_space():
     """
     Return obsvervation dimensions, action dimensions and whether or not action space is continuous.
     """
     #env = gym.make(ENV)
-    #env=GetCustomWorld(WORLD_NAME, make_reflexive=MAKE_REFLEXIVE, state_repr=STATE_REPR, state_enc='tensors')
-    aspace = env.action_space[0]
-    continuous_action_space = type(aspace) is gym.spaces.box.Box
+    env=GetCustomWorld(WORLD_NAME, make_reflexive=MAKE_REFLEXIVE, state_repr=STATE_REPR, state_enc='tensors')
+
+    continuous_action_space = type(env.action_space) is gym.spaces.box.Box
     if continuous_action_space:
-        action_dim =  aspace.shape[0]
+        action_dim =  env.action_space.shape[0]
     else:
-        action_dim = aspace.n 
-    obsv_dim= env.observation_space.shape[1] 
+        action_dim = env.action_space.n 
+    obsv_dim= env.observation_space.shape[0] 
     return obsv_dim, action_dim, continuous_action_space
-
-class MaskablePPOPolicy(nn.Module):
-    def __init__(self, state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev=None):
-        super().__init__()
-        self.action_dim = action_dim
-        self.continuous_action_space = continuous_action_space 
-
-        self.FE = FeatureExtractor(state_dim)
-        self.PI = Actor(state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev)
-        self.V  = Critic(state_dim)
-        print(self)
-
-
-
-class FeatureExtractor(nn.Module):
-    def __init__(self, state_dim):
-        super().__init__()
-        layers = [nn.Linear(state_dim,state_dim), nn.ELU()]
-        self.lin_layers = nn.Sequential(*layers)
-
-    def forward(self, state):
-        return self.lin_layers(state)
 
 class Actor(nn.Module):
     def __init__(self, state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev=None):
@@ -332,7 +315,7 @@ def get_last_checkpoint_iteration():
         max_checkpoint_iteration = 0
     return max_checkpoint_iteration
 
-def save_checkpoint(ppo_model, ppo_optimizer, iteration, stop_conditions):
+def save_checkpoint(actor, critic, actor_optimizer, critic_optimizer, iteration, stop_conditions):
     """
     Save training checkpoint.
     """
@@ -346,60 +329,56 @@ def save_checkpoint(ppo_model, ppo_optimizer, iteration, stop_conditions):
     pathlib.Path(CHECKPOINT_PATH).mkdir(parents=True, exist_ok=True) 
     with open(CHECKPOINT_PATH + "parameters.pt", "wb") as f:
         pickle.dump(checkpoint, f)
-    with open(CHECKPOINT_PATH + "ppo_model_class.pt", "wb") as f:
-        pickle.dump(MaskablePPOPolicy, f)
-    #with open(CHECKPOINT_PATH + "critic_class.pt", "wb") as f:
-    #    pickle.dump(Critic, f)
-    torch.save(ppo_model.state_dict(), CHECKPOINT_PATH + "ppo_model.pt")
-    #torch.save(critic.state_dict(), CHECKPOINT_PATH + "critic.pt")
-    torch.save(ppo_optimizer.state_dict(), CHECKPOINT_PATH + "ppo_optimizer.pt")
-    #torch.save(critic_optimizer.state_dict(), CHECKPOINT_PATH + "critic_optimizer.pt")
+    with open(CHECKPOINT_PATH + "actor_class.pt", "wb") as f:
+        pickle.dump(Actor, f)
+    with open(CHECKPOINT_PATH + "critic_class.pt", "wb") as f:
+        pickle.dump(Critic, f)
+    torch.save(actor.state_dict(), CHECKPOINT_PATH + "actor.pt")
+    torch.save(critic.state_dict(), CHECKPOINT_PATH + "critic.pt")
+    torch.save(actor_optimizer.state_dict(), CHECKPOINT_PATH + "actor_optimizer.pt")
+    torch.save(critic_optimizer.state_dict(), CHECKPOINT_PATH + "critic_optimizer.pt")
 
-def start_or_resume_from_checkpoint(env):
+def start_or_resume_from_checkpoint():
     """
     Create actor, critic, actor optimizer and critic optimizer from scratch
     or load from latest checkpoint if it exists. 
     """
     max_checkpoint_iteration = get_last_checkpoint_iteration()
     
-    obsv_dim, action_dim, continuous_action_space = get_env_space(env)
-    # actor = Actor(obsv_dim,
-    #               action_dim,
-    #               continuous_action_space=continuous_action_space,
-    #               trainable_std_dev=hp.trainable_std_dev,
-    #               init_log_std_dev=hp.init_log_std_dev)
-    # critic = Critic(obsv_dim)
-    ppo_model=MaskablePPOPolicy(obsv_dim,
+    obsv_dim, action_dim, continuous_action_space = get_env_space()
+    actor = Actor(obsv_dim,
                   action_dim,
                   continuous_action_space=continuous_action_space,
                   trainable_std_dev=hp.trainable_std_dev,
                   init_log_std_dev=hp.init_log_std_dev)
+    critic = Critic(obsv_dim)
         
-    #actor_optimizer = optim.AdamW(actor.parameters(), lr=hp.actor_learning_rate)
-    #critic_optimizer = optim.AdamW(critic.parameters(), lr=hp.critic_learning_rate)
-    ppo_optimizer = optim.AdamW(ppo_model.parameters(), lr=hp.actor_learning_rate)
-
+    actor_optimizer = optim.AdamW(actor.parameters(), lr=hp.actor_learning_rate)
+    critic_optimizer = optim.AdamW(critic.parameters(), lr=hp.critic_learning_rate)
+    
     stop_conditions = StopConditions()
         
     # If max checkpoint iteration is greater than zero initialise training with the checkpoint.
     if max_checkpoint_iteration > 0:
-        ppo_model_state_dict, ppo_optimizer_state_dict, stop_conditions = load_checkpoint(max_checkpoint_iteration)
-        #actor_state_dict, critic_state_dict, actor_optimizer_state_dict, critic_optimizer_state_dict, stop_conditions = load_checkpoint(max_checkpoint_iteration)
+        actor_state_dict, critic_state_dict, actor_optimizer_state_dict, critic_optimizer_state_dict, stop_conditions = load_checkpoint(max_checkpoint_iteration)
         
-        ppo_model.load_state_dict(ppo_model_state_dict, strict=True)
-        ppo_optimizer.load_state_dict(ppo_optimizer_state_dict, strict=True)
-        #actor.load_state_dict(actor_state_dict, strict=True) 
-        #critic.load_state_dict(critic_state_dict, strict=True)
-        #actor_optimizer.load_state_dict(actor_optimizer_state_dict)
-        #critic_optimizer.load_state_dict(critic_optimizer_state_dict)
+        actor.load_state_dict(actor_state_dict, strict=True) 
+        critic.load_state_dict(critic_state_dict, strict=True)
+        actor_optimizer.load_state_dict(actor_optimizer_state_dict)
+        critic_optimizer.load_state_dict(critic_optimizer_state_dict)
 
         # We have to move manually move optimizer states to TRAIN_DEVICE manually since optimizer doesn't yet have a "to" method.
-        for state in ppo_optimizer.state.values():
+        for state in actor_optimizer.state.values():
             for k, v in state.items():
                 if isinstance(v, torch.Tensor):
                    state[k] = v.to(TRAIN_DEVICE)
 
-    return ppo_model, ppo_optimizer, max_checkpoint_iteration, stop_conditions
+        for state in critic_optimizer.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(TRAIN_DEVICE)
+
+    return actor, critic, actor_optimizer, critic_optimizer, max_checkpoint_iteration, stop_conditions
     
 def load_checkpoint(iteration):
     """
@@ -414,12 +393,14 @@ def load_checkpoint(iteration):
     #assert hp == checkpoint.hp, "To resume training hyperparameters must match current settings."
     print(hp)
     print(checkpoint.hp)
-    ppo_model_state_dict = torch.load(CHECKPOINT_PATH + "ppo_model.pt", map_location=torch.device(TRAIN_DEVICE))
-    #critic_state_dict = torch.load(CHECKPOINT_PATH + "critic.pt", map_location=torch.device(TRAIN_DEVICE))
-    ppo_optimizer_state_dict = torch.load(CHECKPOINT_PATH + "ppo_optimizer.pt", map_location=torch.device(TRAIN_DEVICE))
-    #critic_optimizer_state_dict = torch.load(CHECKPOINT_PATH + "critic_optimizer.pt", map_location=torch.device(TRAIN_DEVICE))
+    actor_state_dict = torch.load(CHECKPOINT_PATH + "actor.pt", map_location=torch.device(TRAIN_DEVICE))
+    critic_state_dict = torch.load(CHECKPOINT_PATH + "critic.pt", map_location=torch.device(TRAIN_DEVICE))
+    actor_optimizer_state_dict = torch.load(CHECKPOINT_PATH + "actor_optimizer.pt", map_location=torch.device(TRAIN_DEVICE))
+    critic_optimizer_state_dict = torch.load(CHECKPOINT_PATH + "critic_optimizer.pt", map_location=torch.device(TRAIN_DEVICE))
     
-    return (ppo_model_state_dict, ppo_optimizer_state_dict, checkpoint.stop_conditions)
+    return (actor_state_dict, critic_state_dict,
+           actor_optimizer_state_dict, critic_optimizer_state_dict,
+           checkpoint.stop_conditions)
         
 @dataclass
 class StopConditions():
@@ -646,7 +627,7 @@ from gym.vector.async_vector_env import AsyncVectorEnv
 from gym.vector.sync_vector_env import SyncVectorEnv
 from gym.vector.vector_env import VectorEnv, VectorEnvWrapper
 __all__ = ["AsyncVectorEnv", "SyncVectorEnv", "VectorEnv", "VectorEnvWrapper", "make"]
-def make_custom(world_name, num_envs=1, asynchronous=True, wrappers=None, **kwargs):
+def make_custom(env_id, num_envs=1, asynchronous=True, wrappers=None, **kwargs):
     """Create a vectorized environment from multiple copies of an environment,
     from its id.
     Parameters
@@ -655,27 +636,7 @@ def make_custom(world_name, num_envs=1, asynchronous=True, wrappers=None, **kwar
 
     def _make_env():
         #env = make_(id, **kwargs)
-        #env=GetCustomWorld(env_id, make_reflexive=MAKE_REFLEXIVE, state_repr=STATE_REPR, state_enc='tensors')
-        max_nodes = 9
-        state_repr='etUte0U0'
-        state_enc='nfm'
-        edge_blocking = True
-        remove_world_pool = False
-        nfm_func_name='NFM_ev_ec_t_dt_at_um_us'
-        var_targets = None
-        apply_wrappers = True
-        env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
-        env.redefine_nfm(modules.gnn.nfm_gen.nfm_funcs[nfm_func_name])
-        env.capture_on_edges = edge_blocking
-        if remove_world_pool:
-            env._remove_world_pool()
-        if var_targets is not None:
-            env = VarTargetWrapper(env, var_targets)
-        if apply_wrappers:
-            #env = PPO_ObsWrapper(env, max_possible_num_nodes = max_nodes)        
-            env = PPO_ObsFlatWrapper(env, max_possible_num_nodes = 3000, max_number_edges=4000)
-            env = PPO_ActWrapper(env) 
-
+        env=GetCustomWorld(env_id, make_reflexive=MAKE_REFLEXIVE, state_repr=STATE_REPR, state_enc='tensors')
         if wrappers is not None:
             if callable(wrappers):
                 env = wrappers(env)
@@ -691,24 +652,25 @@ def make_custom(world_name, num_envs=1, asynchronous=True, wrappers=None, **kwar
     env_fns = [_make_env for _ in range(num_envs)]
     return AsyncVectorEnv(env_fns) if asynchronous else SyncVectorEnv(env_fns)
 
-import modules.gnn.nfm_gen
-from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsWrapper, PPO_ObsDictWrapper, VarTargetWrapper, PPO_ObsFlatWrapper
-def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions):   
+
+def train_model(actor, critic, actor_optimizer, critic_optimizer, iteration, stop_conditions):   
     # Vector environment manages multiple instances of the environment.
     # A key difference between this and the standard gym environment is it automatically resets.
     # Therefore when the done flag is active in the done vector the corresponding state is the first new state.
-    # env = gym.vector.make(ENV, hp.parallel_rollouts, asynchronous=ASYNCHRONOUS_ENVIRONMENT)
-    # GLOBAL_COUNT=0   
+    #env = gym.vector.make(ENV, hp.parallel_rollouts, asynchronous=ASYNCHRONOUS_ENVIRONMENT)
+    # GLOBAL_COUNT=0
+    env = make_custom(WORLD_NAME, hp.parallel_rollouts, asynchronous=ASYNCHRONOUS_ENVIRONMENT)
+    if ENV_MASK_VELOCITY:
+        env = MaskVelocityWrapper(env)
 
     while iteration < stop_conditions.max_iterations:      
 
-        #actor = actor.to(GATHER_DEVICE)
-        #critic = critic.to(GATHER_DEVICE)
-        ppo_model = ppo_model.to(GATHER_DEVICE)
+        actor = actor.to(GATHER_DEVICE)
+        critic = critic.to(GATHER_DEVICE)
         start_gather_time = time.time()
 
         # Gather trajectories.
-        input_data = {"env": env, "ppo_model": ppo_model, "discount": hp.discount,
+        input_data = {"env": env, "actor": actor, "critic": critic, "discount": hp.discount,
                       "gae_lambda": hp.gae_lambda}
         trajectory_tensors = gather_trajectories(input_data)
         trajectory_episodes, len_episodes = split_trajectories_episodes(trajectory_tensors)
@@ -725,11 +687,11 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions):
             stop_conditions.fail_to_improve_count = 0
             print("NEW BEST MEAN REWARD----------------------<<<<<<<<<<< ")#global count: ",GLOBAL_COUNT)
             print('rec seq len',hp.recurrent_seq_len)
-            print('actor lr',ppo_optimizer.param_groups[0]['lr'])
+            print('actor lr',actor_optimizer.param_groups[0]['lr'])
 
             if iteration>=50:
                 print('#################### SAVE CHECKPOINT #######################')
-                save_checkpoint(ppo_model, ppo_optimizer, 99999, stop_conditions)
+                save_checkpoint(actor,critic, actor_optimizer, critic_optimizer, 99999, stop_conditions)
                 # best model saved as iteration0
         else:
             stop_conditions.fail_to_improve_count += 1
@@ -742,15 +704,15 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions):
         end_gather_time = time.time()
         start_train_time = time.time()
         
-        #actor = actor.to(TRAIN_DEVICE)
-        #critic = critic.to(TRAIN_DEVICE)
+        actor = actor.to(TRAIN_DEVICE)
+        critic = critic.to(TRAIN_DEVICE)
 
         # Train actor and critic. 
         for epoch_idx in range(hp.ppo_epochs): 
             for batch in trajectory_dataset:
 
                 # Get batch 
-                ppo_model.PI.hidden_cell = (batch.actor_hidden_states[:1], batch.actor_cell_states[:1])
+                actor.hidden_cell = (batch.actor_hidden_states[:1], batch.actor_cell_states[:1])
                 
                 # GLOBAL_COUNT+=1
                 # if GLOBAL_COUNT%WARMUP==0:
@@ -758,8 +720,8 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions):
                 #     hp.recurrent_seq_len=3
                 #     print('############################################# LR adjusted to',actor_optimizer.param_groups[0]['lr'])
                 # Update actor
-                ppo_optimizer.zero_grad()
-                action_dist = ppo_model.PI(batch.states)
+                actor_optimizer.zero_grad()
+                action_dist = actor(batch.states)
                 # Action dist runs on cpu as a workaround to CUDA illegal memory access.
                 action_probabilities = action_dist.log_prob(batch.actions[-1, :].to("cpu")).to(TRAIN_DEVICE)
                 # Compute probability ratio from probabilities in logspace.
@@ -768,24 +730,18 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions):
                 surrogate_loss_1 =  torch.clamp(probabilities_ratio, 1. - hp.ppo_clip, 1. + hp.ppo_clip) * batch.advantages[-1, :]
                 surrogate_loss_2 = action_dist.entropy().to(TRAIN_DEVICE)
                 actor_loss = -torch.mean(torch.min(surrogate_loss_0, surrogate_loss_1)) - torch.mean(hp.entropy_factor * surrogate_loss_2)
-                
-                #actor_loss.backward() 
+                actor_loss.backward() 
+                torch.nn.utils.clip_grad.clip_grad_norm_(actor.parameters(), hp.max_grad_norm)
+                actor_optimizer.step()
 
                 # Update critic
-                #critic_optimizer.zero_grad()
-                ppo_model.V.hidden_cell = (batch.critic_hidden_states[:1], batch.critic_cell_states[:1])
-                values = ppo_model.V(batch.states)
+                critic_optimizer.zero_grad()
+                critic.hidden_cell = (batch.critic_hidden_states[:1], batch.critic_cell_states[:1])
+                values = critic(batch.states)
                 critic_loss = F.mse_loss(batch.discounted_returns[-1, :], values.squeeze(1))
-                #torch.nn.utils.clip_grad.clip_grad_norm_(critic.parameters(), hp.max_grad_norm)
-                #critic_loss.backward() 
-                #critic_optimizer.step()
-                
-
-                vf_coef = 0.5 # basis: paper & sb3 implementation
-                loss = actor_loss + vf_coef * critic_loss
-                loss.backward()
-                torch.nn.utils.clip_grad.clip_grad_norm_(ppo_model.parameters(), hp.max_grad_norm)
-                ppo_optimizer.step()
+                torch.nn.utils.clip_grad.clip_grad_norm_(critic.parameters(), hp.max_grad_norm)
+                critic_loss.backward() 
+                critic_optimizer.step()
                 
         end_train_time = time.time()
         print(f"Iteration: {iteration},  Mean reward: {mean_reward}, Mean Entropy: {torch.mean(surrogate_loss_2)}, " +
@@ -799,25 +755,20 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions):
             writer.add_scalar("critic_loss", critic_loss, iteration)
             writer.add_scalar("policy_entropy", torch.mean(surrogate_loss_2), iteration)
         if SAVE_PARAMETERS_TENSORBOARD:
-            save_parameters(writer, "ppo_model", ppo_model, iteration)
-            #save_parameters(writer, "value", critic, iteration)
+            save_parameters(writer, "actor", actor, iteration)
+            save_parameters(writer, "value", critic, iteration)
         if iteration % CHECKPOINT_FREQUENCY == 0: 
             print('rec seq len',hp.recurrent_seq_len)
-            print('actor lr',ppo_optimizer.param_groups[0]['lr'])
-            save_checkpoint(ppo_model, ppo_optimizer, iteration, stop_conditions)
+            print('actor lr',actor_optimizer.param_groups[0]['lr'])
+            save_checkpoint(actor,critic, actor_optimizer, critic_optimizer, iteration, stop_conditions)
         iteration += 1
         
     return stop_conditions.best_reward 
 
 writer = SummaryWriter(log_dir=f"{WORKSPACE_PATH}/logs")
 def TrainAndSaveModel():
-    world_name='Manhattan3x3_WalkAround'
-    env = make_custom(world_name, hp.parallel_rollouts, asynchronous=ASYNCHRONOUS_ENVIRONMENT)   
-    if ENV_MASK_VELOCITY:
-        env = MaskVelocityWrapper(env)
-
-    ppo_model, ppo_optimizer, iteration, stop_conditions = start_or_resume_from_checkpoint(env)
-    score = train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions)
+    actor, critic, actor_optimizer, critic_optimizer, iteration, stop_conditions = start_or_resume_from_checkpoint()
+    score = train_model(actor, critic, actor_optimizer, critic_optimizer, iteration, stop_conditions)
 
 from modules.rl.rl_policy import EpsilonGreedyPolicyLSTM_PPO2
 from modules.rl.rl_utils import EvaluatePolicy
