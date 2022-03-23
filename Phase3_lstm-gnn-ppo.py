@@ -460,8 +460,8 @@ def gather_trajectories(input_data):
     
     # Unpack inputs.
     env = input_data["env"]
-    actor = input_data["actor"]
-    critic = input_data["critic"]
+    ppo_model = input_data["ppo_model"]
+    #critic = input_data["critic"]
     
     # Initialise variables.
     obsv = env.reset()
@@ -480,24 +480,24 @@ def gather_trajectories(input_data):
 
     with torch.no_grad():
         # Reset actor and critic state.
-        actor.get_init_state(hp.parallel_rollouts, GATHER_DEVICE)
-        critic.get_init_state(hp.parallel_rollouts, GATHER_DEVICE)
+        ppo_model.PI.get_init_state(hp.parallel_rollouts, GATHER_DEVICE)
+        ppo_model.V.get_init_state(hp.parallel_rollouts, GATHER_DEVICE)
         # Take 1 additional step in order to collect the state and value for the final state.
         for i in range(hp.rollout_steps):
             
-            trajectory_data["actor_hidden_states"].append(actor.hidden_cell[0].squeeze(0).cpu())
-            trajectory_data["actor_cell_states"].append(actor.hidden_cell[1].squeeze(0).cpu())
-            trajectory_data["critic_hidden_states"].append(critic.hidden_cell[0].squeeze(0).cpu())
-            trajectory_data["critic_cell_states"].append(critic.hidden_cell[1].squeeze(0).cpu())
+            trajectory_data["actor_hidden_states"].append(ppo_model.PI.hidden_cell[0].squeeze(0).cpu())
+            trajectory_data["actor_cell_states"].append(ppo_model.PI.hidden_cell[1].squeeze(0).cpu())
+            trajectory_data["critic_hidden_states"].append(ppo_model.V.hidden_cell[0].squeeze(0).cpu())
+            trajectory_data["critic_cell_states"].append(ppo_model.V.hidden_cell[1].squeeze(0).cpu())
             
             # Choose next action 
             state = torch.tensor(obsv, dtype=torch.float32)
             trajectory_data["states"].append(state)
-            value = critic(state.unsqueeze(0).to(GATHER_DEVICE), terminal.to(GATHER_DEVICE))
+            value = ppo_model.V(state.unsqueeze(0).to(GATHER_DEVICE), terminal.to(GATHER_DEVICE))
             trajectory_data["values"].append( value.squeeze(1).cpu())
-            action_dist = actor(state.unsqueeze(0).to(GATHER_DEVICE), terminal.to(GATHER_DEVICE))
+            action_dist = ppo_model.PI(state.unsqueeze(0).to(GATHER_DEVICE), terminal.to(GATHER_DEVICE))
             action = action_dist.sample().reshape(hp.parallel_rollouts, -1)
-            if not actor.continuous_action_space:
+            if not ppo_model.continuous_action_space:
                 action = action.squeeze(1)
             trajectory_data["actions"].append(action.cpu())
             trajectory_data["action_probabilities"].append(action_dist.log_prob(action).cpu())
@@ -514,7 +514,7 @@ def gather_trajectories(input_data):
     
         # Compute final value to allow for incomplete episodes.
         state = torch.tensor(obsv, dtype=torch.float32)
-        value = critic(state.unsqueeze(0).to(GATHER_DEVICE), terminal.to(GATHER_DEVICE))
+        value = ppo_model.V(state.unsqueeze(0).to(GATHER_DEVICE), terminal.to(GATHER_DEVICE))
         # Future value for terminal episodes is 0.
         trajectory_data["values"].append(value.squeeze(1).cpu() * (1 - terminal))
 
