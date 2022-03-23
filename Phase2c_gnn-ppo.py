@@ -8,6 +8,7 @@ from modules.gnn.comb_opt import evaluate_spath_heuristic
 from modules.rl.rl_utils import EvaluatePolicy, print_parameters, GetFullCoverageSample, NpWrapper
 from modules.ppo.helpfuncs import get_super_env, CreateEnv, eval_simple, evaluate_ppo#, get_logdirs
 from modules.ppo.callbacks_sb3 import SimpleCallback, TestCallBack
+from stable_baselines3.common.callbacks import EvalCallback
 from modules.ppo.models_sb3_s2v import s2v_ActorCriticPolicy, Struc2VecExtractor, DeployablePPOPolicy
 from modules.ppo.models_sb3_gat2 import Gat2_ActorCriticPolicy, Gat2Extractor, DeployablePPOPolicy_gat2
 from modules.rl.rl_policy import ActionMaskedPolicySB3_PPO
@@ -15,7 +16,10 @@ from modules.rl.environments import SuperEnv
 import modules.gnn.nfm_gen
 from modules.gnn.construct_trainsets import ConstructTrainSet, get_train_configs
 from modules.sim.simdata_utils import SimulateInteractiveMode, SimulateInteractiveMode_PPO, SimulateAutomaticMode_PPO
-from Phase2c_eval import ManualTest
+from Phase2c_eval import ManualEval
+from sb3_contrib.common.wrappers import ActionMasker
+from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.vec_env import DummyVecEnv
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def GetConfig(args):
@@ -99,8 +103,15 @@ def main(args):
                 #max_grad_norm=0.1,\
                 policy_kwargs = policy_kwargs, verbose=2, tensorboard_log=logdir_+"/tb/")
 
+            # senv_eval = Monitor(senv)
+            # senv_eval = DummyVecEnv([lambda: senv_eval])
+            # eval_callback = EvalCallback(senv_eval, best_model_save_path=logdir_+'/saved_models/',
+            #                             log_path=logdir_+'/logs/', eval_freq=2000,
+            #                             deterministic=True, render=False, verbose=2)    
+
+            test_callback = TestCallBack(verbose=2, logdir=logdir_+'/saved_models')
             print_parameters(model.policy)
-            model.learn(total_timesteps = config['num_step'], callback=[TestCallBack()])#,eval_callback]) #,wandb_callback])
+            model.learn(total_timesteps = config['num_step'], callback=[test_callback])#,eval_callback]) #,wandb_callback])
             # run.finish()
             model.save(logdir_+"/saved_models/model_last")
             model.policy.save(logdir_+"/saved_models/policy_last")    
@@ -190,7 +201,7 @@ def main(args):
                 printing('  per seed: '+str(np.array(values))+'\n')
 
     if args.eval:
-        ManualTest(config)
+        ManualEval(config)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)    

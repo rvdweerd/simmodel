@@ -1,22 +1,22 @@
-from http.client import NOT_IMPLEMENTED
+#from http.client import NOT_IMPLEMENTED
 #import random
 #from matplotlib.pyplot import get
-import torch
 #import torch.nn as nn 
 #import torch.nn.functional as F
+#from modules.ppo.ppo_wrappers import VarTargetWrapper
+#import modules.gnn.nfm_gen
+import torch
 from modules.ppo.helpfuncs import get_super_env, CreateEnv, eval_simple, evaluate_ppo, check_custom_position_probs
 from modules.rl.environments import SuperEnv
 from modules.rl.rl_policy import ActionMaskedPolicySB3_PPO
 from modules.ppo.models_sb3_s2v import s2v_ActorCriticPolicy, Struc2VecExtractor, DeployablePPOPolicy
 from modules.ppo.models_sb3_gat2 import Gat2_ActorCriticPolicy, DeployablePPOPolicy_gat2
-#from modules.ppo.ppo_wrappers import VarTargetWrapper
 from sb3_contrib import MaskablePPO
 from modules.gnn.construct_trainsets import ConstructTrainSet, get_train_configs
 from modules.sim.simdata_utils import SimulateInteractiveMode_PPO, SimulateAutomaticMode_PPO
-import modules.gnn.nfm_gen
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-def ManualTest(config):
+def ManualEval(config):
     # Path directions to best model from ppo experiment
     #runname='test' # bestrun
     #runname = 'SuperSet_noU'

@@ -40,7 +40,6 @@ class Struc2VecExtractor(BaseFeaturesExtractor):
         features_dim: int = max_num_nodes * (emb_dim+1) #MUST BE NUM_NODES*(EMB_DIM+1), reacheble nodes vec concatenated
         super(Struc2VecExtractor, self).__init__(observation_space, features_dim)
         
-        
         # Incoming: (bsize, num_nodes, (F+num_nodes+1))      
         # Compute shape by doing one forward pass
         #incoming_tensor_example = torch.as_tensor(observation_space.sample()[None]).float()

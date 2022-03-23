@@ -111,7 +111,7 @@ class PPO_ObsDictWrapper(ObservationWrapper):
         p = self.max_nodes - self.V
         nfm = nn.functional.pad(self.nfm.clone(),(0,0,0,p))
         W = nn.functional.pad(self.sp.W.clone(),(0,p,0,p))
-        reachable = torch.index_select(W, 1, torch.tensor(self.state[0]))
+        reachable = torch.index_select(W, 1, torch.tensor(self.state[0])).clone()
         pygx = self.nfm.clone()
         pygx = nn.functional.pad(pygx,(0,0,0,p)) # pad downward to (MAX_NODES,F)
         pygei = self.sp.EI.clone()        

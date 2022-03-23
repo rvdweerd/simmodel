@@ -55,10 +55,10 @@ class Gat2Extractor(BaseFeaturesExtractor):
         self.gat = GATv2(
             in_channels = self.node_dim,
             hidden_channels = self.emb_dim,
-            heads = 2,
+            heads = 1,
             num_layers = emb_iter_T,
             out_channels = self.emb_dim,
-            share_weights = True,
+            share_weights = False,
             **kwargs
         ).to(device)      
         self.numTrainableParameters()  
@@ -69,7 +69,7 @@ class Gat2Extractor(BaseFeaturesExtractor):
         #W=observations['W']     # (bsize,numnodes,numnodes)
         pygei = observations['pygei'] #(bsize,2,MAX_NUM_EDGES)
         pygx = observations['pygx'] #(bsize,numnodes,node_dim)
-        reachable_nodes = observations['reachable_nodes'] #(bsize,numnodes,1)
+        reachable_nodes = observations['reachable_nodes'].clone() #(bsize,numnodes,1)
         num_nodes=observations['num_nodes'] #(bsize,1)
         num_edges=observations['num_edges'] #(bsize,1)
         assert num_edges.max() < pygei.shape[-1]
