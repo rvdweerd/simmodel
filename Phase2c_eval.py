@@ -49,9 +49,9 @@ def ManualEval(config):
     ## 3. Individual environment
     #env = CreateEnv('MetroU3_e17tborder_FixedEscapeInit',max_nodes=config['max_nodes'],var_targets=None, remove_world_pool=False)
     #env = CreateEnv('MetroU3_e1t31_FixedEscapeInit',max_nodes=33,nfm_func_name =config['nfm_func'],var_targets=[1,1], remove_world_pool=True)
-    maxnodes=9
-    #env = CreateEnv('Manhattan5x5_FixedEscapeInit',max_nodes=maxnodes,nfm_func_name =config['nfm_func'],var_targets=None, remove_world_pool=False, apply_wrappers=True)
-    env = CreateEnv('Manhattan3x3_WalkAround',max_nodes=maxnodes,nfm_func_name =config['nfm_func'],var_targets=None, remove_world_pool=False, apply_wrappers=True)
+    maxnodes=25
+    env = CreateEnv('Manhattan5x5_FixedEscapeInit',max_nodes=maxnodes,nfm_func_name =config['nfm_func'],var_targets=None, remove_world_pool=False, apply_wrappers=True)
+    #env = CreateEnv('Manhattan3x3_WalkAround',max_nodes=maxnodes,nfm_func_name =config['nfm_func'],var_targets=None, remove_world_pool=False, apply_wrappers=True)
     #env = CreateEnv('NWB_test_VariableEscapeInit',max_nodes=975,nfm_func_name =config['nfm_func'],var_targets=None, remove_world_pool=False, apply_wrappers=True)
     #env = CreateEnv('NWB_test_VariableEscapeInit',nfm_func_name =config['nfm_func'],max_nodes=975,var_targets=None, remove_world_pool=True)
 
@@ -59,16 +59,14 @@ def ManualEval(config):
     #env, _ = ConstructTrainSet(config)
 
     ## Load pre-saved model
+    saved_model = MaskablePPO.load(modeldir+"/model_best")
     if config['qnet'] == 's2v':
-        #saved_model = MaskablePPO.load(modeldir+"/model_last")
-        saved_model = MaskablePPO.load(modeldir+"/model_best")
         #saved_policy = s2v_ActorCriticPolicy.load(modeldir+"/policy_last")
         saved_policy_deployable=DeployablePPOPolicy(env, saved_model.policy)
         ppo_policy = ActionMaskedPolicySB3_PPO(saved_policy_deployable, deterministic=True)
     elif config['qnet'] == 'gat2':
-        #saved_model = MaskablePPO.load(modeldir+"/model_last")
-        saved_policy = Gat2_ActorCriticPolicy.load(modeldir+"/policy_last")
-        saved_policy_deployable=DeployablePPOPolicy_gat2(env, saved_policy,max_num_nodes=maxnodes)
+        #saved_policy = Gat2_ActorCriticPolicy.load(modeldir+"/policy_last")      
+        saved_policy_deployable=DeployablePPOPolicy_gat2(env, saved_model.policy,max_num_nodes=maxnodes)
         ppo_policy = ActionMaskedPolicySB3_PPO(saved_policy_deployable, deterministic=True)
 
     # OPTIONS TO PERFORM TESTS

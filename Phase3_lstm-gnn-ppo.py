@@ -637,9 +637,9 @@ def make_custom(world_name, num_envs=1, asynchronous=True, wrappers=None, **kwar
         state_enc='nfm'
         edge_blocking = True
         remove_world_pool = False
-        nfm_func_name='NFM_ev_ec_t_um_us'
+        nfm_func_name='NFM_ev_ec_t_dt_at_um_us'
         var_targets = None
-        apply_wrappers = False
+        apply_wrappers = True
         env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
         env.redefine_nfm(modules.gnn.nfm_gen.nfm_funcs[nfm_func_name])
         env.capture_on_edges = edge_blocking
@@ -649,7 +649,7 @@ def make_custom(world_name, num_envs=1, asynchronous=True, wrappers=None, **kwar
             env = VarTargetWrapper(env, var_targets)
         if apply_wrappers:
             #env = PPO_ObsWrapper(env, max_possible_num_nodes = max_nodes)        
-            env = PPO_ObsDictWrapper(env, max_possible_num_nodes = max_nodes)
+            env = PPO_ObsFlatWrapper(env, max_possible_num_nodes = 3000, max_number_edges=4000)
             env = PPO_ActWrapper(env) 
 
         if wrappers is not None:
@@ -668,7 +668,7 @@ def make_custom(world_name, num_envs=1, asynchronous=True, wrappers=None, **kwar
     return AsyncVectorEnv(env_fns) if asynchronous else SyncVectorEnv(env_fns)
 
 import modules.gnn.nfm_gen
-from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsWrapper, PPO_ObsDictWrapper, VarTargetWrapper
+from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsWrapper, PPO_ObsDictWrapper, VarTargetWrapper, PPO_ObsFlatWrapper
 def train_model(actor, critic, actor_optimizer, critic_optimizer, iteration, stop_conditions):   
     # Vector environment manages multiple instances of the environment.
     # A key difference between this and the standard gym environment is it automatically resets.
