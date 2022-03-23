@@ -6,6 +6,7 @@ import copy
 import tqdm
 from sb3_contrib.common.maskable.utils import get_action_masks
 from sb3_contrib.common.maskable.evaluation import evaluate_policy
+from sb3_contrib import MaskablePPO
 from modules.rl.rl_utils import EvaluatePolicy, EvalArgs1, EvalArgs2, EvalArgs3, GetFullCoverageSample
 from modules.gnn.nfm_gen import NFM_ec_t, NFM_ec_t_dt_at, NFM_ev_ec_t_dt_at_um_us, NFM_ec_dt, NFM_ec_dtscaled, NFM_ev_t, NFM_ev_ec_t, NFM_ev_ec_t_um_us, NFM_ev_ec_t_u
 from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsWrapper, PPO_ObsDictWrapper, VarTargetWrapper
@@ -15,6 +16,7 @@ from modules.rl.rl_custom_worlds import GetCustomWorld
 from modules.rl.environments import SuperEnv
 from modules.rl.rl_plotting import PlotEUPathsOnGraph_
 from modules.ppo.models_sb3_s2v import s2v_ActorCriticPolicy, Struc2VecExtractor, DeployablePPOPolicy
+from modules.ppo.models_sb3_gat2 import DeployablePPOPolicy_gat2
 from modules.rl.rl_policy import ActionMaskedPolicySB3_PPO
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -151,9 +153,12 @@ def evaluate_ppo(logdir, info=False, config=None, env=None, eval_subdir='.', n_e
     if type(env) == list:
         if len(env)==0: return 0,0,0,0
         for i,e in enumerate(tqdm.tqdm(env)):
-
-            saved_policy = s2v_ActorCriticPolicy.load(logdir+"/saved_models/policy_last")
-            saved_policy_deployable=DeployablePPOPolicy(e, saved_policy)
+            saved_model = MaskablePPO.load(logdir+"/saved_models/model_best")
+            #saved_policy = s2v_ActorCriticPolicy.load(logdir+"/saved_models/policy_last")
+            if config['qnet']=='s2v':
+                saved_policy_deployable=DeployablePPOPolicy(e, saved_model.policy)
+            elif config['qnet']=='gat2':
+                saved_policy_deployable=DeployablePPOPolicy_gat2(e, saved_model.policy)
             ppo_policy = ActionMaskedPolicySB3_PPO(saved_policy_deployable, deterministic=True)
 
             l, returns, c, solves = EvaluatePolicy(e, ppo_policy, e.world_pool, print_runs=False, save_plots=False, logdir=evaldir, eval_arg_func=EvalArgs3, silent_mode=True)

@@ -60,9 +60,10 @@ def ManualEval(config):
 
     ## Load pre-saved model
     if config['qnet'] == 's2v':
-        saved_model = MaskablePPO.load(modeldir+"/model_last")
-        saved_policy = s2v_ActorCriticPolicy.load(modeldir+"/policy_last")
-        saved_policy_deployable=DeployablePPOPolicy(env, saved_policy)
+        #saved_model = MaskablePPO.load(modeldir+"/model_last")
+        saved_model = MaskablePPO.load(modeldir+"/model_best")
+        #saved_policy = s2v_ActorCriticPolicy.load(modeldir+"/policy_last")
+        saved_policy_deployable=DeployablePPOPolicy(env, saved_model.policy)
         ppo_policy = ActionMaskedPolicySB3_PPO(saved_policy_deployable, deterministic=True)
     elif config['qnet'] == 'gat2':
         #saved_model = MaskablePPO.load(modeldir+"/model_last")

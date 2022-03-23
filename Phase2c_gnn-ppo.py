@@ -131,6 +131,7 @@ def main(args):
             #'Manhattan5x5_DuplicateSetB':25,
             #'Manhattan3x3_WalkAround':9,
             #'MetroU3_e1t31_FixedEscapeInit':33, 
+
             'full_solvable_3x3subs':9,
             'Manhattan5x5_FixedEscapeInit':25,
             'Manhattan5x5_VariableEscapeInit':25,
@@ -158,14 +159,14 @@ def main(args):
                 evalenv=[env]
 
             if config['demoruns']:
-                saved_model = MaskablePPO.load(config['logdir']+'/SEED'+str(config['seed0'])+"/saved_models/model_last")
+                saved_model = MaskablePPO.load(config['logdir']+'/SEED'+str(config['seed0'])+"/saved_models/model_best")
                 if config['qnet']=='s2v':
-                    saved_policy = s2v_ActorCriticPolicy.load(config['logdir']+'/SEED'+str(config['seed0'])+"/saved_models/policy_last")
-                    saved_policy_deployable=DeployablePPOPolicy(env, saved_policy)
+                    #saved_policy = s2v_ActorCriticPolicy.load(config['logdir']+'/SEED'+str(config['seed0'])+"/saved_models/policy_last")
+                    saved_policy_deployable=DeployablePPOPolicy(env, saved_model.policy)
                     ppo_policy = ActionMaskedPolicySB3_PPO(saved_policy_deployable, deterministic=True)
                 else:
-                    saved_policy = Gat2_ActorCriticPolicy.load(config['logdir']+'/SEED'+str(config['seed0'])+"/saved_models/policy_last")
-                    saved_policy_deployable=DeployablePPOPolicy_gat2(env, saved_policy)
+                    #saved_policy = Gat2_ActorCriticPolicy.load(config['logdir']+'/SEED'+str(config['seed0'])+"/saved_models/policy_last")
+                    saved_policy_deployable=DeployablePPOPolicy_gat2(env, saved_model.policy)
                     ppo_policy = ActionMaskedPolicySB3_PPO(saved_policy_deployable, deterministic=True)
                 while True:
                     entries=None#[5012,218,3903]
@@ -173,11 +174,6 @@ def main(args):
                     a = SimulateAutomaticMode_PPO(demo_env, ppo_policy, t_suffix=False, entries=entries)
                     if a == 'Q': break
 
-
-
-            #custom_env = CreateEnv(world_name, max_nodes=node_maxim, nfm_func_name = config['nfm_func'], var_targets=var_target, remove_world_pool=True, apply_wrappers=True)
-            #senv=SuperEnv([custom_env],{1:0},node_maxim,probs=[1])        
-            #n_eval=eval_num
             evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
             for seed in config['seedrange']:
                 result = evaluate_ppo(logdir=config['logdir']+'/SEED'+str(seed), config=config, env=evalenv, eval_subdir=evalName)
