@@ -38,6 +38,7 @@ def get_super_env(Uselected=[1], Eselected=[4], config=None, var_targets=None, a
     #scenario_name = 'Train_U2E45'
     # world_name = 'SubGraphsManhattan3x3'
     max_nodes=config['max_nodes']
+    max_edges=config['max_edges']
     state_repr = 'etUte0U0'
     state_enc  = 'nfm'
     #nfm_funcs = {'NFM_ev_ec_t':NFM_ev_ec_t(),'NFM_ec_t':NFM_ec_t(),'NFM_ec_dt':NFM_ec_dt(),'NFM_ec_dtscaled':NFM_ec_dtscaled(),'NFM_ev_t':NFM_ev_t(),'NFM_ev_ec_t_um_us':NFM_ev_ec_t_um_us()}
@@ -50,13 +51,13 @@ def get_super_env(Uselected=[1], Eselected=[4], config=None, var_targets=None, a
     env_all_train, hashint2env, env2hashint, env2hashstr = GetWorldSet(state_repr, state_enc, U=Uselected, E=Eselected, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func, var_targets=var_targets, remove_paths=remove_paths)
     if apply_wrappers:
         for i in range(len(env_all_train)):
-            env_all_train[i]=PPO_ObsDictWrapper(env_all_train[i], max_possible_num_nodes = max_nodes)        
+            env_all_train[i]=PPO_ObsDictWrapper(env_all_train[i], max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges)        
             env_all_train[i]=PPO_ActWrapper(env_all_train[i])        
     super_env = SuperEnv(env_all_train, hashint2env, max_possible_num_nodes = max_nodes)
     #SimulateInteractiveMode(super_env)
     return super_env, env_all_train
 
-def CreateEnv(world_name, max_nodes=9, nfm_func_name = 'NFM_ev_ec_t_um_us', var_targets=None, remove_world_pool=False, apply_wrappers=True):
+def CreateEnv(world_name, max_nodes=9, max_edges=300, nfm_func_name = 'NFM_ev_ec_t_um_us', var_targets=None, remove_world_pool=False, apply_wrappers=True):
     #world_name='Manhattan3x3_WalkAround'
     state_repr='etUte0U0'
     state_enc='nfm'
@@ -74,7 +75,7 @@ def CreateEnv(world_name, max_nodes=9, nfm_func_name = 'NFM_ev_ec_t_um_us', var_
         env = VarTargetWrapper(env, var_targets)
     if apply_wrappers:
         #env = PPO_ObsWrapper(env, max_possible_num_nodes = max_nodes)        
-        env = PPO_ObsDictWrapper(env, max_possible_num_nodes = max_nodes)
+        env = PPO_ObsDictWrapper(env, max_possible_num_nodes = max_nodes, max_possible_num_edges = max_edges)
         env = PPO_ActWrapper(env) 
     return env
 
@@ -139,7 +140,7 @@ def eval_simple(saved_policy,env):
                 obs = env.reset()
 
 
-def evaluate_ppo(logdir, info=False, config=None, env=None, eval_subdir='.', n_eval=1000):
+def evaluate_ppo(logdir, info=False, config=None, env=None, eval_subdir='.', n_eval=1000, max_num_nodes=-1):
     if env==None: return 0,0,0,0   
     try:
         if env==None or len(env)==0:
@@ -158,7 +159,7 @@ def evaluate_ppo(logdir, info=False, config=None, env=None, eval_subdir='.', n_e
             if config['qnet']=='s2v':
                 saved_policy_deployable=DeployablePPOPolicy(e, saved_model.policy)
             elif config['qnet']=='gat2':
-                saved_policy_deployable=DeployablePPOPolicy_gat2(e, saved_model.policy)
+                saved_policy_deployable=DeployablePPOPolicy_gat2(e, saved_model.policy, max_num_nodes=max_num_nodes)
             ppo_policy = ActionMaskedPolicySB3_PPO(saved_policy_deployable, deterministic=True)
 
             l, returns, c, solves = EvaluatePolicy(e, ppo_policy, e.world_pool, print_runs=False, save_plots=False, logdir=evaldir, eval_arg_func=EvalArgs3, silent_mode=True)

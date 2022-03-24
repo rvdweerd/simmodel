@@ -84,13 +84,13 @@ class Gat2Extractor(BaseFeaturesExtractor):
         for i in range(bsize):
             select+=[True]*int(num_nodes[i])+[False]*(num_nodes_padded-int(num_nodes[i]))
             pyg_list.append(Data(
-                pygx[i][:int(num_nodes[i]) ],
-                pygei[i][:,:int(num_edges[i])].to(torch.int64)
+                pygx[i][:int(num_nodes[i]) ].clone(),
+                pygei[i][:,:int(num_edges[i])].clone().to(torch.int64)
             ))
         pyg_data = Batch.from_data_list(pyg_list)
         mu_raw = self.gat(pyg_data.x, pyg_data.edge_index) # (nr_nodes in batch, emb_dim)      
         
-        reach_nodes_enc = reachable_nodes.reshape(-1)[select][:,None]
+        reach_nodes_enc = reachable_nodes.reshape(-1)[select][:,None].clone()
 
         num_nodes_enc = torch.zeros(mu_raw.shape[0],1).to(device)
         num_nodes_enc[-1,0]=bsize

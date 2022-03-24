@@ -127,23 +127,22 @@ def main(args):
         #                 'NWB_VarialeEscapeInit_eval' ]
         # eval_nums = [1, 1000,200]
         evalResults={}
-        world_dict={
-            #'Manhattan5x5_DuplicateSetB':25,
-            #'Manhattan3x3_WalkAround':9,
-            #'MetroU3_e1t31_FixedEscapeInit':33, 
-
-            'full_solvable_3x3subs':9,
-            'Manhattan5x5_FixedEscapeInit':25,
-            'Manhattan5x5_VariableEscapeInit':25,
-            'MetroU3_e17tborder_FixedEscapeInit':33,
-            'MetroU3_e17tborder_VariableEscapeInit':33,
-            'NWB_ROT_FixedEscapeInit':2602,
-            'NWB_ROT_VariableEscapeInit':2602,
-            'NWB_test_FixedEscapeInit':975,
-            'NWB_test_VariableEscapeInit':975,
-            'NWB_UTR_FixedEscapeInit':1182,
-            'NWB_UTR_VariableEscapeInit':1182,            
-            'SparseManhattan5x5':25,
+        world_dict={ # [max_nodes,max_edges]
+            #'Manhattan5x5_DuplicateSetB':[25,300],
+            #'Manhattan3x3_WalkAround':[9,300],
+            #'MetroU3_e1t31_FixedEscapeInit':[33, 300],
+            'full_solvable_3x3subs':[9,300],
+            'Manhattan5x5_FixedEscapeInit':[25,300],
+            'Manhattan5x5_VariableEscapeInit':[25,300],
+            'MetroU3_e17tborder_FixedEscapeInit':[33,300],
+            'MetroU3_e17tborder_VariableEscapeInit':[33,300],
+            'NWB_ROT_FixedEscapeInit':[2602,4000],
+            'NWB_ROT_VariableEscapeInit':[2602,4000],
+            'NWB_test_FixedEscapeInit':[975,4000],
+            'NWB_test_VariableEscapeInit':[975,4000],
+            'NWB_UTR_FixedEscapeInit':[1182,4000],
+            'NWB_UTR_VariableEscapeInit':[1182,4000],
+            'SparseManhattan5x5':[25,300],
             }
         #for world_name, node_maxim, var_target, eval_name, eval_num in zip(world_list, node_maxims, var_targets, eval_names, eval_nums):
         #custom_env = CreateEnv('MetroU3_e1t31_FixedEscapeInit',max_nodes=33,nfm_func_name =config['nfm_func'],var_targets=[1,1], remove_world_pool=True, apply_wrappers=True)
@@ -153,9 +152,9 @@ def main(args):
             if world_name == "full_solvable_3x3subs":
                 Etest=[0,1,2,3,4,5,6,7,8,9,10]
                 Utest=[1,2,3]
-                evalenv, _, _, _  = GetWorldSet('etUte0U0', 'nfm', U=Utest, E=Etest, edge_blocking=config['edge_blocking'], solve_select=config['solve_select'], reject_duplicates=False, nfm_func=modules.gnn.nfm_gen.nfm_funcs[config['nfm_func']], apply_wrappers=True, maxnodes=world_dict[world_name])
+                evalenv, _, _, _  = GetWorldSet('etUte0U0', 'nfm', U=Utest, E=Etest, edge_blocking=config['edge_blocking'], solve_select=config['solve_select'], reject_duplicates=False, nfm_func=modules.gnn.nfm_gen.nfm_funcs[config['nfm_func']], apply_wrappers=True, maxnodes=world_dict[world_name][0], maxedges=world_dict[world_name][1])
             else:
-                env = CreateEnv(world_name, max_nodes=world_dict[world_name], nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=config['remove_paths'], apply_wrappers=True)
+                env = CreateEnv(world_name, max_nodes=world_dict[world_name][0], max_edges = world_dict[world_name][1], nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=config['remove_paths'], apply_wrappers=True)
                 evalenv=[env]
 
             if config['demoruns']:
@@ -176,7 +175,7 @@ def main(args):
 
             evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
             for seed in config['seedrange']:
-                result = evaluate_ppo(logdir=config['logdir']+'/SEED'+str(seed), config=config, env=evalenv, eval_subdir=evalName)
+                result = evaluate_ppo(logdir=config['logdir']+'/SEED'+str(seed), config=config, env=evalenv, eval_subdir=evalName, max_num_nodes=world_dict[world_name][0])
                 num_unique_graphs, num_graph_instances, avg_return, success_rate = result
                 evalResults[evalName]['num_graphs.........'].append(num_unique_graphs)
                 evalResults[evalName]['num_graph_instances'].append(num_graph_instances)

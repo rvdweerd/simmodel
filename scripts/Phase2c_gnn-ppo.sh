@@ -27,7 +27,7 @@ for seed0 in {"1",}
 #"2","3","4","5"}
 #"NFM_ec_t","NFM_ec_dtscaled"}
 do
-    for qnet in {"s2v",}
+    for qnet in {"gat2",}
     do
         tmux new-session -d -s "${qnet}-${seed0}"
         tmux send-keys -t "${qnet}-${seed0}" "conda activate rlcourse-sb3c" Enter

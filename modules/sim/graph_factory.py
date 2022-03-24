@@ -189,7 +189,7 @@ def GetConfig(u=2):
     }
     return config
 
-def GetWorldSet(state_repr = 'et', state_enc  = 'tensors', U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_duplicates=True, nfm_func=None, var_targets=None, remove_paths=False, apply_wrappers=False, maxnodes=0):
+def GetWorldSet(state_repr = 'et', state_enc  = 'tensors', U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_duplicates=True, nfm_func=None, var_targets=None, remove_paths=False, apply_wrappers=False, maxnodes=0, maxedges=0):
     config=GetConfig(u=2)#only needed to find datafile
     databank_full, register_full, solvable = LoadData(edge_blocking = edge_blocking)
     
@@ -198,7 +198,7 @@ def GetWorldSet(state_repr = 'et', state_enc  = 'tensors', U=[1,2,3], E=[i for i
     if var_targets is not None:
         env0 = VarTargetWrapper(env0)
     if apply_wrappers:
-        env0=PPO_ObsDictWrapper(env0, max_possible_num_nodes = maxnodes)        
+        env0=PPO_ObsDictWrapper(env0, max_possible_num_nodes = maxnodes, max_possible_num_edges = maxedges)        
         env0=PPO_ActWrapper(env0)        
 
 
