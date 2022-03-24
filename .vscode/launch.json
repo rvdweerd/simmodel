@@ -7,7 +7,7 @@
         {
             "name": "Python: Current File",
             "type": "python",
-            "justMyCode": false,
+            "justMyCode": true,
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",

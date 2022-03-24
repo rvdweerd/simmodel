@@ -189,7 +189,7 @@ def GetConfig(u=2):
     }
     return config
 
-def GetWorldSet(state_repr = 'et', state_enc  = 'tensors', U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_duplicates=True, nfm_func=None, var_targets=None, remove_paths=False, apply_wrappers=False, maxnodes=0, maxedges=0):
+def GetWorldSet(state_repr = 'et', state_enc  = 'tensors', U=[1,2,3], E=[i for i in range(11)], edge_blocking=False, solve_select='solvable', reject_duplicates=True, nfm_func=None, var_targets=None, remove_paths=False, apply_wrappers=False, maxnodes=0, maxedges=0, return_probs=False):
     config=GetConfig(u=2)#only needed to find datafile
     databank_full, register_full, solvable = LoadData(edge_blocking = edge_blocking)
     
@@ -201,16 +201,16 @@ def GetWorldSet(state_repr = 'et', state_enc  = 'tensors', U=[1,2,3], E=[i for i
         env0=PPO_ObsDictWrapper(env0, max_possible_num_nodes = maxnodes, max_possible_num_edges = maxedges)        
         env0=PPO_ActWrapper(env0)        
 
-
-
     env0.capture_on_edges = edge_blocking
     all_envs=[]
     hashint2env={}
     env2hashint={}
     env2hashstr={}
+    prob_list=[]
     for u in U:
         env0.sp.U = u
         for e in E:
+            prob_counter=0
             for W_, hashint, hashstr in register_full[e]:
             #W_, hashint, hashstr = random.choice(register_full[4])
             #for hashint, env_data in databank_full['U='+str(u)].items():
@@ -251,7 +251,18 @@ def GetWorldSet(state_repr = 'et', state_enc  = 'tensors', U=[1,2,3], E=[i for i
                         env._remove_world_pool()
                     env.reset()
                     all_envs.append(env)
+                    prob_counter+=1
                     hashint2env[hashint]=len(all_envs)-1
                     env2hashint[len(all_envs)-1]=hashint
                     env2hashstr[len(all_envs)-1]=hashstr
+            prob_list.append(prob_counter)
+    
+    if return_probs:
+        lenprobs=len(prob_list)
+        probs=[]
+        for i, n in enumerate(prob_list):
+            probs += n*[1/(n*lenprobs)]
+        assert abs(sum(probs)-1) < 1e-5
+        return all_envs, hashint2env, env2hashint, env2hashstr, probs
+
     return all_envs, hashint2env, env2hashint, env2hashstr
