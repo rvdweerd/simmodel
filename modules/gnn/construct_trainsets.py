@@ -268,7 +268,7 @@ def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M
             probs=probs)
 
     if tset == 'TEST':
-        # config['max_edges']=300
+        config['max_edges']=300
         # env, _ = get_super_env(Uselected=[2], Eselected=[3,6,9], config=config, var_targets=None, apply_wrappers=apply_wrappers, remove_paths=remove_paths)
         # env_all_list += env.all_env
         # global_env.append(env)

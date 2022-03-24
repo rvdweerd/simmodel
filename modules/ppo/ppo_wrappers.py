@@ -28,7 +28,6 @@ class VarTargetWrapper(Wrapper):
     def render(self, mode=None, fname=None, t_suffix=True, size=None):
         return self.env.render(mode,fname,t_suffix,size)
 
-
 class PPO_ObsWrapper(ObservationWrapper):
     """Wrapper for stacking nfm|W|reachable nodes."""
 
@@ -71,12 +70,12 @@ class PPO_ObsFlatWrapper(ObservationWrapper):
     Flattening: nfm (NxF) | edge_list (Ex2) | reachable (N,) | num_nodes (1,) | max_num_nodes (1,) | num_edges (1,) | max_num_edges (1,)
     """
     
-    def __init__(self, env, max_possible_num_nodes = 3000, max_number_edges = 4000):
+    def __init__(self, env, max_possible_num_nodes = 3000, max_possible_num_edges = 4000):
         super().__init__(env)
         assert max_possible_num_nodes >= self.sp.V
         #self.V=env.sp.V
         self.max_nodes = max_possible_num_nodes
-        self.max_edges = max_number_edges
+        self.max_edges = max_possible_num_edges
         self.nflat = self.max_nodes * (1+self.F) + self.max_edges * 2 + 5
         self.observation_space= spaces.Box(0., max(2.,self.sp.U), shape=(self.nflat,), dtype=np.float32)
         self.action_space     = spaces.Discrete(self.max_nodes) # all possible nodes 

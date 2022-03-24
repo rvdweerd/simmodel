@@ -1,15 +1,16 @@
+#from torch import nn
+#from torch import distributions
+#import copy
+#from itertools import count
+#from IPython.display import HTML
+#from Phase1_hyperparameters import GetHyperParams_PPO_RNN
 import torch
-from torch import nn
-from torch import distributions
 import gym
-import copy
 from torch.utils.tensorboard import SummaryWriter
 from torch import optim
 import numpy as np
-from itertools import count
 import torch.nn.functional as F
 import re
-import copy
 import time
 import math
 import pathlib
@@ -17,16 +18,17 @@ import time
 import pickle
 import os
 from dataclasses import dataclass
-import gc
+#import gc
 from dotmap import DotMap
-from base64 import b64encode
-from IPython.display import HTML
+#from base64 import b64encode
 from modules.rl.rl_custom_worlds import GetCustomWorld
+from modules.ppo.helpfuncs import get_super_env
+from modules.sim.graph_factory import GetWorldSet
 import argparse
-#from Phase1_hyperparameters import GetHyperParams_PPO_RNN
+from modules.rl.environments import SuperEnv
 from modules.dqn.dqn_utils import seed_everything
 from modules.rl.rl_utils import GetFullCoverageSample
-
+from modules.ppo.models_ngo import MaskablePPOPolicy, encode_features, encode_hidden
 # Adapted to work with cusomized environment and GNNs from: 
 # https://gitlab.com/ngoodger/ppo_lstm/-/blob/master/recurrent_ppo.ipynb
 
@@ -92,7 +94,7 @@ WORKSPACE_PATH = exp_rootdir
 # Default Hyperparameters                                           
 SCALE_REWARD:         float = 1. 
 MIN_REWARD:           float = -15.                                  
-HIDDEN_SIZE:          float = 128
+HIDDEN_SIZE:          float = 64
 LIN_SIZE:             float = [128,128,64]
 BATCH_SIZE:           int   = 32                
 DISCOUNT:             float = 0.99
@@ -119,6 +121,9 @@ BASE_CHECKPOINT_PATH = f"{WORKSPACE_PATH}/checkpoints/"
 
 @dataclass
 class HyperParameters():
+    max_possible_nodes:   int   = 25#9#3000
+    max_possible_edges:   int   = 150#4000
+    emb_dim:              int   = 64
     scale_reward:         float = SCALE_REWARD
     min_reward:           float = MIN_REWARD
     hidden_size:          float = HIDDEN_SIZE
@@ -139,7 +144,7 @@ class HyperParameters():
     # Apply to continous action spaces only 
     trainable_std_dev:    bool = TRAINABLE_STD_DEV
     init_log_std_dev:     float = INIT_LOG_STD_DEV
-hp = HyperParameters(parallel_rollouts=PARALLEL_ROLLOUTS, rollout_steps=ROLLOUT_STEPS, batch_size=BATCH_SIZE, recurrent_seq_len=RECURRENT_SEQ_LEN, trainable_std_dev=TRAINABLE_STD_DEV,  patience=PATIENCE)
+hp = HyperParameters()#parallel_rollouts=PARALLEL_ROLLOUTS, rollout_steps=ROLLOUT_STEPS, batch_size=BATCH_SIZE, recurrent_seq_len=RECURRENT_SEQ_LEN, trainable_std_dev=TRAINABLE_STD_DEV,  patience=PATIENCE)
 batch_count = hp.parallel_rollouts * hp.rollout_steps / hp.recurrent_seq_len / hp.batch_size
 print(f"batch_count: {batch_count}")
 assert batch_count >= 1., "Less than 1 batch per trajectory.  Are you sure that's what you want?"
@@ -204,124 +209,6 @@ def get_env_space(env):
     obsv_dim= env.observation_space.shape[1] 
     return obsv_dim, action_dim, continuous_action_space
 
-class MaskablePPOPolicy(nn.Module):
-    def __init__(self, state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev=None):
-        super().__init__()
-        self.action_dim = action_dim
-        self.continuous_action_space = continuous_action_space 
-
-        self.FE = FeatureExtractor(state_dim)
-        self.PI = Actor(state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev)
-        self.V  = Critic(state_dim)
-        print(self)
-
-
-
-class FeatureExtractor(nn.Module):
-    def __init__(self, state_dim):
-        super().__init__()
-        layers = [nn.Linear(state_dim,state_dim), nn.ELU()]
-        self.lin_layers = nn.Sequential(*layers)
-
-    def forward(self, state):
-        return self.lin_layers(state)
-
-class Actor(nn.Module):
-    def __init__(self, state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev=None):
-        super().__init__()
-        self.counter=0
-        self.lstm = nn.LSTM(state_dim, hp.hidden_size, num_layers=hp.recurrent_layers)
-        
-        if type(LIN_SIZE) is not list:
-            assert False
-        layers=[]
-        layer_sizes=[hp.hidden_size]+LIN_SIZE
-        for layer_idx in range(1,len(layer_sizes)):
-            layers+= [nn.Linear(layer_sizes[layer_idx-1], layer_sizes[layer_idx]), nn.ELU() ]
-        layers+= [nn.Linear(layer_sizes[-1], action_dim)]
-        self.lin_layers = nn.Sequential(*layers)
-
-        # self.layer_hidden1 = nn.Linear(hp.hidden_size, LIN_SIZE)
-        # self.layer_hidden2 = nn.Linear(LIN_SIZE, LIN_SIZE)
-        # self.layer_hidden3 = nn.Linear(LIN_SIZE, LIN_SIZE//2)
-        # self.layer_policy_logits = nn.Linear(LIN_SIZE//2, action_dim)
-
-        self.action_dim = action_dim
-        self.continuous_action_space = continuous_action_space 
-        self.log_std_dev = nn.Parameter(init_log_std_dev * torch.ones((action_dim), dtype=torch.float), requires_grad=trainable_std_dev)
-        self.covariance_eye = torch.eye(self.action_dim).unsqueeze(0)
-        self.hidden_cell = None
-        print('Actor network:')
-        self.numTrainableParameters()
-        print(self)
-        
-    def get_init_state(self, batch_size, device):
-        self.hidden_cell = (torch.zeros(hp.recurrent_layers, batch_size, hp.hidden_size).to(device),
-                            torch.zeros(hp.recurrent_layers, batch_size,hp.hidden_size).to(device))
-        
-    def forward(self, state, terminal=None):
-        batch_size = state.shape[1]
-        device = state.device
-        if self.hidden_cell is None or batch_size != self.hidden_cell[0].shape[1]:
-            self.get_init_state(batch_size, device)
-        if terminal is not None:
-            self.hidden_cell = [value * (1. - terminal).reshape(1, batch_size, 1) for value in self.hidden_cell]
-        self.counter+=1
-
-        _, self.hidden_cell = self.lstm(state, self.hidden_cell)
-        policy_logits_out = self.lin_layers(self.hidden_cell[0][-1])
-        
-        if self.continuous_action_space:
-            cov_matrix = self.covariance_eye.to(device).expand(batch_size, self.action_dim, self.action_dim) * torch.exp(self.log_std_dev.to(device))
-            # We define the distribution on the CPU since otherwise operations fail with CUDA illegal memory access error.
-            policy_dist = torch.distributions.multivariate_normal.MultivariateNormal(policy_logits_out.to("cpu"), cov_matrix.to("cpu"))
-        else:
-            policy_dist = distributions.Categorical(F.softmax(policy_logits_out, dim=1).to("cpu"))
-        return policy_dist
-    def numTrainableParameters(self):
-        print('Actor size:')
-        print('------------------------------------------')
-        total = 0
-        for name, p in self.named_parameters():
-            if p.requires_grad:
-                total += np.prod(p.shape)
-            print("{:24s} {:12s} requires_grad={}".format(name, str(list(p.shape)), p.requires_grad))
-        print("Total number of trainable parameters: {}".format(total))
-        print('------------------------------------------')
-        assert total == sum(p.numel() for p in self.parameters() if p.requires_grad)
-        return total
-
-class Critic(nn.Module):
-    def __init__(self, state_dim):
-        super().__init__()
-        self.layer_lstm = nn.LSTM(state_dim, hp.hidden_size, num_layers=hp.recurrent_layers)
-        self.counter=0
-        if type(LIN_SIZE) is not list:
-            assert False
-        layers=[]
-        layer_sizes=[hp.hidden_size]+LIN_SIZE
-        for layer_idx in range(1,len(layer_sizes)):
-            layers+= [nn.Linear(layer_sizes[layer_idx-1], layer_sizes[layer_idx]), nn.ELU() ]
-        layers+= [nn.Linear(layer_sizes[-1], 1)]
-        self.lin_layers = nn.Sequential(*layers)
-        self.hidden_cell = None
-        
-    def get_init_state(self, batch_size, device):
-        self.hidden_cell = (torch.zeros(hp.recurrent_layers, batch_size, hp.hidden_size).to(device),
-                            torch.zeros(hp.recurrent_layers, batch_size, hp.hidden_size).to(device))
-    
-    def forward(self, state, terminal=None):
-        batch_size = state.shape[1]
-        device = state.device
-        if self.hidden_cell is None or batch_size != self.hidden_cell[0].shape[1]:
-            self.get_init_state(batch_size, device)
-        if terminal is not None:
-            self.hidden_cell = [value * (1. - terminal).reshape(1, batch_size, 1) for value in self.hidden_cell]
-        
-        _, self.hidden_cell = self.layer_lstm(state, self.hidden_cell)
-        value_out = self.lin_layers(self.hidden_cell[0][-1])
-        return value_out
-
 def get_last_checkpoint_iteration():
     """
     Determine latest checkpoint iteration.
@@ -373,7 +260,8 @@ def start_or_resume_from_checkpoint(env):
                   action_dim,
                   continuous_action_space=continuous_action_space,
                   trainable_std_dev=hp.trainable_std_dev,
-                  init_log_std_dev=hp.init_log_std_dev)
+                  init_log_std_dev=hp.init_log_std_dev,
+                  hp=hp)
         
     #actor_optimizer = optim.AdamW(actor.parameters(), lr=hp.actor_learning_rate)
     #critic_optimizer = optim.AdamW(critic.parameters(), lr=hp.critic_learning_rate)
@@ -466,6 +354,7 @@ def gather_trajectories(input_data):
     # Initialise variables.
     obsv = env.reset()
     trajectory_data = {"states": [],
+                 "features": [],
                  "actions": [],
                  "action_probabilities": [],
                  "rewards": [],
@@ -480,22 +369,33 @@ def gather_trajectories(input_data):
 
     with torch.no_grad():
         # Reset actor and critic state.
-        ppo_model.PI.get_init_state(hp.parallel_rollouts, GATHER_DEVICE)
-        ppo_model.V.get_init_state(hp.parallel_rollouts, GATHER_DEVICE)
+        first_pass = True
         # Take 1 additional step in order to collect the state and value for the final state.
         for i in range(hp.rollout_steps):
-            
-            trajectory_data["actor_hidden_states"].append(ppo_model.PI.hidden_cell[0].squeeze(0).cpu())
-            trajectory_data["actor_cell_states"].append(ppo_model.PI.hidden_cell[1].squeeze(0).cpu())
-            trajectory_data["critic_hidden_states"].append(ppo_model.V.hidden_cell[0].squeeze(0).cpu())
-            trajectory_data["critic_cell_states"].append(ppo_model.V.hidden_cell[1].squeeze(0).cpu())
-            
-            # Choose next action 
             state = torch.tensor(obsv, dtype=torch.float32)
             trajectory_data["states"].append(state)
-            value = ppo_model.V(state.unsqueeze(0).to(GATHER_DEVICE), terminal.to(GATHER_DEVICE))
+            
+            features = ppo_model.FE(state.to(GATHER_DEVICE))
+            mu_raw, batch, reachable, num_nodes_tensor = torch.split(features,[hp.emb_dim,1,1,1],dim=1)
+            batch_size=state.shape[0]
+            p = batch_size * hp.max_possible_nodes - num_nodes_tensor.shape[0] # padding value to create equal size hidden state tensors
+            enc_info = {'p':p,'batch':batch.cpu(),'reachable':reachable.cpu(),'num_nodes_tensor':num_nodes_tensor.cpu(),'num_nodes':num_nodes_tensor.shape[0]}
+            trajectory_data["features"].append( encode_features(features.cpu(), enc_info) )
+
+            if first_pass: # initialize hidden states
+                ppo_model.PI.get_init_state(features.shape[0], GATHER_DEVICE)
+                ppo_model.V.get_init_state(features.shape[0], GATHER_DEVICE)
+                first_pass = False
+
+            trajectory_data["actor_hidden_states"].append( encode_hidden(ppo_model.PI.hidden_cell[0].squeeze(0).cpu(), enc_info) )
+            trajectory_data["actor_cell_states"].append(   encode_hidden(ppo_model.PI.hidden_cell[1].squeeze(0).cpu(), enc_info))
+            trajectory_data["critic_hidden_states"].append(encode_hidden(ppo_model.V.hidden_cell[0].squeeze(0).cpu(),  enc_info))
+            trajectory_data["critic_cell_states"].append(  encode_hidden(ppo_model.V.hidden_cell[1].squeeze(0).cpu(),  enc_info))
+            
+            # Choose next action 
+            value = ppo_model.V(features.unsqueeze(0), terminal.to(GATHER_DEVICE))
             trajectory_data["values"].append( value.squeeze(1).cpu())
-            action_dist = ppo_model.PI(state.unsqueeze(0).to(GATHER_DEVICE), terminal.to(GATHER_DEVICE))
+            action_dist = ppo_model.PI(features.unsqueeze(0), terminal.to(GATHER_DEVICE))
             action = action_dist.sample().reshape(hp.parallel_rollouts, -1)
             if not ppo_model.continuous_action_space:
                 action = action.squeeze(1)
@@ -514,7 +414,8 @@ def gather_trajectories(input_data):
     
         # Compute final value to allow for incomplete episodes.
         state = torch.tensor(obsv, dtype=torch.float32)
-        value = ppo_model.V(state.unsqueeze(0).to(GATHER_DEVICE), terminal.to(GATHER_DEVICE))
+        features = ppo_model.FE(state.to(GATHER_DEVICE))
+        value = ppo_model.V(features.unsqueeze(0).to(GATHER_DEVICE), terminal.to(GATHER_DEVICE))
         # Future value for terminal episodes is 0.
         trajectory_data["values"].append(value.squeeze(1).cpu() * (1 - terminal))
 
@@ -656,7 +557,7 @@ def make_custom(world_name, num_envs=1, asynchronous=True, wrappers=None, **kwar
     def _make_env():
         #env = make_(id, **kwargs)
         #env=GetCustomWorld(env_id, make_reflexive=MAKE_REFLEXIVE, state_repr=STATE_REPR, state_enc='tensors')
-        max_nodes = 9
+        #max_nodes = 9
         state_repr='etUte0U0'
         state_enc='nfm'
         edge_blocking = True
@@ -664,6 +565,7 @@ def make_custom(world_name, num_envs=1, asynchronous=True, wrappers=None, **kwar
         nfm_func_name='NFM_ev_ec_t_dt_at_um_us'
         var_targets = None
         apply_wrappers = True
+        
         env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
         env.redefine_nfm(modules.gnn.nfm_gen.nfm_funcs[nfm_func_name])
         env.capture_on_edges = edge_blocking
@@ -673,8 +575,16 @@ def make_custom(world_name, num_envs=1, asynchronous=True, wrappers=None, **kwar
             env = VarTargetWrapper(env, var_targets)
         if apply_wrappers:
             #env = PPO_ObsWrapper(env, max_possible_num_nodes = max_nodes)        
-            env = PPO_ObsFlatWrapper(env, max_possible_num_nodes = 3000, max_number_edges=4000)
+            env = PPO_ObsFlatWrapper(env, max_possible_num_nodes = hp.max_possible_nodes, max_possible_num_edges=hp.max_possible_edges)
             env = PPO_ActWrapper(env) 
+  
+        # env_all_train, hashint2env, env2hashint, env2hashstr = GetWorldSet(state_repr, state_enc, U=[2], E=[0,6], edge_blocking=edge_blocking, solve_select='solvable', reject_duplicates=False, nfm_func=modules.gnn.nfm_gen.nfm_funcs[nfm_func_name], var_targets=None, remove_paths=False)
+        # if apply_wrappers:
+        #     for i in range(len(env_all_train)):
+        #         env_all_train[i]=PPO_ObsFlatWrapper(env_all_train[i], max_possible_num_nodes = hp.max_possible_nodes, max_possible_num_edges=hp.max_possible_edges)        
+        #         env_all_train[i]=PPO_ActWrapper(env_all_train[i])        
+        # env = SuperEnv(env_all_train, hashint2env, max_possible_num_nodes = hp.max_possible_nodes)
+
 
         if wrappers is not None:
             if callable(wrappers):
@@ -811,7 +721,7 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions):
 
 writer = SummaryWriter(log_dir=f"{WORKSPACE_PATH}/logs")
 def TrainAndSaveModel():
-    world_name='Manhattan3x3_WalkAround'
+    world_name='Manhattan5x5_VariableEscapeInit'
     env = make_custom(world_name, hp.parallel_rollouts, asynchronous=ASYNCHRONOUS_ENVIRONMENT)   
     if ENV_MASK_VELOCITY:
         env = MaskVelocityWrapper(env)
