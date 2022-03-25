@@ -3,8 +3,8 @@
 # ## BATCH
 #train_on="M3M5Mix"
 #train_on="NWB_AMS"
-train_on="MixAll33"
-#train_on="TEST"
+#train_on="MixAll33"
+train_on="TEST"
 emb=64
 itt=5
 nfm="NFM_ev_ec_t_dt_at_um_us"
@@ -12,10 +12,10 @@ nfm="NFM_ev_ec_t_dt_at_um_us"
 norm_agg="True"
 optim='returns'
 nstep=200000 #200000
-train="False"
+train="True"
 eval="False"
-test="True"
-numseeds=5
+test="False"
+numseeds=1
 #seed0=1
 solveselect='solvable'
 edgeblock="True"
@@ -23,8 +23,7 @@ max_nodes=33
 demoruns="False"
 pursuit="Uon"
 
-for seed0 in {"1",}
-#"2","3","4","5"}
+for seed0 in {"1","2","3","4","5"}
 #"NFM_ec_t","NFM_ec_dtscaled"}
 do
     for qnet in {"gat2",}

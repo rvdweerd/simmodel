@@ -25,8 +25,8 @@
                     // // ARGS FOR Phase 2 PPO
                     // //"--train_on","NWB_AMS",
                     // //"--train_on","MetroConstructed",
-                    // //"--train_on","TEST",
-                    // "--train_on","MixAll33",
+                    // "--train_on","TEST",
+                    // //"--train_on","MixAll33",
                     // //"--train_on","M3M5Mix",
                     // "--emb_dim","64",
                     // "--emb_itT","5",

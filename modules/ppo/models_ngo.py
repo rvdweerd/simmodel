@@ -112,23 +112,30 @@ class Actor(nn.Module):
         self.hidden_cell = (torch.zeros(self.hp.recurrent_layers, batch_size, self.hp.hidden_size).to(device),
                             torch.zeros(self.hp.recurrent_layers, batch_size, self.hp.hidden_size).to(device))
         
-    def forward(self, features, terminal=None):
+    def forward(self, features, terminal=None, batch_data=None):
         batch_size = len(terminal)#state.shape[1]
         num_nodes_in_batch = features.shape[1]
         device = features.device
         mu_raw, batch, reachable, num_nodes = torch.split(features,[self.emb_dim,1,1,1],dim=2)
         num_nodes = num_nodes.squeeze()[:batch_size].to(torch.int64)
         batch = batch.squeeze().to(torch.int64)
-        terminal = torch.repeat_interleave(terminal, num_nodes, dim=0)
+        #terminal = torch.repeat_interleave(terminal, num_nodes, dim=0)
+        terminal_dense = torch.repeat_interleave(terminal.to(torch.bool), torch.ones(batch_size,dtype=torch.int64)*self.hp.max_possible_nodes, dim=0)
 
-        if self.hidden_cell is None or num_nodes_in_batch != self.hidden_cell[0].shape[1]:
-            self.get_init_state(batch_size, device)
+        if self.hidden_cell is None or self.hp.max_possible_nodes * batch_size != self.hidden_cell[0].shape[1]:
+            self.get_init_state(self.hp.max_possible_nodes * batch_size, device)
         if terminal is not None:
-            self.hidden_cell = [value * (1. - terminal).reshape(1, num_nodes_in_batch, 1) for value in self.hidden_cell]
+            self.hidden_cell[0][:,terminal_dense,:] = 0.
+            self.hidden_cell[1][:,terminal_dense,:] = 0.
         self.counter+=1
 
-        _, self.hidden_cell = self.lstm(mu_raw, self.hidden_cell)
-        mu_mem = self.hidden_cell[0][-1] # (num_nodes in batch, emb_dim)
+        active_hidden_rows = batch_data[:,2].to(torch.bool) # node select indicator
+        _, hidden_update = self.lstm(mu_raw, (self.hidden_cell[0][:,active_hidden_rows,:],self.hidden_cell[1][:,active_hidden_rows,:]))
+        self.hidden_cell[0][:,active_hidden_rows,:] = hidden_update[0]
+        self.hidden_cell[1][:,active_hidden_rows,:] = hidden_update[1]
+        
+        assert (batch_data[:,0][active_hidden_rows].to(torch.int64) == batch).all()      
+        mu_mem = self.hidden_cell[0][-1][active_hidden_rows] # (num_nodes in batch, emb_dim)
         
         mu_mem_meanpool = scatter_mean(mu_mem, batch.to(torch.int64), dim=0) # (batch_size, emb_dim)
         mu_mem_meanpool_expanded = torch.repeat_interleave(mu_mem_meanpool, num_nodes, dim=0) # (num_nodes in batch, emb_dim)
@@ -139,15 +146,29 @@ class Actor(nn.Module):
 
         prob_logits_raw = self.theta5_pi(rep).squeeze(-1) # (nr_nodes in batch,)
 
-        prob_logits=torch.ones(batch_size, self.hp.max_possible_nodes).to(torch.float32).to(device)*(-torch.inf) # (batch_size, max_num_nodes)
-        reachable=reachable.squeeze()
-        start=0
-        for i in range(batch_size):
-            reach = reachable[start:(start+int(num_nodes[i]))].to(torch.bool)
-            prob_logits[i][:int(num_nodes[i])][reach] = prob_logits_raw[start:(start+int(num_nodes[i]))][reach]
-            start+=int(num_nodes[i])
-        # NEED TO MASK
+        splitter = features[0][:batch_size,-1].to(torch.int64).tolist()
+        reachable=reachable.squeeze().to(torch.bool)
         
+        # METHOD 1: SPLITTER (TODO check grad_fn; is gradient retained after split and list operations)
+        if features.shape[0]>1:
+            splitter1 = features[1][:batch_size,-1].to(torch.int64).tolist()
+            assert (splitter==splitter1).all()
+        #prob_logits_raw_masked = prob_logits_raw.clone()
+        prob_logits_raw[~reachable]=-torch.inf
+        splitted_logits = list(prob_logits_raw.split(splitter,dim=0))
+        p = self.hp.max_possible_nodes-splitter[0]
+        assert p>=0
+        splitted_logits[0] = torch.nn.functional.pad(splitted_logits[0],(0,p),value=-torch.inf)
+        prob_logits=torch.nn.utils.rnn.pad_sequence(splitted_logits,batch_first=True,padding_value=-torch.inf)        
+
+        # METHOD 2: FOR LOOP
+        # prob_logits=torch.ones(batch_size, self.hp.max_possible_nodes).to(torch.float32).to(device)*(-torch.inf) # (batch_size, max_num_nodes)
+        # start=0
+        # for i in range(batch_size):
+        #     reach = reachable[start:(start+int(num_nodes[i]))]#.to(torch.bool)
+        #     prob_logits[i][:int(num_nodes[i])][reach] = prob_logits_raw[start:(start+int(num_nodes[i]))][reach]
+        #     start+=int(num_nodes[i])
+       
         if self.continuous_action_space:
             assert False
             # cov_matrix = self.covariance_eye.to(device).expand(batch_size, self.action_dim, self.action_dim) * torch.exp(self.log_std_dev.to(device))
@@ -199,7 +220,7 @@ class Critic(nn.Module):
         self.hidden_cell = (torch.zeros(self.hp.recurrent_layers, batch_size, self.hp.hidden_size).to(device),
                             torch.zeros(self.hp.recurrent_layers, batch_size, self.hp.hidden_size).to(device))
     
-    def forward(self, features, terminal=None, enc_info=None):
+    def forward(self, features, terminal=None, batch_data=None):
         batch_size = len(terminal)#state.shape[1]
         num_nodes_in_batch = features.shape[1]
         device = features.device
@@ -209,18 +230,19 @@ class Critic(nn.Module):
         #terminal_sparse = torch.repeat_interleave(terminal.to(torch.int64), num_nodes, dim=0)
         terminal_dense = torch.repeat_interleave(terminal.to(torch.bool), torch.ones(batch_size,dtype=torch.int64)*self.hp.max_possible_nodes, dim=0)
         if self.hidden_cell is None or self.hp.max_possible_nodes * batch_size != self.hidden_cell[0].shape[1]:
-            self.get_init_state(batch_size, device)
-        if terminal is not None:
+            self.get_init_state(self.hp.max_possible_nodes * batch_size, device)
+        if terminal is not None: # reset hidden cell values for nodes part of a terminated graph to 0
             self.hidden_cell[0][:,terminal_dense,:] = 0.
             self.hidden_cell[1][:,terminal_dense,:] = 0.
         self.counter+=1
 
-        active_hidden_rows = enc_info['batch_data'][:,2].to(torch.bool)
+        active_hidden_rows = batch_data[:,2].to(torch.bool) # node select indicator
         #_, self.hidden_cell = self.lstm(mu_raw, self.hidden_cell)
-        a, hidden_update  = self.lstm(mu_raw, (self.hidden_cell[0][:,active_hidden_rows,:],self.hidden_cell[1][:,active_hidden_rows,:]))
+        _, hidden_update  = self.lstm(mu_raw, (self.hidden_cell[0][:,active_hidden_rows,:],self.hidden_cell[1][:,active_hidden_rows,:]))
         self.hidden_cell[0][:,active_hidden_rows,:] = hidden_update[0]
         self.hidden_cell[1][:,active_hidden_rows,:] = hidden_update[1]
         #value_out = self.lin_layers(self.hidden_cell[0][-1]) # COULD APPLY LINEAR LAYERS + NONLINs HERE
+        assert (batch_data[:,0][active_hidden_rows].to(torch.int64) == batch).all()
         mu_mem = self.hidden_cell[0][-1][active_hidden_rows] # (num_nodes in batch, emb_dim)
 
         mu_mem_meanpool = scatter_mean(mu_mem, batch.to(torch.int64), dim=0) # (batch_size, emb_dim)
@@ -248,4 +270,4 @@ def encode_features(features, enc_info):
     p = enc_info['Vmax']-splitter[0]
     splitted_features[0]=torch.nn.functional.pad(splitted_features[0],(0,0,0,p))
     features=torch.nn.utils.rnn.pad_sequence(splitted_features,batch_first=True)
-    return features
+    return features.reshape(enc_info['batch_size']*enc_info['Vmax'], -1) # (max_nodes_in_batch, emb_dim+3)

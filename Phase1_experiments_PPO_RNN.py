@@ -244,6 +244,9 @@ class Actor(nn.Module):
         
     def forward(self, state, terminal=None):
         batch_size = state.shape[1]
+        test=state.shape[0]
+        if test>1:
+            k=0
         device = state.device
         if self.hidden_cell is None or batch_size != self.hidden_cell[0].shape[1]:
             self.get_init_state(batch_size, device)

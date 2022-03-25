@@ -355,6 +355,7 @@ def gather_trajectories(input_data):
     obsv = env.reset()
     trajectory_data = {"states": [],
                  "features_expanded": [],
+                 "batch_data": [],
                  "actions": [],
                  "action_probabilities": [],
                  "rewards": [],
@@ -388,15 +389,16 @@ def gather_trajectories(input_data):
                 first_pass = False
             enc_info['batch_data']=trajectory_data['features_expanded'][-1].reshape(-1,hp.emb_dim+3)[:,-3:].clone().cpu()
 
+            trajectory_data["batch_data"].append(enc_info['batch_data'])
             trajectory_data["actor_hidden_states"].append( encode_hidden(ppo_model.PI.hidden_cell[0].squeeze(0).cpu(), enc_info).clone())
             trajectory_data["actor_cell_states"].append(   encode_hidden(ppo_model.PI.hidden_cell[1].squeeze(0).cpu(), enc_info).clone())
             trajectory_data["critic_hidden_states"].append(encode_hidden(ppo_model.V.hidden_cell[0].squeeze(0).cpu(),  enc_info).clone())
             trajectory_data["critic_cell_states"].append(  encode_hidden(ppo_model.V.hidden_cell[1].squeeze(0).cpu(),  enc_info).clone())
             
             # Choose next action 
-            value = ppo_model.V(features.unsqueeze(0), terminal.to(GATHER_DEVICE), enc_info)
+            value = ppo_model.V(features.unsqueeze(0), terminal.to(GATHER_DEVICE), enc_info['batch_data'])
             trajectory_data["values"].append( value.squeeze(1).cpu())
-            action_dist = ppo_model.PI(features.unsqueeze(0), terminal.to(GATHER_DEVICE))
+            action_dist = ppo_model.PI(features.unsqueeze(0), terminal.to(GATHER_DEVICE), enc_info['batch_data'])
             action = action_dist.sample().reshape(hp.parallel_rollouts, -1)
             if not ppo_model.continuous_action_space:
                 action = action.squeeze(1)
@@ -416,7 +418,14 @@ def gather_trajectories(input_data):
         # Compute final value to allow for incomplete episodes.
         state = torch.tensor(obsv, dtype=torch.float32)
         features = ppo_model.FE(state.to(GATHER_DEVICE))
-        value = ppo_model.V(features.unsqueeze(0).to(GATHER_DEVICE), terminal.to(GATHER_DEVICE))
+        
+        mu_raw, batch, reachable, num_nodes_tensor = torch.split(features,[hp.emb_dim,1,1,1],dim=1)
+        batch_size=state.shape[0]
+        enc_info = {'Vmax':hp.max_possible_nodes,'batch_size':batch_size,'batch':batch.cpu(),'reachable':reachable.cpu(),'num_nodes_tensor':num_nodes_tensor.cpu(),'num_nodes':num_nodes_tensor.shape[0]}
+        feature_expanded =  encode_features(features.clone().cpu(), enc_info) 
+        enc_info['batch_data']=feature_expanded.reshape(-1,hp.emb_dim+3)[:,-3:].clone().cpu()
+
+        value = ppo_model.V(features.unsqueeze(0).to(GATHER_DEVICE), terminal.to(GATHER_DEVICE), enc_info['batch_data'])
         # Future value for terminal episodes is 0.
         trajectory_data["values"].append(value.squeeze(1).cpu() * (1 - terminal))
 
