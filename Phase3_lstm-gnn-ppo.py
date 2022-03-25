@@ -398,7 +398,7 @@ def gather_trajectories(input_data):
             # Choose next action 
             value = ppo_model.V(features.unsqueeze(0), terminal.to(GATHER_DEVICE))
             trajectory_data["values"].append( value.squeeze(1).cpu())
-            action_dist = ppo_model.PI(features.unsqueeze(0), terminal.to(GATHER_DEVICE), enc_info['batch_data'])
+            action_dist = ppo_model.PI(features.unsqueeze(0), terminal.to(GATHER_DEVICE))
             action = action_dist.sample().reshape(hp.parallel_rollouts, -1)
             if not ppo_model.continuous_action_space:
                 action = action.squeeze(1)
@@ -417,15 +417,9 @@ def gather_trajectories(input_data):
     
         # Compute final value to allow for incomplete episodes.
         state = torch.tensor(obsv, dtype=torch.float32)
-        features = ppo_model.FE(state.to(GATHER_DEVICE))
-        
-        mu_raw, batch, reachable, num_nodes_tensor = torch.split(features,[hp.emb_dim,1,1,1],dim=1)
-        batch_size=state.shape[0]
-        enc_info = {'Vmax':hp.max_possible_nodes,'batch_size':batch_size,'batch':batch.cpu(),'reachable':reachable.cpu(),'num_nodes_tensor':num_nodes_tensor.cpu(),'num_nodes':num_nodes_tensor.shape[0]}
-        feature_expanded =  encode_features(features.clone().cpu(), enc_info) 
-        enc_info['batch_data']=feature_expanded.reshape(-1,hp.emb_dim+3)[:,-3:].clone().cpu()
+        features = ppo_model.FE(state.to(GATHER_DEVICE))        
 
-        value = ppo_model.V(features.unsqueeze(0).to(GATHER_DEVICE), terminal.to(GATHER_DEVICE), enc_info['batch_data'])
+        value = ppo_model.V(features.unsqueeze(0).to(GATHER_DEVICE), terminal.to(GATHER_DEVICE))
         # Future value for terminal episodes is 0.
         trajectory_data["values"].append(value.squeeze(1).cpu() * (1 - terminal))
 
@@ -506,6 +500,7 @@ class TrajectorBatch():
     Dataclass for storing data batch.
     """
     states: torch.tensor
+    features: torch.tensor
     actions: torch.tensor
     action_probabilities: torch.tensor
     advantages: torch.tensor
@@ -678,6 +673,7 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions):
                 #     print('############################################# LR adjusted to',actor_optimizer.param_groups[0]['lr'])
                 # Update actor
                 ppo_optimizer.zero_grad()
+                features = ppo_model.FE(batch.states)
                 action_dist = ppo_model.PI(batch.states)
                 # Action dist runs on cpu as a workaround to CUDA illegal memory access.
                 action_probabilities = action_dist.log_prob(batch.actions[-1, :].to("cpu")).to(TRAIN_DEVICE)
