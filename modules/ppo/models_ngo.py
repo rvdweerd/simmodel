@@ -58,17 +58,19 @@ class FeatureExtractor(nn.Module):
 
     def deserialize(self, obs):
         num_nodes, max_nodes, num_edges, max_edges, F = obs[-5:].to(torch.int64).tolist()
+        assert num_nodes==max_nodes
         nf,py,re,_ = torch.split(obs,(F*max_nodes, 2*max_edges, max_nodes, 5),dim=0)
-        nf=nf.reshape(max_nodes,-1)[:num_nodes]
+        nf=nf.reshape(max_nodes,-1)#[:num_nodes]
         py=py.reshape(2,-1)[:,:num_edges].to(torch.int64)
-        re=re.reshape(-1,1)[:num_nodes].to(torch.int64)
+        #re=re.reshape(-1,1)[:num_nodes].to(torch.int64)
+        re=re.reshape(-1,1).to(torch.int64)
         return nf,py,re,num_nodes,max_nodes,num_edges,max_edges,F
         
     def forward(self, state):
         # state: (bize,flatvecdim)
         bsize=state.shape[0]
         pyg_list=[]
-        num_nodes_list=[]
+        #num_nodes_list=[]
         reachable_nodes_tensor=torch.tensor([])
         for i in range(bsize):
             pygx,pygei,reachable_nodes,num_nodes,max_nodes,num_edges,max_edges,F = self.deserialize(state[i])
@@ -76,15 +78,15 @@ class FeatureExtractor(nn.Module):
                 pygx,
                 pygei
             ))
-            num_nodes_list.append(num_nodes)
+            #num_nodes_list.append(num_nodes)
             reachable_nodes_tensor = torch.cat((reachable_nodes_tensor,reachable_nodes.squeeze()))
         pyg_data = Batch.from_data_list(pyg_list)
         mu_raw = self.gat(pyg_data.x, pyg_data.edge_index)  	# (num_nodes_in_batch,emb_dim)
         #mu_meanpool = scatter_mean(mu_raw,pyg_data.batch,dim=0) # (bsize,emb_dim)
-        num_nodes_list += [0]*(pyg_data.num_nodes- len(num_nodes_list))
-        num_nodes_tensor = torch.tensor(num_nodes_list)
-        features = torch.cat((mu_raw, pyg_data.batch[:,None], reachable_nodes_tensor[:,None], num_nodes_tensor[:,None]),dim=1)
-        return features
+        #num_nodes_list += [0]*(pyg_data.num_nodes- len(num_nodes_list))
+        #num_nodes_tensor = torch.tensor(num_nodes_list)
+        features = torch.cat((mu_raw, pyg_data.batch[:,None], reachable_nodes_tensor[:,None]),dim=1)
+        return features.reshape(bsize,-1)
 
 class Actor(nn.Module):
     def __init__(self, state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev=None, hp=None):
@@ -222,37 +224,43 @@ class Critic(nn.Module):
     
     def forward(self, features, terminal=None, batch_data=None):
         batch_size = len(terminal)#state.shape[1]
-        num_nodes_in_batch = features.shape[1]
+        seq_len = features.shape[0]
+        max_nodes = self.hp.max_possible_nodes
+        assert batch_size==features.shape[1]
+        assert len(features.shape)==3
+        #num_nodes_in_batch = features.shape[1]
         device = features.device
-        mu_raw, batch, reachable, num_nodes = torch.split(features,[self.emb_dim,1,1,1],dim=2)
-        num_nodes = num_nodes.squeeze()[:batch_size].to(torch.int64)
+        
+        features_ = features.reshape(seq_len,batch_size*max_nodes,-1)
+        mu_raw, batch, reachable = torch.split(features_,[self.emb_dim,1,1],dim=2)
+        #num_nodes = num_nodes.squeeze()[:batch_size].to(torch.int64)
         batch = batch.squeeze().to(torch.int64)
         #terminal_sparse = torch.repeat_interleave(terminal.to(torch.int64), num_nodes, dim=0)
-        terminal_dense = torch.repeat_interleave(terminal.to(torch.bool), torch.ones(batch_size,dtype=torch.int64)*self.hp.max_possible_nodes, dim=0)
-        if self.hidden_cell is None or self.hp.max_possible_nodes * batch_size != self.hidden_cell[0].shape[1]:
-            self.get_init_state(self.hp.max_possible_nodes * batch_size, device)
+        terminal_dense = torch.repeat_interleave(terminal.to(torch.bool), torch.ones(batch_size,dtype=torch.int64)*max_nodes, dim=0)
+        if self.hidden_cell is None or max_nodes * batch_size != self.hidden_cell[0].shape[1]:
+            self.get_init_state(max_nodes * batch_size, device)
         if terminal is not None: # reset hidden cell values for nodes part of a terminated graph to 0
             self.hidden_cell[0][:,terminal_dense,:] = 0.
             self.hidden_cell[1][:,terminal_dense,:] = 0.
         self.counter+=1
 
-        active_hidden_rows = batch_data[:,2].to(torch.bool) # node select indicator
+        #active_hidden_rows = batch_data[:,2].to(torch.bool) # node select indicator
         #_, self.hidden_cell = self.lstm(mu_raw, self.hidden_cell)
-        _, hidden_update  = self.lstm(mu_raw, (self.hidden_cell[0][:,active_hidden_rows,:],self.hidden_cell[1][:,active_hidden_rows,:]))
-        self.hidden_cell[0][:,active_hidden_rows,:] = hidden_update[0]
-        self.hidden_cell[1][:,active_hidden_rows,:] = hidden_update[1]
+        _, self.hidden_cell  = self.lstm(mu_raw, self.hidden_cell)
+        #self.hidden_cell[0][:,active_hidden_rows,:] = hidden_update[0]
+        #self.hidden_cell[1][:,active_hidden_rows,:] = hidden_update[1]
         #value_out = self.lin_layers(self.hidden_cell[0][-1]) # COULD APPLY LINEAR LAYERS + NONLINs HERE
-        assert (batch_data[:,0][active_hidden_rows].to(torch.int64) == batch).all()
-        mu_mem = self.hidden_cell[0][-1][active_hidden_rows] # (num_nodes in batch, emb_dim)
+        #assert (batch_data[:,0][active_hidden_rows].to(torch.int64) == batch).all()
+        mu_mem = self.hidden_cell[0][-1] # (num_nodes in batch, emb_dim)
 
         mu_mem_meanpool = scatter_mean(mu_mem, batch.to(torch.int64), dim=0) # (batch_size, emb_dim)
-        mu_mem_meanpool_expanded = torch.repeat_interleave(mu_mem_meanpool, num_nodes, dim=0) # (num_nodes in batch, emb_dim)
+        mu_mem_meanpool_expanded = torch.repeat_interleave(mu_mem_meanpool, torch.ones(batch_size,dtype=torch.int64)*max_nodes, dim=0) # (num_nodes in batch, emb_dim)
         
         global_state = self.theta6_v(mu_mem_meanpool_expanded) # yields (#nodes in batch, emb_dim)
         local_action = self.theta7_v(mu_mem)  # yields (#nodes in batch, emb_dim)
         rep = F.relu(torch.cat([global_state, local_action], dim=1)) # concat creates (#nodes in batch, 2*emb_dim)        
         qvals = self.theta5_v(rep).squeeze(-1)  #(nr_nodes in batch,)
-
+        qvals[~reachable.squeeze().bool()] = -torch.inf
         v=scatter_max(qvals,batch,dim=0)[0]
 
         return v.unsqueeze(-1) #(bsize,1)

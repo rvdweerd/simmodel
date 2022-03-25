@@ -121,7 +121,7 @@ BASE_CHECKPOINT_PATH = f"{WORKSPACE_PATH}/checkpoints/"
 
 @dataclass
 class HyperParameters():
-    max_possible_nodes:   int   = 25#9#3000
+    max_possible_nodes:   int   = 25#3000
     max_possible_edges:   int   = 150#4000
     emb_dim:              int   = 64
     scale_reward:         float = SCALE_REWARD
@@ -354,8 +354,8 @@ def gather_trajectories(input_data):
     # Initialise variables.
     obsv = env.reset()
     trajectory_data = {"states": [],
-                 "features_expanded": [],
-                 "batch_data": [],
+                 "features": [],
+                 #"batch_data": [],
                  "actions": [],
                  "action_probabilities": [],
                  "rewards": [],
@@ -377,26 +377,26 @@ def gather_trajectories(input_data):
             trajectory_data["states"].append(state)
             
             features = ppo_model.FE(state.to(GATHER_DEVICE))
-            mu_raw, batch, reachable, num_nodes_tensor = torch.split(features,[hp.emb_dim,1,1,1],dim=1)
+            #mu_raw, batch, reachable = torch.split(features,[hp.emb_dim,1,1],dim=1)
             batch_size=state.shape[0]
             #p = batch_size * hp.max_possible_nodes - num_nodes_tensor.shape[0] # padding value to create equal size hidden state tensors
-            enc_info = {'Vmax':hp.max_possible_nodes,'batch_size':batch_size,'batch':batch.cpu(),'reachable':reachable.cpu(),'num_nodes_tensor':num_nodes_tensor.cpu(),'num_nodes':num_nodes_tensor.shape[0]}
-            trajectory_data["features_expanded"].append( encode_features(features.clone().cpu(), enc_info) )
+            #enc_info = {'Vmax':hp.max_possible_nodes,'batch_size':batch_size,'batch':batch.cpu(),'reachable':reachable.cpu(),'num_nodes_tensor':num_nodes_tensor.cpu(),'num_nodes':num_nodes_tensor.shape[0]}
+            trajectory_data["features"].append( features.clone().cpu() ) # (bsize,:)
 
             if first_pass: # initialize hidden states
                 ppo_model.PI.get_init_state(batch_size*hp.max_possible_nodes, GATHER_DEVICE)
                 ppo_model.V.get_init_state(batch_size*hp.max_possible_nodes, GATHER_DEVICE)
                 first_pass = False
-            enc_info['batch_data']=trajectory_data['features_expanded'][-1].reshape(-1,hp.emb_dim+3)[:,-3:].clone().cpu()
+            #enc_info['batch_data']=trajectory_data['features_expanded'][-1].reshape(-1,hp.emb_dim+3)[:,-3:].clone().cpu()
 
-            trajectory_data["batch_data"].append(enc_info['batch_data'])
-            trajectory_data["actor_hidden_states"].append( encode_hidden(ppo_model.PI.hidden_cell[0].squeeze(0).cpu(), enc_info).clone())
-            trajectory_data["actor_cell_states"].append(   encode_hidden(ppo_model.PI.hidden_cell[1].squeeze(0).cpu(), enc_info).clone())
-            trajectory_data["critic_hidden_states"].append(encode_hidden(ppo_model.V.hidden_cell[0].squeeze(0).cpu(),  enc_info).clone())
-            trajectory_data["critic_cell_states"].append(  encode_hidden(ppo_model.V.hidden_cell[1].squeeze(0).cpu(),  enc_info).clone())
+            #trajectory_data["batch_data"].append(enc_info['batch_data'])
+            trajectory_data["actor_hidden_states"].append( ppo_model.PI.hidden_cell[0].clone().squeeze(0).reshape(batch_size,-1).cpu() ) # (6,:)
+            trajectory_data["actor_cell_states"].append(   ppo_model.PI.hidden_cell[1].clone().squeeze(0).reshape(batch_size,-1).cpu() )
+            trajectory_data["critic_hidden_states"].append(ppo_model.V.hidden_cell[0].clone().squeeze(0).reshape(batch_size,-1).cpu() )
+            trajectory_data["critic_cell_states"].append(  ppo_model.V.hidden_cell[1].clone().squeeze(0).reshape(batch_size,-1).cpu() )
             
             # Choose next action 
-            value = ppo_model.V(features.unsqueeze(0), terminal.to(GATHER_DEVICE), enc_info['batch_data'])
+            value = ppo_model.V(features.unsqueeze(0), terminal.to(GATHER_DEVICE))
             trajectory_data["values"].append( value.squeeze(1).cpu())
             action_dist = ppo_model.PI(features.unsqueeze(0), terminal.to(GATHER_DEVICE), enc_info['batch_data'])
             action = action_dist.sample().reshape(hp.parallel_rollouts, -1)
@@ -576,23 +576,23 @@ def make_custom(world_name, num_envs=1, asynchronous=True, wrappers=None, **kwar
         var_targets = None
         apply_wrappers = True
         
-        # env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
-        # env.redefine_nfm(modules.gnn.nfm_gen.nfm_funcs[nfm_func_name])
-        # env.capture_on_edges = edge_blocking
-        # if remove_world_pool:
-        #     env._remove_world_pool()
-        # if var_targets is not None:
-        #     env = VarTargetWrapper(env, var_targets)
-        # if apply_wrappers:
-        #     env = PPO_ObsFlatWrapper(env, max_possible_num_nodes = hp.max_possible_nodes, max_possible_num_edges=hp.max_possible_edges)
-        #     env = PPO_ActWrapper(env) 
-  
-        env_all_train, hashint2env, env2hashint, env2hashstr, eprobs = GetWorldSet(state_repr, state_enc, U=[2], E=[0,6], edge_blocking=edge_blocking, solve_select='solvable', reject_duplicates=False, nfm_func=modules.gnn.nfm_gen.nfm_funcs[nfm_func_name], var_targets=None, remove_paths=False, return_probs=True)
+        env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
+        env.redefine_nfm(modules.gnn.nfm_gen.nfm_funcs[nfm_func_name])
+        env.capture_on_edges = edge_blocking
+        if remove_world_pool:
+            env._remove_world_pool()
+        if var_targets is not None:
+            env = VarTargetWrapper(env, var_targets)
         if apply_wrappers:
-            for i in range(len(env_all_train)):
-                env_all_train[i]=PPO_ObsFlatWrapper(env_all_train[i], max_possible_num_nodes = hp.max_possible_nodes, max_possible_num_edges=hp.max_possible_edges)        
-                env_all_train[i]=PPO_ActWrapper(env_all_train[i])        
-        env = SuperEnv(env_all_train, hashint2env, max_possible_num_nodes = hp.max_possible_nodes, probs=eprobs)
+            env = PPO_ObsFlatWrapper(env, max_possible_num_nodes = hp.max_possible_nodes, max_possible_num_edges=hp.max_possible_edges)
+            env = PPO_ActWrapper(env) 
+  
+        # env_all_train, hashint2env, env2hashint, env2hashstr, eprobs = GetWorldSet(state_repr, state_enc, U=[2], E=[0,6], edge_blocking=edge_blocking, solve_select='solvable', reject_duplicates=False, nfm_func=modules.gnn.nfm_gen.nfm_funcs[nfm_func_name], var_targets=None, remove_paths=False, return_probs=True)
+        # if apply_wrappers:
+        #     for i in range(len(env_all_train)):
+        #         env_all_train[i]=PPO_ObsFlatWrapper(env_all_train[i], max_possible_num_nodes = hp.max_possible_nodes, max_possible_num_edges=hp.max_possible_edges)        
+        #         env_all_train[i]=PPO_ActWrapper(env_all_train[i])        
+        # env = SuperEnv(env_all_train, hashint2env, max_possible_num_nodes = hp.max_possible_nodes, probs=eprobs)
 
 
         if wrappers is not None:
@@ -730,7 +730,9 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions):
 
 writer = SummaryWriter(log_dir=f"{WORKSPACE_PATH}/logs")
 def TrainAndSaveModel():
-    world_name='Manhattan5x5_VariableEscapeInit'
+    #world_name='Manhattan5x5_VariableEscapeInit'
+    #world_name='Manhattan3x3_WalkAround'
+    world_name='Manhattan5x5_FixedEscapeInit'
     env = make_custom(world_name, hp.parallel_rollouts, asynchronous=ASYNCHRONOUS_ENVIRONMENT)   
     if ENV_MASK_VELOCITY:
         env = MaskVelocityWrapper(env)
