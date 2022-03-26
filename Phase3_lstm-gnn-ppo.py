@@ -96,7 +96,7 @@ SCALE_REWARD:         float = 1.
 MIN_REWARD:           float = -15.                                  
 HIDDEN_SIZE:          float = 64
 LIN_SIZE:             float = [128,128,64]
-BATCH_SIZE:           int   = 32                
+BATCH_SIZE:           int   = 16                
 DISCOUNT:             float = 0.99
 GAE_LAMBDA:           float = 0.95
 PPO_CLIP:             float = 0.2#0.1                                   
@@ -107,7 +107,7 @@ ACTOR_LEARNING_RATE:  float = 1e-4
 CRITIC_LEARNING_RATE: float = 1e-4
 RECURRENT_SEQ_LEN:    int = 2                 
 RECURRENT_LAYERS:     int = 1                                       
-ROLLOUT_STEPS:        int = 400
+ROLLOUT_STEPS:        int = 100
 PARALLEL_ROLLOUTS:    int = 6
 PATIENCE:             int = 500
 TRAINABLE_STD_DEV:    bool = False
@@ -374,31 +374,26 @@ def gather_trajectories(input_data):
         # Take 1 additional step in order to collect the state and value for the final state.
         for i in range(hp.rollout_steps):
             state = torch.tensor(obsv, dtype=torch.float32)
-            trajectory_data["states"].append(state)
-            
-            features = ppo_model.FE(state.to(GATHER_DEVICE))
-            #mu_raw, batch, reachable = torch.split(features,[hp.emb_dim,1,1],dim=1)
+            trajectory_data["states"].append(state.clone())
+            features = ppo_model.FE(state.unsqueeze(0).to(GATHER_DEVICE))
+
             batch_size=state.shape[0]
-            #p = batch_size * hp.max_possible_nodes - num_nodes_tensor.shape[0] # padding value to create equal size hidden state tensors
-            #enc_info = {'Vmax':hp.max_possible_nodes,'batch_size':batch_size,'batch':batch.cpu(),'reachable':reachable.cpu(),'num_nodes_tensor':num_nodes_tensor.cpu(),'num_nodes':num_nodes_tensor.shape[0]}
-            trajectory_data["features"].append( features.clone().cpu() ) # (bsize,:)
+            trajectory_data["features"].append( features.squeeze(0).clone().cpu() ) # (bsize,:)
 
             if first_pass: # initialize hidden states
                 ppo_model.PI.get_init_state(batch_size*hp.max_possible_nodes, GATHER_DEVICE)
                 ppo_model.V.get_init_state(batch_size*hp.max_possible_nodes, GATHER_DEVICE)
                 first_pass = False
-            #enc_info['batch_data']=trajectory_data['features_expanded'][-1].reshape(-1,hp.emb_dim+3)[:,-3:].clone().cpu()
 
-            #trajectory_data["batch_data"].append(enc_info['batch_data'])
             trajectory_data["actor_hidden_states"].append( ppo_model.PI.hidden_cell[0].clone().squeeze(0).reshape(batch_size,-1).cpu() ) # (6,:)
             trajectory_data["actor_cell_states"].append(   ppo_model.PI.hidden_cell[1].clone().squeeze(0).reshape(batch_size,-1).cpu() )
             trajectory_data["critic_hidden_states"].append(ppo_model.V.hidden_cell[0].clone().squeeze(0).reshape(batch_size,-1).cpu() )
             trajectory_data["critic_cell_states"].append(  ppo_model.V.hidden_cell[1].clone().squeeze(0).reshape(batch_size,-1).cpu() )
             
             # Choose next action 
-            value = ppo_model.V(features.unsqueeze(0), terminal.to(GATHER_DEVICE))
+            value = ppo_model.V(features, terminal.to(GATHER_DEVICE))
             trajectory_data["values"].append( value.squeeze(1).cpu())
-            action_dist = ppo_model.PI(features.unsqueeze(0), terminal.to(GATHER_DEVICE))
+            action_dist = ppo_model.PI(features, terminal.to(GATHER_DEVICE))
             action = action_dist.sample().reshape(hp.parallel_rollouts, -1)
             if not ppo_model.continuous_action_space:
                 action = action.squeeze(1)
@@ -417,9 +412,9 @@ def gather_trajectories(input_data):
     
         # Compute final value to allow for incomplete episodes.
         state = torch.tensor(obsv, dtype=torch.float32)
-        features = ppo_model.FE(state.to(GATHER_DEVICE))        
+        features = ppo_model.FE(state.unsqueeze(0).to(GATHER_DEVICE))        
 
-        value = ppo_model.V(features.unsqueeze(0).to(GATHER_DEVICE), terminal.to(GATHER_DEVICE))
+        value = ppo_model.V(features.to(GATHER_DEVICE), terminal.to(GATHER_DEVICE))
         # Future value for terminal episodes is 0.
         trajectory_data["values"].append(value.squeeze(1).cpu() * (1 - terminal))
 
@@ -658,13 +653,16 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions):
         
         #actor = actor.to(TRAIN_DEVICE)
         #critic = critic.to(TRAIN_DEVICE)
+        ppo_model = ppo_model.to(TRAIN_DEVICE)
 
         # Train actor and critic. 
         for epoch_idx in range(hp.ppo_epochs): 
             for batch in trajectory_dataset:
 
-                # Get batch 
-                ppo_model.PI.hidden_cell = (batch.actor_hidden_states[:1], batch.actor_cell_states[:1])
+                # Prime the LSTM 
+                ppo_model.PI.hidden_cell = ( batch.actor_hidden_states[:1].reshape(hp.recurrent_layers,-1,hp.hidden_size), 
+                                             batch.actor_cell_states[:1].reshape(hp.recurrent_layers,-1,hp.hidden_size) 
+                                            )
                 
                 # GLOBAL_COUNT+=1
                 # if GLOBAL_COUNT%WARMUP==0:
@@ -674,7 +672,7 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions):
                 # Update actor
                 ppo_optimizer.zero_grad()
                 features = ppo_model.FE(batch.states)
-                action_dist = ppo_model.PI(batch.states)
+                action_dist = ppo_model.PI(features)
                 # Action dist runs on cpu as a workaround to CUDA illegal memory access.
                 action_probabilities = action_dist.log_prob(batch.actions[-1, :].to("cpu")).to(TRAIN_DEVICE)
                 # Compute probability ratio from probabilities in logspace.
@@ -688,8 +686,7 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions):
 
                 # Update critic
                 #critic_optimizer.zero_grad()
-                ppo_model.V.hidden_cell = (batch.critic_hidden_states[:1], batch.critic_cell_states[:1])
-                values = ppo_model.V(batch.states)
+                values = ppo_model.V(features)
                 critic_loss = F.mse_loss(batch.discounted_returns[-1, :], values.squeeze(1))
                 #torch.nn.utils.clip_grad.clip_grad_norm_(critic.parameters(), hp.max_grad_norm)
                 #critic_loss.backward() 
