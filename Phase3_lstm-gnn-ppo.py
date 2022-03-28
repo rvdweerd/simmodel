@@ -48,14 +48,16 @@ parser.add_argument('--world_name', default='Manhattan3x3_PauseDynamicWorld', ty
                         'MetroU3_e17tborder_FixedEscapeInit',
                         'MetroU3_e17tborder_VariableEscapeInit',
                         'MetroU3_e17t31_FixedEscapeInit',
-                        'MetroU3_e17t0_FixedEscapeInit' ])
+                        'MetroU3_e17t0_FixedEscapeInit',
+                        'NWB_test_FixedEscapeInit',
+                         ])
 parser.add_argument('--state_repr', default='et', type=str, 
                     help='Which part of the state is observable',
-                    choices=[
-                        'et',
-                        'etUt',
-                        'ete0U0',
-                        'etUte0U0' ])
+                    )#choices=[
+                        # 'et',
+                        # 'etUt',
+                        # 'ete0U0',
+                        # 'etUte0U0' ])
 parser.add_argument('--train', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
 parser.add_argument('--eval', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
 parser.add_argument('--num_seeds', default=1, type=int, 
@@ -97,7 +99,7 @@ SCALE_REWARD:         float = 1.
 MIN_REWARD:           float = -15.                                  
 HIDDEN_SIZE:          float = 64
 LIN_SIZE:             float = [128,128,64]
-BATCH_SIZE:           int   = 16                
+BATCH_SIZE:           int   = 12                
 DISCOUNT:             float = 0.99
 GAE_LAMBDA:           float = 0.95
 PPO_CLIP:             float = .2#0.1                                   
@@ -108,7 +110,7 @@ ACTOR_LEARNING_RATE:  float = 1e-4
 CRITIC_LEARNING_RATE: float = 1e-4
 RECURRENT_SEQ_LEN:    int = 2                 
 RECURRENT_LAYERS:     int = 1                                       
-ROLLOUT_STEPS:        int = 100
+ROLLOUT_STEPS:        int = 80
 PARALLEL_ROLLOUTS:    int = 6
 PATIENCE:             int = 500
 TRAINABLE_STD_DEV:    bool = False
@@ -122,8 +124,8 @@ BASE_CHECKPOINT_PATH = f"{WORKSPACE_PATH}/checkpoints/"
 
 @dataclass
 class HyperParameters():
-    max_possible_nodes:   int   = 25#3000
-    max_possible_edges:   int   = 150#4000
+    max_possible_nodes:   int   = 975#25#3000
+    max_possible_edges:   int   = 1500#150#4000
     emb_dim:              int   = 64
     scale_reward:         float = SCALE_REWARD
     min_reward:           float = MIN_REWARD
@@ -731,7 +733,8 @@ writer = SummaryWriter(log_dir=f"{WORKSPACE_PATH}/logs")
 def TrainAndSaveModel():
     #world_name='Manhattan5x5_VariableEscapeInit'
     #world_name='Manhattan3x3_WalkAround'
-    world_name='Manhattan5x5_FixedEscapeInit'
+    #world_name='Manhattan5x5_FixedEscapeInit'
+    world_name=WORLD_NAME#'NWB_test_FixedEscapeInit'
     env = make_custom(world_name, hp.parallel_rollouts, asynchronous=ASYNCHRONOUS_ENVIRONMENT)   
     if ENV_MASK_VELOCITY:
         env = MaskVelocityWrapper(env)

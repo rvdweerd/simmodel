@@ -55,8 +55,8 @@ class FeatureExtractor(nn.Module):
             share_weights = False,
             **kwargs
         )
-        layers = [nn.Linear(state_dim,state_dim), nn.ELU()]
-        self.lin_layers = nn.Sequential(*layers)
+        #layers = [nn.Linear(state_dim,state_dim), nn.ELU()]
+        #self.lin_layers = nn.Sequential(*layers)
 
     def deserialize(self, obs):
         num_nodes, max_nodes, num_edges, max_edges, F = obs[-5:].to(torch.int64).tolist()
