@@ -449,7 +449,12 @@ def split_trajectories_episodes(trajectory_tensors):
     trajectory_episodes = {key: [] for key in trajectory_tensors.keys()}
     for i in range(hp.parallel_rollouts):
         terminals_tmp = trajectory_tensors["terminals"].clone()
-        terminals_tmp[0, i] = 1
+        
+        # p=0
+        # while terminals_tmp[p,i]==1:
+        #     p+=1
+        # terminals_tmp[p, i] = 1
+        
         terminals_tmp[-1, i] = 1
         split_points = (terminals_tmp[:, i] == 1).nonzero() + 1
 
