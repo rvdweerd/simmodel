@@ -111,7 +111,7 @@ ACTOR_LEARNING_RATE:  float = 1e-4
 CRITIC_LEARNING_RATE: float = 1e-4
 RECURRENT_SEQ_LEN:    int = 2                 
 RECURRENT_LAYERS:     int = 1                                       
-ROLLOUT_STEPS:        int = 80
+ROLLOUT_STEPS:        int = 100
 PARALLEL_ROLLOUTS:    int = 6
 PATIENCE:             int = 500
 TRAINABLE_STD_DEV:    bool = False
@@ -362,6 +362,7 @@ def gather_trajectories(input_data):
                  #"batch_data": [],
                  "valid_entries_idx": [],
                  "num_nodes": [],
+                 "selector": [],
                  "actions": [],
                  "action_probabilities": [],
                  "rewards": [],
@@ -377,14 +378,20 @@ def gather_trajectories(input_data):
     with torch.no_grad():
         # Reset actor and critic state.
         first_pass = True
+        bsize=obsv.shape[0]
         # Take 1 additional step in order to collect the state and value for the final state.
         for i in range(hp.rollout_steps):
             state = torch.tensor(obsv, dtype=torch.float32)
             features, nodes_in_batch, valid_entries_idx, num_nodes = ppo_model.FE(state.unsqueeze(0).to(GATHER_DEVICE))
+            selector=[]
+            for i in range(bsize):
+                selector+= [True]*int(num_nodes[i])+[False]*int(hp.max_possible_nodes-num_nodes[i])
+            selector=torch.tensor(selector,dtype=torch.float32).reshape(bsize,-1)
+            
             trajectory_data["states"].append(state.clone())
             trajectory_data["valid_entries_idx"].append(valid_entries_idx.clone())
-            trajectory_data["num_nodes"].append(num_nodes.clone())
-
+            trajectory_data["num_nodes"].append(num_nodes[:bsize].clone())
+            trajectory_data["selector"].append(selector.clone())
             batch_size=state.shape[0]
             #trajectory_data["features"].append( features.squeeze(0).clone().cpu() ) # (bsize,:)
 
@@ -420,7 +427,7 @@ def gather_trajectories(input_data):
     
         # Compute final value to allow for incomplete episodes.
         state = torch.tensor(obsv, dtype=torch.float32)
-        features = ppo_model.FE(state.unsqueeze(0).to(GATHER_DEVICE))        
+        features, nodes_in_batch, valid_entries_idx, num_nodes = ppo_model.FE(state.unsqueeze(0).to(GATHER_DEVICE))        
 
         value = ppo_model.V(features.to(GATHER_DEVICE), terminal.to(GATHER_DEVICE))
         # Future value for terminal episodes is 0.
@@ -504,6 +511,8 @@ class TrajectorBatch():
     """
     states: torch.tensor
     #features: torch.tensor
+    valid_entries_idx: torch.tensor
+    num_nodes: torch.tensor
     actions: torch.tensor
     action_probabilities: torch.tensor
     advantages: torch.tensor
@@ -543,6 +552,11 @@ class TrajectoryDataset():
             seq_idx = start_idx - self.cumsum_seq_len[eps_idx]
             series_idx = np.linspace(seq_idx, seq_idx + self.batch_len - 1, num=self.batch_len, dtype=np.int64)
             self.batch_count += 1
+
+            for key, value in self.trajectories.items(): 
+                if key in TrajectorBatch.__dataclass_fields__.keys(): 
+                    print(key,value.shape, value[eps_idx, series_idx].shape) 
+
             return TrajectorBatch(**{key: value[eps_idx, series_idx]for key, value
                                      in self.trajectories.items() if key in TrajectorBatch.__dataclass_fields__.keys()},
                                   batch_size=actual_batch_size)

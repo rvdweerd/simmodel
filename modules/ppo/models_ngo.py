@@ -102,7 +102,7 @@ class FeatureExtractor(nn.Module):
         #num_nodes_tensor = torch.tensor(num_nodes_list)
         decoupled_batch = pyg_data.batch.repeat(seq_len) 
         features = torch.cat((mu_raw, decoupled_batch[:,None], reachable_nodes_tensor[:,None], num_nodes[:,None]),dim=1)
-        return features.reshape(seq_len,bsize,-1), nodes_in_batch, valid_entries_idx.unsqueeze(0), num_nodes
+        return features.reshape(seq_len,bsize,-1), nodes_in_batch, valid_entries_idx, num_nodes
 
 class Actor(nn.Module):
     def __init__(self, state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev=None, hp=None):
@@ -141,8 +141,8 @@ class Actor(nn.Module):
         #num_nodes_in_batch = features.shape[1]
         device = features.device
 
-        features_ = features.reshape(seq_len,batch_size*max_nodes,-1)
-        mu_raw, batch, reachable = torch.split(features_,[self.emb_dim,1,1],dim=2)
+        features_ = features.reshape(seq_len,-1,self.hp.emb_dim+3)
+        mu_raw, batch, reachable, num_nodes_list = torch.split(features_,[self.emb_dim,1,1,1],dim=2)
         #batch = batch[-1].squeeze().to(torch.int64) # we use the batch definition of the last vector in the sequence
         #reachable = reachable[-1].squeeze().bool() # idem
         batch = batch.squeeze(-1).to(torch.int64) # (2,400) (seq_len,bsize*max_num_nodes)
@@ -157,13 +157,24 @@ class Actor(nn.Module):
             self.hidden_cell[1][:,terminal_dense,:] = 0.
         self.counter+=1
 
-        full_output, self.hidden_cell = self.lstm(mu_raw, self.hidden_cell)
+        selector = []
+        if num_nodes_list.shape[0]>1:
+            assert (num_nodes_list[0].squeeze() == num_nodes_list[1].squeeze()).all()
+        num_nodes_list=num_nodes_list[0].squeeze()
+        for i in range(batch_size):
+            selector+=[True]*int(num_nodes_list[i]) + [False]*(max_nodes-int(num_nodes_list[i]))
+        selector=torch.tensor(selector,dtype=torch.bool)
+
+        full_output, out_hidden_cell = self.lstm(mu_raw, (self.hidden_cell[0][:,selector,:],self.hidden_cell[1][:,selector,:]))
+        self.hidden_cell[0][:,selector,:] = out_hidden_cell[0]
+        self.hidden_cell[1][:,selector,:] = out_hidden_cell[1]
+
         #mu_mem = self.hidden_cell[0][-1] # (num_nodes in batch, emb_dim)
         mu_mem = full_output # (seq_len, num_nodes in batch, emb_dim)
         
         #mu_mem_meanpool = scatter_mean(mu_mem, batch, dim=0) # (batch_size, emb_dim)
         mu_mem_meanpool = scatter_mean(mu_mem, batch, dim=1) # (seq_len, batch_size, emb_dim)
-        expander = torch.ones(batch_size,dtype=torch.int64,device=device)*max_nodes
+        expander = num_nodes_list[:batch_size].to(torch.int64)   
         #mu_mem_meanpool_expanded = torch.repeat_interleave(mu_mem_meanpool, expander, dim=0) # (num_nodes in batch, emb_dim)
         mu_mem_meanpool_expanded = torch.repeat_interleave(mu_mem_meanpool, expander, dim=1) # (num_nodes in batch, emb_dim)
         
