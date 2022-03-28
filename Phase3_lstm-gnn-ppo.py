@@ -406,9 +406,9 @@ def gather_trajectories(input_data):
             trajectory_data["critic_cell_states"].append(  ppo_model.V.hidden_cell[1].clone().squeeze(0).reshape(batch_size,-1).cpu() )
             
             # Choose next action 
-            value = ppo_model.V(features, terminal.to(GATHER_DEVICE))
+            value = ppo_model.V(features, terminal.to(GATHER_DEVICE), selector=selector.flatten().to(torch.bool))
             trajectory_data["values"].append( value.squeeze().cpu())
-            action_dist = ppo_model.PI(features, terminal.to(GATHER_DEVICE))
+            action_dist = ppo_model.PI(features, terminal.to(GATHER_DEVICE), selector=selector.flatten().to(torch.bool))
             action = action_dist.sample().reshape(hp.parallel_rollouts, -1)
             if not ppo_model.continuous_action_space:
                 action = action.squeeze(1)
@@ -449,17 +449,13 @@ def split_trajectories_episodes(trajectory_tensors):
     trajectory_episodes = {key: [] for key in trajectory_tensors.keys()}
     for i in range(hp.parallel_rollouts):
         terminals_tmp = trajectory_tensors["terminals"].clone()
-        
-        # p=0
-        # while terminals_tmp[p,i]==1:
-        #     p+=1
-        # terminals_tmp[p, i] = 1
-        
+        terminals_tmp=torch.cat((torch.ones(hp.parallel_rollouts)[None,:],terminals_tmp),dim=0)
+
         terminals_tmp[-1, i] = 1
         split_points = (terminals_tmp[:, i] == 1).nonzero() + 1
 
         split_lens = split_points[1:] - split_points[:-1]
-        split_lens[0] += 1
+        #split_lens[0] += 1
         
         len_episode = [split_len.item() for split_len in split_lens]
         len_episodes += len_episode
@@ -518,6 +514,7 @@ class TrajectorBatch():
     #features: torch.tensor
     valid_entries_idx: torch.tensor
     num_nodes: torch.tensor
+    selector: torch.tensor
     actions: torch.tensor
     action_probabilities: torch.tensor
     advantages: torch.tensor
@@ -593,23 +590,23 @@ def make_custom(world_name, num_envs=1, asynchronous=True, wrappers=None, **kwar
         var_targets = None#[1,1]
         apply_wrappers = True
         
-        env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
-        env.redefine_nfm(modules.gnn.nfm_gen.nfm_funcs[nfm_func_name])
-        env.capture_on_edges = edge_blocking
-        if remove_world_pool:
-            env._remove_world_pool()
-        if var_targets is not None:
-            env = VarTargetWrapper(env, var_targets)
-        if apply_wrappers:
-            env = PPO_ObsFlatWrapper(env, max_possible_num_nodes = hp.max_possible_nodes, max_possible_num_edges=hp.max_possible_edges)
-            env = PPO_ActWrapper(env) 
-  
-        # env_all_train, hashint2env, env2hashint, env2hashstr, eprobs = GetWorldSet(state_repr, state_enc, U=[2], E=[0,6], edge_blocking=edge_blocking, solve_select='solvable', reject_duplicates=False, nfm_func=modules.gnn.nfm_gen.nfm_funcs[nfm_func_name], var_targets=None, remove_paths=False, return_probs=True)
+        # env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
+        # env.redefine_nfm(modules.gnn.nfm_gen.nfm_funcs[nfm_func_name])
+        # env.capture_on_edges = edge_blocking
+        # if remove_world_pool:
+        #     env._remove_world_pool()
+        # if var_targets is not None:
+        #     env = VarTargetWrapper(env, var_targets)
         # if apply_wrappers:
-        #     for i in range(len(env_all_train)):
-        #         env_all_train[i]=PPO_ObsFlatWrapper(env_all_train[i], max_possible_num_nodes = hp.max_possible_nodes, max_possible_num_edges=hp.max_possible_edges)        
-        #         env_all_train[i]=PPO_ActWrapper(env_all_train[i])        
-        # env = SuperEnv(env_all_train, hashint2env, max_possible_num_nodes = hp.max_possible_nodes, probs=eprobs)
+        #     env = PPO_ObsFlatWrapper(env, max_possible_num_nodes = hp.max_possible_nodes, max_possible_num_edges=hp.max_possible_edges)
+        #     env = PPO_ActWrapper(env) 
+  
+        env_all_train, hashint2env, env2hashint, env2hashstr, eprobs = GetWorldSet(state_repr, state_enc, U=[2], E=[0,6], edge_blocking=edge_blocking, solve_select='solvable', reject_duplicates=False, nfm_func=modules.gnn.nfm_gen.nfm_funcs[nfm_func_name], var_targets=None, remove_paths=False, return_probs=True)
+        if apply_wrappers:
+            for i in range(len(env_all_train)):
+                env_all_train[i]=PPO_ObsFlatWrapper(env_all_train[i], max_possible_num_nodes = hp.max_possible_nodes, max_possible_num_edges=hp.max_possible_edges)        
+                env_all_train[i]=PPO_ActWrapper(env_all_train[i])        
+        env = SuperEnv(env_all_train, hashint2env, max_possible_num_nodes = hp.max_possible_nodes, probs=eprobs)
 
 
         if wrappers is not None:

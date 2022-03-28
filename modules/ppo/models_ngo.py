@@ -102,7 +102,7 @@ class FeatureExtractor(nn.Module):
         #num_nodes_tensor = torch.tensor(num_nodes_list)
         decoupled_batch = pyg_data.batch.repeat(seq_len) 
         features = torch.cat((mu_raw, decoupled_batch[:,None], reachable_nodes_tensor[:,None], num_nodes[:,None]),dim=1)
-        return features.reshape(seq_len,bsize,-1), nodes_in_batch, valid_entries_idx, num_nodes
+        return features.reshape(seq_len,nodes_in_batch,self.emb_dim+3), nodes_in_batch, valid_entries_idx, num_nodes
 
 class Actor(nn.Module):
     def __init__(self, state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev=None, hp=None):
@@ -130,21 +130,22 @@ class Actor(nn.Module):
         self.hidden_cell = (torch.zeros(self.hp.recurrent_layers, batch_size, self.hp.hidden_size).to(device),
                             torch.zeros(self.hp.recurrent_layers, batch_size, self.hp.hidden_size).to(device))
         
-    def forward(self, features, terminal=None):
-        # features: [seq_len, bsize, feat_dim]
-        batch_size = features.shape[1] 
+    def forward(self, features, terminal=None, selector=[]):
+        # features: [seq_len, num nodes in batch, feat_dim=emb_dim+3]
         seq_len = features.shape[0]
         max_nodes = self.hp.max_possible_nodes
-        if terminal is not None:
-            assert batch_size==len(terminal)
+        num_nodes= features.shape[1]
         assert len(features.shape)==3
         #num_nodes_in_batch = features.shape[1]
         device = features.device
 
-        features_ = features.reshape(seq_len,-1,self.hp.emb_dim+3)
-        mu_raw, batch, reachable, num_nodes_list = torch.split(features_,[self.emb_dim,1,1,1],dim=2)
-        #batch = batch[-1].squeeze().to(torch.int64) # we use the batch definition of the last vector in the sequence
-        #reachable = reachable[-1].squeeze().bool() # idem
+        #features_ = features.reshape(seq_len,-1,self.hp.emb_dim+3)
+        mu_raw, batch, reachable, num_nodes_list = torch.split(features,[self.emb_dim,1,1,1],dim=2)
+        
+        batch_size = int(batch.max())+1#features.shape[1] 
+        if terminal is not None:
+            assert batch_size==len(terminal)
+        
         batch = batch.squeeze(-1).to(torch.int64) # (2,400) (seq_len,bsize*max_num_nodes)
         reachable = reachable.squeeze(-1).bool() # (2,400)
 
@@ -157,13 +158,14 @@ class Actor(nn.Module):
             self.hidden_cell[1][:,terminal_dense,:] = 0.
         self.counter+=1
 
-        selector = []
         if num_nodes_list.shape[0]>1:
             assert (num_nodes_list[0].squeeze() == num_nodes_list[1].squeeze()).all()
         num_nodes_list=num_nodes_list[0].squeeze()
-        for i in range(batch_size):
-            selector+=[True]*int(num_nodes_list[i]) + [False]*(max_nodes-int(num_nodes_list[i]))
-        selector=torch.tensor(selector,dtype=torch.bool)
+        if selector == []:
+            for i in range(batch_size):
+                selector+=[True]*int(num_nodes_list[i]) + [False]*(max_nodes-int(num_nodes_list[i]))
+            selector=torch.tensor(selector,dtype=torch.bool)
+        assert selector.sum() == num_nodes
 
         full_output, out_hidden_cell = self.lstm(mu_raw, (self.hidden_cell[0][:,selector,:],self.hidden_cell[1][:,selector,:]))
         self.hidden_cell[0][:,selector,:] = out_hidden_cell[0]
@@ -187,7 +189,13 @@ class Actor(nn.Module):
 
         # Apply action masking
         prob_logits_raw[~reachable] = -torch.inf
-        prob_logits=prob_logits_raw.reshape(seq_len,batch_size,-1)
+        splitter = num_nodes_list[:batch_size].to(torch.int64).tolist()
+        assert prob_logits_raw.shape[0]==1
+        prob_logits_splitted = list(torch.split(prob_logits_raw.squeeze(),splitter,dim=0))
+        p = max_nodes - prob_logits_splitted[0].shape[-1]
+        prob_logits_splitted[0] = torch.nn.functional.pad(prob_logits_splitted[0], (0,p), value=-torch.inf)
+        prob_logits_splitted = torch.nn.utils.rnn.pad_sequence(prob_logits_splitted, batch_first=True, padding_value=-torch.inf)
+        prob_logits=prob_logits_splitted[None,:,:]
 
        
         if self.continuous_action_space:
@@ -240,20 +248,21 @@ class Critic(nn.Module):
         self.hidden_cell = (torch.zeros(self.hp.recurrent_layers, batch_size, self.hp.hidden_size).to(device),
                             torch.zeros(self.hp.recurrent_layers, batch_size, self.hp.hidden_size).to(device))
     
-    def forward(self, features, terminal=None):
+    def forward(self, features, terminal=None, selector=[]):
         # features: [seq_len, bsize, feat_dim=emb_dim+3]
-        batch_size = features.shape[1] 
         seq_len = features.shape[0]
         max_nodes = self.hp.max_possible_nodes
-        if terminal is not None:
-            assert batch_size==len(terminal)
         assert len(features.shape)==3
         #num_nodes_in_batch = features.shape[1]
         device = features.device
         
-        features_ = features.reshape(seq_len,-1,self.hp.emb_dim+3)
-        num_nodes= features_.shape[1]
-        mu_raw, batch, reachable, num_nodes_list = torch.split(features_,[self.emb_dim,1,1,1],dim=2)
+        #features_ = features.reshape(seq_len,-1,self.hp.emb_dim+3)
+        num_nodes= features.shape[1]
+        mu_raw, batch, reachable, num_nodes_list = torch.split(features,[self.emb_dim,1,1,1],dim=2)
+        
+        batch_size = int(batch.max())+1#features.shape[1] 
+        if terminal is not None:
+            assert batch_size==len(terminal)
         #batch = batch[-1].squeeze().to(torch.int64) # we use the batch definition of the last vector in the sequence
         #reachable = reachable[-1].squeeze().bool() # idem
         batch = batch.squeeze(-1).to(torch.int64)
@@ -268,14 +277,15 @@ class Critic(nn.Module):
             self.hidden_cell[1][:,terminal_dense,:] = 0.
         self.counter+=1
 
-        selector = []
-        if num_nodes_list.shape[0]>1:
+        if num_nodes_list.shape[0] > 1:
             assert (num_nodes_list[0].squeeze() == num_nodes_list[1].squeeze()).all()
         num_nodes_list=num_nodes_list[0].squeeze()
-        for i in range(batch_size):
-            selector+=[True]*int(num_nodes_list[i]) + [False]*(max_nodes-int(num_nodes_list[i]))
-        selector=torch.tensor(selector,dtype=torch.bool)
-        
+        if selector == []:
+            for i in range(batch_size):
+                selector+=[True]*int(num_nodes_list[i]) + [False]*(max_nodes-int(num_nodes_list[i]))
+            selector=torch.tensor(selector,dtype=torch.bool)
+        assert selector.sum() == num_nodes
+
         full_output, out_hidden_cell  = self.lstm(mu_raw, (self.hidden_cell[0][:,selector,:],self.hidden_cell[1][:,selector,:])  )
         #mu_mem = self.hidden_cell[0][-1] # (num_nodes in batch, emb_dim)
         self.hidden_cell[0][:,selector,:] = out_hidden_cell[0]
