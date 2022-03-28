@@ -13,8 +13,8 @@
             "console": "integratedTerminal",
             "args" : [
                     // ARGS FOR Phase 3 PPO
-                    "--world_name","NWB_test_FixedEscapeInit",
-                    "--state_repr","seqlen2",
+                    "--world_name","Manhattan3x3_WalkAround",
+                    "--state_repr","test",
                     "--train","True",
                     "--eval","True",
                     "--num_seeds","1",

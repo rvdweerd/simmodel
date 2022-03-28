@@ -60,12 +60,12 @@ class FeatureExtractor(nn.Module):
 
     def deserialize(self, obs):
         num_nodes, max_nodes, num_edges, max_edges, F = obs[-5:].to(torch.int64).tolist()
-        assert num_nodes==max_nodes
+        #assert num_nodes==max_nodes
         nf,py,re,_ = torch.split(obs,(F*max_nodes, 2*max_edges, max_nodes, 5),dim=0)
-        nf=nf.reshape(max_nodes,-1)#[:num_nodes]
+        nf=nf.reshape(max_nodes,-1)[:num_nodes]
         py=py.reshape(2,-1)[:,:num_edges].to(torch.int64)
         #re=re.reshape(-1,1)[:num_nodes].to(torch.int64)
-        re=re.reshape(-1,1).to(torch.int64)
+        re=re.reshape(-1,1).to(torch.int64)[:num_nodes]
         return nf,py,re,num_nodes,max_nodes,num_edges,max_edges,F
         
     def forward(self, state):
@@ -78,25 +78,31 @@ class FeatureExtractor(nn.Module):
 
         state=state.reshape(-1,flatvecdim)
         pyg_list=[]
-        #num_nodes_list=[]
+        num_nodes_list=[]
+        valid_entries_idx_list=[]
         reachable_nodes_tensor=torch.tensor([]).to(device)
+        #selector=torch.tensor([]).to(device)
         for i in range(bsize*seq_len):
             pygx,pygei,reachable_nodes,num_nodes,max_nodes,num_edges,max_edges,F = self.deserialize(state[i])
             pyg_list.append(Data(
                 pygx,
                 pygei
             ))
-            #num_nodes_list.append(num_nodes)
+            num_nodes_list.append(num_nodes)
+            #selector=torch.cat((selector,torch.cat((torch.ones(num_nodes),torch.zeros(max_nodes-num_nodes)))))
+            valid_entries_idx_list.append([i*max_nodes,i*max_nodes+num_nodes])
             reachable_nodes_tensor = torch.cat((reachable_nodes_tensor,reachable_nodes.squeeze()))
         pyg_data = Batch.from_data_list(pyg_list)
         mu_raw = self.gat(pyg_data.x, pyg_data.edge_index)  	# (num_nodes_in_batch,emb_dim)
+        valid_entries_idx = torch.tensor(valid_entries_idx_list,dtype=torch.int64)
+        nodes_in_batch = pyg_data.num_nodes #max_nodes*bsize
+        num_nodes = torch.tensor(num_nodes_list + [0]*(nodes_in_batch-bsize*seq_len), dtype=torch.float)
         #mu_meanpool = scatter_mean(mu_raw,pyg_data.batch,dim=0) # (bsize,emb_dim)
         #num_nodes_list += [0]*(pyg_data.num_nodes- len(num_nodes_list))
         #num_nodes_tensor = torch.tensor(num_nodes_list)
-        nodes_in_batch = max_nodes*bsize
-        decoupled_batch = (pyg_data.batch[:nodes_in_batch]).repeat(seq_len)
-        features = torch.cat((mu_raw, decoupled_batch[:,None], reachable_nodes_tensor[:,None]),dim=1)
-        return features.reshape(seq_len,bsize,-1)
+        decoupled_batch = pyg_data.batch.repeat(seq_len) 
+        features = torch.cat((mu_raw, decoupled_batch[:,None], reachable_nodes_tensor[:,None], num_nodes[:,None]),dim=1)
+        return features.reshape(seq_len,bsize,-1), nodes_in_batch, valid_entries_idx.unsqueeze(0), num_nodes
 
 class Actor(nn.Module):
     def __init__(self, state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev=None, hp=None):
@@ -224,7 +230,7 @@ class Critic(nn.Module):
                             torch.zeros(self.hp.recurrent_layers, batch_size, self.hp.hidden_size).to(device))
     
     def forward(self, features, terminal=None):
-        # features: [seq_len, bsize, feat_dim]
+        # features: [seq_len, bsize, feat_dim=emb_dim+3]
         batch_size = features.shape[1] 
         seq_len = features.shape[0]
         max_nodes = self.hp.max_possible_nodes
@@ -234,8 +240,9 @@ class Critic(nn.Module):
         #num_nodes_in_batch = features.shape[1]
         device = features.device
         
-        features_ = features.reshape(seq_len,batch_size*max_nodes,-1)
-        mu_raw, batch, reachable = torch.split(features_,[self.emb_dim,1,1],dim=2)
+        features_ = features.reshape(seq_len,-1,self.hp.emb_dim+3)
+        num_nodes= features_.shape[1]
+        mu_raw, batch, reachable, num_nodes_list = torch.split(features_,[self.emb_dim,1,1,1],dim=2)
         #batch = batch[-1].squeeze().to(torch.int64) # we use the batch definition of the last vector in the sequence
         #reachable = reachable[-1].squeeze().bool() # idem
         batch = batch.squeeze(-1).to(torch.int64)
@@ -250,13 +257,23 @@ class Critic(nn.Module):
             self.hidden_cell[1][:,terminal_dense,:] = 0.
         self.counter+=1
 
-        full_output, self.hidden_cell  = self.lstm(mu_raw, self.hidden_cell)
+        selector = []
+        if num_nodes_list.shape[0]>1:
+            assert (num_nodes_list[0].squeeze() == num_nodes_list[1].squeeze()).all()
+        num_nodes_list=num_nodes_list[0].squeeze()
+        for i in range(batch_size):
+            selector+=[True]*int(num_nodes_list[i]) + [False]*(max_nodes-int(num_nodes_list[i]))
+        selector=torch.tensor(selector,dtype=torch.bool)
+        
+        full_output, out_hidden_cell  = self.lstm(mu_raw, (self.hidden_cell[0][:,selector,:],self.hidden_cell[1][:,selector,:])  )
         #mu_mem = self.hidden_cell[0][-1] # (num_nodes in batch, emb_dim)
+        self.hidden_cell[0][:,selector,:] = out_hidden_cell[0]
+        self.hidden_cell[1][:,selector,:] = out_hidden_cell[1]
         mu_mem = full_output
 
         #mu_mem_meanpool = scatter_mean(mu_mem, batch, dim=0) # (batch_size, emb_dim)
         mu_mem_meanpool = scatter_mean(mu_mem, batch, dim=1) # (batch_size, emb_dim)
-        expander = torch.ones(batch_size,dtype=torch.int64,device=device)*max_nodes       
+        expander = num_nodes_list[:batch_size].to(torch.int64)       
         #mu_mem_meanpool_expanded = torch.repeat_interleave(mu_mem_meanpool, expander, dim=0) # (num_nodes in batch, emb_dim)
         mu_mem_meanpool_expanded = torch.repeat_interleave(mu_mem_meanpool, expander, dim=1) # (num_nodes in batch, emb_dim)
 

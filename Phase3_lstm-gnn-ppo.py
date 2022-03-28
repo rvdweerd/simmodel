@@ -38,19 +38,20 @@ parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFo
 # Model hyperparameters
 parser.add_argument('--world_name', default='Manhattan3x3_PauseDynamicWorld', type=str, 
                     help='Environment to run',
-                    choices=[
-                        'Manhattan3x3_PauseFreezeWorld',
-                        'Manhattan3x3_PauseDynamicWorld',
-                        'Manhattan5x5_FixedEscapeInit',
-                        'Manhattan5x5_VariableEscapeInit',
-                        'Manhattan5x5_DuplicateSetA',
-                        'Manhattan5x5_DuplicateSetB',
-                        'MetroU3_e17tborder_FixedEscapeInit',
-                        'MetroU3_e17tborder_VariableEscapeInit',
-                        'MetroU3_e17t31_FixedEscapeInit',
-                        'MetroU3_e17t0_FixedEscapeInit',
-                        'NWB_test_FixedEscapeInit',
-                         ])
+                    )
+                    # choices=[
+                    #     'Manhattan3x3_PauseFreezeWorld',
+                    #     'Manhattan3x3_PauseDynamicWorld',
+                    #     'Manhattan5x5_FixedEscapeInit',
+                    #     'Manhattan5x5_VariableEscapeInit',
+                    #     'Manhattan5x5_DuplicateSetA',
+                    #     'Manhattan5x5_DuplicateSetB',
+                    #     'MetroU3_e17tborder_FixedEscapeInit',
+                    #     'MetroU3_e17tborder_VariableEscapeInit',
+                    #     'MetroU3_e17t31_FixedEscapeInit',
+                    #     'MetroU3_e17t0_FixedEscapeInit',
+                    #     'NWB_test_FixedEscapeInit',
+                    #      ])
 parser.add_argument('--state_repr', default='et', type=str, 
                     help='Which part of the state is observable',
                     )#choices=[
@@ -124,8 +125,8 @@ BASE_CHECKPOINT_PATH = f"{WORKSPACE_PATH}/checkpoints/"
 
 @dataclass
 class HyperParameters():
-    max_possible_nodes:   int   = 975#25#3000
-    max_possible_edges:   int   = 1500#150#4000
+    max_possible_nodes:   int   = 12#25#3000
+    max_possible_edges:   int   = 40#150#4000
     emb_dim:              int   = 64
     scale_reward:         float = SCALE_REWARD
     min_reward:           float = MIN_REWARD
@@ -359,6 +360,8 @@ def gather_trajectories(input_data):
     trajectory_data = {"states": [],
                  #"features": [],
                  #"batch_data": [],
+                 "valid_entries_idx": [],
+                 "num_nodes": [],
                  "actions": [],
                  "action_probabilities": [],
                  "rewards": [],
@@ -377,8 +380,10 @@ def gather_trajectories(input_data):
         # Take 1 additional step in order to collect the state and value for the final state.
         for i in range(hp.rollout_steps):
             state = torch.tensor(obsv, dtype=torch.float32)
+            features, nodes_in_batch, valid_entries_idx, num_nodes = ppo_model.FE(state.unsqueeze(0).to(GATHER_DEVICE))
             trajectory_data["states"].append(state.clone())
-            features = ppo_model.FE(state.unsqueeze(0).to(GATHER_DEVICE))
+            trajectory_data["valid_entries_idx"].append(valid_entries_idx.clone())
+            trajectory_data["num_nodes"].append(num_nodes.clone())
 
             batch_size=state.shape[0]
             #trajectory_data["features"].append( features.squeeze(0).clone().cpu() ) # (bsize,:)
