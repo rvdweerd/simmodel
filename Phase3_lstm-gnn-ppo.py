@@ -27,8 +27,9 @@ from modules.sim.graph_factory import GetWorldSet
 import argparse
 from modules.rl.environments import SuperEnv
 from modules.dqn.dqn_utils import seed_everything
+from modules.sim.simdata_utils import SimulateAutomaticMode_PPO
 from modules.rl.rl_utils import GetFullCoverageSample
-from modules.ppo.models_ngo import MaskablePPOPolicy, encode_features, encode_hidden
+from modules.ppo.models_ngo import MaskablePPOPolicy
 # Adapted to work with cusomized environment and GNNs from: 
 # https://gitlab.com/ngoodger/ppo_lstm/-/blob/master/recurrent_ppo.ipynb
 
@@ -99,9 +100,9 @@ LIN_SIZE:             float = [128,128,64]
 BATCH_SIZE:           int   = 16                
 DISCOUNT:             float = 0.99
 GAE_LAMBDA:           float = 0.95
-PPO_CLIP:             float = 0.2#0.1                                   
+PPO_CLIP:             float = .2#0.1                                   
 PPO_EPOCHS:           int   = 10
-MAX_GRAD_NORM:        float = 1.#.5                                    
+MAX_GRAD_NORM:        float = .5                                    
 ENTROPY_FACTOR:       float = 0.
 ACTOR_LEARNING_RATE:  float = 1e-4
 CRITIC_LEARNING_RATE: float = 1e-4
@@ -275,7 +276,7 @@ def start_or_resume_from_checkpoint(env):
         #actor_state_dict, critic_state_dict, actor_optimizer_state_dict, critic_optimizer_state_dict, stop_conditions = load_checkpoint(max_checkpoint_iteration)
         
         ppo_model.load_state_dict(ppo_model_state_dict, strict=True)
-        ppo_optimizer.load_state_dict(ppo_optimizer_state_dict, strict=True)
+        ppo_optimizer.load_state_dict(ppo_optimizer_state_dict)#, strict=True)
         #actor.load_state_dict(actor_state_dict, strict=True) 
         #critic.load_state_dict(critic_state_dict, strict=True)
         #actor_optimizer.load_state_dict(actor_optimizer_state_dict)
@@ -354,7 +355,7 @@ def gather_trajectories(input_data):
     # Initialise variables.
     obsv = env.reset()
     trajectory_data = {"states": [],
-                 "features": [],
+                 #"features": [],
                  #"batch_data": [],
                  "actions": [],
                  "action_probabilities": [],
@@ -378,7 +379,7 @@ def gather_trajectories(input_data):
             features = ppo_model.FE(state.unsqueeze(0).to(GATHER_DEVICE))
 
             batch_size=state.shape[0]
-            trajectory_data["features"].append( features.squeeze(0).clone().cpu() ) # (bsize,:)
+            #trajectory_data["features"].append( features.squeeze(0).clone().cpu() ) # (bsize,:)
 
             if first_pass: # initialize hidden states
                 ppo_model.PI.get_init_state(batch_size*hp.max_possible_nodes, GATHER_DEVICE)
@@ -392,13 +393,13 @@ def gather_trajectories(input_data):
             
             # Choose next action 
             value = ppo_model.V(features, terminal.to(GATHER_DEVICE))
-            trajectory_data["values"].append( value.squeeze(1).cpu())
+            trajectory_data["values"].append( value.squeeze().cpu())
             action_dist = ppo_model.PI(features, terminal.to(GATHER_DEVICE))
             action = action_dist.sample().reshape(hp.parallel_rollouts, -1)
             if not ppo_model.continuous_action_space:
                 action = action.squeeze(1)
             trajectory_data["actions"].append(action.cpu())
-            trajectory_data["action_probabilities"].append(action_dist.log_prob(action).cpu())
+            trajectory_data["action_probabilities"].append(action_dist.log_prob(action).squeeze(0).cpu())
 
             # Step environment 
             action_np = action.cpu().numpy()
@@ -416,7 +417,7 @@ def gather_trajectories(input_data):
 
         value = ppo_model.V(features.to(GATHER_DEVICE), terminal.to(GATHER_DEVICE))
         # Future value for terminal episodes is 0.
-        trajectory_data["values"].append(value.squeeze(1).cpu() * (1 - terminal))
+        trajectory_data["values"].append(value.squeeze().cpu() * (1 - terminal))
 
     # Combine step lists into tensors.
     trajectory_tensors = {key: torch.stack(value) for key, value in trajectory_data.items()}
@@ -495,7 +496,7 @@ class TrajectorBatch():
     Dataclass for storing data batch.
     """
     states: torch.tensor
-    features: torch.tensor
+    #features: torch.tensor
     actions: torch.tensor
     action_probabilities: torch.tensor
     advantages: torch.tensor
@@ -563,7 +564,7 @@ def make_custom(world_name, num_envs=1, asynchronous=True, wrappers=None, **kwar
         edge_blocking = True
         remove_world_pool = False
         nfm_func_name='NFM_ev_ec_t_dt_at_um_us'
-        var_targets = None
+        var_targets = None#[1,1]
         apply_wrappers = True
         
         env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
@@ -659,9 +660,12 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions):
         for epoch_idx in range(hp.ppo_epochs): 
             for batch in trajectory_dataset:
 
-                # Prime the LSTM 
+                # Prime the LSTMs
                 ppo_model.PI.hidden_cell = ( batch.actor_hidden_states[:1].reshape(hp.recurrent_layers,-1,hp.hidden_size), 
                                              batch.actor_cell_states[:1].reshape(hp.recurrent_layers,-1,hp.hidden_size) 
+                                            )
+                ppo_model.V.hidden_cell = ( batch.critic_hidden_states[:1].reshape(hp.recurrent_layers,-1,hp.hidden_size), 
+                                             batch.critic_cell_states[:1].reshape(hp.recurrent_layers,-1,hp.hidden_size) 
                                             )
                 
                 # GLOBAL_COUNT+=1
@@ -674,11 +678,13 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions):
                 features = ppo_model.FE(batch.states)
                 action_dist = ppo_model.PI(features)
                 # Action dist runs on cpu as a workaround to CUDA illegal memory access.
-                action_probabilities = action_dist.log_prob(batch.actions[-1, :].to("cpu")).to(TRAIN_DEVICE)
+                #action_probabilities = action_dist.log_prob(batch.actions[-1, :].to("cpu")).to(TRAIN_DEVICE)
+                action_probabilities = action_dist.log_prob(batch.actions.to("cpu")).to(TRAIN_DEVICE)
                 # Compute probability ratio from probabilities in logspace.
-                probabilities_ratio = torch.exp(action_probabilities - batch.action_probabilities[-1, :])
-                surrogate_loss_0 = probabilities_ratio * batch.advantages[-1, :]
-                surrogate_loss_1 =  torch.clamp(probabilities_ratio, 1. - hp.ppo_clip, 1. + hp.ppo_clip) * batch.advantages[-1, :]
+                #probabilities_ratio = torch.exp(action_probabilities - batch.action_probabilities[-1, :])
+                probabilities_ratio = torch.exp(action_probabilities - batch.action_probabilities)
+                surrogate_loss_0 = probabilities_ratio * batch.advantages#[-1, :]
+                surrogate_loss_1 =  torch.clamp(probabilities_ratio, 1. - hp.ppo_clip, 1. + hp.ppo_clip) * batch.advantages#[-1, :]
                 surrogate_loss_2 = action_dist.entropy().to(TRAIN_DEVICE)
                 actor_loss = -torch.mean(torch.min(surrogate_loss_0, surrogate_loss_1)) - torch.mean(hp.entropy_factor * surrogate_loss_2)
                 
@@ -687,7 +693,7 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions):
                 # Update critic
                 #critic_optimizer.zero_grad()
                 values = ppo_model.V(features)
-                critic_loss = F.mse_loss(batch.discounted_returns[-1, :], values.squeeze(1))
+                critic_loss = F.mse_loss(batch.discounted_returns, values.squeeze(-1))
                 #torch.nn.utils.clip_grad.clip_grad_norm_(critic.parameters(), hp.max_grad_norm)
                 #critic_loss.backward() 
                 #critic_optimizer.step()
@@ -733,20 +739,30 @@ def TrainAndSaveModel():
     ppo_model, ppo_optimizer, iteration, stop_conditions = start_or_resume_from_checkpoint(env)
     score = train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions)
 
-from modules.rl.rl_policy import EpsilonGreedyPolicyLSTM_PPO2
+from modules.rl.rl_policy import LSTM_GNN_PPO_Policy
 from modules.rl.rl_utils import EvaluatePolicy
 def EvaluateSavedModel():
-    actor, critic, actor_optimizer, critic_optimizer, iteration, stop_conditions = start_or_resume_from_checkpoint()
-    @dataclass
-    class LSTP_PPO_MODEL():
-        lstm_hidden_dim:    int 
-        pi:                 torch.nn.modules.module.Module = None
-        v:                  torch.nn.modules.module.Module = None
-    lstm_ppo_model = LSTP_PPO_MODEL(lstm_hidden_dim=HIDDEN_SIZE ,pi=actor.to(TRAIN_DEVICE), v=critic.to(TRAIN_DEVICE))
+    #env=GetCustomWorld(WORLD_NAME, make_reflexive=MAKE_REFLEXIVE, state_repr=STATE_REPR, state_enc='tensors')
+    world_name='Manhattan5x5_FixedEscapeInit'
+    env = make_custom(world_name, hp.parallel_rollouts, asynchronous=ASYNCHRONOUS_ENVIRONMENT)   
+    lstm_ppo_model, ppo_optimizer, max_checkpoint_iteration, stop_conditions = start_or_resume_from_checkpoint(env)
+    
+    env=env.envs[0]
+    # @dataclass
+    # class LSTP_PPO_MODEL():
+    #     lstm_hidden_dim:    int 
+    #     pi:                 torch.nn.modules.module.Module = None
+    #     v:                  torch.nn.modules.module.Module = None
+    # lstm_ppo_model = LSTP_PPO_MODEL(lstm_hidden_dim=HIDDEN_SIZE ,pi=actor.to(TRAIN_DEVICE), v=critic.to(TRAIN_DEVICE))
 
-    env=GetCustomWorld(WORLD_NAME, make_reflexive=MAKE_REFLEXIVE, state_repr=STATE_REPR, state_enc='tensors')
-    policy = EpsilonGreedyPolicyLSTM_PPO2(env,lstm_ppo_model, deterministic=EVAL_DETERMINISTIC)
-    lengths, returns, captures = EvaluatePolicy(env, policy  , env.world_pool*SAMPLE_MULTIPLIER, print_runs=False, save_plots=False, logdir=exp_rootdir)    
+    policy = LSTM_GNN_PPO_Policy(env, lstm_ppo_model, deterministic=EVAL_DETERMINISTIC)
+    while True:
+        entries=None#[5012,218,3903]
+        #demo_env = random.choice(evalenv)
+        a = SimulateAutomaticMode_PPO(env, policy, t_suffix=False, entries=entries)
+        if a == 'Q': break
+    
+    lengths, returns, captures, solves = EvaluatePolicy(env, policy  , env.world_pool*SAMPLE_MULTIPLIER, print_runs=False, save_plots=False, logdir=exp_rootdir)    
     plotlist = GetFullCoverageSample(returns, env.world_pool*SAMPLE_MULTIPLIER, bins=10, n=10)
     EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=exp_rootdir)
 

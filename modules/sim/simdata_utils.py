@@ -780,7 +780,7 @@ def SimulateAutomaticMode_PPO(env, ppo_policy, t_suffix=True, entries=None):
     endepi=False
             
     while not done:
-        action, _state = ppo_policy.sample_greedy_action(obs,None,printing=True)
+        action, _state = ppo_policy.sample_greedy_action(obs, torch.tensor(env.neighbors[env.state[0]]), printing=True)
         
         env.render_eupaths(fname='results/test',t_suffix=t_suffix,last_step_only=True)
         #ppo_value = ppo_policy.model.predict_values(obs)#[None,:].to(device))

@@ -13,10 +13,10 @@
             "console": "integratedTerminal",
             "args" : [
                     // ARGS FOR Phase 3 PPO
-                    "--world_name","Manhattan3x3_PauseDynamicWorld",
-                    "--state_repr","etUt",
+                    "--world_name","Manhattan5x5_FixedEscapeInit",
+                    "--state_repr","etUte0U0",
                     "--train","True",
-                    "--eval","False",
+                    "--eval","True",
                     "--num_seeds","1",
 
 

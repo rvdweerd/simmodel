@@ -35,6 +35,8 @@ class MaskablePPOPolicy(nn.Module):
         self.PI = Actor(state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev, hp=hp)
         self.V  = Critic(state_dim,hp)
         print(self)
+    def test():
+        print('test')
 
 class FeatureExtractor(nn.Module):
     def __init__(self, state_dim, hp):
@@ -135,33 +137,40 @@ class Actor(nn.Module):
 
         features_ = features.reshape(seq_len,batch_size*max_nodes,-1)
         mu_raw, batch, reachable = torch.split(features_,[self.emb_dim,1,1],dim=2)
-        batch = batch[-1].squeeze().to(torch.int64) # we use the batch definition of the last vector in the sequence
-        reachable = reachable[-1].squeeze().bool() # idem
+        #batch = batch[-1].squeeze().to(torch.int64) # we use the batch definition of the last vector in the sequence
+        #reachable = reachable[-1].squeeze().bool() # idem
+        batch = batch.squeeze(-1).to(torch.int64) # (2,400) (seq_len,bsize*max_num_nodes)
+        reachable = reachable.squeeze(-1).bool() # (2,400)
 
         if self.hidden_cell is None or max_nodes * batch_size != self.hidden_cell[0].shape[1]:
             self.get_init_state(max_nodes * batch_size, device)
+            #assert False 
         if terminal is not None:
             terminal_dense = torch.repeat_interleave(terminal.to(torch.bool), torch.ones(batch_size,dtype=torch.int64)*max_nodes, dim=0)
             self.hidden_cell[0][:,terminal_dense,:] = 0.
             self.hidden_cell[1][:,terminal_dense,:] = 0.
         self.counter+=1
 
-        _, self.hidden_cell = self.lstm(mu_raw, self.hidden_cell)
-        mu_mem = self.hidden_cell[0][-1] # (num_nodes in batch, emb_dim)
+        full_output, self.hidden_cell = self.lstm(mu_raw, self.hidden_cell)
+        #mu_mem = self.hidden_cell[0][-1] # (num_nodes in batch, emb_dim)
+        mu_mem = full_output # (seq_len, num_nodes in batch, emb_dim)
         
-        mu_mem_meanpool = scatter_mean(mu_mem, batch, dim=0) # (batch_size, emb_dim)
+        #mu_mem_meanpool = scatter_mean(mu_mem, batch, dim=0) # (batch_size, emb_dim)
+        mu_mem_meanpool = scatter_mean(mu_mem, batch, dim=1) # (seq_len, batch_size, emb_dim)
         expander = torch.ones(batch_size,dtype=torch.int64,device=device)*max_nodes
-        mu_mem_meanpool_expanded = torch.repeat_interleave(mu_mem_meanpool, expander, dim=0) # (num_nodes in batch, emb_dim)
+        #mu_mem_meanpool_expanded = torch.repeat_interleave(mu_mem_meanpool, expander, dim=0) # (num_nodes in batch, emb_dim)
+        mu_mem_meanpool_expanded = torch.repeat_interleave(mu_mem_meanpool, expander, dim=1) # (num_nodes in batch, emb_dim)
         
         global_state = self.theta6_pi(mu_mem_meanpool_expanded) # yields (#nodes in batch, emb_dim)
         local_action = self.theta7_pi(mu_mem)  # yields (#nodes in batch, emb_dim)
-        rep = F.relu(torch.cat([global_state, local_action], dim=1)) # concat creates (#nodes in batch, 2*emb_dim)        
+        #rep = F.relu(torch.cat([global_state, local_action], dim=1)) # concat creates (#nodes in batch, 2*emb_dim)        
+        rep = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (#nodes in batch, 2*emb_dim)        
         
         prob_logits_raw = self.theta5_pi(rep).squeeze(-1) # (nr_nodes in batch,)
 
         # Apply action masking
         prob_logits_raw[~reachable] = -torch.inf
-        prob_logits=prob_logits_raw.reshape(batch_size,-1)
+        prob_logits=prob_logits_raw.reshape(seq_len,batch_size,-1)
 
        
         if self.continuous_action_space:
@@ -227,31 +236,37 @@ class Critic(nn.Module):
         
         features_ = features.reshape(seq_len,batch_size*max_nodes,-1)
         mu_raw, batch, reachable = torch.split(features_,[self.emb_dim,1,1],dim=2)
-        batch = batch[-1].squeeze().to(torch.int64) # we use the batch definition of the last vector in the sequence
-        reachable = reachable[-1].squeeze().bool() # idem
+        #batch = batch[-1].squeeze().to(torch.int64) # we use the batch definition of the last vector in the sequence
+        #reachable = reachable[-1].squeeze().bool() # idem
+        batch = batch.squeeze(-1).to(torch.int64)
+        reachable = reachable.squeeze(-1).bool()
 
         if self.hidden_cell is None or max_nodes * batch_size != self.hidden_cell[0].shape[1]:
             self.get_init_state(max_nodes * batch_size, device)
+            #assert False
         if terminal is not None: # reset hidden cell values for nodes part of a terminated graph to 0
             terminal_dense = torch.repeat_interleave(terminal.to(torch.bool), torch.ones(batch_size,dtype=torch.int64)*max_nodes, dim=0)
             self.hidden_cell[0][:,terminal_dense,:] = 0.
             self.hidden_cell[1][:,terminal_dense,:] = 0.
         self.counter+=1
 
-        _, self.hidden_cell  = self.lstm(mu_raw, self.hidden_cell)
-        mu_mem = self.hidden_cell[0][-1] # (num_nodes in batch, emb_dim)
+        full_output, self.hidden_cell  = self.lstm(mu_raw, self.hidden_cell)
+        #mu_mem = self.hidden_cell[0][-1] # (num_nodes in batch, emb_dim)
+        mu_mem = full_output
 
-        mu_mem_meanpool = scatter_mean(mu_mem, batch, dim=0) # (batch_size, emb_dim)
+        #mu_mem_meanpool = scatter_mean(mu_mem, batch, dim=0) # (batch_size, emb_dim)
+        mu_mem_meanpool = scatter_mean(mu_mem, batch, dim=1) # (batch_size, emb_dim)
         expander = torch.ones(batch_size,dtype=torch.int64,device=device)*max_nodes       
-        mu_mem_meanpool_expanded = torch.repeat_interleave(mu_mem_meanpool, expander, dim=0) # (num_nodes in batch, emb_dim)
-        
+        #mu_mem_meanpool_expanded = torch.repeat_interleave(mu_mem_meanpool, expander, dim=0) # (num_nodes in batch, emb_dim)
+        mu_mem_meanpool_expanded = torch.repeat_interleave(mu_mem_meanpool, expander, dim=1) # (num_nodes in batch, emb_dim)
+
         global_state = self.theta6_v(mu_mem_meanpool_expanded) # yields (#nodes in batch, emb_dim)
         local_action = self.theta7_v(mu_mem)  # yields (#nodes in batch, emb_dim)
-        rep = F.relu(torch.cat([global_state, local_action], dim=1)) # concat creates (#nodes in batch, 2*emb_dim)        
+        rep = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (#nodes in batch, 2*emb_dim)        
         
         qvals = self.theta5_v(rep).squeeze(-1)  #(nr_nodes in batch,)
         qvals[~reachable] = -torch.inf
-        v=scatter_max(qvals,batch,dim=0)[0]
+        v=scatter_max(qvals,batch,dim=1)[0]
 
         return v.unsqueeze(-1) #(bsize,1)
 

@@ -107,7 +107,7 @@ class PPO_ObsFlatWrapper(ObservationWrapper):
         pygei = nn.functional.pad(self.sp.EI.clone(),(0,pe)) # pad rightward to (2,MAX_EDGES)
         reachable = torch.index_select(self.sp.W, 1, torch.tensor(self.state[0])).clone()
         reachable = nn.functional.pad(reachable,(0,0,0,pv)) # pad downward to (max_N, 1)
-        obs = torch.cat((torch.flatten(nfm), 
+        self.obs = torch.cat((torch.flatten(nfm), 
                          torch.flatten(pygei), 
                          torch.flatten(reachable),
                          torch.tensor([self.sp.V, self.max_nodes, num_edges, self.max_edges, self.F]))
@@ -123,7 +123,7 @@ class PPO_ObsFlatWrapper(ObservationWrapper):
         # assert nf.shape[1]==F
         # assert torch.allclose(self.nfm,nf)
         # assert torch.allclose(self.sp.EI,py)
-        return obs
+        return self.obs
 
 
 class PPO_ObsDictWrapper(ObservationWrapper):

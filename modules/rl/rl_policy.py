@@ -364,6 +364,60 @@ class EpsilonGreedyPolicyLSTM_PPO(Policy):
             #     k=0
         return a, None
 
+class LSTM_GNN_PPO_Policy(Policy):
+    def __init__(self, env, lstm_ppo_model, deterministic=False):
+        super().__init__('RecurrentNetwork')
+        self.action_dim = lstm_ppo_model.action_dim
+        self.continuous_action_space = lstm_ppo_model.continuous_action_space 
+        self.hp=lstm_ppo_model.hp
+
+        self.FE = lstm_ppo_model.FE
+        self.PI = lstm_ppo_model.PI
+        self.V  = lstm_ppo_model.V
+
+
+        self.deterministic = deterministic
+        #self.lstm_hidden_dim = lstm_ppo_model.lstm_hidden_dim
+        self.reset_hidden_states()
+        self.__name__ = 'LSTM_GNN_PPO_Policy'
+        self.probs = None
+    
+    def get_action_probs(self):
+        return self.probs
+
+    def reset_hidden_states(self, env=None):
+        #self.lstm_hidden = (torch.zeros([1, 1, self.lstm_hidden_dim], dtype=torch.float), torch.zeros([1, 1, self.lstm_hidden_dim], dtype=torch.float))
+        self.PI.hidden_cell=None
+        self.V.hidden_cell=None
+
+    def sample_greedy_action(self, obs, available_actions, printing=False):
+        with torch.no_grad():
+            features = self.FE(obs.reshape(1,1,-1).to(dtype=torch.float32).to('cpu'))
+            prob=self.PI(features)
+            self.probs=prob.probs.flatten().cpu().numpy()
+            #prob = prob.view(-1)
+            if self.deterministic:
+                a=prob.logits.argmax().item()
+            else:
+            #    m = Categorical(prob)
+            #    a = m.sample().item()               
+                a=prob.sample().item()
+            # if num_actions<4:
+            #     if action_idx > num_actions-1:
+            #         assert False
+            # if len(y.shape) != 2:
+            #     k=0
+        if printing:
+            #for row in obs[0,:,:5]:
+            #    print(row)
+            ppo_value = self.V(features)
+            np.set_printoptions(formatter={'float':"{0:0.2f}".format})
+            print('available_actions:',available_actions.detach().cpu().numpy(),'prob',self.probs,'chosen action',a, 'estimated value of graph state:',ppo_value.detach().cpu().numpy(),end='')
+
+
+        return a, None
+
+
 class EpsilonGreedyPolicyLSTM_PPO2(Policy):
     def __init__(self, env, lstm_ppo_model, deterministic=False):
         super().__init__('RecurrentNetwork')
