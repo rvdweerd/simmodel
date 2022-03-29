@@ -392,7 +392,7 @@ class LSTM_GNN_PPO_Policy(Policy):
 
     def sample_greedy_action(self, obs, available_actions, printing=False):
         with torch.no_grad():
-            features = self.FE(obs.reshape(1,1,-1).to(dtype=torch.float32).to('cpu'))
+            features,_,_,_ = self.FE(obs.reshape(1,1,-1).to(dtype=torch.float32).to('cpu'))
             prob=self.PI(features)
             self.probs=prob.probs.flatten().cpu().numpy()
             #prob = prob.view(-1)

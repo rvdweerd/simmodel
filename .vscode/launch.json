@@ -15,8 +15,8 @@
                     // ARGS FOR Phase 3 PPO
                     "--world_name","Manhattan3x3_WalkAround",
                     "--state_repr","test",
-                    "--train","True",
-                    "--eval","False",
+                    "--train","False",
+                    "--eval","True",
                     "--num_seeds","1",
 
 
