@@ -4,11 +4,11 @@
 
 
 ###################
-world="Manhattan5x5_FixedEscapeInit"
-tmux new-session -d -s test2
-tmux send-keys -t test2 "conda activate rlcourse-sb3c" Enter
-tmux send-keys -t test2 "cd ~/testing/sim" Enter
-tmux send-keys -t test2 "python Phase3_lstm-gnn-ppo.py --world_name " "$world" " --state_repr etUte0U0 --train True --eval False" Enter
+world="NWB_test_FixedEscapeInit"
+tmux new-session -d -s test3
+tmux send-keys -t test3 "conda activate rlcourse-sb3c" Enter
+tmux send-keys -t test3 "cd ~/testing/sim" Enter
+tmux send-keys -t test3 "python Phase3_lstm-gnn-ppo.py --world_name " "$world" " --state_repr seqlen2 --train True --eval False" Enter
 
 
 #####################
