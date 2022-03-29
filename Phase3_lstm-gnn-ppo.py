@@ -100,7 +100,7 @@ SCALE_REWARD:         float = 1.
 MIN_REWARD:           float = -15.                                  
 HIDDEN_SIZE:          float = 64
 LIN_SIZE:             float = [128,128,64]
-BATCH_SIZE:           int   = 12                
+BATCH_SIZE:           int   = 32                
 DISCOUNT:             float = 0.99
 GAE_LAMBDA:           float = 0.95
 PPO_CLIP:             float = .2#0.1                                   
@@ -384,8 +384,8 @@ def gather_trajectories(input_data):
             state = torch.tensor(obsv, dtype=torch.float32)
             features, nodes_in_batch, valid_entries_idx, num_nodes = ppo_model.FE(state.unsqueeze(0).to(GATHER_DEVICE))
             selector=[]
-            for i in range(bsize):
-                selector+= [True]*int(num_nodes[i])+[False]*int(hp.max_possible_nodes-num_nodes[i])
+            for j in range(bsize):
+                selector+= [True]*int(num_nodes[j])+[False]*int(hp.max_possible_nodes-num_nodes[j])
             selector=torch.tensor(selector,dtype=torch.float32).reshape(bsize,-1)
             
             trajectory_data["states"].append(state.clone())
@@ -399,6 +399,12 @@ def gather_trajectories(input_data):
                 ppo_model.PI.get_init_state(batch_size*hp.max_possible_nodes, GATHER_DEVICE)
                 ppo_model.V.get_init_state(batch_size*hp.max_possible_nodes, GATHER_DEVICE)
                 first_pass = False
+            else: # reset hidden states of terminated states to zero
+                terminal_dense = torch.repeat_interleave(terminal.to(torch.bool), torch.ones(batch_size,dtype=torch.int64)*hp.max_possible_nodes, dim=0)
+                ppo_model.PI.hidden_cell[0][:,terminal_dense,:] = 0.
+                ppo_model.PI.hidden_cell[1][:,terminal_dense,:] = 0.
+                ppo_model.V.hidden_cell[0][:,terminal_dense,:] = 0.
+                ppo_model.V.hidden_cell[1][:,terminal_dense,:] = 0.
 
             trajectory_data["actor_hidden_states"].append( ppo_model.PI.hidden_cell[0].clone().squeeze(0).reshape(batch_size,-1).cpu() ) # (6,:)
             trajectory_data["actor_cell_states"].append(   ppo_model.PI.hidden_cell[1].clone().squeeze(0).reshape(batch_size,-1).cpu() )
@@ -428,6 +434,11 @@ def gather_trajectories(input_data):
         # Compute final value to allow for incomplete episodes.
         state = torch.tensor(obsv, dtype=torch.float32)
         features, nodes_in_batch, valid_entries_idx, num_nodes = ppo_model.FE(state.unsqueeze(0).to(GATHER_DEVICE))        
+        terminal_dense = torch.repeat_interleave(terminal.to(torch.bool), torch.ones(batch_size,dtype=torch.int64)*hp.max_possible_nodes, dim=0)
+        ppo_model.PI.hidden_cell[0][:,terminal_dense,:] = 0.
+        ppo_model.PI.hidden_cell[1][:,terminal_dense,:] = 0.
+        ppo_model.V.hidden_cell[0][:,terminal_dense,:] = 0.
+        ppo_model.V.hidden_cell[1][:,terminal_dense,:] = 0.
 
         value = ppo_model.V(features.to(GATHER_DEVICE), terminal.to(GATHER_DEVICE))
         # Future value for terminal episodes is 0.
@@ -435,6 +446,7 @@ def gather_trajectories(input_data):
 
     # Combine step lists into tensors.
     trajectory_tensors = {key: torch.stack(value) for key, value in trajectory_data.items()}
+    assert (trajectory_tensors['selector'].sum(dim=2)==trajectory_tensors['num_nodes']).all()
     return trajectory_tensors
 
 def split_trajectories_episodes(trajectory_tensors):
@@ -555,9 +567,9 @@ class TrajectoryDataset():
             series_idx = np.linspace(seq_idx, seq_idx + self.batch_len - 1, num=self.batch_len, dtype=np.int64)
             self.batch_count += 1
 
-            for key, value in self.trajectories.items(): 
-                if key in TrajectorBatch.__dataclass_fields__.keys(): 
-                    print(key,value.shape, value[eps_idx, series_idx].shape) 
+            # for key, value in self.trajectories.items(): 
+            #     if key in TrajectorBatch.__dataclass_fields__.keys(): 
+            #         print(key,value.shape, value[eps_idx, series_idx].shape) 
 
             return TrajectorBatch(**{key: value[eps_idx, series_idx]for key, value
                                      in self.trajectories.items() if key in TrajectorBatch.__dataclass_fields__.keys()},
@@ -684,11 +696,11 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions):
             for batch in trajectory_dataset:
 
                 # Prime the LSTMs
-                ppo_model.PI.hidden_cell = ( batch.actor_hidden_states[:1].reshape(hp.recurrent_layers,-1,hp.hidden_size), 
-                                             batch.actor_cell_states[:1].reshape(hp.recurrent_layers,-1,hp.hidden_size) 
+                ppo_model.PI.hidden_cell = ( batch.actor_hidden_states[0].reshape(hp.recurrent_layers,-1,hp.hidden_size), 
+                                             batch.actor_cell_states[0].reshape(hp.recurrent_layers,-1,hp.hidden_size) 
                                             )
-                ppo_model.V.hidden_cell = ( batch.critic_hidden_states[:1].reshape(hp.recurrent_layers,-1,hp.hidden_size), 
-                                             batch.critic_cell_states[:1].reshape(hp.recurrent_layers,-1,hp.hidden_size) 
+                ppo_model.V.hidden_cell = ( batch.critic_hidden_states[0].reshape(hp.recurrent_layers,-1,hp.hidden_size), 
+                                             batch.critic_cell_states[0].reshape(hp.recurrent_layers,-1,hp.hidden_size) 
                                             )
                 
                 # GLOBAL_COUNT+=1
@@ -698,8 +710,10 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions):
                 #     print('############################################# LR adjusted to',actor_optimizer.param_groups[0]['lr'])
                 # Update actor
                 ppo_optimizer.zero_grad()
-                features = ppo_model.FE(batch.states)
-                action_dist = ppo_model.PI(features)
+                features, nodes_in_batch, valid_entries_idx, num_nodes = ppo_model.FE(batch.states)
+                assert (batch.selector[0]==batch.selector[1]).all()
+                selector_bool = batch.selector[0].clone().flatten().to(torch.bool)
+                action_dist = ppo_model.PI(features, selector=selector_bool)
                 # Action dist runs on cpu as a workaround to CUDA illegal memory access.
                 #action_probabilities = action_dist.log_prob(batch.actions[-1, :].to("cpu")).to(TRAIN_DEVICE)
                 action_probabilities = action_dist.log_prob(batch.actions.to("cpu")).to(TRAIN_DEVICE)
@@ -715,7 +729,7 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions):
 
                 # Update critic
                 #critic_optimizer.zero_grad()
-                values = ppo_model.V(features)
+                values = ppo_model.V(features, selector=selector_bool)
                 critic_loss = F.mse_loss(batch.discounted_returns, values.squeeze(-1))
                 #torch.nn.utils.clip_grad.clip_grad_norm_(critic.parameters(), hp.max_grad_norm)
                 #critic_loss.backward() 

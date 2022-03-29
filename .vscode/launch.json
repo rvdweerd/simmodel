@@ -16,7 +16,7 @@
                     "--world_name","Manhattan3x3_WalkAround",
                     "--state_repr","test",
                     "--train","True",
-                    "--eval","True",
+                    "--eval","False",
                     "--num_seeds","1",
 
 
