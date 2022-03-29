@@ -462,7 +462,6 @@ def split_trajectories_episodes(trajectory_tensors):
     for i in range(hp.parallel_rollouts):
         terminals_tmp = trajectory_tensors["terminals"].clone()
         terminals_tmp=torch.cat((torch.ones(hp.parallel_rollouts)[None,:],terminals_tmp),dim=0)
-
         terminals_tmp[-1, i] = 1
         split_points = (terminals_tmp[:, i] == 1).nonzero() + 1
 
