@@ -29,8 +29,9 @@ from modules.rl.environments import SuperEnv
 from modules.dqn.dqn_utils import seed_everything
 from modules.sim.simdata_utils import SimulateAutomaticMode_PPO
 from modules.rl.rl_utils import GetFullCoverageSample
+from modules.gnn.construct_trainsets import ConstructTrainSet
 from modules.ppo.models_ngo import MaskablePPOPolicy
-# Adapted to work with cusomized environment and GNNs from: 
+# Heavily adapted to work with customized environment and GNNs (trainable with varying graph sizes in the trainset) from: 
 # https://gitlab.com/ngoodger/ppo_lstm/-/blob/master/recurrent_ppo.ipynb
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)    
@@ -99,20 +100,20 @@ WORKSPACE_PATH = exp_rootdir
 SCALE_REWARD:         float = 1. 
 MIN_REWARD:           float = -15.                                  
 HIDDEN_SIZE:          float = 64
-LIN_SIZE:             float = [128,128,64]
-BATCH_SIZE:           int   = 32                
+NODE_DIM:             int = 7
+BATCH_SIZE:           int   = 48                
 DISCOUNT:             float = 0.99
 GAE_LAMBDA:           float = 0.95
 PPO_CLIP:             float = .2#0.1                                   
 PPO_EPOCHS:           int   = 10
 MAX_GRAD_NORM:        float = .5                                    
 ENTROPY_FACTOR:       float = 0.
-ACTOR_LEARNING_RATE:  float = 1e-4
-CRITIC_LEARNING_RATE: float = 1e-4
+ACTOR_LEARNING_RATE:  float = 1e-4 #1e-4
+CRITIC_LEARNING_RATE: float = 1e-4 #1e-4
 RECURRENT_SEQ_LEN:    int = 2                 
 RECURRENT_LAYERS:     int = 1                                       
-ROLLOUT_STEPS:        int = 100
-PARALLEL_ROLLOUTS:    int = 6
+ROLLOUT_STEPS:        int = 100#100
+PARALLEL_ROLLOUTS:    int = 4
 PATIENCE:             int = 500
 TRAINABLE_STD_DEV:    bool = False
 INIT_LOG_STD_DEV:     float = 0.
@@ -125,9 +126,10 @@ BASE_CHECKPOINT_PATH = f"{WORKSPACE_PATH}/checkpoints/"
 
 @dataclass
 class HyperParameters():
-    max_possible_nodes:   int   = 12#25#3000
-    max_possible_edges:   int   = 40#150#4000
+    max_possible_nodes:   int   = 33#25#3000
+    max_possible_edges:   int   = 120#150#4000
     emb_dim:              int   = 64
+    node_dim:             int   = NODE_DIM
     scale_reward:         float = SCALE_REWARD
     min_reward:           float = MIN_REWARD
     hidden_size:          float = HIDDEN_SIZE
@@ -254,12 +256,6 @@ def start_or_resume_from_checkpoint(env):
     max_checkpoint_iteration = get_last_checkpoint_iteration()
     
     obsv_dim, action_dim, continuous_action_space = get_env_space(env)
-    # actor = Actor(obsv_dim,
-    #               action_dim,
-    #               continuous_action_space=continuous_action_space,
-    #               trainable_std_dev=hp.trainable_std_dev,
-    #               init_log_std_dev=hp.init_log_std_dev)
-    # critic = Critic(obsv_dim)
     ppo_model=MaskablePPOPolicy(obsv_dim,
                   action_dim,
                   continuous_action_space=continuous_action_space,
@@ -267,8 +263,6 @@ def start_or_resume_from_checkpoint(env):
                   init_log_std_dev=hp.init_log_std_dev,
                   hp=hp)
         
-    #actor_optimizer = optim.AdamW(actor.parameters(), lr=hp.actor_learning_rate)
-    #critic_optimizer = optim.AdamW(critic.parameters(), lr=hp.critic_learning_rate)
     ppo_optimizer = optim.AdamW(ppo_model.parameters(), lr=hp.actor_learning_rate)
 
     stop_conditions = StopConditions()
@@ -276,14 +270,9 @@ def start_or_resume_from_checkpoint(env):
     # If max checkpoint iteration is greater than zero initialise training with the checkpoint.
     if max_checkpoint_iteration > 0:
         ppo_model_state_dict, ppo_optimizer_state_dict, stop_conditions = load_checkpoint(max_checkpoint_iteration)
-        #actor_state_dict, critic_state_dict, actor_optimizer_state_dict, critic_optimizer_state_dict, stop_conditions = load_checkpoint(max_checkpoint_iteration)
         
         ppo_model.load_state_dict(ppo_model_state_dict, strict=True)
         ppo_optimizer.load_state_dict(ppo_optimizer_state_dict)#, strict=True)
-        #actor.load_state_dict(actor_state_dict, strict=True) 
-        #critic.load_state_dict(critic_state_dict, strict=True)
-        #actor_optimizer.load_state_dict(actor_optimizer_state_dict)
-        #critic_optimizer.load_state_dict(critic_optimizer_state_dict)
 
         # We have to move manually move optimizer states to TRAIN_DEVICE manually since optimizer doesn't yet have a "to" method.
         for state in ppo_optimizer.state.values():
@@ -303,13 +292,11 @@ def load_checkpoint(iteration):
         
     assert ENV == checkpoint.env, "To resume training environment must match current settings."
     assert ENV_MASK_VELOCITY == checkpoint.env_mask_velocity, "To resume training model architecture must match current settings."
-    #assert hp == checkpoint.hp, "To resume training hyperparameters must match current settings."
+    assert hp == checkpoint.hp, "To resume training hyperparameters must match current settings."
     print(hp)
     print(checkpoint.hp)
     ppo_model_state_dict = torch.load(CHECKPOINT_PATH + "ppo_model.pt", map_location=torch.device(TRAIN_DEVICE))
-    #critic_state_dict = torch.load(CHECKPOINT_PATH + "critic.pt", map_location=torch.device(TRAIN_DEVICE))
     ppo_optimizer_state_dict = torch.load(CHECKPOINT_PATH + "ppo_optimizer.pt", map_location=torch.device(TRAIN_DEVICE))
-    #critic_optimizer_state_dict = torch.load(CHECKPOINT_PATH + "critic_optimizer.pt", map_location=torch.device(TRAIN_DEVICE))
     
     return (ppo_model_state_dict, ppo_optimizer_state_dict, checkpoint.stop_conditions)
         
@@ -358,10 +345,6 @@ def gather_trajectories(input_data):
     # Initialise variables.
     obsv = env.reset()
     trajectory_data = {"states": [],
-                 #"features": [],
-                 #"batch_data": [],
-                 "valid_entries_idx": [],
-                 "num_nodes": [],
                  "selector": [],
                  "actions": [],
                  "action_probabilities": [],
@@ -389,15 +372,12 @@ def gather_trajectories(input_data):
             selector=torch.tensor(selector,dtype=torch.float32).reshape(bsize,-1)
             
             trajectory_data["states"].append(state.clone())
-            trajectory_data["valid_entries_idx"].append(valid_entries_idx.clone())
-            trajectory_data["num_nodes"].append(num_nodes[:bsize].clone())
             trajectory_data["selector"].append(selector.clone())
             batch_size=state.shape[0]
-            #trajectory_data["features"].append( features.squeeze(0).clone().cpu() ) # (bsize,:)
 
             if first_pass: # initialize hidden states
-                ppo_model.PI.get_init_state(batch_size*hp.max_possible_nodes, GATHER_DEVICE)
-                ppo_model.V.get_init_state(batch_size*hp.max_possible_nodes, GATHER_DEVICE)
+                ppo_model.PI.reset_init_state(batch_size*hp.max_possible_nodes, GATHER_DEVICE)
+                ppo_model.V.reset_init_state(batch_size*hp.max_possible_nodes, GATHER_DEVICE)
                 first_pass = False
             else: # reset hidden states of terminated states to zero
                 terminal_dense = torch.repeat_interleave(terminal.to(torch.bool), torch.ones(batch_size,dtype=torch.int64)*hp.max_possible_nodes, dim=0)
@@ -446,17 +426,12 @@ def gather_trajectories(input_data):
 
     # Combine step lists into tensors.
     trajectory_tensors = {key: torch.stack(value) for key, value in trajectory_data.items()}
-    assert (trajectory_tensors['selector'].sum(dim=2)==trajectory_tensors['num_nodes']).all()
     return trajectory_tensors
 
 def split_trajectories_episodes(trajectory_tensors):
     """
     Split trajectories by episode.
     """
-
-    states_episodes, actions_episodes, action_probabilities_episodes = [], [], []
-    rewards_episodes, terminal_rewards_episodes, terminals_episodes, values_episodes = [], [], [], []
-    policy_hidden_episodes, policy_cell_episodes, critic_hidden_episodes, critic_cell_episodes = [], [], [], []
     len_episodes = []
     trajectory_episodes = {key: [] for key in trajectory_tensors.keys()}
     for i in range(hp.parallel_rollouts):
@@ -464,9 +439,7 @@ def split_trajectories_episodes(trajectory_tensors):
         terminals_tmp=torch.cat((torch.ones(hp.parallel_rollouts)[None,:],terminals_tmp),dim=0)
         terminals_tmp[-1, i] = 1
         split_points = (terminals_tmp[:, i] == 1).nonzero() + 1
-
         split_lens = split_points[1:] - split_points[:-1]
-        #split_lens[0] += 1
         
         len_episode = [split_len.item() for split_len in split_lens]
         len_episodes += len_episode
@@ -522,9 +495,6 @@ class TrajectorBatch():
     Dataclass for storing data batch.
     """
     states: torch.tensor
-    #features: torch.tensor
-    valid_entries_idx: torch.tensor
-    num_nodes: torch.tensor
     selector: torch.tensor
     actions: torch.tensor
     action_probabilities: torch.tensor
@@ -566,10 +536,6 @@ class TrajectoryDataset():
             series_idx = np.linspace(seq_idx, seq_idx + self.batch_len - 1, num=self.batch_len, dtype=np.int64)
             self.batch_count += 1
 
-            # for key, value in self.trajectories.items(): 
-            #     if key in TrajectorBatch.__dataclass_fields__.keys(): 
-            #         print(key,value.shape, value[eps_idx, series_idx].shape) 
-
             return TrajectorBatch(**{key: value[eps_idx, series_idx]for key, value
                                      in self.trajectories.items() if key in TrajectorBatch.__dataclass_fields__.keys()},
                                   batch_size=actual_batch_size)
@@ -582,6 +548,7 @@ from gym.vector.async_vector_env import AsyncVectorEnv
 from gym.vector.sync_vector_env import SyncVectorEnv
 from gym.vector.vector_env import VectorEnv, VectorEnvWrapper
 __all__ = ["AsyncVectorEnv", "SyncVectorEnv", "VectorEnv", "VectorEnvWrapper", "make"]
+
 def make_custom(world_name, num_envs=1, asynchronous=True, wrappers=None, **kwargs):
     """Create a vectorized environment from multiple copies of an environment,
     from its id.
@@ -599,26 +566,43 @@ def make_custom(world_name, num_envs=1, asynchronous=True, wrappers=None, **kwar
         remove_world_pool = False
         nfm_func_name='NFM_ev_ec_t_dt_at_um_us'
         var_targets = None#[1,1]
-        apply_wrappers = True
-        
-        # env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
-        # env.redefine_nfm(modules.gnn.nfm_gen.nfm_funcs[nfm_func_name])
-        # env.capture_on_edges = edge_blocking
-        # if remove_world_pool:
-        #     env._remove_world_pool()
-        # if var_targets is not None:
-        #     env = VarTargetWrapper(env, var_targets)
-        # if apply_wrappers:
-        #     env = PPO_ObsFlatWrapper(env, max_possible_num_nodes = hp.max_possible_nodes, max_possible_num_edges=hp.max_possible_edges)
-        #     env = PPO_ActWrapper(env) 
-  
-        env_all_train, hashint2env, env2hashint, env2hashstr, eprobs = GetWorldSet(state_repr, state_enc, U=[2], E=[0,6], edge_blocking=edge_blocking, solve_select='solvable', reject_duplicates=False, nfm_func=modules.gnn.nfm_gen.nfm_funcs[nfm_func_name], var_targets=None, remove_paths=False, return_probs=True)
-        if apply_wrappers:
-            for i in range(len(env_all_train)):
-                env_all_train[i]=PPO_ObsFlatWrapper(env_all_train[i], max_possible_num_nodes = hp.max_possible_nodes, max_possible_num_edges=hp.max_possible_edges)        
-                env_all_train[i]=PPO_ActWrapper(env_all_train[i])        
-        env = SuperEnv(env_all_train, hashint2env, max_possible_num_nodes = hp.max_possible_nodes, probs=eprobs)
+        apply_wrappers = True        
 
+        # METHOD 1
+        env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
+        env.redefine_nfm(modules.gnn.nfm_gen.nfm_funcs[nfm_func_name])
+        env.capture_on_edges = edge_blocking
+        if remove_world_pool:
+            env._remove_world_pool()
+        if var_targets is not None:
+            env = VarTargetWrapper(env, var_targets)
+        if apply_wrappers:
+            env = PPO_ObsFlatWrapper(env, max_possible_num_nodes = hp.max_possible_nodes, max_possible_num_edges=hp.max_possible_edges)
+            env = PPO_ActWrapper(env) 
+
+        # METHOD 2
+        #env_all_train, hashint2env, env2hashint, env2hashstr, eprobs = GetWorldSet(state_repr, state_enc, U=[2], E=[0,6], edge_blocking=edge_blocking, solve_select='solvable', reject_duplicates=False, nfm_func=modules.gnn.nfm_gen.nfm_funcs[nfm_func_name], var_targets=None, remove_paths=False, return_probs=True)
+        # if apply_wrappers:
+        #     for i in range(len(env_all_train)):
+        #         env_all_train[i]=PPO_ObsFlatWrapper(env_all_train[i], max_possible_num_nodes = hp.max_possible_nodes, max_possible_num_edges=hp.max_possible_edges)        
+        #         env_all_train[i]=PPO_ActWrapper(env_all_train[i])        
+        # env = SuperEnv(env_all_train, hashint2env, max_possible_num_nodes = hp.max_possible_nodes, probs=eprobs)
+
+        # METHOD 3
+        # config={}
+        # config['max_edges']=300
+        # config['max_nodes']=33
+        # config['nfm_func']='NFM_ev_ec_t_dt_at_um_us'
+        # config['remove_paths']=False
+        # config['edge_blocking']=True
+        # config['train_on']='MixAll33'
+        # env, env_all_train_list = ConstructTrainSet(config, apply_wrappers=True, remove_paths=config['remove_paths'], tset=config['train_on'])
+
+        # METHOD 4
+        # with open(WORKSPACE_PATH + "mixall_vecenv.bin", "wb") as f:
+        #     pickle.dump(env, f)
+        # with open(WORKSPACE_PATH + "mixall_vecenv.bin", "rb") as f:
+        #     env = pickle.load(f)       
 
         if wrappers is not None:
             if callable(wrappers):
@@ -630,6 +614,7 @@ def make_custom(world_name, num_envs=1, asynchronous=True, wrappers=None, **kwar
                     env = wrapper(env)
             else:
                 raise NotImplementedError
+        
         return env
 
     env_fns = [_make_env for _ in range(num_envs)]
@@ -643,11 +628,9 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions):
     # Therefore when the done flag is active in the done vector the corresponding state is the first new state.
     # env = gym.vector.make(ENV, hp.parallel_rollouts, asynchronous=ASYNCHRONOUS_ENVIRONMENT)
     # GLOBAL_COUNT=0   
-
+    ppo_optimizer.param_groups[0]['lr'] *= 0.25
     while iteration < stop_conditions.max_iterations:      
 
-        #actor = actor.to(GATHER_DEVICE)
-        #critic = critic.to(GATHER_DEVICE)
         ppo_model = ppo_model.to(GATHER_DEVICE)
         start_gather_time = time.time()
 
@@ -667,7 +650,7 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions):
         if mean_reward > stop_conditions.best_reward:
             stop_conditions.best_reward = mean_reward
             stop_conditions.fail_to_improve_count = 0
-            print("NEW BEST MEAN REWARD----------------------<<<<<<<<<<< ")#global count: ",GLOBAL_COUNT)
+            print("NEW BEST MEAN REWARD----------------------<<<<<<<<<<< ")
             print('rec seq len',hp.recurrent_seq_len)
             print('actor lr',ppo_optimizer.param_groups[0]['lr'])
 
@@ -686,8 +669,6 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions):
         end_gather_time = time.time()
         start_train_time = time.time()
         
-        #actor = actor.to(TRAIN_DEVICE)
-        #critic = critic.to(TRAIN_DEVICE)
         ppo_model = ppo_model.to(TRAIN_DEVICE)
 
         # Train actor and critic. 
@@ -707,34 +688,30 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions):
                 #     actor_optimizer.param_groups[0]['lr'] *= 0.5
                 #     hp.recurrent_seq_len=3
                 #     print('############################################# LR adjusted to',actor_optimizer.param_groups[0]['lr'])
-                # Update actor
+                # Actor loss
                 ppo_optimizer.zero_grad()
                 features, nodes_in_batch, valid_entries_idx, num_nodes = ppo_model.FE(batch.states)
-                assert (batch.selector[0]==batch.selector[1]).all()
+
                 selector_bool = batch.selector[0].clone().flatten().to(torch.bool)
                 action_dist = ppo_model.PI(features, selector=selector_bool)
                 # Action dist runs on cpu as a workaround to CUDA illegal memory access.
-                #action_probabilities = action_dist.log_prob(batch.actions[-1, :].to("cpu")).to(TRAIN_DEVICE)
                 action_probabilities = action_dist.log_prob(batch.actions.to("cpu")).to(TRAIN_DEVICE)
+                
+                NORMALIZE_ADVANTAE=True
+                if NORMALIZE_ADVANTAE:
+                    batch.advantages = (batch.advantages - batch.advantages.mean()) / (batch.advantages.std() + 1e-8)
+
                 # Compute probability ratio from probabilities in logspace.
-                #probabilities_ratio = torch.exp(action_probabilities - batch.action_probabilities[-1, :])
                 probabilities_ratio = torch.exp(action_probabilities - batch.action_probabilities)
-                surrogate_loss_0 = probabilities_ratio * batch.advantages#[-1, :]
+                surrogate_loss_0 = probabilities_ratio * batch.advantages
                 surrogate_loss_1 =  torch.clamp(probabilities_ratio, 1. - hp.ppo_clip, 1. + hp.ppo_clip) * batch.advantages#[-1, :]
                 surrogate_loss_2 = action_dist.entropy().to(TRAIN_DEVICE)
                 actor_loss = -torch.mean(torch.min(surrogate_loss_0, surrogate_loss_1)) - torch.mean(hp.entropy_factor * surrogate_loss_2)
                 
-                #actor_loss.backward() 
-
-                # Update critic
-                #critic_optimizer.zero_grad()
+                # Critic loss
                 values = ppo_model.V(features, selector=selector_bool)
                 critic_loss = F.mse_loss(batch.discounted_returns, values.squeeze(-1))
-                #torch.nn.utils.clip_grad.clip_grad_norm_(critic.parameters(), hp.max_grad_norm)
-                #critic_loss.backward() 
-                #critic_optimizer.step()
                 
-
                 vf_coef = 0.5 # basis: paper & sb3 implementation
                 loss = actor_loss + vf_coef * critic_loss
                 loss.backward()
@@ -778,20 +755,14 @@ def TrainAndSaveModel():
 
 from modules.rl.rl_policy import LSTM_GNN_PPO_Policy
 from modules.rl.rl_utils import EvaluatePolicy
+import pickle
 def EvaluateSavedModel():
     #env=GetCustomWorld(WORLD_NAME, make_reflexive=MAKE_REFLEXIVE, state_repr=STATE_REPR, state_enc='tensors')
-    world_name='Manhattan5x5_FixedEscapeInit'
-    env = make_custom(world_name, hp.parallel_rollouts, asynchronous=ASYNCHRONOUS_ENVIRONMENT)   
-    lstm_ppo_model, ppo_optimizer, max_checkpoint_iteration, stop_conditions = start_or_resume_from_checkpoint(env)
+    world_name=WORLD_NAME
+    env_ = make_custom(world_name, hp.parallel_rollouts, asynchronous=ASYNCHRONOUS_ENVIRONMENT)   
+    lstm_ppo_model, ppo_optimizer, max_checkpoint_iteration, stop_conditions = start_or_resume_from_checkpoint(env_)
     
-    env=env.envs[0]
-    # @dataclass
-    # class LSTP_PPO_MODEL():
-    #     lstm_hidden_dim:    int 
-    #     pi:                 torch.nn.modules.module.Module = None
-    #     v:                  torch.nn.modules.module.Module = None
-    # lstm_ppo_model = LSTP_PPO_MODEL(lstm_hidden_dim=HIDDEN_SIZE ,pi=actor.to(TRAIN_DEVICE), v=critic.to(TRAIN_DEVICE))
-
+    env=env_.envs[0]
     policy = LSTM_GNN_PPO_Policy(env, lstm_ppo_model, deterministic=EVAL_DETERMINISTIC)
     while True:
         entries=None#[5012,218,3903]

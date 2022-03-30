@@ -67,7 +67,7 @@ class PPO_ObsWrapper(ObservationWrapper):
 
 class PPO_ObsFlatWrapper(ObservationWrapper):
     """Wrapper for constructing a flattened nfm|edge_list|reachable nodes observation tensor.
-    Flattening: nfm (NxF) | edge_list (Ex2) | reachable (N,) | num_nodes (1,) | max_num_nodes (1,) | num_edges (1,) | max_num_edges (1,)
+    Flattening: nfm (NxF) | edge_list (Ex2) | reachable (N,) | num_nodes (1,) | max_num_nodes (1,) | num_edges (1,) | max_num_edges (1,) | node_dim (1,)
     """
     
     def __init__(self, env, max_possible_num_nodes = 3000, max_possible_num_edges = 4000):
@@ -77,7 +77,8 @@ class PPO_ObsFlatWrapper(ObservationWrapper):
         self.max_nodes = max_possible_num_nodes
         self.max_edges = max_possible_num_edges
         self.nflat = self.max_nodes * (1+self.F) + self.max_edges * 2 + 5
-        self.observation_space= spaces.Box(0., max(2.,self.sp.U), shape=(self.nflat,), dtype=np.float32)
+        #self.observation_space= spaces.Box(0., max(2.,self.sp.U), shape=(self.nflat,), dtype=np.float32)
+        self.observation_space= spaces.Box(0., 10., shape=(self.nflat,), dtype=np.float32)
         self.action_space     = spaces.Discrete(self.max_nodes) # all possible nodes 
         print('Wrapping the env with a customized observation definition for GNN integration: flattened nfm-W-reachable_nodes-N-E')
         #self.observation_space
@@ -124,7 +125,6 @@ class PPO_ObsFlatWrapper(ObservationWrapper):
         # assert torch.allclose(self.nfm,nf)
         # assert torch.allclose(self.sp.EI,py)
         return self.obs
-
 
 class PPO_ObsDictWrapper(ObservationWrapper):
     """Wrapper for dict of nfm|W|reachable|pyg_data"""
@@ -187,7 +187,6 @@ class PPO_ObsDictWrapper(ObservationWrapper):
             'num_edges':self.sp.EI.shape[1],
         }
         return obs
-
 
 class PPO_ActWrapper(ActionWrapper):
     """Wrapper for processing actions defined as next node label."""

@@ -9,7 +9,7 @@ from sb3_contrib.common.maskable.evaluation import evaluate_policy
 from sb3_contrib import MaskablePPO
 from modules.rl.rl_utils import EvaluatePolicy, EvalArgs1, EvalArgs2, EvalArgs3, GetFullCoverageSample
 from modules.gnn.nfm_gen import NFM_ec_t, NFM_ec_t_dt_at, NFM_ev_ec_t_dt_at_um_us, NFM_ec_dt, NFM_ec_dtscaled, NFM_ev_t, NFM_ev_ec_t, NFM_ev_ec_t_um_us, NFM_ev_ec_t_u
-from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsWrapper, PPO_ObsDictWrapper, VarTargetWrapper
+from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsWrapper, PPO_ObsDictWrapper, VarTargetWrapper, PPO_ObsFlatWrapper
 from modules.sim.graph_factory import GetWorldSet, LoadData
 from modules.rl.environments import GraphWorld
 from modules.rl.rl_custom_worlds import GetCustomWorld
@@ -51,7 +51,8 @@ def get_super_env(Uselected=[1], Eselected=[4], config=None, var_targets=None, a
     env_all_train, hashint2env, env2hashint, env2hashstr = GetWorldSet(state_repr, state_enc, U=Uselected, E=Eselected, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func, var_targets=var_targets, remove_paths=remove_paths)
     if apply_wrappers:
         for i in range(len(env_all_train)):
-            env_all_train[i]=PPO_ObsDictWrapper(env_all_train[i], max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges)        
+            #env_all_train[i]=PPO_ObsDictWrapper(env_all_train[i], max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges)        
+            env_all_train[i]=PPO_ObsFlatWrapper(env_all_train[i], max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges)        
             env_all_train[i]=PPO_ActWrapper(env_all_train[i])        
     super_env = SuperEnv(env_all_train, hashint2env, max_possible_num_nodes = max_nodes)
     #SimulateInteractiveMode(super_env)
@@ -75,7 +76,8 @@ def CreateEnv(world_name, max_nodes=9, max_edges=300, nfm_func_name = 'NFM_ev_ec
         env = VarTargetWrapper(env, var_targets)
     if apply_wrappers:
         #env = PPO_ObsWrapper(env, max_possible_num_nodes = max_nodes)        
-        env = PPO_ObsDictWrapper(env, max_possible_num_nodes = max_nodes, max_possible_num_edges = max_edges)
+        #env = PPO_ObsDictWrapper(env, max_possible_num_nodes = max_nodes, max_possible_num_edges = max_edges)
+        env = PPO_ObsFlatWrapper(env, max_possible_num_nodes = max_nodes, max_possible_num_edges = max_edges)
         env = PPO_ActWrapper(env) 
     return env
 

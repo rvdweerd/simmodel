@@ -18,7 +18,7 @@ def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M
     env_all_list=[]
     #env, _ = get_super_env(Uselected=[0,1,2,3], Eselected=[0,1,2,3,4,5,6,7,8,9], config=config)
     
-    solve_select_orig = config['solve_select']
+    #solve_select_orig = config['solve_select']
     config['solve_select'] = 'solvable'
 
     if tset == 'M3M5Mix':
