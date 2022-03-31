@@ -631,6 +631,7 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions, hp, t
                 del values
 
         del trajectory_dataset
+        torch.cuda.empty_cache()
 
                 
         end_train_time = time.time()
