@@ -29,9 +29,15 @@ from modules.rl.environments import SuperEnv
 from modules.dqn.dqn_utils import seed_everything
 from modules.sim.simdata_utils import SimulateAutomaticMode_PPO
 from modules.rl.rl_utils import GetFullCoverageSample
-from  modules.ppo.ppo_custom import gather_trajectories,split_trajectories_episodes,  pad_and_compute_returns
+from  modules.ppo.ppo_custom import gather_trajectories,split_trajectories_episodes,  pad_and_compute_returns, start_or_resume_from_checkpoint, save_checkpoint , save_parameters, StopConditions, TrajectoryDataset
 from modules.gnn.construct_trainsets import ConstructTrainSet
 from modules.ppo.models_ngo import MaskablePPOPolicy, MaskablePPOPolicy_shared_lstm, MaskablePPOPolicy_shared_lstm_concat
+from collections.abc import Iterable
+from gym.vector.async_vector_env import AsyncVectorEnv
+from gym.vector.sync_vector_env import SyncVectorEnv
+from gym.vector.vector_env import VectorEnv, VectorEnvWrapper
+#__all__ = ["AsyncVectorEnv", "SyncVectorEnv", "VectorEnv", "VectorEnvWrapper", "make"]
+
 # Heavily adapted to work with customized environment and GNNs (trainable with varying graph sizes in the trainset) from: 
 # https://gitlab.com/ngoodger/ppo_lstm/-/blob/master/recurrent_ppo.ipynb
 
@@ -86,14 +92,14 @@ ASYNCHRONOUS_ENVIRONMENT = False
 FORCE_CPU_GATHER = True
 
 # Set maximum threads for torch to avoid inefficient use of multiple cpu cores.
-torch.set_num_threads(1)
+torch.set_num_threads(4)
 TRAIN_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 GATHER_DEVICE = "cuda" if torch.cuda.is_available() and not FORCE_CPU_GATHER else "cpu"
+
 
 # Environment parameters
 MAKE_REFLEXIVE=True
 ENV=WORLD_NAME
-ENV_MASK_VELOCITY = False 
 exp_rootdir='./results/PPO-RNN/'+WORLD_NAME+'/'+STATE_REPR+'/'
 WORKSPACE_PATH = exp_rootdir
 
@@ -151,202 +157,17 @@ class HyperParameters():
     # Apply to continous action spaces only 
     trainable_std_dev:    bool = TRAINABLE_STD_DEV
     init_log_std_dev:     float = INIT_LOG_STD_DEV
+    env_mask_velocity:    bool = False
 hp = HyperParameters()#parallel_rollouts=PARALLEL_ROLLOUTS, rollout_steps=ROLLOUT_STEPS, batch_size=BATCH_SIZE, recurrent_seq_len=RECURRENT_SEQ_LEN, trainable_std_dev=TRAINABLE_STD_DEV,  patience=PATIENCE)
+tp= {"world_name":WORLD_NAME,"gather_device":GATHER_DEVICE, "train_device":TRAIN_DEVICE, "base_checkpoint_path":BASE_CHECKPOINT_PATH,"invalid_tag_characters":_INVALID_TAG_CHARACTERS}
+
 batch_count = hp.parallel_rollouts * hp.rollout_steps / hp.recurrent_seq_len / hp.batch_size
 print(f"batch_count: {batch_count}")
 assert batch_count >= 1., "Less than 1 batch per trajectory.  Are you sure that's what you want?"
 
-
-def save_parameters(writer, tag, model, batch_idx):
-    """
-    Save model parameters for tensorboard.
-    """
-    for k, v in model.state_dict().items():
-        shape = v.shape
-        # Fix shape definition for tensorboard.
-        shape_formatted = _INVALID_TAG_CHARACTERS.sub("_", str(shape))
-        # Don't do this for single weights or biases
-        if np.any(np.array(shape) > 1):
-            mean = torch.mean(v)
-            std_dev = torch.std(v)
-            maximum = torch.max(v)
-            minimum = torch.min(v)
-            writer.add_scalars(
-                "{}_weights/{}{}".format(tag, k, shape_formatted),
-                {"mean": mean, "std_dev": std_dev, "max": maximum, "min": minimum},
-                batch_idx,
-            )
-        else:
-            writer.add_scalar("{}_{}{}".format(tag, k, shape_formatted), v.data, batch_idx)
-            
-def get_env_space(env):
-    """
-    Return obsvervation dimensions, action dimensions and whether or not action space is continuous.
-    """
-    #env = gym.make(ENV)
-    #env=GetCustomWorld(WORLD_NAME, make_reflexive=MAKE_REFLEXIVE, state_repr=STATE_REPR, state_enc='tensors')
-    aspace = env.action_space[0]
-    continuous_action_space = type(aspace) is gym.spaces.box.Box
-    if continuous_action_space:
-        action_dim =  aspace.shape[0]
-    else:
-        action_dim = aspace.n 
-    obsv_dim= env.observation_space.shape[1] 
-    return obsv_dim, action_dim, continuous_action_space
-
-def get_last_checkpoint_iteration():
-    """
-    Determine latest checkpoint iteration.
-    """
-    if os.path.isdir(BASE_CHECKPOINT_PATH):
-        max_checkpoint_iteration = max([int(dirname) for dirname in os.listdir(BASE_CHECKPOINT_PATH)])
-    else:
-        max_checkpoint_iteration = 0
-    return max_checkpoint_iteration
-
-def save_checkpoint(ppo_model, ppo_optimizer, iteration, stop_conditions):
-    """
-    Save training checkpoint.
-    """
-    checkpoint = DotMap()
-    checkpoint.env = ENV
-    checkpoint.env_mask_velocity = ENV_MASK_VELOCITY 
-    checkpoint.iteration = iteration
-    checkpoint.stop_conditions = stop_conditions
-    checkpoint.hp = hp
-    CHECKPOINT_PATH = BASE_CHECKPOINT_PATH + f"{iteration}/"
-    pathlib.Path(CHECKPOINT_PATH).mkdir(parents=True, exist_ok=True) 
-    with open(CHECKPOINT_PATH + "parameters.pt", "wb") as f:
-        pickle.dump(checkpoint, f)
-    with open(CHECKPOINT_PATH + "ppo_model_class.pt", "wb") as f:
-        pickle.dump(MaskablePPOPolicy, f)
-    #with open(CHECKPOINT_PATH + "critic_class.pt", "wb") as f:
-    #    pickle.dump(Critic, f)
-    torch.save(ppo_model.state_dict(), CHECKPOINT_PATH + "ppo_model.pt")
-    #torch.save(critic.state_dict(), CHECKPOINT_PATH + "critic.pt")
-    torch.save(ppo_optimizer.state_dict(), CHECKPOINT_PATH + "ppo_optimizer.pt")
-    #torch.save(critic_optimizer.state_dict(), CHECKPOINT_PATH + "critic_optimizer.pt")
-
-def start_or_resume_from_checkpoint(env):
-    """
-    Create actor, critic, actor optimizer and critic optimizer from scratch
-    or load from latest checkpoint if it exists. 
-    """
-    max_checkpoint_iteration = get_last_checkpoint_iteration()
     
-    obsv_dim, action_dim, continuous_action_space = get_env_space(env)
-    ppo_model=MaskablePPOPolicy_shared_lstm_concat(obsv_dim,
-                  action_dim,
-                  continuous_action_space=continuous_action_space,
-                  trainable_std_dev=hp.trainable_std_dev,
-                  init_log_std_dev=hp.init_log_std_dev,
-                  hp=hp)
-        
-    ppo_optimizer = optim.AdamW(ppo_model.parameters(), lr=hp.actor_learning_rate)
 
-    stop_conditions = StopConditions()
-        
-    # If max checkpoint iteration is greater than zero initialise training with the checkpoint.
-    if max_checkpoint_iteration > 0:
-        ppo_model_state_dict, ppo_optimizer_state_dict, stop_conditions = load_checkpoint(max_checkpoint_iteration)
-        
-        ppo_model.load_state_dict(ppo_model_state_dict, strict=True)
-        ppo_optimizer.load_state_dict(ppo_optimizer_state_dict)#, strict=True)
 
-        # We have to move manually move optimizer states to TRAIN_DEVICE manually since optimizer doesn't yet have a "to" method.
-        for state in ppo_optimizer.state.values():
-            for k, v in state.items():
-                if isinstance(v, torch.Tensor):
-                   state[k] = v.to(TRAIN_DEVICE)
-
-    return ppo_model, ppo_optimizer, max_checkpoint_iteration, stop_conditions
-    
-def load_checkpoint(iteration):
-    """
-    Load from training checkpoint.
-    """
-    CHECKPOINT_PATH = BASE_CHECKPOINT_PATH + f"{iteration}/"
-    with open(CHECKPOINT_PATH + "parameters.pt", "rb") as f:
-        checkpoint = pickle.load(f)
-        
-    assert ENV == checkpoint.env, "To resume training environment must match current settings."
-    assert ENV_MASK_VELOCITY == checkpoint.env_mask_velocity, "To resume training model architecture must match current settings."
-    assert hp == checkpoint.hp, "To resume training hyperparameters must match current settings."
-    print(hp)
-    print(checkpoint.hp)
-    ppo_model_state_dict = torch.load(CHECKPOINT_PATH + "ppo_model.pt", map_location=torch.device(TRAIN_DEVICE))
-    ppo_optimizer_state_dict = torch.load(CHECKPOINT_PATH + "ppo_optimizer.pt", map_location=torch.device(TRAIN_DEVICE))
-    
-    return (ppo_model_state_dict, ppo_optimizer_state_dict, checkpoint.stop_conditions)
-        
-@dataclass
-class StopConditions():
-    """
-    Store parameters and variables used to stop training. 
-    """
-    best_reward: float = -1e6
-    fail_to_improve_count: int = 0
-    max_iterations: int = 1000000
-    
-@dataclass
-class TrajectorBatch():
-    """
-    Dataclass for storing data batch.
-    """
-    states: torch.tensor
-    selector: torch.tensor
-    actions: torch.tensor
-    action_probabilities: torch.tensor
-    advantages: torch.tensor
-    discounted_returns: torch.tensor
-    batch_size: torch.tensor
-    actor_hidden_states: torch.tensor
-    actor_cell_states: torch.tensor
-    critic_hidden_states: torch.tensor
-    critic_cell_states: torch.tensor
-
-class TrajectoryDataset():
-    """
-    Fast dataset for producing training batches from trajectories.
-    """
-    def __init__(self, trajectories, batch_size, device, batch_len):
-        
-        # Combine multiple trajectories into
-        self.trajectories = {key: value.to(device) for key, value in trajectories.items()}
-        self.batch_len = batch_len 
-        truncated_seq_len = torch.clamp(trajectories["seq_len"] - batch_len + 1, 0, hp.rollout_steps)
-        self.cumsum_seq_len =  np.cumsum(np.concatenate( (np.array([0]), truncated_seq_len.numpy())))
-        self.batch_size = batch_size
-        
-    def __iter__(self):
-        self.valid_idx = np.arange(self.cumsum_seq_len[-1])
-        self.batch_count = 0
-        return self
-        
-    def __next__(self):
-        if self.batch_count * self.batch_size >= math.ceil(self.cumsum_seq_len[-1] / self.batch_len):
-            raise StopIteration
-        else:
-            actual_batch_size = min(len(self.valid_idx), self.batch_size) 
-            start_idx = np.random.choice(self.valid_idx, size=actual_batch_size, replace=False )
-            self.valid_idx = np.setdiff1d(self.valid_idx, start_idx)
-            eps_idx = np.digitize(start_idx, bins = self.cumsum_seq_len, right=False) - 1
-            seq_idx = start_idx - self.cumsum_seq_len[eps_idx]
-            series_idx = np.linspace(seq_idx, seq_idx + self.batch_len - 1, num=self.batch_len, dtype=np.int64)
-            self.batch_count += 1
-
-            return TrajectorBatch(**{key: value[eps_idx, series_idx]for key, value
-                                     in self.trajectories.items() if key in TrajectorBatch.__dataclass_fields__.keys()},
-                                  batch_size=actual_batch_size)
-
-try:
-    from collections.abc import Iterable
-except ImportError:
-    Iterable = (tuple, list)
-from gym.vector.async_vector_env import AsyncVectorEnv
-from gym.vector.sync_vector_env import SyncVectorEnv
-from gym.vector.vector_env import VectorEnv, VectorEnvWrapper
-__all__ = ["AsyncVectorEnv", "SyncVectorEnv", "VectorEnv", "VectorEnvWrapper", "make"]
 
 def make_custom(world_name, num_envs=1, asynchronous=True, wrappers=None, **kwargs):
     """Create a vectorized environment from multiple copies of an environment,
@@ -454,7 +275,7 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions):
 
             if iteration>=50:
                 print('#################### SAVE CHECKPOINT #######################')
-                save_checkpoint(ppo_model, ppo_optimizer, 99999, stop_conditions)
+                save_checkpoint(ppo_model, ppo_optimizer, 99999, stop_conditions, hp, tp)
                 # best model saved as iteration0
         else:
             stop_conditions.fail_to_improve_count += 1
@@ -462,8 +283,7 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions):
             print(f"Policy has not yielded higher reward for {hp.patience} iterations...  Stopping now.")
             break
 
-        trajectory_dataset = TrajectoryDataset(trajectories, batch_size=hp.batch_size,
-                                        device=TRAIN_DEVICE, batch_len=hp.recurrent_seq_len)
+        trajectory_dataset = TrajectoryDataset(trajectories, device=TRAIN_DEVICE, hp=hp)
         end_gather_time = time.time()
         start_train_time = time.time()
         
@@ -528,12 +348,12 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions):
             writer.add_scalar("critic_loss", critic_loss.item(), iteration)
             writer.add_scalar("policy_entropy", torch.mean(surrogate_loss_2).item(), iteration)
         if SAVE_PARAMETERS_TENSORBOARD:
-            save_parameters(writer, "ppo_model", ppo_model, iteration)
+            save_parameters(writer, "ppo_model", ppo_model, iteration, tp)
             #save_parameters(writer, "value", critic, iteration)
         if iteration % CHECKPOINT_FREQUENCY == 0: 
             print('rec seq len',hp.recurrent_seq_len)
             print('actor lr',ppo_optimizer.param_groups[0]['lr'])
-            save_checkpoint(ppo_model, ppo_optimizer, iteration, stop_conditions)
+            save_checkpoint(ppo_model, ppo_optimizer, iteration, stop_conditions, hp, tp)
         iteration += 1
         
     return stop_conditions.best_reward 
@@ -545,10 +365,9 @@ def TrainAndSaveModel():
     #world_name='Manhattan5x5_FixedEscapeInit'
     world_name=WORLD_NAME#'NWB_test_FixedEscapeInit'
     env = make_custom(world_name, hp.parallel_rollouts, asynchronous=ASYNCHRONOUS_ENVIRONMENT)   
-    if ENV_MASK_VELOCITY:
-        env = MaskVelocityWrapper(env)
 
-    ppo_model, ppo_optimizer, iteration, stop_conditions = start_or_resume_from_checkpoint(env)
+
+    ppo_model, ppo_optimizer, iteration, stop_conditions = start_or_resume_from_checkpoint(env, hp, tp)
     score = train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions)
 
 from modules.rl.rl_policy import LSTM_GNN_PPO_Policy
@@ -558,7 +377,7 @@ def EvaluateSavedModel():
     #env=GetCustomWorld(WORLD_NAME, make_reflexive=MAKE_REFLEXIVE, state_repr=STATE_REPR, state_enc='tensors')
     world_name=WORLD_NAME
     env_ = make_custom(world_name, hp.parallel_rollouts, asynchronous=ASYNCHRONOUS_ENVIRONMENT)   
-    lstm_ppo_model, ppo_optimizer, max_checkpoint_iteration, stop_conditions = start_or_resume_from_checkpoint(env_)
+    lstm_ppo_model, ppo_optimizer, max_checkpoint_iteration, stop_conditions = start_or_resume_from_checkpoint(env_, hp, tp)
     
     env=env_.envs[0]
     policy = LSTM_GNN_PPO_Policy(env, lstm_ppo_model, deterministic=EVAL_DETERMINISTIC)
