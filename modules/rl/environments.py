@@ -31,6 +31,7 @@ class GraphWorld(gym.Env):
         super(GraphWorld,self).__init__()
         self.type                   ='GraphWorld'
         self.sp                     = su.DefineSimParameters(config)
+        self.rng                    = np.random.default_rng()
         self.capture_on_edges       = False
         self.optimization           = optimization_method
         self.fixed_initial_positions= fixed_initial_positions
@@ -83,6 +84,11 @@ class GraphWorld(gym.Env):
 
         self.reset()
     
+    def seed(self, seed=None):
+        if seed == None:
+            seed = random.randint(0,2**32-1)
+        self.rng = np.random.default_rng(seed)
+
     def redefine_nfm(self, nfm_function=None):
         if nfm_function == None:
             return
@@ -571,7 +577,7 @@ class SuperEnv(gym.Env):
         self.max_num_nodes = max_possible_num_nodes
         self.all_env = all_env
         self.num_env = len(all_env)
-        
+        self.rng = np.random.default_rng()
         if probs == None:
             self.probs = np.ones(self.num_env,dtype=np.float)/self.num_env
         else:
@@ -583,10 +589,18 @@ class SuperEnv(gym.Env):
                 self.probs = self.probs / (self.probs).sum()
         self.reset()
     
+    def seed(self, seed=None):
+        if seed == None:
+            seed = random.randint(0,2**32-1)
+        self.rng = np.random.default_rng(seed)
+        for env in self.all_env:
+            env.seed(seed)
+
     def reset(self, hashint=None, entry=None):
         if hashint == None:
             #self.current_env_nr = random.randint(0, self.num_env-1)
-            self.current_env_nr = int(np.random.choice(self.num_env, p=self.probs))
+            #self.current_env_nr = int(np.random.choice(self.num_env, p=self.probs))
+            self.current_env_nr = int(self.rng.choice(self.num_env, p=self.probs))
         else:
             self.current_env_nr = self.hashint2env[hashint]
         self.env = self.all_env[self.current_env_nr]

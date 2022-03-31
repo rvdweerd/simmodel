@@ -29,6 +29,10 @@ class GATv2(BasicGNN):
 class MaskablePPOPolicy_shared_lstm_concat(nn.Module):
     def __init__(self, state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev=None, hp=None):
         super().__init__()
+        if hp.lstm_on:
+            self.description = 'Action Masked PPO Policy with shared LSTM (concatenated latents) and GATv2 feature extraction'
+        else:
+            self.description = 'Action Masked PPO Policy with LSTM switched off and GATv2 feature extraction'
         self.action_dim = action_dim
         self.continuous_action_space = continuous_action_space 
         self.hp=hp
@@ -36,25 +40,30 @@ class MaskablePPOPolicy_shared_lstm_concat(nn.Module):
         self.FE = FeatureExtractor(state_dim, hp)
         self.PI = Actor_concat(state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev, hp=hp)
         self.V  = Critic_concat(state_dim, hp, lstm=self.PI.lstm if self.PI.lstm_on else None)
-        print(self)
-        self.numTrainableParameters()
+        #print(self)
+        #self.numTrainableParameters()
 
     def numTrainableParameters(self):
-        print('Action Maskedd PPO Policy with LSTM and GATv2 feature extraction:')
-        print('------------------------------------------')
+        ps=""
+        ps+=self.description+'\n'
+        ps+='------------------------------------------\n'
         total = 0
         for name, p in self.named_parameters():
             if p.requires_grad:
                 total += np.prod(p.shape)
-            print("{:24s} {:12s} requires_grad={}".format(name, str(list(p.shape)), p.requires_grad))
-        print("Total number of trainable parameters: {}".format(total))
-        print('------------------------------------------')
+            ps+=("{:24s} {:12s} requires_grad={}\n".format(name, str(list(p.shape)), p.requires_grad))
+        ps+=("Total number of trainable parameters: {}\n".format(total))
+        ps+='------------------------------------------'
         assert total == sum(p.numel() for p in self.parameters() if p.requires_grad)
-        return total
+        return total, ps
 
 class MaskablePPOPolicy_shared_lstm(nn.Module):
     def __init__(self, state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev=None, hp=None):
         super().__init__()
+        if hp.lstm_on:
+            self.description = 'Action Masked PPO Policy with shared LSTM and GATv2 feature extraction'
+        else:
+            self.description = 'Action Masked PPO Policy with LSTM switched off and GATv2 feature extraction'        
         self.action_dim = action_dim
         self.continuous_action_space = continuous_action_space 
         self.hp=hp
@@ -62,25 +71,30 @@ class MaskablePPOPolicy_shared_lstm(nn.Module):
         self.FE = FeatureExtractor(state_dim, hp)
         self.PI = Actor(state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev, hp=hp)
         self.V  = Critic(state_dim, hp, lstm=self.PI.lstm if self.PI.lstm_on else None)
-        print(self)
-        self.numTrainableParameters()
+        #print(self)
+        #self.numTrainableParameters()
 
     def numTrainableParameters(self):
-        print('Action Maskedd PPO Policy with LSTM and GATv2 feature extraction:')
-        print('------------------------------------------')
+        ps=""
+        ps+=self.description+'\n'
+        ps+='------------------------------------------\n'
         total = 0
         for name, p in self.named_parameters():
             if p.requires_grad:
                 total += np.prod(p.shape)
-            print("{:24s} {:12s} requires_grad={}".format(name, str(list(p.shape)), p.requires_grad))
-        print("Total number of trainable parameters: {}".format(total))
-        print('------------------------------------------')
+            ps+=("{:24s} {:12s} requires_grad={}\n".format(name, str(list(p.shape)), p.requires_grad))
+        ps+=("Total number of trainable parameters: {}\n".format(total))
+        ps+='------------------------------------------'
         assert total == sum(p.numel() for p in self.parameters() if p.requires_grad)
-        return total
+        return total, ps
 
 class MaskablePPOPolicy(nn.Module):
     def __init__(self, state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev=None, hp=None):
         super().__init__()
+        if hp.lstm_on:            
+            self.description = 'Action Masked PPO Policy with A+C LSTMs and GATv2 feature extraction'
+        else:
+            self.description = 'Action Masked PPO Policy with LSTM switched off and GATv2 feature extraction'        
         self.action_dim = action_dim
         self.continuous_action_space = continuous_action_space 
         self.hp=hp
@@ -88,21 +102,22 @@ class MaskablePPOPolicy(nn.Module):
         self.FE = FeatureExtractor(state_dim, hp)
         self.PI = Actor(state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev, hp=hp)
         self.V  = Critic(state_dim,hp)
-        print(self)
-        self.numTrainableParameters()
-
+        #print(self)
+        #self.numTrainableParameters()
+    
     def numTrainableParameters(self):
-        print('Action Maskedd PPO Policy with LSTM and GATv2 feature extraction:')
-        print('------------------------------------------')
+        ps=""
+        ps+=self.description+'\n'
+        ps+='------------------------------------------\n'
         total = 0
         for name, p in self.named_parameters():
             if p.requires_grad:
                 total += np.prod(p.shape)
-            print("{:24s} {:12s} requires_grad={}".format(name, str(list(p.shape)), p.requires_grad))
-        print("Total number of trainable parameters: {}".format(total))
-        print('------------------------------------------')
+            ps+=("{:24s} {:12s} requires_grad={}\n".format(name, str(list(p.shape)), p.requires_grad))
+        ps+=("Total number of trainable parameters: {}\n".format(total))
+        ps+='------------------------------------------'
         assert total == sum(p.numel() for p in self.parameters() if p.requires_grad)
-        return total
+        return total, ps
     
 class FeatureExtractor(nn.Module):
     def __init__(self, state_dim, hp):
@@ -175,7 +190,7 @@ class Actor(nn.Module):
     def __init__(self, state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev=None, hp=None):
         super().__init__()
         #self.counter = 0
-        self.lstm_on = True
+        self.lstm_on = hp.lstm_on
         self.hp = hp
         self.emb_dim = hp.emb_dim
         self.action_dim = action_dim
@@ -192,9 +207,9 @@ class Actor(nn.Module):
         self.covariance_eye = torch.eye(self.action_dim).unsqueeze(0)
         self.hidden_cell = None
         
-        print('Actor network:')
-        self.numTrainableParameters()
-        print(self)
+        #print('Actor network:')
+        #self.numTrainableParameters()
+        #print(self)
         
     def reset_init_state(self, batch_size, device):
         self.hidden_cell = (torch.zeros(self.hp.recurrent_layers, batch_size, self.hidden_size).to(device),
@@ -285,7 +300,7 @@ class Actor(nn.Module):
 class Critic(nn.Module):
     def __init__(self, state_dim, hp, lstm=None):
         super().__init__()
-        self.lstm_on = True
+        self.lstm_on = hp.lstm_on
         self.emb_dim=hp.emb_dim
         self.hidden_size=hp.hidden_size
         self.num_recurrent_layers=hp.recurrent_layers
@@ -361,7 +376,7 @@ class Actor_concat(nn.Module):
     def __init__(self, state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev=None, hp=None):
         super().__init__()
         #self.counter = 0
-        self.lstm_on = True
+        self.lstm_on = hp.lstm_on
         self.hp = hp
         self.emb_dim = hp.emb_dim
         self.action_dim = action_dim
@@ -378,9 +393,9 @@ class Actor_concat(nn.Module):
         self.covariance_eye = torch.eye(self.action_dim).unsqueeze(0)
         self.hidden_cell = None
         
-        print('Actor network:')
-        self.numTrainableParameters()
-        print(self)
+        #print('Actor network:')
+        #self.numTrainableParameters()
+        #print(self)
         
     def reset_init_state(self, batch_size, device):
         self.hidden_cell = (torch.zeros(self.hp.recurrent_layers, batch_size, self.hidden_size).to(device),
@@ -475,7 +490,7 @@ class Actor_concat(nn.Module):
 class Critic_concat(nn.Module):
     def __init__(self, state_dim, hp, lstm=None):
         super().__init__()
-        self.lstm_on = True
+        self.lstm_on = hp.lstm_on
         self.emb_dim=hp.emb_dim
         self.hidden_size=hp.hidden_size * 2
         self.num_recurrent_layers=hp.recurrent_layers

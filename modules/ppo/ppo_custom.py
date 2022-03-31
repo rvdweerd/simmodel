@@ -1,6 +1,6 @@
 import torch
 import gym
-from torch.utils.tensorboard import SummaryWriter
+#from torch.utils.tensorboard import SummaryWriter
 from torch import optim
 import numpy as np
 import torch.nn.functional as F
@@ -11,30 +11,39 @@ import pathlib
 import time
 import pickle
 import os
-from dataclasses import dataclass
+from collections.abc import Iterable
+from gym.vector.async_vector_env import AsyncVectorEnv
+from gym.vector.sync_vector_env import SyncVectorEnv
+#from gym.vector.vector_env import VectorEnv, VectorEnvWrapper
+from dataclasses import dataclass, fields
 #import gc
 from dotmap import DotMap
 #from base64 import b64encode
-from modules.rl.rl_custom_worlds import GetCustomWorld
-from modules.ppo.helpfuncs import get_super_env
-from modules.sim.graph_factory import GetWorldSet
-import argparse
-from modules.rl.environments import SuperEnv
-from modules.dqn.dqn_utils import seed_everything
-from modules.sim.simdata_utils import SimulateAutomaticMode_PPO
-from modules.rl.rl_utils import GetFullCoverageSample
+# from modules.rl.rl_custom_worlds import GetCustomWorld
+# from modules.ppo.helpfuncs import get_super_env
+# from modules.sim.graph_factory import GetWorldSet
+# import argparse
+import modules.gnn.nfm_gen
+# from modules.rl.environments import SuperEnv
+# from modules.dqn.dqn_utils import seed_everything
+# from modules.sim.simdata_utils import SimulateAutomaticMode_PPO
+# from modules.rl.rl_utils import GetFullCoverageSample
 from modules.gnn.construct_trainsets import ConstructTrainSet
 from modules.ppo.models_ngo import MaskablePPOPolicy, MaskablePPOPolicy_shared_lstm, MaskablePPOPolicy_shared_lstm_concat
+# This code is based on 
+# https://gitlab.com/ngoodger/ppo_lstm/-/blob/master/recurrent_ppo.ipynb
+# Heavily adapted to work with customized environment and GNNs (trainable with varying graph sizes in the trainset)
 
 @dataclass
 class HyperParameters():
-    max_possible_nodes:   int   = -1#33#25#3000
-    max_possible_edges:   int   = -1#120#150#4000
-    emb_dim:              int   = -1#64#64
-    node_dim:             int   = -1#NODE_DIM
+    max_possible_nodes:   int   = -1
+    max_possible_edges:   int   = -1
+    emb_dim:              int   = -1
+    node_dim:             int   = -1
+    lstm_on:              bool  = True
     hidden_size:          float = -1.
-    recurrent_layers:     int = -1
-    batch_size:           int   = -1#BATCH_SIZE
+    recurrent_layers:     int   = -1
+    batch_size:           int   = -1
     min_reward:           float = -1e6
     discount:             float = .99
     gae_lambda:           float = .95
@@ -43,14 +52,14 @@ class HyperParameters():
     scale_reward:         float = 1.
     max_grad_norm:        float = .5
     entropy_factor:       float = 0.
-    learning_rate:        float = -1.#3e-4
-    recurrent_seq_len:    int = -1#2
-    parallel_rollouts:    int = -1#4
-    rollout_steps:        int = -1#200
-    patience:             int = -1#500
-    trainable_std_dev:    bool = False
+    learning_rate:        float = -1.
+    recurrent_seq_len:    int   = -1
+    parallel_rollouts:    int   = -1
+    rollout_steps:        int   = -1
+    patience:             int   = -1
+    trainable_std_dev:    bool  = False
     init_log_std_dev:     float = 0.
-    env_mask_velocity:    bool = False
+    env_mask_velocity:    bool  = False
 
 @dataclass
 class StopConditions():
@@ -112,6 +121,99 @@ class TrajectoryDataset():
                                      in self.trajectories.items() if key in TrajectorBatch.__dataclass_fields__.keys()},
                                   batch_size=actual_batch_size)
 
+def GetConfigs(args):
+    config = {}
+    #for i in range(args.num_configs):
+    #    config.add(args.config_class(**args.config_args))
+    #return config
+    #config['lstm_dropout']    = args.lstm_dropout
+    config['train_on']        = args.train_on
+    config['batch_size']      = args.batch_size
+    config['mask_type']       = args.mask_type
+    config['mask_rate']       = args.mask_rate
+    config['emb_dim']         = args.emb_dim
+    config['lstm_type']       = args.lstm_type
+    config['lstm_hdim']       = args.lstm_hdim
+    config['lstm_layers']     = args.lstm_layers
+    config['emb_iterT']       = args.emb_iterT
+    config['nfm_func']        = args.nfm_func
+    config['qnet']            = args.qnet
+    config['train']           = args.train
+    config['eval']            = args.eval
+    config['test']            = args.test
+    config['num_seeds']       = args.num_seeds
+    config['seed0']           = args.seed0
+    config['seedrange']=range(config['seed0'], config['seed0']+config['num_seeds'])
+    config['demoruns']        = args.demoruns
+    lstm_filestring = config['lstm_type']
+    if config['lstm_type'] != 'none':
+        lstm_filestring  += '_' + str(config['lstm_hdim']) + '_' + str(config['lstm_layers'])
+    config['rootdir'] = './results/results_Phase3/ppo/'+ config['train_on']+'/'+ config['qnet'] + '/lstm_' + lstm_filestring + '_bsize' + str(config['batch_size'])
+    config['logdir']  = config['rootdir'] + '/' + config['nfm_func']+'/'+ 'emb'+str(config['emb_dim']) + '_itT'+str(config['emb_iterT'])
+
+    hp = HyperParameters(
+                        emb_dim          = config['emb_dim'],
+                        node_dim         = modules.gnn.nfm_gen.nfm_funcs[config['nfm_func']].F,
+                        lstm_on          = config['lstm_type'] != 'None',
+                        hidden_size      = config['lstm_hdim'],
+                        recurrent_layers = config['lstm_layers'],
+                        batch_size       = config['batch_size'], 
+                        learning_rate    = args.lr,#3e-4,
+                        recurrent_seq_len= args.recurrent_seq_len,#2,
+                        parallel_rollouts= args.parallel_rollouts,#4, 
+                        rollout_steps    = args.rollout_steps, #200 
+                        patience         = args.patience, #500
+                        )
+
+    FORCE_CPU_GATHER=True
+    tp= {"world_name":                 args.train_on,
+        "force_cpu_gather":            FORCE_CPU_GATHER, # Force using CPU for gathering trajectories.
+        "gather_device":               "cuda" if torch.cuda.is_available() and not FORCE_CPU_GATHER else "cpu", 
+        "train_device":                "cuda" if torch.cuda.is_available() else "cpu", 
+        "asynchronous_environment":    False,  # Step env asynchronously using multiprocess or synchronously.
+        "invalid_tag_characters":      re.compile(r"[^-/\w\.]"), 
+        'save_metrics_tensorboard':    True,
+        'save_parameters_tensorboard': False,
+        'checkpoint_frequency':        100,
+        'eval_deterministic':          True}
+
+    batch_count = hp.parallel_rollouts * hp.rollout_steps / hp.recurrent_seq_len / hp.batch_size
+    print(f"batch_count: {batch_count}")
+    assert batch_count >= 1., "Less than 1 batch per trajectory.  Are you sure that's what you want?"  
+    return config, hp, tp
+
+def WriteTrainParamsToFile(config,hp,tp):
+    if not os.path.exists(config['logdir']):
+        os.makedirs(config['logdir'])    
+    OF = open(config['logdir']+'/train-parameters.txt', 'w')
+    def printing(text):
+        print(text)
+        OF.write(text + "\n")
+    np.set_printoptions(formatter={'float':"{0:0.3f}".format})
+    
+    printing('config args:\n-----------------')
+    for k,v in config.items():
+        printing(k + ': ' + str(v))
+    printing('\nhyperparameters:\n-----------------')
+    for field in fields(hp):
+        printing(field.name + ': ' + str(getattr(hp, field.name)))
+    printing('\ntrain parameters:\n-----------------')
+    for k,v in tp.items():
+        printing(k + ': ' + str(v))
+
+def WriteModelParamsToFile(config,model):
+    if not os.path.exists(config['logdir']):
+        os.makedirs(config['logdir'])    
+    OF = open(config['logdir']+'/model-parameters.txt', 'w')
+    def printing(text):
+        print(text)
+        OF.write(text + "\n")
+    np.set_printoptions(formatter={'float':"{0:0.3f}".format})
+    printing('\nModel layout:\n-----------------')
+    printing(str(model))
+    printing('\nNumber of trainable parameters:\n-----------------')
+    num, parameter_string = model.numTrainableParameters()
+    printing(parameter_string)
 
 def save_parameters(writer, tag, model, batch_idx, tp):
     """
@@ -183,7 +285,7 @@ def save_checkpoint(ppo_model, ppo_optimizer, iteration, stop_conditions, hp, tp
     torch.save(ppo_optimizer.state_dict(), CHECKPOINT_PATH + "ppo_optimizer.pt")
     #torch.save(critic_optimizer.state_dict(), CHECKPOINT_PATH + "critic_optimizer.pt")
 
-def start_or_resume_from_checkpoint(env, hp, tp):
+def start_or_resume_from_checkpoint(env, config, hp, tp):
     """
     Create actor, critic, actor optimizer and critic optimizer from scratch
     or load from latest checkpoint if it exists. 
@@ -191,7 +293,17 @@ def start_or_resume_from_checkpoint(env, hp, tp):
     max_checkpoint_iteration = get_last_checkpoint_iteration(tp)
     
     obsv_dim, action_dim, continuous_action_space = get_env_space(env)
-    ppo_model=MaskablePPOPolicy_shared_lstm_concat(obsv_dim,
+#['None','shared-concat','shared-noncat','separate-concat','separate-noncat']
+    if config['lstm_type'] == 'None' or config['lstm_type'] == 'separate-noncat':
+        ppo_algo = MaskablePPOPolicy
+    elif config['lstm_type'] == 'shared-concat':
+        ppo_algo = MaskablePPOPolicy_shared_lstm_concat
+    elif config['lstm_type'] == 'shared-noncat':
+        ppo_algo = MaskablePPOPolicy_shared_lstm
+    else:
+        assert False
+
+    ppo_model = ppo_algo(obsv_dim,
                   action_dim,
                   continuous_action_space=continuous_action_space,
                   trainable_std_dev=hp.trainable_std_dev,
@@ -447,7 +559,7 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions, hp, t
             print('rec seq len',hp.recurrent_seq_len)
             print('actor lr',ppo_optimizer.param_groups[0]['lr'])
 
-            if iteration>=50:
+            if iteration>=1:
                 print('#################### SAVE CHECKPOINT #######################')
                 save_checkpoint(ppo_model, ppo_optimizer, 99999, stop_conditions, hp, tp)
                 # best model saved as iteration0
@@ -531,3 +643,28 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions, hp, t
         iteration += 1
         
     return stop_conditions.best_reward 
+
+def make_custom(config, num_envs=1, asynchronous=True, wrappers=None, **kwargs):
+    """Create a vectorized environment from multiple copies of an environment,
+    from its id.
+    Parameters
+    """
+    from gym.envs import make as make_
+
+    def _make_env():
+        env,_ = ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset=config['train_on'])
+
+        if wrappers is not None:
+            if callable(wrappers):
+                env = wrappers(env)
+            elif isinstance(wrappers, Iterable) and all(
+                [callable(w) for w in wrappers]
+            ):
+                for wrapper in wrappers:
+                    env = wrapper(env)
+            else:
+                raise NotImplementedError        
+        return env
+
+    env_fns = [_make_env for _ in range(num_envs)]
+    return AsyncVectorEnv(env_fns) if asynchronous else SyncVectorEnv(env_fns)
