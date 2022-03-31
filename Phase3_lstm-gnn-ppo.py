@@ -18,7 +18,7 @@ def EvaluateSavedModel(config, hp, tp):
         return env
     env_ = SyncVectorEnv([envf])
     #env_ = make_custom(world_name, num_envs=1, asynchronous=False)   
-    lstm_ppo_model, ppo_optimizer, max_checkpoint_iteration, stop_conditions = start_or_resume_from_checkpoint(env_, hp, tp)
+    lstm_ppo_model, ppo_optimizer, max_checkpoint_iteration, stop_conditions = start_or_resume_from_checkpoint(env_, config, hp, tp)
     
     #env=env_.envs[0]
     policy = LSTM_GNN_PPO_Policy(env, lstm_ppo_model, deterministic=tp['eval_deterministic'])
@@ -34,24 +34,29 @@ def EvaluateSavedModel(config, hp, tp):
 
 def main(args):
     config, hp, tp = GetConfigs(args)
+    train_env = make_custom(config, num_envs=hp.parallel_rollouts, asynchronous=tp['asynchronous_environment'])
+    hp.max_possible_nodes = train_env.envs[0].env.max_nodes
+    hp.max_possible_edges = train_env.envs[0].env.max_edges
+    
     if config['train']:
-        env = make_custom(config, num_envs=hp.parallel_rollouts, asynchronous=tp['asynchronous_environment'])
-        hp.max_possible_nodes = env.envs[0].env.max_nodes
-        hp.max_possible_edges = env.envs[0].env.max_edges
         WriteTrainParamsToFile(config,hp,tp)
         for seed in config['seedrange']:
             seed_everything(seed)
-            env.seed(seed)
+            train_env.seed(seed)
             logdir_=config['logdir']+'/SEED'+str(seed)
             tp['writer'] = SummaryWriter(log_dir=f"{logdir_}/logs")
             tp["base_checkpoint_path"]=f"{logdir_}/checkpoints/"
-            tp["workspace_path"]="logdir_"
+            #tp["workspace_path"]=logdir_
 
-            ppo_model, ppo_optimizer, iteration, stop_conditions = start_or_resume_from_checkpoint(env, config, hp, tp)
+            ppo_model, ppo_optimizer, iteration, stop_conditions = start_or_resume_from_checkpoint(train_env, config, hp, tp)
             if seed == config['seed0']: WriteModelParamsToFile(config, ppo_model)
-            score = train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions, hp, tp)
+            score = train_model(train_env, ppo_model, ppo_optimizer, iteration, stop_conditions, hp, tp)
 
     if config['test']:
+        seed = config['seed0']
+        logdir_=config['logdir']+'/SEED'+str(seed)
+        tp["base_checkpoint_path"]=f"{logdir_}/checkpoints/"
+        #tp["workspace_path"]=logdir_
         EvaluateSavedModel(config, hp, tp)
 
 if __name__ == '__main__':
