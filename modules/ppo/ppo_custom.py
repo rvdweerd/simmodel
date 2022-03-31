@@ -27,6 +27,32 @@ from modules.gnn.construct_trainsets import ConstructTrainSet
 from modules.ppo.models_ngo import MaskablePPOPolicy, MaskablePPOPolicy_shared_lstm, MaskablePPOPolicy_shared_lstm_concat
 
 @dataclass
+class HyperParameters():
+    max_possible_nodes:   int   = -1#33#25#3000
+    max_possible_edges:   int   = -1#120#150#4000
+    emb_dim:              int   = -1#64#64
+    node_dim:             int   = -1#NODE_DIM
+    hidden_size:          float = -1.
+    recurrent_layers:     int = -1
+    batch_size:           int   = -1#BATCH_SIZE
+    min_reward:           float = -1e6
+    discount:             float = .99
+    gae_lambda:           float = .95
+    ppo_clip:             float = .2
+    ppo_epochs:           int   = 10
+    scale_reward:         float = 1.
+    max_grad_norm:        float = .5
+    entropy_factor:       float = 0.
+    learning_rate:        float = -1.#3e-4
+    recurrent_seq_len:    int = -1#2
+    parallel_rollouts:    int = -1#4
+    rollout_steps:        int = -1#200
+    patience:             int = -1#500
+    trainable_std_dev:    bool = False
+    init_log_std_dev:     float = 0.
+    env_mask_velocity:    bool = False
+
+@dataclass
 class StopConditions():
     """
     Store parameters and variables used to stop training. 
@@ -172,13 +198,13 @@ def start_or_resume_from_checkpoint(env, hp, tp):
                   init_log_std_dev=hp.init_log_std_dev,
                   hp=hp)
         
-    ppo_optimizer = optim.AdamW(ppo_model.parameters(), lr=hp.actor_learning_rate)
+    ppo_optimizer = optim.AdamW(ppo_model.parameters(), lr=hp.learning_rate)
 
     stop_conditions = StopConditions()
         
     # If max checkpoint iteration is greater than zero initialise training with the checkpoint.
     if max_checkpoint_iteration > 0:
-        ppo_model_state_dict, ppo_optimizer_state_dict, stop_conditions = load_checkpoint(env, max_checkpoint_iteration, hp, tp)
+        ppo_model_state_dict, ppo_optimizer_state_dict, stop_conditions = load_checkpoint(max_checkpoint_iteration, hp, tp)
         
         ppo_model.load_state_dict(ppo_model_state_dict, strict=True)
         ppo_optimizer.load_state_dict(ppo_optimizer_state_dict)#, strict=True)
@@ -389,3 +415,119 @@ def pad_and_compute_returns(trajectory_episodes, len_episodes, hp):
     return_val["seq_len"] = torch.tensor(len_episodes)
     
     return return_val
+
+def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions, hp, tp):   
+    # Vector environment manages multiple instances of the environment.
+    # A key difference between this and the standard gym environment is it automatically resets.
+    # Therefore when the done flag is active in the done vector the corresponding state is the first new state.
+    # env = gym.vector.make(ENV, hp.parallel_rollouts, asynchronous=ASYNCHRONOUS_ENVIRONMENT)
+    # GLOBAL_COUNT=0   
+    #ppo_optimizer.param_groups[0]['lr'] *= 0.25
+    while iteration < stop_conditions.max_iterations:      
+
+        ppo_model = ppo_model.to(tp['gather_device'])
+        start_gather_time = time.time()
+
+        # Gather trajectories.
+        input_data = {"env": env, "ppo_model": ppo_model, "gather_device":tp['gather_device']}
+        trajectory_tensors = gather_trajectories(input_data, hp)
+        trajectory_episodes, len_episodes = split_trajectories_episodes(trajectory_tensors, hp)
+        trajectories = pad_and_compute_returns(trajectory_episodes, len_episodes,  hp)
+
+        # Calculate mean reward.
+        complete_episode_count = trajectories["terminals"].sum().item()
+        terminal_episodes_rewards = (trajectories["terminals"].sum(axis=1) * trajectories["true_rewards"].sum(axis=1)).sum().item()
+        mean_reward =  terminal_episodes_rewards / (complete_episode_count)
+
+        # Check stop conditions.
+        if mean_reward > stop_conditions.best_reward:
+            stop_conditions.best_reward = mean_reward
+            stop_conditions.fail_to_improve_count = 0
+            print("NEW BEST MEAN REWARD----------------------<<<<<<<<<<< ")
+            print('rec seq len',hp.recurrent_seq_len)
+            print('actor lr',ppo_optimizer.param_groups[0]['lr'])
+
+            if iteration>=50:
+                print('#################### SAVE CHECKPOINT #######################')
+                save_checkpoint(ppo_model, ppo_optimizer, 99999, stop_conditions, hp, tp)
+                # best model saved as iteration0
+        else:
+            stop_conditions.fail_to_improve_count += 1
+        if stop_conditions.fail_to_improve_count > hp.patience:
+            print(f"Policy has not yielded higher reward for {hp.patience} iterations...  Stopping now.")
+            break
+
+        trajectory_dataset = TrajectoryDataset(trajectories, device=tp['train_device'], hp=hp)
+        end_gather_time = time.time()
+        start_train_time = time.time()
+        
+        ppo_model = ppo_model.to(tp['train_device'])
+
+        # Train actor and critic. 
+        for epoch_idx in range(hp.ppo_epochs): 
+            for batch in trajectory_dataset:
+
+                # Prime the LSTMs
+                ppo_model.PI.hidden_cell = ( batch.actor_hidden_states[0].reshape(hp.recurrent_layers,-1,hp.hidden_size), 
+                                             batch.actor_cell_states[0].reshape(hp.recurrent_layers,-1,hp.hidden_size) 
+                                            )
+                ppo_model.V.hidden_cell = ( batch.critic_hidden_states[0].reshape(hp.recurrent_layers,-1,hp.hidden_size), 
+                                             batch.critic_cell_states[0].reshape(hp.recurrent_layers,-1,hp.hidden_size) 
+                                            )
+                
+                # GLOBAL_COUNT+=1
+                # if GLOBAL_COUNT%WARMUP==0:
+                #     actor_optimizer.param_groups[0]['lr'] *= 0.5
+                #     hp.recurrent_seq_len=3
+                #     print('############################################# LR adjusted to',actor_optimizer.param_groups[0]['lr'])
+                # Actor loss
+                ppo_optimizer.zero_grad()
+                features, nodes_in_batch, valid_entries_idx, num_nodes = ppo_model.FE(batch.states)
+
+                selector_bool = batch.selector[0].clone().flatten().to(torch.bool)
+                action_dist = ppo_model.PI(features, selector=selector_bool)
+                # Action dist runs on cpu as a workaround to CUDA illegal memory access.
+                action_probabilities = action_dist.log_prob(batch.actions.to("cpu")).to(tp['train_device'])
+                
+                NORMALIZE_ADVANTAE=True
+                if NORMALIZE_ADVANTAE:
+                    batch.advantages = (batch.advantages - batch.advantages.mean()) / (batch.advantages.std() + 1e-8)
+
+                # Compute probability ratio from probabilities in logspace.
+                probabilities_ratio = torch.exp(action_probabilities - batch.action_probabilities)
+                surrogate_loss_0 = probabilities_ratio * batch.advantages
+                surrogate_loss_1 =  torch.clamp(probabilities_ratio, 1. - hp.ppo_clip, 1. + hp.ppo_clip) * batch.advantages#[-1, :]
+                surrogate_loss_2 = action_dist.entropy().to(tp['train_device'])
+                actor_loss = -torch.mean(torch.min(surrogate_loss_0, surrogate_loss_1)) - torch.mean(hp.entropy_factor * surrogate_loss_2)
+                
+                # Critic loss
+                values = ppo_model.V(features, selector=selector_bool)
+                critic_loss = F.mse_loss(batch.discounted_returns, values.squeeze(-1))
+                
+                vf_coef = 0.5 # basis: paper & sb3 implementation
+                loss = actor_loss + vf_coef * critic_loss
+                loss.backward()
+                torch.nn.utils.clip_grad.clip_grad_norm_(ppo_model.parameters(), hp.max_grad_norm)
+                ppo_optimizer.step()
+                
+        end_train_time = time.time()
+        print(f"Iteration: {iteration},  Mean reward: {mean_reward}, Mean Entropy: {torch.mean(surrogate_loss_2)}, " +
+              f"complete_episode_count: {complete_episode_count}, Gather time: {end_gather_time - start_gather_time:.2f}s, " +
+              f"Train time: {end_train_time - start_train_time:.2f}s")
+
+        if tp['save_metrics_tensorboard']:
+            tp['writer'].add_scalar("complete_episode_count", complete_episode_count, iteration)
+            tp['writer'].add_scalar("total_reward", mean_reward , iteration)
+            tp['writer'].add_scalar("actor_loss", actor_loss.item(), iteration)
+            tp['writer'].add_scalar("critic_loss", critic_loss.item(), iteration)
+            tp['writer'].add_scalar("policy_entropy", torch.mean(surrogate_loss_2).item(), iteration)
+        if tp['save_parameters_tensorboard']:
+            save_parameters(tp['writer'], "ppo_model", ppo_model, iteration, tp)
+            #save_parameters(writer, "value", critic, iteration)
+        if iteration % tp['checkpoint_frequency'] == 0: 
+            print('rec seq len',hp.recurrent_seq_len)
+            print('actor lr',ppo_optimizer.param_groups[0]['lr'])
+            save_checkpoint(ppo_model, ppo_optimizer, iteration, stop_conditions, hp, tp)
+        iteration += 1
+        
+    return stop_conditions.best_reward 

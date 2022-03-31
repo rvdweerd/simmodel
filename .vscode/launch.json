@@ -13,16 +13,27 @@
             "console": "integratedTerminal",
             "args" : [
                     // ARGS FOR Phase 3 PPO
-                    //"--world_name","Manhattan3x3_WalkAround",
-                    //"--world_name","NWB_test_VariableEscapeInit",
-                    "--world_name","Manhattan5x5_FixedEscapeInit",
-                    "--state_repr","test",
+                    //"--train_on","NWB_AMS",
+                    //"--train_on","MetroConstructed",
+                    "--train_on","TEST",
+                    //"--train_on","MixAll33",
+                    //"--train_on","M3M5Mix",
+                    "--batch_size","48",
+                    "--mask_type", "None",
+                    "--mask_rate", "0.",
+                    "--emb_dim","64",
+                    "--lstm_type","shared-noncat",
+                    "--lstm_hdim","64",
+                    "--lstm_layers","1",
+                    "--emb_iterT","5",
+                    "--nfm_func","NFM_ev_ec_t_dt_at_um_us",
+                    "--qnet","gat2",
                     "--train","True",
-                    "--eval","True",
-                    "--num_seeds","1",
-
-
-
+                    "--eval","False",
+                    "--test","False",
+                    "--num_seeds","5",
+                    "--seed0","1",
+                    "--demoruns","False",
 
                     // // ARGS FOR Phase 2 PPO
                     // //"--train_on","NWB_AMS",
