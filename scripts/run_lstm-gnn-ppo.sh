@@ -9,7 +9,7 @@ world="Manhattan5x5_FixedEscapeInit"
 tmux new-session -d -s mixall1
 tmux send-keys -t mixall1 "conda activate rlcourse-sb3c" Enter
 tmux send-keys -t mixall1 "cd ~/testing/sim" Enter
-tmux send-keys -t mixall1 "python Phase3_lstm-gnn-ppo.py --world_name " "$world" " --state_repr mixall --train True --eval False" Enter
+tmux send-keys -t mixall1 "python Phase3_lstm-gnn-ppo.py --world_name " "$world" " --state_repr mixall_shared --train True --eval False" Enter
 
 
 #####################

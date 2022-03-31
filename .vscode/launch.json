@@ -16,8 +16,8 @@
                     //"--world_name","Manhattan3x3_WalkAround",
                     //"--world_name","NWB_test_VariableEscapeInit",
                     "--world_name","Manhattan5x5_FixedEscapeInit",
-                    "--state_repr","mixall",
-                    "--train","False",
+                    "--state_repr","test",
+                    "--train","True",
                     "--eval","True",
                     "--num_seeds","1",
 

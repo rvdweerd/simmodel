@@ -26,6 +26,58 @@ class GATv2(BasicGNN):
         return GATv2Conv(in_channels, out_channels, dropout=self.dropout,
                        **kwargs)
 
+class MaskablePPOPolicy_shared_lstm_concat(nn.Module):
+    def __init__(self, state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev=None, hp=None):
+        super().__init__()
+        self.action_dim = action_dim
+        self.continuous_action_space = continuous_action_space 
+        self.hp=hp
+
+        self.FE = FeatureExtractor(state_dim, hp)
+        self.PI = Actor_concat(state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev, hp=hp)
+        self.V  = Critic_concat(state_dim, hp, lstm=self.PI.lstm if self.PI.lstm_on else None)
+        print(self)
+        self.numTrainableParameters()
+
+    def numTrainableParameters(self):
+        print('Action Maskedd PPO Policy with LSTM and GATv2 feature extraction:')
+        print('------------------------------------------')
+        total = 0
+        for name, p in self.named_parameters():
+            if p.requires_grad:
+                total += np.prod(p.shape)
+            print("{:24s} {:12s} requires_grad={}".format(name, str(list(p.shape)), p.requires_grad))
+        print("Total number of trainable parameters: {}".format(total))
+        print('------------------------------------------')
+        assert total == sum(p.numel() for p in self.parameters() if p.requires_grad)
+        return total
+
+class MaskablePPOPolicy_shared_lstm(nn.Module):
+    def __init__(self, state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev=None, hp=None):
+        super().__init__()
+        self.action_dim = action_dim
+        self.continuous_action_space = continuous_action_space 
+        self.hp=hp
+
+        self.FE = FeatureExtractor(state_dim, hp)
+        self.PI = Actor(state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev, hp=hp)
+        self.V  = Critic(state_dim, hp, lstm=self.PI.lstm if self.PI.lstm_on else None)
+        print(self)
+        self.numTrainableParameters()
+
+    def numTrainableParameters(self):
+        print('Action Maskedd PPO Policy with LSTM and GATv2 feature extraction:')
+        print('------------------------------------------')
+        total = 0
+        for name, p in self.named_parameters():
+            if p.requires_grad:
+                total += np.prod(p.shape)
+            print("{:24s} {:12s} requires_grad={}".format(name, str(list(p.shape)), p.requires_grad))
+        print("Total number of trainable parameters: {}".format(total))
+        print('------------------------------------------')
+        assert total == sum(p.numel() for p in self.parameters() if p.requires_grad)
+        return total
+
 class MaskablePPOPolicy(nn.Module):
     def __init__(self, state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev=None, hp=None):
         super().__init__()
@@ -123,6 +175,7 @@ class Actor(nn.Module):
     def __init__(self, state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev=None, hp=None):
         super().__init__()
         #self.counter = 0
+        self.lstm_on = True
         self.hp = hp
         self.emb_dim = hp.emb_dim
         self.action_dim = action_dim
@@ -130,7 +183,8 @@ class Actor(nn.Module):
         self.hidden_size = hp.hidden_size
         self.num_recurrent_layers = hp.recurrent_layers
         
-        self.lstm = nn.LSTM(self.emb_dim, self.hidden_size, num_layers = self.num_recurrent_layers)
+        if self.lstm_on:
+            self.lstm = nn.LSTM(self.emb_dim, self.hidden_size, num_layers = self.num_recurrent_layers)
         self.theta5_pi = nn.Linear(2*self.emb_dim, 1, True)
         self.theta6_pi = nn.Linear(  self.emb_dim, self.emb_dim, True)
         self.theta7_pi = nn.Linear(  self.emb_dim, self.emb_dim, True)
@@ -143,8 +197,8 @@ class Actor(nn.Module):
         print(self)
         
     def reset_init_state(self, batch_size, device):
-        self.hidden_cell = (torch.zeros(self.hp.recurrent_layers, batch_size, self.hp.hidden_size).to(device),
-                            torch.zeros(self.hp.recurrent_layers, batch_size, self.hp.hidden_size).to(device))
+        self.hidden_cell = (torch.zeros(self.hp.recurrent_layers, batch_size, self.hidden_size).to(device),
+                            torch.zeros(self.hp.recurrent_layers, batch_size, self.hidden_size).to(device))
         
     def forward(self, features, terminal=None, selector=None):
         # features: (seq_len, num nodes in batch, feat_dim=emb_dim+3)
@@ -175,11 +229,14 @@ class Actor(nn.Module):
                 selector_+=[True]*int(num_nodes_list[i]) + [False]*(max_nodes-int(num_nodes_list[i]))
             selector=torch.tensor(selector_,dtype=torch.bool)   
 
-        full_output, out_hidden_cell = self.lstm(mu_raw, (self.hidden_cell[0][:,selector,:], self.hidden_cell[1][:,selector,:]))
-        self.hidden_cell[0][:,selector,:] = out_hidden_cell[0]
-        self.hidden_cell[1][:,selector,:] = out_hidden_cell[1]
+        if self.lstm_on:
+            full_output, out_hidden_cell = self.lstm(mu_raw, (self.hidden_cell[0][:,selector,:], self.hidden_cell[1][:,selector,:]))
+            self.hidden_cell[0][:,selector,:] = out_hidden_cell[0]
+            self.hidden_cell[1][:,selector,:] = out_hidden_cell[1]
+            mu_mem = full_output # (seq_len, num_nodes in batch, emb_dim)
+        else:
+            mu_mem = mu_raw
 
-        mu_mem = full_output # (seq_len, num_nodes in batch, emb_dim)
         mu_mem_meanpool = scatter_mean(mu_mem, batch, dim=1) # (seq_len, batch_size, emb_dim)
         expander = num_nodes_list[:batch_size].to(torch.int64)   
         mu_mem_meanpool_expanded = torch.repeat_interleave(mu_mem_meanpool, expander, dim=1) # (num_nodes in batch, emb_dim)
@@ -226,22 +283,27 @@ class Actor(nn.Module):
         return total
 
 class Critic(nn.Module):
-    def __init__(self, state_dim, hp):
+    def __init__(self, state_dim, hp, lstm=None):
         super().__init__()
+        self.lstm_on = True
         self.emb_dim=hp.emb_dim
         self.hidden_size=hp.hidden_size
         self.num_recurrent_layers=hp.recurrent_layers
         self.hp=hp
         
-        self.lstm = nn.LSTM(self.emb_dim, self.hidden_size, num_layers=self.num_recurrent_layers)
+        if self.lstm_on:
+            if lstm == None:
+                self.lstm = nn.LSTM(self.emb_dim, self.hidden_size, num_layers=self.num_recurrent_layers)
+            else:
+                self.lstm = lstm
         self.theta5_v = nn.Linear(2*self.emb_dim, 1, True)
         self.theta6_v = nn.Linear(self.emb_dim, self.emb_dim, True)
         self.theta7_v = nn.Linear(self.emb_dim, self.emb_dim, True)
         self.hidden_cell = None
         
     def reset_init_state(self, batch_size, device):
-        self.hidden_cell = (torch.zeros(self.hp.recurrent_layers, batch_size, self.hp.hidden_size).to(device),
-                            torch.zeros(self.hp.recurrent_layers, batch_size, self.hp.hidden_size).to(device))
+        self.hidden_cell = (torch.zeros(self.hp.recurrent_layers, batch_size, self.hidden_size).to(device),
+                            torch.zeros(self.hp.recurrent_layers, batch_size, self.hidden_size).to(device))
     
     def forward(self, features, terminal=None, selector=None):
         # features: [seq_len, bsize, feat_dim=emb_dim+3]
@@ -273,11 +335,13 @@ class Critic(nn.Module):
                 selector_ += [True]*int(num_nodes_list[i]) + [False]*(max_nodes-int(num_nodes_list[i]))
             selector=torch.tensor(selector_,dtype=torch.bool)
 
-        full_output, out_hidden_cell  = self.lstm(mu_raw, (self.hidden_cell[0][:,selector,:],self.hidden_cell[1][:,selector,:]) )
-        self.hidden_cell[0][:,selector,:] = out_hidden_cell[0]
-        self.hidden_cell[1][:,selector,:] = out_hidden_cell[1]
-
-        mu_mem = full_output
+        if self.lstm_on:
+            full_output, out_hidden_cell  = self.lstm(mu_raw, (self.hidden_cell[0][:,selector,:],self.hidden_cell[1][:,selector,:]) )
+            self.hidden_cell[0][:,selector,:] = out_hidden_cell[0]
+            self.hidden_cell[1][:,selector,:] = out_hidden_cell[1]
+            mu_mem = full_output
+        else:
+            mu_mem = mu_raw
         mu_mem_meanpool = scatter_mean(mu_mem, batch, dim=1) # (batch_size, emb_dim)
         expander = num_nodes_list[:batch_size].to(torch.int64)       
         mu_mem_meanpool_expanded = torch.repeat_interleave(mu_mem_meanpool, expander, dim=1) # (num_nodes in batch, emb_dim)
@@ -293,3 +357,195 @@ class Critic(nn.Module):
 
         return v.unsqueeze(-1) # returns (seq_len, nr_nodes in batch, 1)
 
+class Actor_concat(nn.Module):
+    def __init__(self, state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev=None, hp=None):
+        super().__init__()
+        #self.counter = 0
+        self.lstm_on = True
+        self.hp = hp
+        self.emb_dim = hp.emb_dim
+        self.action_dim = action_dim
+        self.continuous_action_space = continuous_action_space 
+        self.hidden_size = hp.hidden_size * 2 # concat mu and AGG(mu)
+        self.num_recurrent_layers = hp.recurrent_layers
+        
+        if self.lstm_on:
+            self.lstm = nn.LSTM(self.emb_dim*2, self.hidden_size, num_layers = self.num_recurrent_layers)
+        self.theta5_pi = nn.Linear(2*self.emb_dim, 1, True)
+        self.theta6_pi = nn.Linear(  self.emb_dim, self.emb_dim, True)
+        self.theta7_pi = nn.Linear(  self.emb_dim, self.emb_dim, True)
+        self.log_std_dev = nn.Parameter(init_log_std_dev * torch.ones((action_dim), dtype=torch.float), requires_grad=trainable_std_dev)
+        self.covariance_eye = torch.eye(self.action_dim).unsqueeze(0)
+        self.hidden_cell = None
+        
+        print('Actor network:')
+        self.numTrainableParameters()
+        print(self)
+        
+    def reset_init_state(self, batch_size, device):
+        self.hidden_cell = (torch.zeros(self.hp.recurrent_layers, batch_size, self.hidden_size).to(device),
+                            torch.zeros(self.hp.recurrent_layers, batch_size, self.hidden_size).to(device))
+        
+    def forward(self, features, terminal=None, selector=None):
+        # features: (seq_len, num nodes in batch, feat_dim=emb_dim+3)
+        assert len(features.shape)==3
+        seq_len = features.shape[0]
+        max_nodes = self.hp.max_possible_nodes
+        num_nodes= features.shape[1]
+        device = features.device
+
+        mu_raw, batch, reachable, num_nodes_list = torch.split(features,[self.emb_dim,1,1,1],dim=2)
+        batch_size = int(batch.max()) + 1 
+        
+        batch = batch.squeeze(-1).to(torch.int64) 
+        reachable = reachable.squeeze(-1).bool() 
+
+        if self.hidden_cell is None or max_nodes * batch_size != self.hidden_cell[0].shape[1]:
+            self.reset_init_state(max_nodes * batch_size, device)
+        if terminal is not None:
+            # Set node cells of graph of the termined episode to 0
+            terminal_dense = torch.repeat_interleave(terminal.to(torch.bool), torch.ones(batch_size,dtype=torch.int64)*max_nodes, dim=0)
+            assert self.hidden_cell[0][:,terminal_dense,:].sum() == 0
+            assert self.hidden_cell[1][:,terminal_dense,:].sum() == 0
+
+        num_nodes_list = num_nodes_list[0].squeeze()
+        if selector == None:
+            selector_=[]
+            for i in range(batch_size):
+                selector_+=[True]*int(num_nodes_list[i]) + [False]*(max_nodes-int(num_nodes_list[i]))
+            selector=torch.tensor(selector_,dtype=torch.bool)   
+
+        mu_raw_meanpool = scatter_mean(mu_raw, batch, dim=1) # (seq_len, batch_size, emb_dim)
+        expander = num_nodes_list[:batch_size].to(torch.int64)   
+        mu_raw_meanpool_expanded = torch.repeat_interleave(mu_raw_meanpool, expander, dim=1) # (num_nodes in batch, emb_dim)
+        
+        # Transform node embeddings to action log probabilities
+        global_state_raw = self.theta6_pi(mu_raw_meanpool_expanded) # yields (#nodes in batch, emb_dim)
+        local_action_raw = self.theta7_pi(mu_raw)  # yields (#nodes in batch, emb_dim)
+        
+        mu_concat_raw = torch.cat([global_state_raw, local_action_raw], dim=2) # concat creates (#nodes in batch, 2*emb_dim)        
+
+        if self.lstm_on:
+            full_output, out_hidden_cell = self.lstm(F.relu(mu_concat_raw), (self.hidden_cell[0][:,selector,:], self.hidden_cell[1][:,selector,:]))
+            self.hidden_cell[0][:,selector,:] = out_hidden_cell[0]
+            self.hidden_cell[1][:,selector,:] = out_hidden_cell[1]
+            mu_concat_mem = full_output # (seq_len, num_nodes in batch, emb_dim)
+        else:
+            assert False # so sense in concatenated lstm if the lstm is turned off
+
+        #rep = F.relu(mu_concat_mem) # concat creates (#nodes in batch, 2*emb_dim)        
+        rep = F.relu(mu_concat_mem)
+        prob_logits_raw = self.theta5_pi(rep).squeeze(-1) # (nr_nodes in batch,)
+
+        # Apply action masking and pad to standard size (based on maximum Graph size in nodes in the trainset)
+        prob_logits_raw[~reachable] = -torch.inf
+        splitter = num_nodes_list[:batch_size].to(torch.int64).tolist()
+        if prob_logits_raw.shape[0]==1:
+            prob_logits_splitted = list(torch.split(prob_logits_raw.squeeze(), splitter, dim=0))
+            p = max_nodes - prob_logits_splitted[0].shape[-1]
+            prob_logits_splitted[0] = torch.nn.functional.pad(prob_logits_splitted[0], (0,p), value = -torch.inf)
+            prob_logits_splitted = torch.nn.utils.rnn.pad_sequence(prob_logits_splitted, batch_first=True, padding_value = -torch.inf)
+            prob_logits=prob_logits_splitted[None,:,:]
+        else:
+            prob_logits_splitted = list(torch.split(prob_logits_raw.squeeze(), splitter, dim=1))
+            for i in range(len(prob_logits_splitted)):
+                p = max_nodes - prob_logits_splitted[i].shape[-1]
+                prob_logits_splitted[i] = torch.nn.functional.pad(prob_logits_splitted[i], (0,p), value=-torch.inf)
+            prob_logits=torch.stack(prob_logits_splitted).permute((1,0,2))
+       
+        if self.continuous_action_space:
+            assert False # not implemented
+        else:
+            policy_dist = distributions.Categorical(logits=prob_logits.to('cpu'))
+        return policy_dist
+
+    def numTrainableParameters(self):
+        print('Actor size:')
+        print('------------------------------------------')
+        total = 0
+        for name, p in self.named_parameters():
+            if p.requires_grad:
+                total += np.prod(p.shape)
+            print("{:24s} {:12s} requires_grad={}".format(name, str(list(p.shape)), p.requires_grad))
+        print("Total number of trainable parameters: {}".format(total))
+        print('------------------------------------------')
+        assert total == sum(p.numel() for p in self.parameters() if p.requires_grad)
+        return total
+
+class Critic_concat(nn.Module):
+    def __init__(self, state_dim, hp, lstm=None):
+        super().__init__()
+        self.lstm_on = True
+        self.emb_dim=hp.emb_dim
+        self.hidden_size=hp.hidden_size * 2
+        self.num_recurrent_layers=hp.recurrent_layers
+        self.hp=hp
+        
+        if self.lstm_on:
+            if lstm == None:
+                self.lstm = nn.LSTM(self.emb_dim*2, self.hidden_size, num_layers=self.num_recurrent_layers)
+            else:
+                self.lstm = lstm
+        self.theta5_v = nn.Linear(2*self.emb_dim, 1, True)
+        self.theta6_v = nn.Linear(self.emb_dim, self.emb_dim, True)
+        self.theta7_v = nn.Linear(self.emb_dim, self.emb_dim, True)
+        self.hidden_cell = None
+        
+    def reset_init_state(self, batch_size, device):
+        self.hidden_cell = (torch.zeros(self.hp.recurrent_layers, batch_size, self.hidden_size).to(device),
+                            torch.zeros(self.hp.recurrent_layers, batch_size, self.hidden_size).to(device))
+    
+    def forward(self, features, terminal=None, selector=None):
+        # features: [seq_len, bsize, feat_dim=emb_dim+3]
+        seq_len = features.shape[0]
+        max_nodes = self.hp.max_possible_nodes
+        assert len(features.shape)==3
+        #num_nodes_in_batch = features.shape[1]
+        device = features.device
+        
+        #features_ = features.reshape(seq_len,-1,self.hp.emb_dim+3)
+        num_nodes= features.shape[1]
+        mu_raw, batch, reachable, num_nodes_list = torch.split(features, [self.emb_dim,1,1,1], dim=2)
+        
+        batch_size = int(batch.max()) + 1
+        batch = batch.squeeze(-1).to(torch.int64)
+        reachable = reachable.squeeze(-1).bool()
+
+        if self.hidden_cell is None or max_nodes * batch_size != self.hidden_cell[0].shape[1]:
+            self.reset_init_state(max_nodes * batch_size, device)
+        if terminal is not None: # reset hidden cell values for nodes part of a terminated graph to 0
+            terminal_dense = torch.repeat_interleave(terminal.to(torch.bool), torch.ones(batch_size,dtype=torch.int64)*max_nodes, dim=0)
+            assert self.hidden_cell[0][:,terminal_dense,:].sum() == 0
+            assert self.hidden_cell[1][:,terminal_dense,:].sum() == 0
+
+        num_nodes_list = num_nodes_list[0].squeeze()
+        if selector == None:
+            selector_=[]
+            for i in range(batch_size):
+                selector_ += [True]*int(num_nodes_list[i]) + [False]*(max_nodes-int(num_nodes_list[i]))
+            selector=torch.tensor(selector_,dtype=torch.bool)
+
+        mu_raw_meanpool = scatter_mean(mu_raw, batch, dim=1) # (batch_size, emb_dim)
+        expander = num_nodes_list[:batch_size].to(torch.int64)       
+        mu_raw_meanpool_expanded = torch.repeat_interleave(mu_raw_meanpool, expander, dim=1) # (num_nodes in batch, emb_dim)
+
+        # Transform node embeddings to graph state / node values
+        global_state_raw = self.theta6_v(mu_raw_meanpool_expanded) # yields (#nodes in batch, emb_dim)
+        local_action_raw = self.theta7_v(mu_raw)  # yields (#nodes in batch, emb_dim)
+        mu_concat_raw = torch.cat([global_state_raw, local_action_raw], dim=2)
+
+        if self.lstm_on:
+            full_output, out_hidden_cell  = self.lstm(F.relu(mu_concat_raw), (self.hidden_cell[0][:,selector,:],self.hidden_cell[1][:,selector,:]) )
+            self.hidden_cell[0][:,selector,:] = out_hidden_cell[0]
+            self.hidden_cell[1][:,selector,:] = out_hidden_cell[1]
+            mu_concat_mem = full_output
+        else:
+            assert False # so sense in concatenated lstm if the lstm is turned off
+
+        #rep = F.relu(mu_concat_mem) # concat creates (#nodes in batch, 2*emb_dim)        
+        rep=F.relu(mu_concat_mem)
+        qvals = self.theta5_v(rep).squeeze(-1)  #(seq_len, nr_nodes in batch)
+        qvals[~reachable] = -torch.inf
+        v = scatter_max(qvals,batch, dim=1)[0]
+
+        return v.unsqueeze(-1) # returns (seq_len, nr_nodes in batch, 1)

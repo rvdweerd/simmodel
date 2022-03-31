@@ -30,7 +30,7 @@ from modules.dqn.dqn_utils import seed_everything
 from modules.sim.simdata_utils import SimulateAutomaticMode_PPO
 from modules.rl.rl_utils import GetFullCoverageSample
 from modules.gnn.construct_trainsets import ConstructTrainSet
-from modules.ppo.models_ngo import MaskablePPOPolicy
+from modules.ppo.models_ngo import MaskablePPOPolicy, MaskablePPOPolicy_shared_lstm, MaskablePPOPolicy_shared_lstm_concat
 # Heavily adapted to work with customized environment and GNNs (trainable with varying graph sizes in the trainset) from: 
 # https://gitlab.com/ngoodger/ppo_lstm/-/blob/master/recurrent_ppo.ipynb
 
@@ -99,17 +99,17 @@ WORKSPACE_PATH = exp_rootdir
 # Default Hyperparameters                                           
 SCALE_REWARD:         float = 1. 
 MIN_REWARD:           float = -15.                                  
-HIDDEN_SIZE:          float = 64
+HIDDEN_SIZE:          float = 64#64
 NODE_DIM:             int = 7
-BATCH_SIZE:           int   = 48                
+BATCH_SIZE:           int   = 64#48                
 DISCOUNT:             float = 0.99
 GAE_LAMBDA:           float = 0.95
 PPO_CLIP:             float = .2#0.1                                   
 PPO_EPOCHS:           int   = 10
 MAX_GRAD_NORM:        float = .5                                    
 ENTROPY_FACTOR:       float = 0.
-ACTOR_LEARNING_RATE:  float = 1e-4 #1e-4
-CRITIC_LEARNING_RATE: float = 1e-4 #1e-4
+ACTOR_LEARNING_RATE:  float = 3e-4 #1e-4
+CRITIC_LEARNING_RATE: float = 3e-4 #1e-4
 RECURRENT_SEQ_LEN:    int = 2                 
 RECURRENT_LAYERS:     int = 1                                       
 ROLLOUT_STEPS:        int = 100#100
@@ -128,7 +128,7 @@ BASE_CHECKPOINT_PATH = f"{WORKSPACE_PATH}/checkpoints/"
 class HyperParameters():
     max_possible_nodes:   int   = 33#25#3000
     max_possible_edges:   int   = 120#150#4000
-    emb_dim:              int   = 64
+    emb_dim:              int   = 64#64
     node_dim:             int   = NODE_DIM
     scale_reward:         float = SCALE_REWARD
     min_reward:           float = MIN_REWARD
@@ -256,7 +256,7 @@ def start_or_resume_from_checkpoint(env):
     max_checkpoint_iteration = get_last_checkpoint_iteration()
     
     obsv_dim, action_dim, continuous_action_space = get_env_space(env)
-    ppo_model=MaskablePPOPolicy(obsv_dim,
+    ppo_model=MaskablePPOPolicy_shared_lstm_concat(obsv_dim,
                   action_dim,
                   continuous_action_space=continuous_action_space,
                   trainable_std_dev=hp.trainable_std_dev,
@@ -601,7 +601,7 @@ def make_custom(world_name, num_envs=1, asynchronous=True, wrappers=None, **kwar
         # METHOD 4
         # with open(WORKSPACE_PATH + "mixall_vecenv.bin", "wb") as f:
         #     pickle.dump(env, f)
-        # with open(WORKSPACE_PATH + "mixall_vecenv.bin", "rb") as f:
+        # with open("./results/mixall_vecenv.bin", "rb") as f:
         #     env = pickle.load(f)       
 
         if wrappers is not None:
@@ -628,7 +628,7 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions):
     # Therefore when the done flag is active in the done vector the corresponding state is the first new state.
     # env = gym.vector.make(ENV, hp.parallel_rollouts, asynchronous=ASYNCHRONOUS_ENVIRONMENT)
     # GLOBAL_COUNT=0   
-    ppo_optimizer.param_groups[0]['lr'] *= 0.25
+    #ppo_optimizer.param_groups[0]['lr'] *= 0.25
     while iteration < stop_conditions.max_iterations:      
 
         ppo_model = ppo_model.to(GATHER_DEVICE)
