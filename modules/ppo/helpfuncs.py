@@ -54,7 +54,7 @@ def get_super_env(Uselected=[1], Eselected=[4], config=None, var_targets=None, a
             #env_all_train[i]=PPO_ObsDictWrapper(env_all_train[i], max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges)        
             env_all_train[i]=PPO_ObsFlatWrapper(env_all_train[i], max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges)        
             env_all_train[i]=PPO_ActWrapper(env_all_train[i])        
-    super_env = SuperEnv(env_all_train, hashint2env, max_possible_num_nodes = max_nodes)
+    super_env = SuperEnv(env_all_train, hashint2env, max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges)
     #SimulateInteractiveMode(super_env)
     return super_env, env_all_train
 

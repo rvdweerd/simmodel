@@ -23,6 +23,7 @@ def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M
 
     if tset == 'M3M5Mix':
         config['max_edges'] = 300
+        config['max_nodes'] = 25
         env, _ = get_super_env(Uselected=[0,1,2,3,4], Eselected=[6,7,8,9], config=config, var_targets=None, apply_wrappers=apply_wrappers, remove_paths=remove_paths)
         env_all_list += env.all_env
         global_env.append(env)
@@ -156,6 +157,7 @@ def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M
 
     elif tset == 'MixAll33':
         config['max_edges'] = 300
+        config['max_nodes'] = 33
         world_name = 'MetroU3_e17tborder_VariableEscapeInit'
         env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
         env_all_list.append(env)

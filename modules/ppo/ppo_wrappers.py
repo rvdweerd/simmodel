@@ -74,12 +74,12 @@ class PPO_ObsFlatWrapper(ObservationWrapper):
         super().__init__(env)
         assert max_possible_num_nodes >= self.sp.V
         #self.V=env.sp.V
-        self.max_nodes = max_possible_num_nodes
-        self.max_edges = max_possible_num_edges
-        self.nflat = self.max_nodes * (1+self.F) + self.max_edges * 2 + 5
+        self.max_possible_num_nodes = max_possible_num_nodes
+        self.max_possible_num_edges = max_possible_num_edges
+        self.nflat = self.max_possible_num_nodes * (1+self.F) + self.max_possible_num_edges * 2 + 5
         #self.observation_space= spaces.Box(0., max(2.,self.sp.U), shape=(self.nflat,), dtype=np.float32)
         self.observation_space= spaces.Box(0., 10., shape=(self.nflat,), dtype=np.float32)
-        self.action_space     = spaces.Discrete(self.max_nodes) # all possible nodes 
+        self.action_space     = spaces.Discrete(self.max_possible_num_nodes) # all possible nodes 
         print('Wrapping the env with a customized observation definition for GNN integration: flattened nfm-W-reachable_nodes-N-E')
         #self.observation_space
         #self.action_space
@@ -93,7 +93,7 @@ class PPO_ObsFlatWrapper(ObservationWrapper):
         # return upos
     
     def action_masks(self):
-        m = self.env.action_masks() + [False] * (self.max_nodes - self.V)
+        m = self.env.action_masks() + [False] * (self.max_possible_num_nodes - self.V)
         return m
 
     def render(self, mode=None, fname=None, t_suffix=True, size=None):
@@ -101,17 +101,17 @@ class PPO_ObsFlatWrapper(ObservationWrapper):
 
     def observation(self, observation):
         """convert observation."""
-        pv = self.max_nodes - self.sp.V  # padding
+        pv = self.max_possible_num_nodes - self.sp.V  # padding
         nfm = nn.functional.pad(self.nfm.clone(),(0,0,0,pv)) # pad downward to (max_N, F)
         num_edges = self.sp.EI.shape[1]
-        pe = self.max_edges - num_edges
+        pe = self.max_possible_num_edges - num_edges
         pygei = nn.functional.pad(self.sp.EI.clone(),(0,pe)) # pad rightward to (2,MAX_EDGES)
         reachable = torch.index_select(self.sp.W, 1, torch.tensor(self.state[0])).clone()
         reachable = nn.functional.pad(reachable,(0,0,0,pv)) # pad downward to (max_N, 1)
         self.obs = torch.cat((torch.flatten(nfm), 
                          torch.flatten(pygei), 
                          torch.flatten(reachable),
-                         torch.tensor([self.sp.V, self.max_nodes, num_edges, self.max_edges, self.F]))
+                         torch.tensor([self.sp.V, self.max_possible_num_nodes, num_edges, self.max_possible_num_edges, self.F]))
                         ,dim=0)
 
         # # TEST

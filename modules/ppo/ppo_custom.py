@@ -137,6 +137,8 @@ def GetConfigs(args):
     config['lstm_layers']     = args.lstm_layers
     config['emb_iterT']       = args.emb_iterT
     config['nfm_func']        = args.nfm_func
+    config['edge_blocking']   = True
+    config['solve_select']    = 'solvable'
     config['qnet']            = args.qnet
     config['train']           = args.train
     config['eval']            = args.eval
@@ -650,9 +652,17 @@ def make_custom(config, num_envs=1, asynchronous=True, wrappers=None, **kwargs):
     Parameters
     """
     from gym.envs import make as make_
+    try:
+        OF=open("./results/results_Phase3/"+config['train_on']+".bin", "rb")
+        OF.close()
+    except:
+        env,_ = ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset=config['train_on'])
+        with open("./results/results_Phase3/"+config['train_on']+".bin", "wb") as f:
+            env = pickle.dump(env, f)
 
     def _make_env():
-        env,_ = ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset=config['train_on'])
+        with open("./results/results_Phase3/"+config['train_on']+".bin", "rb") as f:
+            env = pickle.load(f)  
 
         if wrappers is not None:
             if callable(wrappers):

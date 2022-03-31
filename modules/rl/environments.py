@@ -31,6 +31,8 @@ class GraphWorld(gym.Env):
         super(GraphWorld,self).__init__()
         self.type                   ='GraphWorld'
         self.sp                     = su.DefineSimParameters(config)
+        self.max_possible_num_nodes = len(self.sp.G.nodes())
+        self.max_possible_num_edges = len(self.sp.G.edges())
         self.rng                    = np.random.default_rng()
         self.capture_on_edges       = False
         self.optimization           = optimization_method
@@ -343,7 +345,8 @@ class GraphWorld(gym.Env):
                     i=0
                     ser=self.sp.coord2labels[self.sp.start_escape_route]
                     break
-                i = random.choice(self.all_worlds)
+                #i = random.choice(self.all_worlds)
+                i = self.rng.choice(self.all_worlds)
                 ser=self.databank['labels'][i]['start_escape_route']
                 if ser not in self.sp.target_nodes:
                     if ser != self.sp.start_escape_route_node:
@@ -571,10 +574,21 @@ register(
 #         self.redefine_goal_nodes(new_targets)
 
 class SuperEnv(gym.Env):
-    def __init__(self, all_env, hashint2env, max_possible_num_nodes = 9, probs=None):
+    def __init__(self, all_env, hashint2env, max_possible_num_nodes = None, max_possible_num_edges = None, probs=None):
         super(SuperEnv,self).__init__()
         self.hashint2env = hashint2env
-        self.max_num_nodes = max_possible_num_nodes
+        if max_possible_num_nodes == None:
+            self.max_possible_num_nodes = -1
+            for e in all_env:
+                self.max_possible_num_nodes = max(self.max_possible_num_nodes, e.max_possible_num_nodes)
+        else:
+            self.max_possible_num_nodes = max_possible_num_nodes
+        if max_possible_num_edges == None:
+            self.max_possible_num_edges = -1
+            for e in all_env:
+                self.max_possible_num_edges = max(self.max_possible_num_edges, e.max_possible_num_edges)
+        else:
+            self.max_possible_num_edges = max_possible_num_edges
         self.all_env = all_env
         self.num_env = len(all_env)
         self.rng = np.random.default_rng()

@@ -35,8 +35,8 @@ def EvaluateSavedModel(config, hp, tp):
 def main(args):
     config, hp, tp = GetConfigs(args)
     train_env = make_custom(config, num_envs=hp.parallel_rollouts, asynchronous=tp['asynchronous_environment'])
-    hp.max_possible_nodes = train_env.envs[0].env.max_nodes
-    hp.max_possible_edges = train_env.envs[0].env.max_edges
+    hp.max_possible_nodes = train_env.envs[0].env.max_possible_num_nodes
+    hp.max_possible_edges = train_env.envs[0].env.max_possible_num_edges
     
     if config['train']:
         WriteTrainParamsToFile(config,hp,tp)
@@ -63,7 +63,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)    
     parser.add_argument('--train_on', default='None', type=str)
     parser.add_argument('--batch_size', default=48, type=int)
-    parser.add_argument('--lr', default=3e-4, type=float)
+    parser.add_argument('--lr', default=5e-4, type=float)
     parser.add_argument('--recurrent_seq_len', default=2, type=int)
     parser.add_argument('--parallel_rollouts', default=4, type=int)
     parser.add_argument('--rollout_steps', default=201, type=int)
