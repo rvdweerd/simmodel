@@ -29,147 +29,25 @@ from modules.rl.environments import SuperEnv
 from modules.dqn.dqn_utils import seed_everything
 from modules.sim.simdata_utils import SimulateAutomaticMode_PPO
 from modules.rl.rl_utils import GetFullCoverageSample
-from  modules.ppo.ppo_custom import gather_trajectories,split_trajectories_episodes,  pad_and_compute_returns, start_or_resume_from_checkpoint, save_checkpoint , save_parameters, StopConditions, TrajectoryDataset
+from modules.ppo.ppo_custom import gather_trajectories,split_trajectories_episodes,  pad_and_compute_returns, start_or_resume_from_checkpoint, train_model,  save_checkpoint , save_parameters, StopConditions, TrajectoryDataset, HyperParameters
 from modules.gnn.construct_trainsets import ConstructTrainSet
+import modules.gnn.nfm_gen
 from modules.ppo.models_ngo import MaskablePPOPolicy, MaskablePPOPolicy_shared_lstm, MaskablePPOPolicy_shared_lstm_concat
 from collections.abc import Iterable
 from gym.vector.async_vector_env import AsyncVectorEnv
 from gym.vector.sync_vector_env import SyncVectorEnv
 from gym.vector.vector_env import VectorEnv, VectorEnvWrapper
+import modules.gnn.nfm_gen
+from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsWrapper, PPO_ObsDictWrapper, VarTargetWrapper, PPO_ObsFlatWrapper
 #__all__ = ["AsyncVectorEnv", "SyncVectorEnv", "VectorEnv", "VectorEnvWrapper", "make"]
 
 # Heavily adapted to work with customized environment and GNNs (trainable with varying graph sizes in the trainset) from: 
 # https://gitlab.com/ngoodger/ppo_lstm/-/blob/master/recurrent_ppo.ipynb
 
-parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)    
-
-# Model hyperparameters
-parser.add_argument('--world_name', default='Manhattan3x3_PauseDynamicWorld', type=str, 
-                    help='Environment to run',
-                    )
-                    # choices=[
-                    #     'Manhattan3x3_PauseFreezeWorld',
-                    #     'Manhattan3x3_PauseDynamicWorld',
-                    #     'Manhattan5x5_FixedEscapeInit',
-                    #     'Manhattan5x5_VariableEscapeInit',
-                    #     'Manhattan5x5_DuplicateSetA',
-                    #     'Manhattan5x5_DuplicateSetB',
-                    #     'MetroU3_e17tborder_FixedEscapeInit',
-                    #     'MetroU3_e17tborder_VariableEscapeInit',
-                    #     'MetroU3_e17t31_FixedEscapeInit',
-                    #     'MetroU3_e17t0_FixedEscapeInit',
-                    #     'NWB_test_FixedEscapeInit',
-                    #      ])
-parser.add_argument('--state_repr', default='et', type=str, 
-                    help='Which part of the state is observable',
-                    )#choices=[
-                        # 'et',
-                        # 'etUt',
-                        # 'ete0U0',
-                        # 'etUte0U0' ])
-parser.add_argument('--train', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
-parser.add_argument('--eval', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
-parser.add_argument('--num_seeds', default=1, type=int, 
-                    help='Number of seeds to run')
-
-args=parser.parse_args()
-WORLD_NAME=args.world_name
-STATE_REPR=args.state_repr
-EVALUATE=args.eval
-TRAIN=args.train
-print(TRAIN)
-NUM_SEEDS=args.num_seeds
-#hp_lookup=GetHyperParams_PPO_RNN(WORLD_NAME)
-# Save metrics for viewing with tensorboard.
-SAVE_METRICS_TENSORBOARD = True
-# Save actor & critic parameters for viewing in tensorboard.
-SAVE_PARAMETERS_TENSORBOARD = True
-# Save training state frequency in PPO iterations.
-CHECKPOINT_FREQUENCY = 100
-# Step env asynchronously using multiprocess or synchronously.
-ASYNCHRONOUS_ENVIRONMENT = False
-# Force using CPU for gathering trajectories.
-FORCE_CPU_GATHER = True
-
 # Set maximum threads for torch to avoid inefficient use of multiple cpu cores.
-torch.set_num_threads(4)
-TRAIN_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-GATHER_DEVICE = "cuda" if torch.cuda.is_available() and not FORCE_CPU_GATHER else "cpu"
+torch.set_num_threads(6)
 
-
-# Environment parameters
-MAKE_REFLEXIVE=True
-ENV=WORLD_NAME
-exp_rootdir='./results/PPO-RNN/'+WORLD_NAME+'/'+STATE_REPR+'/'
-WORKSPACE_PATH = exp_rootdir
-
-# Default Hyperparameters                                           
-SCALE_REWARD:         float = 1. 
-MIN_REWARD:           float = -15.                                  
-HIDDEN_SIZE:          float = 64#64
-NODE_DIM:             int = 7
-BATCH_SIZE:           int   = 64#48                
-DISCOUNT:             float = 0.99
-GAE_LAMBDA:           float = 0.95
-PPO_CLIP:             float = .2#0.1                                   
-PPO_EPOCHS:           int   = 10
-MAX_GRAD_NORM:        float = .5                                    
-ENTROPY_FACTOR:       float = 0.
-ACTOR_LEARNING_RATE:  float = 3e-4 #1e-4
-CRITIC_LEARNING_RATE: float = 3e-4 #1e-4
-RECURRENT_SEQ_LEN:    int = 2                 
-RECURRENT_LAYERS:     int = 1                                       
-ROLLOUT_STEPS:        int = 100#100
-PARALLEL_ROLLOUTS:    int = 4
-PATIENCE:             int = 500
-TRAINABLE_STD_DEV:    bool = False
-INIT_LOG_STD_DEV:     float = 0.
-EVAL_DETERMINISTIC:   bool = True
-SAMPLE_MULTIPLIER:    int  = 1
-# WARMUP=5000
-#GLOBAL_COUNT=0
-_INVALID_TAG_CHARACTERS = re.compile(r"[^-/\w\.]")
-BASE_CHECKPOINT_PATH = f"{WORKSPACE_PATH}/checkpoints/"
-
-@dataclass
-class HyperParameters():
-    max_possible_nodes:   int   = 33#25#3000
-    max_possible_edges:   int   = 120#150#4000
-    emb_dim:              int   = 64#64
-    node_dim:             int   = NODE_DIM
-    scale_reward:         float = SCALE_REWARD
-    min_reward:           float = MIN_REWARD
-    hidden_size:          float = HIDDEN_SIZE
-    batch_size:           int   = BATCH_SIZE
-    discount:             float = DISCOUNT
-    gae_lambda:           float = GAE_LAMBDA
-    ppo_clip:             float = PPO_CLIP
-    ppo_epochs:           int   = PPO_EPOCHS
-    max_grad_norm:        float = MAX_GRAD_NORM
-    entropy_factor:       float = ENTROPY_FACTOR
-    actor_learning_rate:  float = ACTOR_LEARNING_RATE
-    critic_learning_rate: float = CRITIC_LEARNING_RATE
-    recurrent_seq_len:    int = RECURRENT_SEQ_LEN
-    recurrent_layers:     int = RECURRENT_LAYERS 
-    rollout_steps:        int = ROLLOUT_STEPS
-    parallel_rollouts:    int = PARALLEL_ROLLOUTS
-    patience:             int = PATIENCE
-    # Apply to continous action spaces only 
-    trainable_std_dev:    bool = TRAINABLE_STD_DEV
-    init_log_std_dev:     float = INIT_LOG_STD_DEV
-    env_mask_velocity:    bool = False
-hp = HyperParameters()#parallel_rollouts=PARALLEL_ROLLOUTS, rollout_steps=ROLLOUT_STEPS, batch_size=BATCH_SIZE, recurrent_seq_len=RECURRENT_SEQ_LEN, trainable_std_dev=TRAINABLE_STD_DEV,  patience=PATIENCE)
-tp= {"world_name":WORLD_NAME,"gather_device":GATHER_DEVICE, "train_device":TRAIN_DEVICE, "base_checkpoint_path":BASE_CHECKPOINT_PATH,"invalid_tag_characters":_INVALID_TAG_CHARACTERS}
-
-batch_count = hp.parallel_rollouts * hp.rollout_steps / hp.recurrent_seq_len / hp.batch_size
-print(f"batch_count: {batch_count}")
-assert batch_count >= 1., "Less than 1 batch per trajectory.  Are you sure that's what you want?"
-
-    
-
-
-
-def make_custom(world_name, num_envs=1, asynchronous=True, wrappers=None, **kwargs):
+def make_custom(config, num_envs=1, asynchronous=True, wrappers=None, **kwargs):
     """Create a vectorized environment from multiple copies of an environment,
     from its id.
     Parameters
@@ -188,17 +66,20 @@ def make_custom(world_name, num_envs=1, asynchronous=True, wrappers=None, **kwar
         var_targets = None#[1,1]
         apply_wrappers = True        
 
+        # METHOD 0
+        env,_ = ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset=config['train_on'])
+
         # METHOD 1
-        env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
-        env.redefine_nfm(modules.gnn.nfm_gen.nfm_funcs[nfm_func_name])
-        env.capture_on_edges = edge_blocking
-        if remove_world_pool:
-            env._remove_world_pool()
-        if var_targets is not None:
-            env = VarTargetWrapper(env, var_targets)
-        if apply_wrappers:
-            env = PPO_ObsFlatWrapper(env, max_possible_num_nodes = hp.max_possible_nodes, max_possible_num_edges=hp.max_possible_edges)
-            env = PPO_ActWrapper(env) 
+        # env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
+        # env.redefine_nfm(modules.gnn.nfm_gen.nfm_funcs[nfm_func_name])
+        # env.capture_on_edges = edge_blocking
+        # if remove_world_pool:
+        #     env._remove_world_pool()
+        # if var_targets is not None:
+        #     env = VarTargetWrapper(env, var_targets)
+        # if apply_wrappers:
+        #     env = PPO_ObsFlatWrapper(env, max_possible_num_nodes = hp.max_possible_nodes, max_possible_num_edges=hp.max_possible_edges)
+        #     env = PPO_ActWrapper(env) 
 
         # METHOD 2
         #env_all_train, hashint2env, env2hashint, env2hashstr, eprobs = GetWorldSet(state_repr, state_enc, U=[2], E=[0,6], edge_blocking=edge_blocking, solve_select='solvable', reject_duplicates=False, nfm_func=modules.gnn.nfm_gen.nfm_funcs[nfm_func_name], var_targets=None, remove_paths=False, return_probs=True)
@@ -240,135 +121,7 @@ def make_custom(world_name, num_envs=1, asynchronous=True, wrappers=None, **kwar
     env_fns = [_make_env for _ in range(num_envs)]
     return AsyncVectorEnv(env_fns) if asynchronous else SyncVectorEnv(env_fns)
 
-import modules.gnn.nfm_gen
-from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsWrapper, PPO_ObsDictWrapper, VarTargetWrapper, PPO_ObsFlatWrapper
-def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions):   
-    # Vector environment manages multiple instances of the environment.
-    # A key difference between this and the standard gym environment is it automatically resets.
-    # Therefore when the done flag is active in the done vector the corresponding state is the first new state.
-    # env = gym.vector.make(ENV, hp.parallel_rollouts, asynchronous=ASYNCHRONOUS_ENVIRONMENT)
-    # GLOBAL_COUNT=0   
-    #ppo_optimizer.param_groups[0]['lr'] *= 0.25
-    while iteration < stop_conditions.max_iterations:      
 
-        ppo_model = ppo_model.to(GATHER_DEVICE)
-        start_gather_time = time.time()
-
-        # Gather trajectories.
-        input_data = {"env": env, "ppo_model": ppo_model, "gather_device":GATHER_DEVICE}
-        trajectory_tensors = gather_trajectories(input_data, hp)
-        trajectory_episodes, len_episodes = split_trajectories_episodes(trajectory_tensors, hp)
-        trajectories = pad_and_compute_returns(trajectory_episodes, len_episodes,  hp)
-
-        # Calculate mean reward.
-        complete_episode_count = trajectories["terminals"].sum().item()
-        terminal_episodes_rewards = (trajectories["terminals"].sum(axis=1) * trajectories["true_rewards"].sum(axis=1)).sum().item()
-        mean_reward =  terminal_episodes_rewards / (complete_episode_count)
-
-        # Check stop conditions.
-        if mean_reward > stop_conditions.best_reward:
-            stop_conditions.best_reward = mean_reward
-            stop_conditions.fail_to_improve_count = 0
-            print("NEW BEST MEAN REWARD----------------------<<<<<<<<<<< ")
-            print('rec seq len',hp.recurrent_seq_len)
-            print('actor lr',ppo_optimizer.param_groups[0]['lr'])
-
-            if iteration>=50:
-                print('#################### SAVE CHECKPOINT #######################')
-                save_checkpoint(ppo_model, ppo_optimizer, 99999, stop_conditions, hp, tp)
-                # best model saved as iteration0
-        else:
-            stop_conditions.fail_to_improve_count += 1
-        if stop_conditions.fail_to_improve_count > hp.patience:
-            print(f"Policy has not yielded higher reward for {hp.patience} iterations...  Stopping now.")
-            break
-
-        trajectory_dataset = TrajectoryDataset(trajectories, device=TRAIN_DEVICE, hp=hp)
-        end_gather_time = time.time()
-        start_train_time = time.time()
-        
-        ppo_model = ppo_model.to(TRAIN_DEVICE)
-
-        # Train actor and critic. 
-        for epoch_idx in range(hp.ppo_epochs): 
-            for batch in trajectory_dataset:
-
-                # Prime the LSTMs
-                ppo_model.PI.hidden_cell = ( batch.actor_hidden_states[0].reshape(hp.recurrent_layers,-1,hp.hidden_size), 
-                                             batch.actor_cell_states[0].reshape(hp.recurrent_layers,-1,hp.hidden_size) 
-                                            )
-                ppo_model.V.hidden_cell = ( batch.critic_hidden_states[0].reshape(hp.recurrent_layers,-1,hp.hidden_size), 
-                                             batch.critic_cell_states[0].reshape(hp.recurrent_layers,-1,hp.hidden_size) 
-                                            )
-                
-                # GLOBAL_COUNT+=1
-                # if GLOBAL_COUNT%WARMUP==0:
-                #     actor_optimizer.param_groups[0]['lr'] *= 0.5
-                #     hp.recurrent_seq_len=3
-                #     print('############################################# LR adjusted to',actor_optimizer.param_groups[0]['lr'])
-                # Actor loss
-                ppo_optimizer.zero_grad()
-                features, nodes_in_batch, valid_entries_idx, num_nodes = ppo_model.FE(batch.states)
-
-                selector_bool = batch.selector[0].clone().flatten().to(torch.bool)
-                action_dist = ppo_model.PI(features, selector=selector_bool)
-                # Action dist runs on cpu as a workaround to CUDA illegal memory access.
-                action_probabilities = action_dist.log_prob(batch.actions.to("cpu")).to(TRAIN_DEVICE)
-                
-                NORMALIZE_ADVANTAE=True
-                if NORMALIZE_ADVANTAE:
-                    batch.advantages = (batch.advantages - batch.advantages.mean()) / (batch.advantages.std() + 1e-8)
-
-                # Compute probability ratio from probabilities in logspace.
-                probabilities_ratio = torch.exp(action_probabilities - batch.action_probabilities)
-                surrogate_loss_0 = probabilities_ratio * batch.advantages
-                surrogate_loss_1 =  torch.clamp(probabilities_ratio, 1. - hp.ppo_clip, 1. + hp.ppo_clip) * batch.advantages#[-1, :]
-                surrogate_loss_2 = action_dist.entropy().to(TRAIN_DEVICE)
-                actor_loss = -torch.mean(torch.min(surrogate_loss_0, surrogate_loss_1)) - torch.mean(hp.entropy_factor * surrogate_loss_2)
-                
-                # Critic loss
-                values = ppo_model.V(features, selector=selector_bool)
-                critic_loss = F.mse_loss(batch.discounted_returns, values.squeeze(-1))
-                
-                vf_coef = 0.5 # basis: paper & sb3 implementation
-                loss = actor_loss + vf_coef * critic_loss
-                loss.backward()
-                torch.nn.utils.clip_grad.clip_grad_norm_(ppo_model.parameters(), hp.max_grad_norm)
-                ppo_optimizer.step()
-                
-        end_train_time = time.time()
-        print(f"Iteration: {iteration},  Mean reward: {mean_reward}, Mean Entropy: {torch.mean(surrogate_loss_2)}, " +
-              f"complete_episode_count: {complete_episode_count}, Gather time: {end_gather_time - start_gather_time:.2f}s, " +
-              f"Train time: {end_train_time - start_train_time:.2f}s")
-
-        if SAVE_METRICS_TENSORBOARD:
-            writer.add_scalar("complete_episode_count", complete_episode_count, iteration)
-            writer.add_scalar("total_reward", mean_reward , iteration)
-            writer.add_scalar("actor_loss", actor_loss.item(), iteration)
-            writer.add_scalar("critic_loss", critic_loss.item(), iteration)
-            writer.add_scalar("policy_entropy", torch.mean(surrogate_loss_2).item(), iteration)
-        if SAVE_PARAMETERS_TENSORBOARD:
-            save_parameters(writer, "ppo_model", ppo_model, iteration, tp)
-            #save_parameters(writer, "value", critic, iteration)
-        if iteration % CHECKPOINT_FREQUENCY == 0: 
-            print('rec seq len',hp.recurrent_seq_len)
-            print('actor lr',ppo_optimizer.param_groups[0]['lr'])
-            save_checkpoint(ppo_model, ppo_optimizer, iteration, stop_conditions, hp, tp)
-        iteration += 1
-        
-    return stop_conditions.best_reward 
-
-writer = SummaryWriter(log_dir=f"{WORKSPACE_PATH}/logs")
-def TrainAndSaveModel():
-    #world_name='Manhattan5x5_VariableEscapeInit'
-    #world_name='Manhattan3x3_WalkAround'
-    #world_name='Manhattan5x5_FixedEscapeInit'
-    world_name=WORLD_NAME#'NWB_test_FixedEscapeInit'
-    env = make_custom(world_name, hp.parallel_rollouts, asynchronous=ASYNCHRONOUS_ENVIRONMENT)   
-
-
-    ppo_model, ppo_optimizer, iteration, stop_conditions = start_or_resume_from_checkpoint(env, hp, tp)
-    score = train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions)
 
 from modules.rl.rl_policy import LSTM_GNN_PPO_Policy
 from modules.rl.rl_utils import EvaluatePolicy
@@ -380,7 +133,7 @@ def EvaluateSavedModel():
     lstm_ppo_model, ppo_optimizer, max_checkpoint_iteration, stop_conditions = start_or_resume_from_checkpoint(env_, hp, tp)
     
     env=env_.envs[0]
-    policy = LSTM_GNN_PPO_Policy(env, lstm_ppo_model, deterministic=EVAL_DETERMINISTIC)
+    policy = LSTM_GNN_PPO_Policy(env, lstm_ppo_model, deterministic=tp['eval_deterministic'])
     while True:
         entries=None#[5012,218,3903]
         #demo_env = random.choice(evalenv)
@@ -391,12 +144,105 @@ def EvaluateSavedModel():
     plotlist = GetFullCoverageSample(returns, env.world_pool*SAMPLE_MULTIPLIER, bins=10, n=10)
     EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=exp_rootdir)
 
-if TRAIN:
-    for RANDOM_SEED in range(NUM_SEEDS):
-        # Set random seed for consistant runs.
-        #torch.random.manual_seed(RANDOM_SEED)
-        #np.random.seed(RANDOM_SEED)
-        seed_everything(RANDOM_SEED)
-        TrainAndSaveModel()
-if EVALUATE:
-    EvaluateSavedModel()
+def GetConfigs(args):
+    config = {}
+    #for i in range(args.num_configs):
+    #    config.add(args.config_class(**args.config_args))
+    #return config
+    #config['lstm_dropout']    = args.lstm_dropout
+    config['train_on']        = args.train_on
+    config['batch_size']      = args.batch_size
+    config['mask_type']       = args.mask_type
+    config['mask_rate']       = args.mask_rate
+    config['emb_dim']         = args.emb_dim
+    config['lstm_type']       = args.lstm_type
+    config['lstm_hdim']       = args.lstm_hdim
+    config['lstm_layers']     = args.lstm_layers
+    config['emb_iterT']       = args.emb_iterT
+    config['nfm_func']        = args.nfm_func
+    config['qnet']            = args.qnet
+    config['train']           = args.train
+    config['eval']            = args.eval
+    config['test']            = args.test
+    config['num_seeds']       = args.num_seeds
+    config['seed0']           = args.seed0
+    config['seedrange']=range(config['seed0'], config['seed0']+config['num_seeds'])
+    config['demoruns']        = args.demoruns
+    lstm_filestring = config['lstm_type']
+    if config['lstm_type'] != 'none':
+        lstm_filestring  += '_' + str(config['lstm_hdim']) + '_' + str(config['lstm_layers'])
+    config['rootdir'] = './results/results_Phase3/ppo/'+ config['train_on']+'/'+ config['qnet'] + '/lstm_' + lstm_filestring + '_bsize' + str(config['batch_size'])
+    config['logdir']  = config['rootdir'] + '/' + config['nfm_func']+'/'+ 'emb'+str(config['emb_dim']) + '_itT'+str(config['emb_iterT'])
+
+    hp = HyperParameters(
+                        emb_dim          = config['emb_dim'],
+                        node_dim         = modules.gnn.nfm_gen.nfm_funcs[config['nfm_func']].F,
+                        hidden_size      = config['lstm_hdim'],
+                        recurrent_layers = config['lstm_layers'],
+                        batch_size       = config['batch_size'], 
+                        learning_rate    = 3e-4,
+                        recurrent_seq_len= 2,
+                        parallel_rollouts= 4, 
+                        rollout_steps    = 200, 
+                        patience         = 500
+                        )
+
+    FORCE_CPU_GATHER=True
+    tp= {"world_name":                 args.train_on,
+        "force_cpu_gather":            FORCE_CPU_GATHER, # Force using CPU for gathering trajectories.
+        "gather_device":               "cuda" if torch.cuda.is_available() and not FORCE_CPU_GATHER else "cpu", 
+        "train_device":                "cuda" if torch.cuda.is_available() else "cpu", 
+        "asynchronous_environment":    False,  # Step env asynchronously using multiprocess or synchronously.
+        "base_checkpoint_path":        f"{config['logdir']}/checkpoints/",
+        "workspace_path":              config['logdir'],
+        "invalid_tag_characters":      re.compile(r"[^-/\w\.]"), 
+        'save_metrics_tensorboard':    True,
+        'save_parameters_tensorboard': False,
+        'checkpoint_frequency':        100,
+        'eval_deterministic':          True}
+
+    batch_count = hp.parallel_rollouts * hp.rollout_steps / hp.recurrent_seq_len / hp.batch_size
+    print(f"batch_count: {batch_count}")
+    assert batch_count >= 1., "Less than 1 batch per trajectory.  Are you sure that's what you want?"  
+    return config, hp, tp
+
+def main(args):
+    config, hp, tp = GetConfigs(args)
+    if config['train']:
+        for seed in config['seedrange']:
+            seed_everything(seed)
+            logdir_=config['logdir']+'/SEED'+str(seed)
+            tp['writer'] = SummaryWriter(log_dir=f"{logdir_}/logs")
+
+            env = make_custom(config, hp.parallel_rollouts, asynchronous=tp['asynchronous_environment'])
+            hp.max_possible_nodes = env.envs[0].env.max_nodes
+            hp.max_possible_edges = env.envs[0].env.max_edges
+
+            ppo_model, ppo_optimizer, iteration, stop_conditions = start_or_resume_from_checkpoint(env, hp, tp)
+            score = train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions, hp, tp)
+
+    if config['eval']:
+        EvaluateSavedModel()
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)    
+    parser.add_argument('--train_on', default='None', type=str)
+    parser.add_argument('--batch_size', default=48, type=int)
+    parser.add_argument('--mask_type', default='None', type=str, help='U obervation masking type', choices=['None','freq','prob'])
+    parser.add_argument('--mask_rate', default=1.0, type=float)
+    parser.add_argument('--emb_dim', default=64, type=int)
+    parser.add_argument('--lstm_type', default='shared-noncat', type=str, choices=['None','shared-concat','shared-noncat','separate-concat','separate-noncat'])
+    parser.add_argument('--lstm_hdim', default=64, type=int)
+    parser.add_argument('--lstm_layers', default=1, type=int)
+    #parser.add_argument('--lstm_dropout', default=0.0, type=float)
+    parser.add_argument('--emb_iterT', default=2, type=int)
+    parser.add_argument('--nfm_func', default='NFM_ev_ec_t', type=str)
+    parser.add_argument('--qnet', default='gat2', type=str)
+    parser.add_argument('--train', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
+    parser.add_argument('--eval', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])   
+    parser.add_argument('--test', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])       
+    parser.add_argument('--num_seeds', default=5, type=int)
+    parser.add_argument('--seed0', default=10, type=int)
+    parser.add_argument('--demoruns', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
+    args=parser.parse_args()
+    main(args)
