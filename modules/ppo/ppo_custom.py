@@ -623,6 +623,15 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions, hp, t
                 loss.backward()
                 torch.nn.utils.clip_grad.clip_grad_norm_(ppo_model.parameters(), hp.max_grad_norm)
                 ppo_optimizer.step()
+
+                del loss
+                del action_probabilities
+                del features
+                del action_dist
+                del values
+
+        del trajectory_dataset
+
                 
         end_train_time = time.time()
         print(f"Iteration: {iteration},  Mean reward: {mean_reward}, Mean Entropy: {torch.mean(surrogate_loss_2)}, " +
@@ -661,6 +670,7 @@ def make_custom(config, num_envs=1, asynchronous=True, wrappers=None, **kwargs):
             env = pickle.dump(env, f)
 
     def _make_env():
+        print('env func loading started...',end='')
         with open("./results/results_Phase3/"+config['train_on']+".bin", "rb") as f:
             env = pickle.load(f)  
 
@@ -674,6 +684,7 @@ def make_custom(config, num_envs=1, asynchronous=True, wrappers=None, **kwargs):
                     env = wrapper(env)
             else:
                 raise NotImplementedError        
+        print('env func executed...')
         return env
 
     env_fns = [_make_env for _ in range(num_envs)]

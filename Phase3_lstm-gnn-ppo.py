@@ -10,7 +10,8 @@ from modules.rl.rl_utils import EvaluatePolicy
 from modules.sim.simdata_utils import SimulateAutomaticMode_PPO
 torch.set_num_threads(2) # Max #threads for torch to avoid inefficient util of cpu cores.
 
-def EvaluateSavedModel(config, hp, tp):
+
+def TestSavedModel(config, hp, tp):
     #env=GetCustomWorld(WORLD_NAME, make_reflexive=MAKE_REFLEXIVE, state_repr=STATE_REPR, state_enc='tensors')
     world_name='Manhattan3x3_WalkAround'
     env = CreateEnv(world_name, max_nodes=9, max_edges = 33, nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=None, apply_wrappers=True)
@@ -18,10 +19,10 @@ def EvaluateSavedModel(config, hp, tp):
         return env
     env_ = SyncVectorEnv([envf])
     #env_ = make_custom(world_name, num_envs=1, asynchronous=False)   
-    lstm_ppo_model, ppo_optimizer, max_checkpoint_iteration, stop_conditions = start_or_resume_from_checkpoint(env_, config, hp, tp)
+    ppo_model, ppo_optimizer, max_checkpoint_iteration, stop_conditions = start_or_resume_from_checkpoint(env_, config, hp, tp)
     
     #env=env_.envs[0]
-    policy = LSTM_GNN_PPO_Policy(env, lstm_ppo_model, deterministic=tp['eval_deterministic'])
+    policy = LSTM_GNN_PPO_Policy(env, ppo_model, deterministic=tp['eval_deterministic'])
     while True:
         entries=None#[5012,218,3903]
         #demo_env = random.choice(evalenv)
@@ -33,12 +34,12 @@ def EvaluateSavedModel(config, hp, tp):
     #EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=exp_rootdir)
 
 def main(args):
-    config, hp, tp = GetConfigs(args)
-    train_env = make_custom(config, num_envs=hp.parallel_rollouts, asynchronous=tp['asynchronous_environment'])
-    hp.max_possible_nodes = train_env.envs[0].env.max_possible_num_nodes
-    hp.max_possible_edges = train_env.envs[0].env.max_possible_num_edges
+    config, hp, tp = GetConfigs(args)   
     
     if config['train']:
+        train_env = make_custom(config, num_envs=hp.parallel_rollouts, asynchronous=tp['asynchronous_environment'])
+        hp.max_possible_nodes = train_env.envs[0].env.max_possible_num_nodes
+        hp.max_possible_edges = train_env.envs[0].env.max_possible_num_edges
         WriteTrainParamsToFile(config,hp,tp)
         for seed in config['seedrange']:
             seed_everything(seed)
@@ -52,12 +53,28 @@ def main(args):
             if seed == config['seed0']: WriteModelParamsToFile(config, ppo_model)
             score = train_model(train_env, ppo_model, ppo_optimizer, iteration, stop_conditions, hp, tp)
 
+    if config['eval']:
+        train_env = make_custom(config, num_envs=1, asynchronous=tp['asynchronous_environment'])
+        hp.max_possible_nodes = train_env.envs[0].env.max_possible_num_nodes
+        hp.max_possible_edges = train_env.envs[0].env.max_possible_num_edges
+        seed = config['seed0']
+        logdir_=config['logdir']+'/SEED'+str(seed)
+        tp["base_checkpoint_path"]=f"{logdir_}/checkpoints/"
+        ppo_model, ppo_optimizer, max_checkpoint_iteration, stop_conditions = start_or_resume_from_checkpoint(train_env, config, hp, tp)
+        env = train_env.envs[0]
+        policy = LSTM_GNN_PPO_Policy(env, ppo_model, deterministic=tp['eval_deterministic'])
+        while True:
+            entries=None#[5012,218,3903]
+            #demo_env = random.choice(evalenv)
+            a = SimulateAutomaticMode_PPO(env, policy, t_suffix=False, entries=entries)
+            if a == 'Q': break
+
     if config['test']:
         seed = config['seed0']
         logdir_=config['logdir']+'/SEED'+str(seed)
         tp["base_checkpoint_path"]=f"{logdir_}/checkpoints/"
         #tp["workspace_path"]=logdir_
-        EvaluateSavedModel(config, hp, tp)
+        TestSavedModel(config, hp, tp)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)    
