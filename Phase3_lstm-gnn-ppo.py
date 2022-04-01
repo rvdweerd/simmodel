@@ -2,12 +2,14 @@ import argparse
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from modules.dqn.dqn_utils import seed_everything
+from modules.sim.graph_factory import GetWorldSet
 from modules.ppo.ppo_custom import *
-from modules.ppo.helpfuncs import CreateEnv
+from modules.ppo.helpfuncs import CreateEnv, evaluate_lstm_ppo
 from modules.rl.rl_utils import GetFullCoverageSample
 from modules.rl.rl_policy import LSTM_GNN_PPO_Policy
 from modules.rl.rl_utils import EvaluatePolicy
 from modules.sim.simdata_utils import SimulateAutomaticMode_PPO
+from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsFlatWrapper
 torch.set_num_threads(1) # Max #threads for torch to avoid inefficient util of cpu cores.
 
 
@@ -83,11 +85,76 @@ def main(args):
             if a == 'Q': break
 
     if config['test']:
-        seed = config['seed0']
-        logdir_=config['logdir']+'/SEED'+str(seed)
-        tp["base_checkpoint_path"]=f"{logdir_}/checkpoints/"
-        #tp["workspace_path"]=logdir_
-        TestSavedModel(config, hp, tp)
+        evalResults={}
+        world_dict={ # [max_nodes,max_edges]
+            #'Manhattan5x5_DuplicateSetB':[25,300],
+            #'Manhattan3x3_WalkAround':[9,300],
+            #'MetroU3_e1t31_FixedEscapeInit':[33, 300],
+            'full_solvable_3x3subs':[9,33],
+            # 'Manhattan5x5_FixedEscapeInit':[25,105],
+            # 'Manhattan5x5_VariableEscapeInit':[25,105],
+            # 'MetroU3_e17tborder_FixedEscapeInit':[33,300],
+            # 'MetroU3_e17tborder_VariableEscapeInit':[33,300],
+            # 'NWB_ROT_FixedEscapeInit':[2602,7300],
+            # 'NWB_ROT_VariableEscapeInit':[2602,7300],
+            # 'NWB_test_FixedEscapeInit':[975,4000],
+            # 'NWB_test_VariableEscapeInit':[975,4000],
+            # 'NWB_UTR_FixedEscapeInit':[1182,4000],
+            # 'NWB_UTR_VariableEscapeInit':[1182,4000],
+            # 'SparseManhattan5x5':[25,105],
+            }
+        for world_name in world_dict.keys():
+            evalName=world_name
+            obs_mask='None'#'prob_per_u'
+            obs_rate=1#.5
+
+            if world_name == "full_solvable_3x3subs":
+                Etest=[0,1,2,3,4,5,6,7,8,9,10]
+                Utest=[1,2,3]
+                evalenv, _, _, _  = GetWorldSet('etUte0U0', 'nfm', U=Utest, E=Etest, edge_blocking=config['edge_blocking'], solve_select=config['solve_select'], reject_duplicates=False, nfm_func=modules.gnn.nfm_gen.nfm_funcs[config['nfm_func']], apply_wrappers=False, maxnodes=world_dict[world_name][0], maxedges=world_dict[world_name][1])
+                for i in range(len(evalenv)):
+                    evalenv[i]=PPO_ObsFlatWrapper(evalenv[i], max_possible_num_nodes=world_dict[world_name][0], max_possible_num_edges=world_dict[world_name][1], obs_mask=obs_mask, obs_rate=obs_rate)
+                    evalenv[i]=PPO_ActWrapper(evalenv[i])
+                env=evalenv[0]
+            else:
+                env = CreateEnv(world_name, max_nodes=world_dict[world_name][0], max_edges = world_dict[world_name][1], nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=None, apply_wrappers=True, obs_mask=obs_mask, obs_rate=obs_rate)
+                evalenv=[env]
+            hp.max_possible_nodes = world_dict[world_name][0]#env.max_possible_num_nodes
+            hp.max_possible_edges = world_dict[world_name][1]#env.max_possible_num_edges
+            def envf():
+                return env
+            env_ = SyncVectorEnv([envf])
+
+            evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
+            for seed in config['seedrange']:
+                logdir_=config['logdir']+'/SEED'+str(seed)
+                tp["base_checkpoint_path"]=f"{logdir_}/checkpoints/"
+                try:
+                    assert os.path.exists(tp['base_checkpoint_path'])
+                except:
+                    continue
+                ppo_model, ppo_optimizer, max_checkpoint_iteration, stop_conditions = start_or_resume_from_checkpoint(env_, config, hp, tp)
+                ppo_policy = LSTM_GNN_PPO_Policy(env, ppo_model, deterministic=tp['eval_deterministic'])
+
+                result = evaluate_lstm_ppo(logdir=logdir_, config=config, env=evalenv, ppo_policy=ppo_policy, eval_subdir=evalName, max_num_nodes=world_dict[world_name][0])
+                num_unique_graphs, num_graph_instances, avg_return, success_rate = result
+                evalResults[evalName]['num_graphs.........'].append(num_unique_graphs)
+                evalResults[evalName]['num_graph_instances'].append(num_graph_instances)
+                evalResults[evalName]['avg_return.........'].append(avg_return)
+                evalResults[evalName]['success_rate.......'].append(success_rate)
+
+        for ename, results in evalResults.items():
+            OF = open(config['logdir']+'/Results_over_seeds_'+ename+'.txt', 'w')
+            def printing(text):
+                print(text)
+                OF.write(text + "\n")
+            np.set_printoptions(formatter={'float':"{0:0.3f}".format})
+            printing('Results over seeds for evaluation on '+ename+'\n')
+            for category,values in results.items():
+                printing(category)
+                printing('  avg over seeds: '+str(np.mean(values)))
+                printing('  std over seeds: '+str(np.std(values)))
+                printing('  per seed: '+str(np.array(values))+'\n')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)    

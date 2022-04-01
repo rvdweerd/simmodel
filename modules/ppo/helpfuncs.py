@@ -141,7 +141,6 @@ def eval_simple(saved_policy,env):
                 env.env.render_eupaths(fname=fpath+'test'+str(i)+'_final')
                 obs = env.reset()
 
-
 def evaluate_ppo(logdir, info=False, config=None, env=None, eval_subdir='.', n_eval=1000, max_num_nodes=-1):
     if env==None: return 0,0,0,0   
     try:
@@ -203,15 +202,47 @@ def evaluate_ppo(logdir, info=False, config=None, env=None, eval_subdir='.', n_e
         printing(k+' '+str(v))
     return num_unique_graphs, num_graph_instances, avg_return, success_rate
 
-# def get_logdirs(config):
-#     rootdir = 'results/results_Phase2/Pathfinding/ppo/'+ \
-#                 config['train_on'] + \
-#                 '/solvselect=' + config['solve_select']+'_edgeblock='+str(config['edge_blocking'])+'/' +\
-#                 config['qnet']
-#     logdir = rootdir+'/'+ \
-#                 config['nfm_func'] +'/'+ \
-#                 'emb='+str(config['emb_dim']) + \
-#                 '_itT='+str(config['emb_iter_T']) + \
-#                 '_nstep='+str(config['num_step'])
-#     return rootdir, logdir
-#     #'s2v_layers='+str(config['s2v_layers']) + \
+def evaluate_lstm_ppo(logdir, info=False, config=None, env=None, ppo_policy=None, eval_subdir='.', n_eval=1000, max_num_nodes=-1):
+    if env==None: return 0,0,0,0   
+    try:
+        if env==None or len(env)==0:
+            return 0,0,0,0
+    except:
+        pass
+    evaldir=logdir+'/'+eval_subdir
+    R=[]
+    S=[]
+    
+    if type(env) == list:
+        if len(env)==0: return 0,0,0,0
+        for i,e in enumerate(tqdm.tqdm(env)):
+            
+
+            l, returns, c, solves = EvaluatePolicy(e, ppo_policy, e.world_pool, print_runs=False, save_plots=False, logdir=evaldir, eval_arg_func=EvalArgs3, silent_mode=True)
+            num_worlds_requested = 10
+            once_every = max(1,len(env)//num_worlds_requested)
+            if i % once_every ==0:
+                plotlist = GetFullCoverageSample(returns, e.world_pool, bins=3, n=3)
+                EvaluatePolicy(e, ppo_policy, plotlist, print_runs=True, save_plots=True, logdir=evaldir, eval_arg_func=EvalArgs3, silent_mode=False, plot_each_timestep=False)
+            R+=returns 
+            S+=solves
+    else:
+        assert False
+        # assume env_all is a superenv
+    
+    OF = open(evaldir+'/Full_result.txt', 'w')
+    def printing(text):
+        print(text)
+        OF.write(text + "\n")
+    num_unique_graphs=-1#len(env_all)
+    num_graph_instances=len(R)
+    avg_return=np.mean(R)
+    num_solved=np.sum(S)
+    success_rate = num_solved/len(S)
+    printing('Total unique graphs evaluated: '+str(num_unique_graphs))
+    printing('Total instances evaluated: '+str(num_graph_instances)+' Avg reward: {:.2f}'.format(avg_return))
+    printing('Goal reached: '+str(num_solved)+' ({:.1f}'.format(success_rate*100)+'%)')
+    printing('---------------------------------------')
+    for k,v in config.items():
+        printing(k+' '+str(v))
+    return num_unique_graphs, num_graph_instances, avg_return, success_rate
