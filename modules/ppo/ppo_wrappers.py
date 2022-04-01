@@ -70,7 +70,7 @@ class PPO_ObsFlatWrapper(ObservationWrapper):
     Flattening: nfm (NxF) | edge_list (Ex2) | reachable (N,) | num_nodes (1,) | max_num_nodes (1,) | num_edges (1,) | max_num_edges (1,) | node_dim (1,)
     """
     
-    def __init__(self, env, max_possible_num_nodes = 3000, max_possible_num_edges = 4000, obs_mask=None, obs_rate=1):
+    def __init__(self, env, max_possible_num_nodes = 3000, max_possible_num_edges = 4000, obs_mask='None', obs_rate=1):
         super().__init__(env)
         assert max_possible_num_nodes >= self.sp.V
         assert obs_mask in ['None','freq','prob','prob_per_u']
@@ -120,9 +120,8 @@ class PPO_ObsFlatWrapper(ObservationWrapper):
                 self.env.u_observable = list(~mask_u) # for plotting purposes
                 self.mask_units(mask_u)
             else: assert False    
-            print('units observable:',self.u_observable)
+            print('\n>> state',self.state,'units observable:',self.u_observable,'units positions:',self.getUpositions(self.local_t))
             assert self.u_observable==self.env.u_observable
-            print('units positions:',self.getUpositions(self.local_t))
             assert self.global_t == self.local_t
 
         # Convert observation to flat tensor according to init definitions

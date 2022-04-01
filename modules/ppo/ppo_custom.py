@@ -130,7 +130,7 @@ def GetConfigs(args):
     #config['lstm_dropout']    = args.lstm_dropout
     config['train_on']        = args.train_on
     config['batch_size']      = args.batch_size
-    config['obs_mask']        = args.obs_mask
+    config['obs_mask']        = str(args.obs_mask)
     config['obs_rate']        = args.obs_rate
     config['emb_dim']         = args.emb_dim
     config['lstm_type']       = args.lstm_type

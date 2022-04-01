@@ -58,7 +58,7 @@ def get_super_env(Uselected=[1], Eselected=[4], config=None, var_targets=None, a
     #SimulateInteractiveMode(super_env)
     return super_env, env_all_train
 
-def CreateEnv(world_name, max_nodes=9, max_edges=300, nfm_func_name = 'NFM_ev_ec_t_um_us', var_targets=None, remove_world_pool=False, apply_wrappers=True):
+def CreateEnv(world_name, max_nodes=9, max_edges=300, nfm_func_name = 'NFM_ev_ec_t_um_us', var_targets=None, remove_world_pool=False, apply_wrappers=True, obs_mask='None', obs_rate=1):
     #world_name='Manhattan3x3_WalkAround'
     state_repr='etUte0U0'
     state_enc='nfm'
@@ -77,7 +77,7 @@ def CreateEnv(world_name, max_nodes=9, max_edges=300, nfm_func_name = 'NFM_ev_ec
     if apply_wrappers:
         #env = PPO_ObsWrapper(env, max_possible_num_nodes = max_nodes)        
         #env = PPO_ObsDictWrapper(env, max_possible_num_nodes = max_nodes, max_possible_num_edges = max_edges)
-        env = PPO_ObsFlatWrapper(env, max_possible_num_nodes = max_nodes, max_possible_num_edges = max_edges)
+        env = PPO_ObsFlatWrapper(env, max_possible_num_nodes = max_nodes, max_possible_num_edges = max_edges, obs_mask=obs_mask, obs_rate=obs_rate)
         env = PPO_ActWrapper(env) 
     return env
 

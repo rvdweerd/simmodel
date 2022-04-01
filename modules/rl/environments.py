@@ -553,7 +553,8 @@ class GraphWorld(gym.Env):
                 size='large'
             else:
                 size='small'
-        plot = PlotEUPathsOnGraph_(self.sp, self.e_path, self.u_paths_taken, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes), size=size, last_step_only=last_step_only, u_visible=self.u_observable)
+        done = self.state[0] in self.sp.target_nodes or self.state[0] in self.state[1:]
+        plot = PlotEUPathsOnGraph_(self.sp, self.e_path, self.u_paths_taken, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes), done=done, size=size, last_step_only=last_step_only, u_visible=self.u_observable)
         return plot
 
 

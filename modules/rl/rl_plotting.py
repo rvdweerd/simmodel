@@ -14,7 +14,7 @@ def plot_traindata(episode_returns,losses,logdir='./temp'):
     plt.savefig(logdir+'/testplots_loss_curve.png')
     plt.clf()
 
-def PlotAgentsOnGraph_(sp, escape_pos, pursuers_pos, timestep, fig_show=False, fig_save=True, filename=None, goal_reached=False, size='small', u_visible=True):
+def PlotAgentsOnGraph_(sp, escape_pos, pursuers_pos, timestep, fig_show=False, fig_save=True, filename=None, goal_reached=False, done=False, size='small', u_visible=True):
     if sp.V > 50:
         nodesize = 10 # 400 1200
         edgewidth = .5 # 5
@@ -50,7 +50,7 @@ def PlotAgentsOnGraph_(sp, escape_pos, pursuers_pos, timestep, fig_show=False, f
     #node_text[sp.labels2coord[escape_pos]]='e'
     
     for i, P_pos in enumerate(pursuers_pos):
-        if u_visible[i]:
+        if u_visible[i] or done:
             colorlist[sp.labels2nodeids[P_pos]]='#0000FF'
             nodesizelist[sp.labels2nodeids[P_pos]] = nodesize
             #fontcolors[sp.labels2nodeids[P_pos]]='white'
@@ -169,7 +169,7 @@ def PlotEPathOnGraph_(sp, epath, pursuers_pos, fig_show, fig_save, filename, goa
 
     return out
 
-def PlotEUPathsOnGraph_(sp, epath, u_paths, fig_show, fig_save, filename, goal_reached, size='small', last_step_only=False, u_visible=True):
+def PlotEUPathsOnGraph_(sp, epath, u_paths, fig_show, fig_save, filename, goal_reached, done, size='small', last_step_only=False, u_visible=True):
     if sp.V > 50:
         nodesize = 10 # 400 1200
         edgewidth = .5 # 5
@@ -205,18 +205,19 @@ def PlotEUPathsOnGraph_(sp, epath, u_paths, fig_show, fig_save, filename, goal_r
     
     #if u_visible or not last_step_only:
     for i,u_path in enumerate(u_paths):
-        if not u_visible[i] and last_step_only:
-            continue
-        colorlist[sp.labels2nodeids[u_path[-1]]]='#0000FF'
-        nodesizelist[sp.labels2nodeids[u_path[-1]]] = nodesize
         node_borderlist[sp.labels2nodeids[u_path[-1]]] = 'blue'
+        nodesizelist[sp.labels2nodeids[u_path[-1]]] = nodesize
 
     #for u_path in u_paths:
         if len(u_path) > 1:
-            for i in range(len(u_path)-2,len(u_path)-1) if last_step_only else range(len(u_path)-1):
-                snode=sp.labels2coord[u_path[i]]
-                tnode=sp.labels2coord[u_path[i+1]]
+            for j in range(len(u_path)-2,len(u_path)-1) if last_step_only else range(len(u_path)-1):
+                snode=sp.labels2coord[u_path[j]]
+                tnode=sp.labels2coord[u_path[j+1]]
                 edgelist_takenU.append((snode,tnode))
+        
+        if (not u_visible[i]) and (last_step_only and (not done)):
+            continue
+        colorlist[sp.labels2nodeids[u_path[-1]]]='#0000FF'
 
     if len(epath) > 1:
         for i in range(len(epath)-2,len(epath)-1) if last_step_only else range(len(epath)-1) :

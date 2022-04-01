@@ -778,7 +778,7 @@ def SimulateAutomaticMode_PPO(env, ppo_policy, t_suffix=True, entries=None):
     
     done=False
     endepi=False
-            
+    R=0        
     while not done:
         action, _state = ppo_policy.sample_greedy_action(obs, torch.tensor(env.neighbors[env.state[0]]), printing=True)
         
@@ -796,6 +796,8 @@ def SimulateAutomaticMode_PPO(env, ppo_policy, t_suffix=True, entries=None):
         if endepi:
             break        
         obs,r,done,i = env.step(action)
+        R+=r
+    print('Done, R=',R,'\n\n')
     env.render_eupaths(fname='results/test',t_suffix=t_suffix,last_step_only=True)
     env.render_eupaths(fname='results/final',t_suffix=t_suffix)
     if a.lower()!='q':
