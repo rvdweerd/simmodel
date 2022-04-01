@@ -206,8 +206,8 @@ class Actor(nn.Module):
         else:
             self.theta6_pi = nn.Linear(  self.emb_dim, self.emb_dim, True)
             self.theta7_pi = nn.Linear(  self.emb_dim, self.emb_dim, True)            
-        self.log_std_dev = nn.Parameter(init_log_std_dev * torch.ones((action_dim), dtype=torch.float), requires_grad=trainable_std_dev)
-        self.covariance_eye = torch.eye(self.action_dim).unsqueeze(0)
+        self.log_std_dev = nn.Parameter(init_log_std_dev * torch.ones(33, dtype=torch.float), requires_grad=trainable_std_dev)
+        self.covariance_eye = torch.eye(33).unsqueeze(0)
         self.hidden_cell = None
         
         #print('Actor network:')
@@ -399,8 +399,8 @@ class Actor_concat(nn.Module):
             self.theta7_pi = nn.Linear(self.emb_dim, self.emb_dim, True)
 
         self.theta5_pi = nn.Linear(2*self.emb_dim, 1, True)
-        self.log_std_dev = nn.Parameter(init_log_std_dev * torch.ones((action_dim), dtype=torch.float), requires_grad=trainable_std_dev)
-        self.covariance_eye = torch.eye(self.action_dim).unsqueeze(0)
+        self.log_std_dev = nn.Parameter(init_log_std_dev * torch.ones(33, dtype=torch.float), requires_grad=trainable_std_dev)
+        self.covariance_eye = torch.eye(33).unsqueeze(0)
         self.hidden_cell = None
         
         #print('Actor network:')

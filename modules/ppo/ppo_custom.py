@@ -348,7 +348,7 @@ def load_checkpoint(iteration, hp, tp):
         
     assert tp['world_name'] == checkpoint.world_name, "To resume training environment must match current settings."
     assert hp.env_mask_velocity== checkpoint.env_mask_velocity
-    assert hp == checkpoint.hp, "To resume training hyperparameters must match current settings."
+    #REVERT assert hp == checkpoint.hp, "To resume training hyperparameters must match current settings."
     print(hp)
     print(checkpoint.hp)
     ppo_model_state_dict = torch.load(CHECKPOINT_PATH + "ppo_model.pt", map_location=torch.device(tp['train_device']))

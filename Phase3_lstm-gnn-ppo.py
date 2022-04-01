@@ -13,12 +13,17 @@ torch.set_num_threads(4) # Max #threads for torch to avoid inefficient util of c
 
 def TestSavedModel(config, hp, tp):
     #env=GetCustomWorld(WORLD_NAME, make_reflexive=MAKE_REFLEXIVE, state_repr=STATE_REPR, state_enc='tensors')
-    world_name='Manhattan3x3_WalkAround'
-    env = CreateEnv(world_name, max_nodes=9, max_edges = 33, nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=None, apply_wrappers=True)
+    #world_name=['Manhattan5x5_FixedEscapeInit',25,105]
+    #world_name=['Manhattan5x5_VariableEscapeInit',25,105]
+    world_name=['NWB_test_VariableEscapeInit',975,3000]
+    env = CreateEnv(world_name[0], max_nodes=world_name[1], max_edges = world_name[2], nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=None, apply_wrappers=True)
+    hp.max_possible_nodes = env.max_possible_num_nodes
+    hp.max_possible_edges = env.max_possible_num_edges
     def envf():
         return env
     env_ = SyncVectorEnv([envf])
-    #env_ = make_custom(world_name, num_envs=1, asynchronous=False)   
+    #env_ = make_custom(world_name, num_envs=1, asynchronous=False)
+    assert  os.path.exists(tp['base_checkpoint_path']) 
     ppo_model, ppo_optimizer, max_checkpoint_iteration, stop_conditions = start_or_resume_from_checkpoint(env_, config, hp, tp)
     
     #env=env_.envs[0]
