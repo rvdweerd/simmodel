@@ -441,7 +441,8 @@ def gather_trajectories(input_data,hp):
             
             # Choose next action 
             value = ppo_model.V(features, terminal.to(gather_device), selector=selector.flatten().to(torch.bool))
-            trajectory_data["values"].append( value.squeeze().cpu())
+            #trajectory_data["values"].append( value.squeeze().cpu())
+            trajectory_data["values"].append( value.reshape(-1).cpu())
             action_dist = ppo_model.PI(features, terminal.to(gather_device), selector=selector.flatten().to(torch.bool))
             action = action_dist.sample().reshape(hp.parallel_rollouts, -1)
             if not ppo_model.continuous_action_space:
@@ -470,7 +471,8 @@ def gather_trajectories(input_data,hp):
 
         value = ppo_model.V(features.to(gather_device), terminal.to(gather_device))
         # Future value for terminal episodes is 0.
-        trajectory_data["values"].append(value.squeeze().cpu() * (1 - terminal))
+        #trajectory_data["values"].append(value.squeeze().cpu() * (1 - terminal))
+        trajectory_data["values"].append(value.reshape(-1).cpu() * (1 - terminal))
 
     # Combine step lists into tensors.
     trajectory_tensors = {key: torch.stack(value) for key, value in trajectory_data.items()}

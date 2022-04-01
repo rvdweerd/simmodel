@@ -8,7 +8,7 @@ from modules.rl.rl_utils import GetFullCoverageSample
 from modules.rl.rl_policy import LSTM_GNN_PPO_Policy
 from modules.rl.rl_utils import EvaluatePolicy
 from modules.sim.simdata_utils import SimulateAutomaticMode_PPO
-torch.set_num_threads(4) # Max #threads for torch to avoid inefficient util of cpu cores.
+torch.set_num_threads(1) # Max #threads for torch to avoid inefficient util of cpu cores.
 
 
 def TestSavedModel(config, hp, tp):
@@ -92,8 +92,8 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', default=48, type=int)
     parser.add_argument('--lr', default=5e-4, type=float)
     parser.add_argument('--recurrent_seq_len', default=2, type=int)
-    parser.add_argument('--parallel_rollouts', default=4, type=int)
-    parser.add_argument('--rollout_steps', default=201, type=int)
+    parser.add_argument('--parallel_rollouts', default=1, type=int)
+    parser.add_argument('--rollout_steps', default=100, type=int)
     parser.add_argument('--patience', default=500, type=int)
     parser.add_argument('--obs_mask', default='None', type=str, help='U obervation masking type', choices=['None','freq','prob'])
     parser.add_argument('--obs_rate', default=1.0, type=float)
