@@ -14,14 +14,14 @@ lstm_layers=1
 emb_iterT=5
 nfm_func="NFM_ev_ec_t_dt_at_um_us"
 qnet="gat2"
-train="True"
-eval="False"
+train="False"
+eval="True"
 test="False"
 num_seeds=5
 seed0=0
 demoruns="False"
 parallel_rollouts=1
-rollout_steps=100
+rollout_steps=150
 
 for lstm_type in {"shared-noncat",}
 #"separate-noncat","shared-concat","None"}
