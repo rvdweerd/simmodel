@@ -47,9 +47,9 @@ def main(args):
     if config['train']:
         train_env = make_custom(config, num_envs=hp.parallel_rollouts, asynchronous=tp['asynchronous_environment'])
         o=train_env.reset()
-        hp.max_possible_nodes = int(o[0,-3])
+        hp.max_possible_nodes = int(o[0,-4])
         hp.max_possible_edges = int(o[0,-2])
-        assert int(o[0,-3]) == train_env.envs[0].env.max_possible_num_nodes
+        assert int(o[0,-4]) == train_env.envs[0].env.max_possible_num_nodes
         assert int(o[0,-2]) == train_env.envs[0].env.max_possible_num_edges
         WriteTrainParamsToFile(config,hp,tp)
         for seed in config['seedrange']:

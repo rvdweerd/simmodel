@@ -25,6 +25,7 @@ rollout_steps=150
 terminalname="seriesrun"
 tmux new-session -d -s "${terminalname}"
 tmux send-keys -t "${terminalname}" "conda activate rlcourse-sb3c" Enter
+tmux send-keys -t "${terminalname}" "cd ~/testing/sim" Enter
 
 lstm_type="shared-noncat"
 tmux send-keys -t "${terminalname}" "python Phase3_lstm-gnn-ppo.py --train_on $train_on --batch_size $batch_size --obs_mask $obs_mask --obs_rate $obs_rate --emb_dim $emb_dim --lstm_type $lstm_type --lstm_hdim $lstm_hdim --lstm_layers $lstm_layers --emb_iterT $emb_iterT --nfm_func $nfm_func --qnet $qnet --train $train --eval $eval --test $test --num_seeds $num_seeds --seed0 $seed0 --demoruns $demoruns --parallel_rollouts $parallel_rollouts --rollout_steps $rollout_steps" Enter
