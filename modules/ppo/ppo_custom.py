@@ -67,6 +67,7 @@ class StopConditions():
     Store parameters and variables used to stop training. 
     """
     best_reward: float = -1e6
+    iteration: int = 0
     fail_to_improve_count: int = 0
     max_iterations: int = 1000000
 
@@ -148,9 +149,12 @@ def GetConfigs(args):
     config['seedrange']=range(config['seed0'], config['seed0']+config['num_seeds'])
     config['demoruns']        = args.demoruns
     lstm_filestring = config['lstm_type']
-    if config['lstm_type'] != 'none':
+    if config['lstm_type'] != 'None':
         lstm_filestring  += '_' + str(config['lstm_hdim']) + '_' + str(config['lstm_layers'])
-    config['rootdir'] = './results/results_Phase3/ppo/'+ config['train_on']+'/'+ config['qnet'] + '/lstm_' + lstm_filestring + '_bsize' + str(config['batch_size'])
+    mask_filestring = config['mask_type']
+    if config['mask_type'] != 'None':
+        mask_filestring += str(config['mask_rate'])
+    config['rootdir'] = './results/results_Phase3/ppo/'+ config['train_on']+'/'+ config['qnet'] + '/omask_' + mask_filestring + '/lstm_' + lstm_filestring + '_bsize' + str(config['batch_size'])
     config['logdir']  = config['rootdir'] + '/' + config['nfm_func']+'/'+ 'emb'+str(config['emb_dim']) + '_itT'+str(config['emb_iterT'])
 
     hp = HyperParameters(
@@ -286,6 +290,9 @@ def save_checkpoint(ppo_model, ppo_optimizer, iteration, stop_conditions, hp, tp
     #torch.save(critic.state_dict(), CHECKPOINT_PATH + "critic.pt")
     torch.save(ppo_optimizer.state_dict(), CHECKPOINT_PATH + "ppo_optimizer.pt")
     #torch.save(critic_optimizer.state_dict(), CHECKPOINT_PATH + "critic_optimizer.pt")
+    OF_ = open(tp['seed_path']+'/model_best_save_history.txt', 'a')
+    OF_.write('iteration:'+str(stop_conditions.iteration)+', avg det res:'+str(stop_conditions.best_reward)+'\n')
+    OF_.close()
 
 def start_or_resume_from_checkpoint(env, config, hp, tp):
     """
@@ -538,9 +545,9 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions, hp, t
     # GLOBAL_COUNT=0   
     #ppo_optimizer.param_groups[0]['lr'] *= 0.25
     while iteration < stop_conditions.max_iterations:      
-
         ppo_model = ppo_model.to(tp['gather_device'])
         start_gather_time = time.time()
+        stop_conditions.iteration = iteration
 
         # Gather trajectories.
         input_data = {"env": env, "ppo_model": ppo_model, "gather_device":tp['gather_device']}
@@ -662,17 +669,20 @@ def make_custom(config, num_envs=1, asynchronous=True, wrappers=None, **kwargs):
     Parameters
     """
     from gym.envs import make as make_
+    dirname = "./results/results_Phase3"
+    filename = dirname+"/"+config['train_on']+".bin"
     try:
-        OF=open("./results/results_Phase3/"+config['train_on']+".bin", "rb")
+        OF=open(filename, "rb")
         OF.close()
     except:
         env,_ = ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset=config['train_on'])
-        with open("./results/results_Phase3/"+config['train_on']+".bin", "wb") as f:
+        pathlib.Path(dirname).mkdir(parents=True, exist_ok=True)
+        with open(filename, "wb") as f:
             env = pickle.dump(env, f)
 
     def _make_env():
         print('env func loading started...',end='')
-        with open("./results/results_Phase3/"+config['train_on']+".bin", "rb") as f:
+        with open(filename, "rb") as f:
             env = pickle.load(f)  
 
         if wrappers is not None:

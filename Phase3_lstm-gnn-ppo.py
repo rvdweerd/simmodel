@@ -8,7 +8,7 @@ from modules.rl.rl_utils import GetFullCoverageSample
 from modules.rl.rl_policy import LSTM_GNN_PPO_Policy
 from modules.rl.rl_utils import EvaluatePolicy
 from modules.sim.simdata_utils import SimulateAutomaticMode_PPO
-torch.set_num_threads(2) # Max #threads for torch to avoid inefficient util of cpu cores.
+torch.set_num_threads(4) # Max #threads for torch to avoid inefficient util of cpu cores.
 
 
 def TestSavedModel(config, hp, tp):
@@ -47,6 +47,7 @@ def main(args):
             logdir_=config['logdir']+'/SEED'+str(seed)
             tp['writer'] = SummaryWriter(log_dir=f"{logdir_}/logs")
             tp["base_checkpoint_path"]=f"{logdir_}/checkpoints/"
+            tp["seed_path"]=logdir_
             #tp["workspace_path"]=logdir_
 
             ppo_model, ppo_optimizer, iteration, stop_conditions = start_or_resume_from_checkpoint(train_env, config, hp, tp)

@@ -412,7 +412,7 @@ class LSTM_GNN_PPO_Policy(Policy):
             #    print(row)
             ppo_value = self.V(features)
             np.set_printoptions(formatter={'float':"{0:0.2f}".format})
-            print('available_actions:',available_actions.detach().cpu().numpy(),'prob',self.probs,'chosen action',a, 'estimated value of graph state:',ppo_value.detach().cpu().numpy(),end='')
+            print('available_actions:',available_actions.detach().cpu().numpy(),'prob',self.probs[available_actions],'chosen action',a, 'estimated value of graph state:',ppo_value.detach().cpu().numpy(),end='')
 
 
         return a, None
