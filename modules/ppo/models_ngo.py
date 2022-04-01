@@ -198,11 +198,14 @@ class Actor(nn.Module):
         self.hidden_size = hp.hidden_size
         self.num_recurrent_layers = hp.recurrent_layers
         
+        self.theta5_pi = nn.Linear(2*self.emb_dim, 1, True)
         if self.lstm_on:
             self.lstm = nn.LSTM(self.emb_dim, self.hidden_size, num_layers = self.num_recurrent_layers)
-        self.theta5_pi = nn.Linear(2*self.emb_dim, 1, True)
-        self.theta6_pi = nn.Linear(  self.emb_dim, self.emb_dim, True)
-        self.theta7_pi = nn.Linear(  self.emb_dim, self.emb_dim, True)
+            self.theta6_pi = nn.Linear(  self.hidden_size, self.emb_dim, True)
+            self.theta7_pi = nn.Linear(  self.hidden_size, self.emb_dim, True)
+        else:
+            self.theta6_pi = nn.Linear(  self.emb_dim, self.emb_dim, True)
+            self.theta7_pi = nn.Linear(  self.emb_dim, self.emb_dim, True)            
         self.log_std_dev = nn.Parameter(init_log_std_dev * torch.ones((action_dim), dtype=torch.float), requires_grad=trainable_std_dev)
         self.covariance_eye = torch.eye(self.action_dim).unsqueeze(0)
         self.hidden_cell = None
@@ -311,9 +314,12 @@ class Critic(nn.Module):
                 self.lstm = nn.LSTM(self.emb_dim, self.hidden_size, num_layers=self.num_recurrent_layers)
             else:
                 self.lstm = lstm
+            self.theta6_v = nn.Linear(self.hidden_size, self.emb_dim, True)
+            self.theta7_v = nn.Linear(self.hidden_size, self.emb_dim, True)        
+        else:
+            self.theta6_v = nn.Linear(self.emb_dim, self.emb_dim, True)
+            self.theta7_v = nn.Linear(self.emb_dim, self.emb_dim, True)
         self.theta5_v = nn.Linear(2*self.emb_dim, 1, True)
-        self.theta6_v = nn.Linear(self.emb_dim, self.emb_dim, True)
-        self.theta7_v = nn.Linear(self.emb_dim, self.emb_dim, True)
         self.hidden_cell = None
         
     def reset_init_state(self, batch_size, device):
@@ -386,9 +392,13 @@ class Actor_concat(nn.Module):
         
         if self.lstm_on:
             self.lstm = nn.LSTM(self.emb_dim*2, self.hidden_size, num_layers = self.num_recurrent_layers)
+            self.theta6_pi = nn.Linear(self.hidden_size, self.emb_dim, True)
+            self.theta7_pi = nn.Linear(self.hidden_size, self.emb_dim, True)
+        else:
+            self.theta6_pi = nn.Linear(self.emb_dim, self.emb_dim, True)
+            self.theta7_pi = nn.Linear(self.emb_dim, self.emb_dim, True)
+
         self.theta5_pi = nn.Linear(2*self.emb_dim, 1, True)
-        self.theta6_pi = nn.Linear(  self.emb_dim, self.emb_dim, True)
-        self.theta7_pi = nn.Linear(  self.emb_dim, self.emb_dim, True)
         self.log_std_dev = nn.Parameter(init_log_std_dev * torch.ones((action_dim), dtype=torch.float), requires_grad=trainable_std_dev)
         self.covariance_eye = torch.eye(self.action_dim).unsqueeze(0)
         self.hidden_cell = None
@@ -501,9 +511,12 @@ class Critic_concat(nn.Module):
                 self.lstm = nn.LSTM(self.emb_dim*2, self.hidden_size, num_layers=self.num_recurrent_layers)
             else:
                 self.lstm = lstm
+            self.theta6_v = nn.Linear(self.hidden_size, self.emb_dim, True)
+            self.theta7_v = nn.Linear(self.hidden_size, self.emb_dim, True)
+        else:
+            self.theta6_v = nn.Linear(self.emb_dim, self.emb_dim, True)
+            self.theta7_v = nn.Linear(self.emb_dim, self.emb_dim, True)
         self.theta5_v = nn.Linear(2*self.emb_dim, 1, True)
-        self.theta6_v = nn.Linear(self.emb_dim, self.emb_dim, True)
-        self.theta7_v = nn.Linear(self.emb_dim, self.emb_dim, True)
         self.hidden_cell = None
         
     def reset_init_state(self, batch_size, device):
