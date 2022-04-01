@@ -73,6 +73,7 @@ class GraphWorld(gym.Env):
         self.nfm_calculator = NFM_ev_ec_t()
         if self.state_encoding=='nfm':
             self.nfm_calculator.init(self)
+        self.u_observable=[True]*self.sp.U
 
         # Gym objects
         if self.state_encoding == 'nfm':
@@ -102,6 +103,9 @@ class GraphWorld(gym.Env):
         self.observation_space = spaces.Box(0., self.sp.U, shape=(self.sp.V, (self.F+self.sp.V+1)), dtype=np.float32)        
         self.action_space = spaces.Discrete(self.sp.V) # all possible nodes 
         self.reset()
+
+    def mask_units(self, mask_u):
+        self.nfm_calculator.mask_units(self, mask_u)
 
     def get_custom_nfm(self, epath, targetnodes, upaths):
         return self.nfm_calculator.get_custom_nfm(self, epath, targetnodes, upaths)
@@ -518,7 +522,7 @@ class GraphWorld(gym.Env):
                 size='large'
             else:
                 size='small'
-        plot = PlotAgentsOnGraph_(self.sp, e, p, self.global_t, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes), size=size)
+        plot = PlotAgentsOnGraph_(self.sp, e, p, self.global_t, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes), size=size, u_visible=self.u_observable)
         return plot
     
     def render_epath(self, fname=None, t_suffix=True, size=None):
@@ -549,7 +553,7 @@ class GraphWorld(gym.Env):
                 size='large'
             else:
                 size='small'
-        plot = PlotEUPathsOnGraph_(self.sp, self.e_path, self.u_paths_taken, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes), size=size, last_step_only=last_step_only)
+        plot = PlotEUPathsOnGraph_(self.sp, self.e_path, self.u_paths_taken, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes), size=size, last_step_only=last_step_only, u_visible=self.u_observable)
         return plot
 
 

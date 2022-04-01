@@ -130,8 +130,8 @@ def GetConfigs(args):
     #config['lstm_dropout']    = args.lstm_dropout
     config['train_on']        = args.train_on
     config['batch_size']      = args.batch_size
-    config['mask_type']       = args.mask_type
-    config['mask_rate']       = args.mask_rate
+    config['obs_mask']        = args.obs_mask
+    config['obs_rate']        = args.obs_rate
     config['emb_dim']         = args.emb_dim
     config['lstm_type']       = args.lstm_type
     config['lstm_hdim']       = args.lstm_hdim
@@ -151,9 +151,9 @@ def GetConfigs(args):
     lstm_filestring = config['lstm_type']
     if config['lstm_type'] != 'None':
         lstm_filestring  += '_' + str(config['lstm_hdim']) + '_' + str(config['lstm_layers'])
-    mask_filestring = config['mask_type']
-    if config['mask_type'] != 'None':
-        mask_filestring += str(config['mask_rate'])
+    mask_filestring = config['obs_mask']
+    if config['obs_mask'] != 'None':
+        mask_filestring += str(config['obs_rate'])
     config['rootdir'] = './results/results_Phase3/ppo/'+ config['train_on']+'/'+ config['qnet'] + '/omask_' + mask_filestring + '/lstm_' + lstm_filestring + '_bsize' + str(config['batch_size'])
     config['logdir']  = config['rootdir'] + '/' + config['nfm_func']+'/'+ 'emb'+str(config['emb_dim']) + '_itT'+str(config['emb_iterT'])
 

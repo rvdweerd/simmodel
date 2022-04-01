@@ -246,6 +246,7 @@ class NFM_ev_ec_t_dt_at_um_us():
     def __init__(self):
         self.name='nfm-ev-ec-t-dt-at-um-us'
         self.F=7
+        self.uindx=torch.tensor([5,6],dtype=torch.int64) # feature indices of U position information
         # Features:
         # 0. visited by e
         # 1. current position e
@@ -284,13 +285,21 @@ class NFM_ev_ec_t_dt_at_um_us():
         # Set u positions
         eo.nfm[:,5] = 0     
         eo.nfm[:,6] = 0     
-        for path_index, path in enumerate(eo.u_paths): 
+        for unit_index, path in enumerate(eo.u_paths): 
             if eo.local_t >= len(path)-1: #unit has settled
                 assert path[-1] in eo.state
                 eo.nfm[path[-1],6] += 1
             else:
                 eo.nfm[path[eo.local_t],5] += 1
 
+    def mask_units(self, eo, mask_u):
+        for unit_index, path in enumerate(eo.u_paths): 
+            if mask_u[unit_index]:
+                if eo.local_t >= len(path)-1: #unit has settled
+                    assert path[-1] in eo.state
+                    eo.nfm[path[-1],6] -= 1
+                else:
+                    eo.nfm[path[eo.local_t],5] -= 1
 
 class NFM_ec_t():
     def __init__(self):

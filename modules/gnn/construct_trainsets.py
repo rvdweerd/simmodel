@@ -375,7 +375,23 @@ def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M
             max_possible_num_nodes=33,
             probs=probs)
 
-    if tset == 'TEST':
+    elif tset == 'M5x5Fixed':
+        config['max_nodes']=25
+        config['max_edges']=105
+
+        world_name = 'Manhattan5x5_FixedEscapeInit'
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env_all_list.append(env)
+        global_env.append(env)
+        probs.append(1)
+
+        super_env=SuperEnv(
+            global_env,
+            hashint2env=None,
+            max_possible_num_nodes=config['max_nodes'],
+            probs=probs)
+
+    elif tset == 'TEST':
         config['max_edges']=300
         # env, _ = get_super_env(Uselected=[2], Eselected=[3,6,9], config=config, var_targets=None, apply_wrappers=apply_wrappers, remove_paths=remove_paths)
         # env_all_list += env.all_env
@@ -399,6 +415,9 @@ def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M
             hashint2env=None,
             max_possible_num_nodes=9,
             probs=probs)
+
+    else:
+        assert False
 
     return super_env, env_all_list
 

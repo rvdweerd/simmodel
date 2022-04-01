@@ -387,11 +387,11 @@ class Actor_concat(nn.Module):
         self.emb_dim = hp.emb_dim
         self.action_dim = action_dim
         self.continuous_action_space = continuous_action_space 
-        self.hidden_size = hp.hidden_size * 2 # concat mu and AGG(mu)
+        self.hidden_size = hp.hidden_size # concat mu and AGG(mu)
         self.num_recurrent_layers = hp.recurrent_layers
         
         if self.lstm_on:
-            self.lstm = nn.LSTM(self.emb_dim*2, self.hidden_size, num_layers = self.num_recurrent_layers)
+            self.lstm = nn.LSTM(self.emb_dim*2, self.hidden_size * 2, num_layers = self.num_recurrent_layers)
             self.theta6_pi = nn.Linear(self.hidden_size, self.emb_dim, True)
             self.theta7_pi = nn.Linear(self.hidden_size, self.emb_dim, True)
         else:
@@ -408,8 +408,8 @@ class Actor_concat(nn.Module):
         #print(self)
         
     def reset_init_state(self, batch_size, device):
-        self.hidden_cell = (torch.zeros(self.hp.recurrent_layers, batch_size, self.hidden_size).to(device),
-                            torch.zeros(self.hp.recurrent_layers, batch_size, self.hidden_size).to(device))
+        self.hidden_cell = (torch.zeros(self.hp.recurrent_layers, batch_size, self.hidden_size*2).to(device),
+                            torch.zeros(self.hp.recurrent_layers, batch_size, self.hidden_size*2).to(device))
         
     def forward(self, features, terminal=None, selector=None):
         # features: (seq_len, num nodes in batch, feat_dim=emb_dim+3)
@@ -502,13 +502,13 @@ class Critic_concat(nn.Module):
         super().__init__()
         self.lstm_on = hp.lstm_on
         self.emb_dim=hp.emb_dim
-        self.hidden_size=hp.hidden_size * 2
+        self.hidden_size=hp.hidden_size
         self.num_recurrent_layers=hp.recurrent_layers
         self.hp=hp
         
         if self.lstm_on:
             if lstm == None:
-                self.lstm = nn.LSTM(self.emb_dim*2, self.hidden_size, num_layers=self.num_recurrent_layers)
+                self.lstm = nn.LSTM(self.emb_dim*2, self.hidden_size*2, num_layers=self.num_recurrent_layers)
             else:
                 self.lstm = lstm
             self.theta6_v = nn.Linear(self.hidden_size, self.emb_dim, True)
@@ -520,8 +520,8 @@ class Critic_concat(nn.Module):
         self.hidden_cell = None
         
     def reset_init_state(self, batch_size, device):
-        self.hidden_cell = (torch.zeros(self.hp.recurrent_layers, batch_size, self.hidden_size).to(device),
-                            torch.zeros(self.hp.recurrent_layers, batch_size, self.hidden_size).to(device))
+        self.hidden_cell = (torch.zeros(self.hp.recurrent_layers, batch_size, self.hidden_size*2).to(device),
+                            torch.zeros(self.hp.recurrent_layers, batch_size, self.hidden_size*2).to(device))
     
     def forward(self, features, terminal=None, selector=None):
         # features: [seq_len, bsize, feat_dim=emb_dim+3]

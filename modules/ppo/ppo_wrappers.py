@@ -70,27 +70,22 @@ class PPO_ObsFlatWrapper(ObservationWrapper):
     Flattening: nfm (NxF) | edge_list (Ex2) | reachable (N,) | num_nodes (1,) | max_num_nodes (1,) | num_edges (1,) | max_num_edges (1,) | node_dim (1,)
     """
     
-    def __init__(self, env, max_possible_num_nodes = 3000, max_possible_num_edges = 4000):
+    def __init__(self, env, max_possible_num_nodes = 3000, max_possible_num_edges = 4000, obs_mask=None, obs_rate=1):
         super().__init__(env)
         assert max_possible_num_nodes >= self.sp.V
-        #self.V=env.sp.V
+        assert obs_mask in ['None','freq','prob','prob_per_u']
+        assert (obs_rate >=0 and obs_rate <=1) if obs_mask in ['prob','prob_per_u'] else (obs_rate >1e-2 and obs_rate <=1)
+        self.obs_mask = obs_mask  # Type of observation masking of pursuit units
+        self.obs_rate = int(1/obs_rate) if obs_mask=='freq' else obs_rate  # If observations are masked, either frequency (mask every n) or probability (mask with probability p)
         self.max_possible_num_nodes = max_possible_num_nodes
         self.max_possible_num_edges = max_possible_num_edges
         self.nflat = self.max_possible_num_nodes * (1+self.F) + self.max_possible_num_edges * 2 + 5
-        #self.observation_space= spaces.Box(0., max(2.,self.sp.U), shape=(self.nflat,), dtype=np.float32)
         self.observation_space= spaces.Box(0., 10., shape=(self.nflat,), dtype=np.float32)
         self.action_space     = spaces.Discrete(self.max_possible_num_nodes) # all possible nodes 
         print('Wrapping the env with a customized observation definition for GNN integration: flattened nfm-W-reachable_nodes-N-E')
-        #self.observation_space
-        #self.action_space
-    
+            
     def getUpositions(self,t=0):
         return self.env.getUpositions(t)
-        # upos = []
-        # for i,P_path in enumerate(self.u_paths):
-        #     p = P_path[-1] if t >= len(P_path) else P_path[t]
-        #     upos.append(p)
-        # return upos
     
     def action_masks(self):
         m = self.env.action_masks() + [False] * (self.max_possible_num_nodes - self.V)
@@ -101,6 +96,36 @@ class PPO_ObsFlatWrapper(ObservationWrapper):
 
     def observation(self, observation):
         """convert observation."""
+        # Apply observation masking
+        if self.obs_mask != 'None':
+            #all_observable=True
+            if self.obs_mask == 'freq':
+                self.env.u_observable = [True]*self.env.sp.U
+                if ((self.global_t) % self.obs_rate != 0):
+                    print('freq criterion: obs set to False')
+                    #all_observable=False
+                    self.env.u_observable = [False]*self.env.sp.U # for plotting purposes
+                    self.nfm[:, self.nfm_calculator.uindx] = 0 # erase all U observations
+            elif self.obs_mask == 'prob': # probability of observing all Us at timestep t
+                self.env.u_observable = [True]*self.env.sp.U                
+                p = np.random.rand() 
+                print('p=',p)
+                if p > self.obs_rate:
+                    print('prob criterion: obs set to False')
+                    #all_observable=False
+                    self.env.u_observable = [False]*self.env.sp.U # for plotting purposes
+                    self.nfm[:, self.nfm_calculator.uindx] = 0 # erase all U observations
+            elif self.obs_mask == 'prob_per_u': # probability of observing an individual U at timestep t
+                mask_u = np.random.rand(self.sp.U) > self.obs_rate
+                self.env.u_observable = list(~mask_u) # for plotting purposes
+                self.mask_units(mask_u)
+            else: assert False    
+            print('units observable:',self.u_observable)
+            assert self.u_observable==self.env.u_observable
+            print('units positions:',self.getUpositions(self.local_t))
+            assert self.global_t == self.local_t
+
+        # Convert observation to flat tensor according to init definitions
         pv = self.max_possible_num_nodes - self.sp.V  # padding
         nfm = nn.functional.pad(self.nfm.clone(),(0,0,0,pv)) # pad downward to (max_N, F)
         num_edges = self.sp.EI.shape[1]
