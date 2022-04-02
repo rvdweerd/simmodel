@@ -301,6 +301,64 @@ class NFM_ev_ec_t_dt_at_um_us():
                 else:
                     eo.nfm[path[eo.local_t],5] -= 1
 
+class NFM_ev_ec_t_dt_at_ustack():
+    def __init__(self, k=3):
+        self.name='nfm-ev-ec-t-dt-at-ustack'
+        self.F=5+k
+        self.k=k
+        self.uindx=torch.tensor([5+k-1],dtype=torch.int64) # which columns are erased if all units are unobservable
+        # Features:
+        # 0. visited by e
+        # 1. current position e
+        # 2. target node
+        # 3. scaled measure of distance/options to target nodes
+        # 4. absolute distance (hops) to nearest target node
+        # 5.        u position at t-(k-1)
+        # .         ...
+        # 5+(k-1)   u position at t
+
+    def init(self, eo):
+        eo.F = self.F
+        eo.nfm0 = torch.zeros((eo.sp.V,eo.F),dtype=torch.float32)
+        eo.nfm0[:,3] = eo.nodescores.clone()
+        eo.nfm0[:,4] = eo.min_target_distances.clone()
+        if len(eo.sp.target_nodes) > 0:
+            eo.nfm0[torch.tensor(list(eo.sp.target_nodes),dtype=torch.int64),2]=1 # set target nodes, fixed for the given graph
+        self.reset(eo)
+
+    def reset(self, eo):
+        # set e positions
+        eo.nfm = eo.nfm0.clone()
+        eo.nfm[eo.sp.start_escape_route_node,0]=1
+        eo.nfm[eo.sp.start_escape_route_node,1]=1
+        
+        # Set u positions
+        for path_index, path in enumerate(eo.u_paths): 
+            eo.nfm[path[eo.local_t],-1] += 1
+
+    def update(self, eo):
+        # set e positions
+        eo.nfm[eo.state[0],0]=1
+        eo.nfm[:,1]=0
+        eo.nfm[eo.state[0],1]=1
+        
+        # Set u positions
+        eo.nfm[:,5:(5+self.k-1)] = eo.nfm[:,6:] # shift the last k-1 columns to the left    
+        eo.nfm[:,-1] = 0 # reset column for current positions
+        for unit_index, path in enumerate(eo.u_paths):
+            if eo.local_t >= len(path)-1: #unit has settled
+                eo.nfm[path[-1],-1] += 1
+            else:
+                eo.nfm[path[eo.local_t],-1] += 1
+
+    def mask_units(self, eo, mask_u):
+        for unit_index, path in enumerate(eo.u_paths): 
+            if mask_u[unit_index]:
+                if eo.local_t >= len(path)-1: #unit has settled
+                    eo.nfm[path[-1],-1] -= 1
+                else:
+                    eo.nfm[path[eo.local_t],-1] -= 1
+
 class NFM_ec_t():
     def __init__(self):
         self.name='nfm-ec-t'
@@ -354,6 +412,7 @@ nfm_funcs = {
     'NFM_ec_t':NFM_ec_t(),
     'NFM_ec_t_dt_at':NFM_ec_t_dt_at(),
     'NFM_ev_ec_t_dt_at_um_us':NFM_ev_ec_t_dt_at_um_us(),
+    'NFM_ev_ec_t_dt_at_ustack':NFM_ev_ec_t_dt_at_ustack(),
     'NFM_ec_dt':NFM_ec_dt(),
     'NFM_ec_dtscaled':NFM_ec_dtscaled(),
     'NFM_ev_t':NFM_ev_t(),
