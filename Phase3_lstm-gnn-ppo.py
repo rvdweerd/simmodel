@@ -8,7 +8,7 @@ from modules.ppo.helpfuncs import CreateEnv, evaluate_lstm_ppo
 from modules.rl.rl_utils import GetFullCoverageSample
 from modules.rl.rl_policy import LSTM_GNN_PPO_Policy
 from modules.rl.rl_utils import EvaluatePolicy
-from modules.sim.simdata_utils import SimulateAutomaticMode_PPO
+from modules.sim.simdata_utils import SimulateAutomaticMode_PPO, SimulateInteractiveMode_PPO
 from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsFlatWrapper
 torch.set_num_threads(1) # Max #threads for torch to avoid inefficient util of cpu cores.
 
@@ -53,6 +53,13 @@ def main(args):
         hp.max_possible_edges = int(o[0,-2])
         assert int(o[0,-4]) == train_env.envs[0].env.max_possible_num_nodes
         assert int(o[0,-2]) == train_env.envs[0].env.max_possible_num_edges
+
+        if config['demoruns']:
+            while True:
+                a = SimulateInteractiveMode_PPO(train_env.envs[0], filesave_with_time_suffix=False)
+                if a == 'Q': break
+
+        
         WriteTrainParamsToFile(config,hp,tp)
         for seed in config['seedrange']:
             seed_everything(seed)
@@ -90,9 +97,9 @@ def main(args):
             #'Manhattan5x5_DuplicateSetB':[25,300],
             #'Manhattan3x3_WalkAround':[9,300],
             #'MetroU3_e1t31_FixedEscapeInit':[33, 300],
-            'full_solvable_3x3subs':[9,33],
-            # 'Manhattan5x5_FixedEscapeInit':[25,105],
-            # 'Manhattan5x5_VariableEscapeInit':[25,105],
+            #'full_solvable_3x3subs':[9,33],
+            'Manhattan5x5_FixedEscapeInit':[25,105],
+            'Manhattan5x5_VariableEscapeInit':[25,105],
             # 'MetroU3_e17tborder_FixedEscapeInit':[33,300],
             # 'MetroU3_e17tborder_VariableEscapeInit':[33,300],
             # 'NWB_ROT_FixedEscapeInit':[2602,7300],
@@ -103,11 +110,13 @@ def main(args):
             # 'NWB_UTR_VariableEscapeInit':[1182,4000],
             # 'SparseManhattan5x5':[25,105],
             }
+        #obs_mask='None'
+        obs_mask='prob_per_u'
+        obs_rate=.8
+        
         for world_name in world_dict.keys():
-            evalName=world_name
-            obs_mask='None'#'prob_per_u'
-            obs_rate=1#.5
-
+            evalName=world_name+'_obs'+obs_mask
+            if obs_mask != 'None': evalName += str(obs_rate)
             if world_name == "full_solvable_3x3subs":
                 Etest=[0,1,2,3,4,5,6,7,8,9,10]
                 Utest=[1,2,3]
@@ -135,6 +144,11 @@ def main(args):
                     continue
                 ppo_model, ppo_optimizer, max_checkpoint_iteration, stop_conditions = start_or_resume_from_checkpoint(env_, config, hp, tp)
                 ppo_policy = LSTM_GNN_PPO_Policy(env, ppo_model, deterministic=tp['eval_deterministic'])
+
+                if config['demoruns']:
+                    while True:
+                        a = SimulateAutomaticMode_PPO(env, ppo_policy, t_suffix=False, entries=None)
+                        if a == 'Q': break
 
                 result = evaluate_lstm_ppo(logdir=logdir_, config=config, env=evalenv, ppo_policy=ppo_policy, eval_subdir=evalName, max_num_nodes=world_dict[world_name][0])
                 num_unique_graphs, num_graph_instances, avg_return, success_rate = result
@@ -165,7 +179,7 @@ if __name__ == '__main__':
     parser.add_argument('--parallel_rollouts', default=1, type=int)
     parser.add_argument('--rollout_steps', default=100, type=int)
     parser.add_argument('--patience', default=500, type=int)
-    parser.add_argument('--obs_mask', default='None', type=str, help='U obervation masking type', choices=['None','freq','prob'])
+    parser.add_argument('--obs_mask', default='None', type=str, help='U obervation masking type', choices=['None','freq','prob','prob_per_u'])
     parser.add_argument('--obs_rate', default=1.0, type=float)
     parser.add_argument('--emb_dim', default=64, type=int)
     parser.add_argument('--lstm_type', default='shared-noncat', type=str, choices=['None','shared-concat','shared-noncat','separate-noncat'])

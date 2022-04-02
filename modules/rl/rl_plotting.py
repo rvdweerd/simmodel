@@ -50,6 +50,7 @@ def PlotAgentsOnGraph_(sp, escape_pos, pursuers_pos, timestep, fig_show=False, f
     #node_text[sp.labels2coord[escape_pos]]='e'
     
     for i, P_pos in enumerate(pursuers_pos):
+        node_borderlist[sp.labels2nodeids[P_pos]] = "blue"
         if u_visible[i] or done:
             colorlist[sp.labels2nodeids[P_pos]]='#0000FF'
             nodesizelist[sp.labels2nodeids[P_pos]] = nodesize
