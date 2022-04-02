@@ -114,49 +114,49 @@ def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M
         config['max_nodes'] = 975
 
         world_name = 'NWB_test_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(3)
 
         world_name = 'NWB_test_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name = config['nfm_func'], var_targets=[10,20], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name = config['nfm_func'], var_targets=[10,20], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(3)
 
         world_name = 'NWB_test_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
         world_name = 'NWB_test_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name = config['nfm_func'], var_targets=[10,20], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name = config['nfm_func'], var_targets=[10,20], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(3)
 
         world_name = 'MetroU3_e17tborder_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
         world_name = 'MetroU3_e17tborder_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,2], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,2], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(3)
 
         world_name = 'MetroU3_e17tborder_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(2)
 
         world_name = 'MetroU3_e17tborder_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,2], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,2], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(3)
@@ -177,37 +177,37 @@ def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M
         probs.append(5)
 
         world_name = 'Manhattan5x5_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(2)
 
         world_name = 'Manhattan5x5_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(2)
 
         world_name = 'Manhattan5x5_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
         world_name = 'Manhattan5x5_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(2)
 
         world_name = 'Manhattan5x5_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,1],remove_world_pool=True, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,1],remove_world_pool=True, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)    
 
         world_name = 'SparseManhattan5x5'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
@@ -380,7 +380,7 @@ def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M
         config['max_edges']=105
 
         world_name = 'Manhattan5x5_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
@@ -391,23 +391,21 @@ def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M
             max_possible_num_nodes=config['max_nodes'],
             probs=probs)
 
-    elif tset == 'M5x5Fixed_mask_probperU_.5':
-        config['max_nodes']=25
-        config['max_edges']=105
+    # elif tset == 'M5x5Fixed_mask_probperU_.5':
+    #     config['max_nodes']=25
+    #     config['max_edges']=105
 
-        world_name = 'Manhattan5x5_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask='prob_per_u', obs_rate=.5)
-        env_all_list.append(env)
-        global_env.append(env)
-        probs.append(1)
+    #     world_name = 'Manhattan5x5_FixedEscapeInit'
+    #     env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask='prob_per_u', obs_rate=.5)
+    #     env_all_list.append(env)
+    #     global_env.append(env)
+    #     probs.append(1)
 
-        super_env=SuperEnv(
-            global_env,
-            hashint2env=None,
-            max_possible_num_nodes=config['max_nodes'],
-            probs=probs)
-
-
+    #     super_env=SuperEnv(
+    #         global_env,
+    #         hashint2env=None,
+    #         max_possible_num_nodes=config['max_nodes'],
+    #         probs=probs)
 
     elif tset == 'TEST':
         config['max_edges']=300

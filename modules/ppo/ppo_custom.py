@@ -672,7 +672,9 @@ def make_custom(config, num_envs=1, asynchronous=True, wrappers=None, **kwargs):
     """
     from gym.envs import make as make_
     dirname = "./results/results_Phase3"
-    filename = dirname+"/"+config['train_on']+".bin"
+    filename = dirname+"/"+config['train_on']+"_obs"+config['obs_mask']
+    if config['obs_mask'] != "None": filename += str(config['obs_rate'])
+    filename+=".bin"
     try:
         OF=open(filename, "rb")
         OF.close()

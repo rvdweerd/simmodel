@@ -102,16 +102,16 @@ class PPO_ObsFlatWrapper(ObservationWrapper):
             if self.obs_mask == 'freq':
                 self.env.u_observable = [True]*self.env.sp.U
                 if ((self.global_t) % self.obs_rate != 0):
-                    print('freq criterion: obs set to False')
+                    #print('freq criterion: obs set to False')
                     #all_observable=False
                     self.env.u_observable = [False]*self.env.sp.U # for plotting purposes
                     self.nfm[:, self.nfm_calculator.uindx] = 0 # erase all U observations
             elif self.obs_mask == 'prob': # probability of observing all Us at timestep t
                 self.env.u_observable = [True]*self.env.sp.U                
                 p = np.random.rand() 
-                print('p=',p)
+                #print('p=',p)
                 if p > self.obs_rate:
-                    print('prob criterion: obs set to False')
+                    #print('prob criterion: obs set to False')
                     #all_observable=False
                     self.env.u_observable = [False]*self.env.sp.U # for plotting purposes
                     self.nfm[:, self.nfm_calculator.uindx] = 0 # erase all U observations
@@ -120,7 +120,7 @@ class PPO_ObsFlatWrapper(ObservationWrapper):
                 self.env.u_observable = list(~mask_u) # for plotting purposes
                 self.mask_units(mask_u)
             else: assert False    
-            print('\n>> state',self.state,'units observable:',self.u_observable,'units positions:',self.getUpositions(self.local_t))
+            #print('\n>> state',self.state,'units observable:',self.u_observable,'units positions:',self.getUpositions(self.local_t))
             assert self.u_observable==self.env.u_observable
             assert self.global_t == self.local_t
 
