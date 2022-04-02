@@ -14,7 +14,7 @@ def plot_traindata(episode_returns,losses,logdir='./temp'):
     plt.savefig(logdir+'/testplots_loss_curve.png')
     plt.clf()
 
-def PlotAgentsOnGraph_(sp, escape_pos, pursuers_pos, timestep, fig_show=False, fig_save=True, filename=None, goal_reached=False, done=False, size='small', u_visible=True):
+def PlotAgentsOnGraph_(sp, escape_pos, u_paths, timestep, fig_show=False, fig_save=True, filename=None, goal_reached=False, done=False, size='small', u_visible=True):
     if sp.V > 50:
         nodesize = 10 # 400 1200
         edgewidth = .5 # 5
@@ -45,16 +45,17 @@ def PlotAgentsOnGraph_(sp, escape_pos, pursuers_pos, timestep, fig_show=False, f
         colorlist[sp.labels2nodeids[escape_pos]]='#66FF00'
     else:
         colorlist[sp.labels2nodeids[escape_pos]]='#FF0000'
-    #nodesizelist[sp.labels2nodeids[escape_pos]] = nodesize*2
     
-    #node_text[sp.labels2coord[escape_pos]]='e'
-    
-    for i, P_pos in enumerate(pursuers_pos):
+    # for i, P_pos in enumerate(pursuers_pos):
+    #     if u_visible[i] or done:
+    #         colorlist[sp.labels2nodeids[P_pos]]='#0000FF'
+    #         nodesizelist[sp.labels2nodeids[P_pos]] = nodesize
+
+    for i,u_path in enumerate(u_paths):
+        node_borderlist[sp.labels2nodeids[u_path[-1]]] = 'blue'
+        nodesizelist[sp.labels2nodeids[u_path[-1]]] = nodesize
         if u_visible[i] or done:
-            colorlist[sp.labels2nodeids[P_pos]]='#0000FF'
-            nodesizelist[sp.labels2nodeids[P_pos]] = nodesize
-            #fontcolors[sp.labels2nodeids[P_pos]]='white'
-            #node_text[sp.labels2coord[P_pos]]='u'+str(i)
+            colorlist[sp.labels2nodeids[u_path[-1]]]='#0000FF'
 
     # options = {
     # "font_color": 'grey',

@@ -505,7 +505,7 @@ class GraphWorld(gym.Env):
                 size='large'
             else:
                 size='small'
-        plot = PlotAgentsOnGraph_(self.sp, e, p, self.global_t, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes), size=size, u_visible=self.u_observable)
+        plot = PlotAgentsOnGraph_(self.sp, e, self.u_paths_taken, self.global_t, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes), size=size, u_visible=self.u_observable)
         return plot
     
     def render_epath(self, fname=None, t_suffix=True, size=None):

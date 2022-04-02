@@ -7,23 +7,25 @@ import modules.gnn.nfm_gen
 
 #world_name='Manhattan3x3_PauseFreezeWorld'
 #world_name='Manhattan3x3_PauseDynamicWorld'
-world_name='Manhattan3x3_WalkAround'
+#world_name='Manhattan3x3_WalkAround'
 #world_name='Manhattan5x5_FixedEscapeInit'
-#world_name='MetroU3_e17tborder_FixedEscapeInit'
+world_name='MetroU3_e17tborder_FixedEscapeInit'
 #world_name='MetroU3_e17t0_FixedEscapeInit'
 #world_name='MetroU3_e1t31_FixedEscapeInit'
 #world_name='SparseManhattan5x5'
 #world_name = 'NWB_test_FixedEscapeInit'
 #world_name='NWB_ROT_FixedEscapeInit'
-N=9
-E=33
+N=33
+E=150
+obs_mask='prob_per_u'
+obs_rate=0.0
 state_repr='etUte0U0'
 state_enc='nfm'
 #nfm_func=modules.gnn.nfm_gen.nfm_funcs['NFM_ev_ec_t_dt_at_um_us']
 nfm_func=modules.gnn.nfm_gen.nfm_funcs['NFM_ev_ec_t_dt_at_ustack']
 env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
 env.redefine_nfm(nfm_func)
-env=PPO_ObsFlatWrapper(env, max_possible_num_nodes=N, max_possible_num_edges=E, obs_mask='prob_per_u', obs_rate=.5)
+env=PPO_ObsFlatWrapper(env, max_possible_num_nodes=N, max_possible_num_edges=E, obs_mask=obs_mask, obs_rate=obs_rate)
 
 for epi in range(5):
     done=False
@@ -39,5 +41,5 @@ for epi in range(5):
 
 while True:
     print('Shortest path', env.sp.spath_to_target,'length:', env.sp.spath_length,'hops')   
-    SimulateInteractiveMode(env, filesave_with_time_suffix=True)
+    SimulateInteractiveMode(env, filesave_with_time_suffix=False)
 
