@@ -1,4 +1,5 @@
 import copy
+import os
 from modules.gnn.comb_opt import train, evaluate, evaluate_spath_heuristic, evaluate_tabular
 from modules.rl.rl_custom_worlds import GetCustomWorld
 from modules.rl.environments import SuperEnv
@@ -228,20 +229,20 @@ def main(args):
         evalResults={}
         world_list=[
             # 'Manhattan5x5_DuplicateSetB',
-            'Manhattan3x3_WalkAround',
+            #'Manhattan3x3_WalkAround',
             # 'MetroU3_e1t31_FixedEscapeInit', 
-            #'full_solvable_3x3subs',
-            #'Manhattan5x5_FixedEscapeInit',
-            #'Manhattan5x5_VariableEscapeInit',
-            #'MetroU3_e17tborder_FixedEscapeInit',
-            #'MetroU3_e17tborder_VariableEscapeInit',
-            #'NWB_ROT_FixedEscapeInit',
-            #'NWB_ROT_VariableEscapeInit',
-            #'NWB_test_FixedEscapeInit',
-            #'NWB_test_VariableEscapeInit',
-            #'NWB_UTR_FixedEscapeInit',
-            #'NWB_UTR_VariableEscapeInit',            
-            #'SparseManhattan5x5',
+            'full_solvable_3x3subs',
+            # 'Manhattan5x5_FixedEscapeInit',
+            # 'Manhattan5x5_VariableEscapeInit',
+            # 'MetroU3_e17tborder_FixedEscapeInit',
+            # 'MetroU3_e17tborder_VariableEscapeInit',
+            # 'NWB_ROT_FixedEscapeInit',
+            # 'NWB_ROT_VariableEscapeInit',
+            # 'NWB_test_FixedEscapeInit',
+            # 'NWB_test_VariableEscapeInit',
+            # 'NWB_UTR_FixedEscapeInit',
+            # 'NWB_UTR_VariableEscapeInit',            
+            # 'SparseManhattan5x5',
             ]
         #node_maxims = [0,0,0,0]
         #var_targets=[ None,None,None,None]
@@ -284,7 +285,11 @@ def main(args):
             evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
             for seed in config['seedrange']:
                 logdir=config['logdir']+'/SEED'+str(seed)
-                result = evaluate(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=evalenv, eval_subdir=evalName)
+                try:
+                    assert os.path.exists(logdir)
+                except:
+                    continue                
+                result = evaluate(logdir=logdir, config=config, env_all=evalenv, eval_subdir=evalName)
                 #result = evaluate(logdir=config['logdir']+'/SEED'+str(seed), config=config, env_all=[env], eval_subdir=evalName)
                 num_unique_graphs, num_graph_instances, avg_return, success_rate = result
                 evalResults[evalName]['num_graphs.........'].append(num_unique_graphs)
