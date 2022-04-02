@@ -1,77 +1,52 @@
+import copy
+import modules.gnn.nfm_gen
+from modules.ppo.models_sb3_gat2 import DeployablePPOPolicy_gat2
+from modules.ppo.models_sb3_s2v import s2v_ActorCriticPolicy, Struc2VecExtractor, DeployablePPOPolicy
+from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsWrapper, PPO_ObsDictWrapper, VarTargetWrapper, PPO_ObsFlatWrapper
+from modules.rl.environments import GraphWorld
+from modules.rl.rl_utils import EvaluatePolicy, EvalArgs1, EvalArgs2, EvalArgs3, GetFullCoverageSample
+from modules.rl.rl_policy import ActionMaskedPolicySB3_PPO
+from modules.rl.rl_custom_worlds import GetCustomWorld
+from modules.rl.environments import SuperEnv
+from modules.rl.rl_plotting import PlotEUPathsOnGraph_
+from modules.sim.graph_factory import GetWorldSet, LoadData
 import numpy as np
 import torch.nn as nn 
 import torch
 import torch.nn.functional as F
-import copy
 import tqdm
 from sb3_contrib.common.maskable.utils import get_action_masks
 from sb3_contrib.common.maskable.evaluation import evaluate_policy
 from sb3_contrib import MaskablePPO
-from modules.rl.rl_utils import EvaluatePolicy, EvalArgs1, EvalArgs2, EvalArgs3, GetFullCoverageSample
-from modules.gnn.nfm_gen import NFM_ec_t, NFM_ec_t_dt_at, NFM_ev_ec_t_dt_at_um_us, NFM_ec_dt, NFM_ec_dtscaled, NFM_ev_t, NFM_ev_ec_t, NFM_ev_ec_t_um_us, NFM_ev_ec_t_u
-from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsWrapper, PPO_ObsDictWrapper, VarTargetWrapper, PPO_ObsFlatWrapper
-from modules.sim.graph_factory import GetWorldSet, LoadData
-from modules.rl.environments import GraphWorld
-from modules.rl.rl_custom_worlds import GetCustomWorld
-from modules.rl.environments import SuperEnv
-from modules.rl.rl_plotting import PlotEUPathsOnGraph_
-from modules.ppo.models_sb3_s2v import s2v_ActorCriticPolicy, Struc2VecExtractor, DeployablePPOPolicy
-from modules.ppo.models_sb3_gat2 import DeployablePPOPolicy_gat2
-from modules.rl.rl_policy import ActionMaskedPolicySB3_PPO
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-
-nfm_funcs = {
-    'NFM_ev_ec_t'       : NFM_ev_ec_t(),
-    'NFM_ec_t'          : NFM_ec_t(),
-    'NFM_ec_t_dt_at'    : NFM_ec_t_dt_at(),
-    'NFM_ev_ec_t_dt_at_um_us': NFM_ev_ec_t_dt_at_um_us(),
-    'NFM_ec_dt'         : NFM_ec_dt(),
-    'NFM_ec_dtscaled'   : NFM_ec_dtscaled(),
-    'NFM_ev_t'          : NFM_ev_t(),
-    'NFM_ev_ec_t_u'     : NFM_ev_ec_t_u(),
-    'NFM_ev_ec_t_um_us' : NFM_ev_ec_t_um_us(),
-    }
-
 def get_super_env(Uselected=[1], Eselected=[4], config=None, var_targets=None, apply_wrappers=True, remove_paths=False):
-    # scenario_name=config['scenario_name']
-    #scenario_name = 'Train_U2E45'
-    # world_name = 'SubGraphsManhattan3x3'
     max_nodes=config['max_nodes']
     max_edges=config['max_edges']
     state_repr = 'etUte0U0'
     state_enc  = 'nfm'
-    #nfm_funcs = {'NFM_ev_ec_t':NFM_ev_ec_t(),'NFM_ec_t':NFM_ec_t(),'NFM_ec_dt':NFM_ec_dt(),'NFM_ec_dtscaled':NFM_ec_dtscaled(),'NFM_ev_t':NFM_ev_t(),'NFM_ev_ec_t_um_us':NFM_ev_ec_t_um_us()}
-    nfm_func=nfm_funcs[config['nfm_func']] # dont change to nfn_func_name
+    nfm_func = modules.gnn.nfm_gen.nfm_funcs[config['nfm_func']] 
     edge_blocking = config['edge_blocking']
-    solve_select = config['solve_select']# only solvable worlds (so best achievable performance is 100%)
+    solve_select = config['solve_select'] # only solvable worlds (so best achievable performance is 100%)
     reject_u_duplicates = False
 
-    #databank_full, register_full, solvable = LoadData(edge_blocking = True)
     env_all_train, hashint2env, env2hashint, env2hashstr = GetWorldSet(state_repr, state_enc, U=Uselected, E=Eselected, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func, var_targets=var_targets, remove_paths=remove_paths)
     if apply_wrappers:
         for i in range(len(env_all_train)):
-            #env_all_train[i]=PPO_ObsDictWrapper(env_all_train[i], max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges)        
             env_all_train[i]=PPO_ObsFlatWrapper(env_all_train[i], max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges)        
             env_all_train[i]=PPO_ActWrapper(env_all_train[i])        
     super_env = SuperEnv(env_all_train, hashint2env, max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges)
-    #SimulateInteractiveMode(super_env)
     return super_env, env_all_train
 
 def CreateEnv(world_name, max_nodes=9, max_edges=300, nfm_func_name = 'NFM_ev_ec_t_um_us', var_targets=None, remove_world_pool=False, apply_wrappers=True, obs_mask='None', obs_rate=1):
-    #world_name='Manhattan3x3_WalkAround'
     state_repr='etUte0U0'
     state_enc='nfm'
-    #nfm_func_name = 'NFM_ev_ec_t_um_us'
     edge_blocking = True
-    #remove_world_pool = False
     env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
-    env.redefine_nfm(nfm_funcs[nfm_func_name])
+    env.redefine_nfm(modules.gnn.nfm_gen.nfm_funcs[nfm_func_name])
     env.capture_on_edges = edge_blocking
     if remove_world_pool:
         env._remove_world_pool()
-    #SimulateInteractiveMode(env,filesave_with_time_suffix=False)
-    #MAX_NODES=9
     if var_targets is not None:
         env = VarTargetWrapper(env, var_targets)
     if apply_wrappers:
@@ -90,7 +65,6 @@ def check_custom_position_probs(env,ppo_policy,hashint=None,entry=None,targetnod
     p = max_nodes - env.sp.V
     nfm = nn.functional.pad(nfm,(0,0,0,p))
     print('state:',state,end='')
-    #print(nfm)
     W = nn.functional.pad(env.sp.W,(0,p,0,p))
     obs = torch.cat((nfm, W, torch.index_select(W, 1, torch.tensor(epath[-1]))),1)#.to(device)
     reachable=np.zeros(env.sp.V).astype(np.bool)
@@ -156,7 +130,6 @@ def evaluate_ppo(logdir, info=False, config=None, env=None, eval_subdir='.', n_e
         if len(env)==0: return 0,0,0,0
         for i,e in enumerate(tqdm.tqdm(env)):
             saved_model = MaskablePPO.load(logdir+"/saved_models/model_best")
-            #saved_policy = s2v_ActorCriticPolicy.load(logdir+"/saved_models/policy_last")
             if config['qnet']=='s2v':
                 saved_policy_deployable=DeployablePPOPolicy(e, saved_model.policy)
             elif config['qnet']=='gat2':
@@ -173,7 +146,7 @@ def evaluate_ppo(logdir, info=False, config=None, env=None, eval_subdir='.', n_e
             S+=solves
 
     else:
-    # assume env_all is a superenv
+        # assume env_all is a superenv
         full_eval_list = [i for i in range(n_eval)]
         plot_eval_list = [i for i in range(30)]
         saved_policy = s2v_ActorCriticPolicy.load(logdir+"/saved_models/policy_last")
@@ -227,8 +200,8 @@ def evaluate_lstm_ppo(logdir, info=False, config=None, env=None, ppo_policy=None
             R+=returns 
             S+=solves
     else:
-        assert False
         # assume env_all is a superenv
+        assert False
     
     OF = open(evaldir+'/Full_result.txt', 'w')
     def printing(text):

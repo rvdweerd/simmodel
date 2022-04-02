@@ -13,35 +13,35 @@ from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsFlatWrapper
 torch.set_num_threads(1) # Max #threads for torch to avoid inefficient util of cpu cores.
 
 
-def TestSavedModel(config, hp, tp):
-    #env=GetCustomWorld(WORLD_NAME, make_reflexive=MAKE_REFLEXIVE, state_repr=STATE_REPR, state_enc='tensors')
-    #world_name=['Manhattan5x5_FixedEscapeInit',25,105]
-    #world_name=['Manhattan5x5_VariableEscapeInit',25,105]
-    #world_name=['NWB_test_VariableEscapeInit',975,3000]
-    world_name=['Manhattan5x5_FixedEscapeInit',975,3000]
-    obs_mask='prob_per_u'
-    obs_rate=.5
-    env = CreateEnv(world_name[0], max_nodes=world_name[1], max_edges = world_name[2], nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=None, apply_wrappers=True, obs_mask=obs_mask, obs_rate=obs_rate)
-    hp.max_possible_nodes = env.max_possible_num_nodes
-    hp.max_possible_edges = env.max_possible_num_edges
-    def envf():
-        return env
-    env_ = SyncVectorEnv([envf])
-    #env_ = make_custom(world_name, num_envs=1, asynchronous=False)
-    assert  os.path.exists(tp['base_checkpoint_path']) 
-    ppo_model, ppo_optimizer, max_checkpoint_iteration, stop_conditions = start_or_resume_from_checkpoint(env_, config, hp, tp)
+# def TestSavedModel(config, hp, tp):
+#     #env=GetCustomWorld(WORLD_NAME, make_reflexive=MAKE_REFLEXIVE, state_repr=STATE_REPR, state_enc='tensors')
+#     #world_name=['Manhattan5x5_FixedEscapeInit',25,105]
+#     #world_name=['Manhattan5x5_VariableEscapeInit',25,105]
+#     #world_name=['NWB_test_VariableEscapeInit',975,3000]
+#     world_name=['Manhattan5x5_FixedEscapeInit',975,3000]
+#     obs_mask='prob_per_u'
+#     obs_rate=.5
+#     env = CreateEnv(world_name[0], max_nodes=world_name[1], max_edges = world_name[2], nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=None, apply_wrappers=True, obs_mask=obs_mask, obs_rate=obs_rate)
+#     hp.max_possible_nodes = env.max_possible_num_nodes
+#     hp.max_possible_edges = env.max_possible_num_edges
+#     def envf():
+#         return env
+#     env_ = SyncVectorEnv([envf])
+#     #env_ = make_custom(world_name, num_envs=1, asynchronous=False)
+#     assert  os.path.exists(tp['base_checkpoint_path']) 
+#     ppo_model, ppo_optimizer, max_checkpoint_iteration, stop_conditions = start_or_resume_from_checkpoint(env_, config, hp, tp)
     
-    #env=env_.envs[0]
-    policy = LSTM_GNN_PPO_Policy(env, ppo_model, deterministic=tp['eval_deterministic'])
-    while True:
-        entries=None#[5012,218,3903]
-        #demo_env = random.choice(evalenv)
-        a = SimulateAutomaticMode_PPO(env, policy, t_suffix=False, entries=entries)
-        if a == 'Q': break
+#     #env=env_.envs[0]
+#     policy = LSTM_GNN_PPO_Policy(env, ppo_model, deterministic=tp['eval_deterministic'])
+#     while True:
+#         entries=None#[5012,218,3903]
+#         #demo_env = random.choice(evalenv)
+#         a = SimulateAutomaticMode_PPO(env, policy, t_suffix=False, entries=entries)
+#         if a == 'Q': break
     
-    #lengths, returns, captures, solves = EvaluatePolicy(env, policy  , env.world_pool*SAMPLE_MULTIPLIER, print_runs=False, save_plots=False, logdir=exp_rootdir)    
-    #plotlist = GetFullCoverageSample(returns, env.world_pool*SAMPLE_MULTIPLIER, bins=10, n=10)
-    #EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=exp_rootdir)
+#     #lengths, returns, captures, solves = EvaluatePolicy(env, policy  , env.world_pool*SAMPLE_MULTIPLIER, print_runs=False, save_plots=False, logdir=exp_rootdir)    
+#     #plotlist = GetFullCoverageSample(returns, env.world_pool*SAMPLE_MULTIPLIER, bins=10, n=10)
+#     #EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=exp_rootdir)
 
 def main(args):
     config, hp, tp = GetConfigs(args)   

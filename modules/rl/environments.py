@@ -1,22 +1,15 @@
-#from os import stat_result
-from typing import List, Optional
-
-#from rdflib import Graph
+from typing import List
 import modules.sim.simdata_utils as su
 import random 
-#import time
-from modules.rl.rl_plotting import PlotAgentsOnGraph, PlotAgentsOnGraph_, PlotEPathOnGraph_, PlotEUPathsOnGraph_
+from modules.rl.rl_plotting import PlotAgentsOnGraph_, PlotEPathOnGraph_, PlotEUPathsOnGraph_
 import numpy as np
-#import matplotlib.pyplot as plt
 import torch
 import gym
 from gym import spaces
 from gym import register
-import copy
 import networkx as nx
-from modules.gnn.nfm_gen import NFM_ec_t, NFM_ev_t, NFM_ev_ec_t, NFM_ec_dt
+import modules.gnn.nfm_gen
 from torch_geometric.utils import dense_to_sparse
-import torch_geometric as pyg
 
 def is_edge_crossing(old_Upositions, new_Upositions, prev_node, next_node):
     if prev_node in new_Upositions and next_node in old_Upositions:
@@ -70,7 +63,7 @@ class GraphWorld(gym.Env):
 
         # Define NFM: Node Feature Matrix, (VxF) with V number of nodes, F number of features
         self.nodescores, self.scaled_nodescores, self.min_target_distances = su.GetNodeScores(self.sp, self.neighbors)
-        self.nfm_calculator = NFM_ev_ec_t()
+        self.nfm_calculator = modules.gnn.nfm_gen.NFM_ev_ec_t() # most basic by default, can be changed with redefine_nfm
         if self.state_encoding=='nfm':
             self.nfm_calculator.init(self)
         self.u_observable=[True]*self.sp.U
@@ -441,6 +434,7 @@ class GraphWorld(gym.Env):
             reward=-2.
             info['Misc']='action_out_of_bounds'
             done=False
+            print('env.step() ======> Warning: action out of bounds <======')
         else:          
             next_node = self.neighbors[self.state[0]][action_idx]
             reward = -1.
@@ -490,18 +484,7 @@ class GraphWorld(gym.Env):
         if self.state_encoding=='nfm':
             self.nfm_calculator.update(self)
 
-        # Return s',r',done,info (new state in appropriate form)
         self._refresh_obs()
-        # if self.state_representation == 'etUt':
-        #     self.obs = self._encode(self.state)#, reward, done, info
-        # elif self.state_representation == 'et':
-        #     self.obs = self._encode((self.state[0],))#, reward, done, info
-        # elif self.state_representation == 'etUte0U0':
-        #     self.obs = self._encode(self.state+self.state0)#, reward, done, info
-        # elif self.state_representation == 'ete0U0':
-        #     self.obs = self._encode(tuple([self.state[0]])+self.state0)#, reward, done, info
-        # else:
-        #     assert False
         return self.obs, reward, done, info
 
     def observation(self, obs=None):
@@ -510,15 +493,13 @@ class GraphWorld(gym.Env):
         else:
             return self.obs
 
-    def render(self, mode=None, fname=None, t_suffix=True, size=None):#file_name=None):
+    def render(self, mode=None, fname=None, t_suffix=True, size=None):
         e = self.state[0]
         p = self.state[1:]
-        if fname == None:
-            #file_name=self.render_fileprefix+'_t='+str(self.global_t)
-            file_name=None
-        elif t_suffix:
+        if t_suffix:
             file_name = fname+'_t='+str(self.global_t)
-        else: file_name = fname
+        else: 
+            file_name = fname
         if size == None:
             if self.sp.V < 1:
                 size='large'
@@ -529,12 +510,10 @@ class GraphWorld(gym.Env):
     
     def render_epath(self, fname=None, t_suffix=True, size=None):
         p = self.state[1:]
-        if fname == None:
-            #file_name=self.render_fileprefix+'_t='+str(self.global_t)
-            file_name=None
-        elif t_suffix:
+        if t_suffix:
             file_name = fname+'_t='+str(self.global_t)
-        else: file_name = fname
+        else: 
+            file_name = fname
         if size == None:
             if self.sp.V < 1:
                 size='large'
@@ -544,12 +523,10 @@ class GraphWorld(gym.Env):
         return plot
 
     def render_eupaths(self, mode=None, fname=None, t_suffix=True, size=None, last_step_only=False):
-        if fname == None:
-            #file_name=self.render_fileprefix+'_t='+str(self.global_t)
-            file_name=None
-        elif t_suffix:
+        if t_suffix:
             file_name = fname+'_t='+str(self.global_t)
-        else: file_name = fname
+        else: 
+            file_name = fname
         if size == None:
             if self.sp.V < 1:
                 size='large'
@@ -559,29 +536,15 @@ class GraphWorld(gym.Env):
         plot = PlotEUPathsOnGraph_(self.sp, self.e_path, self.u_paths_taken, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes), done=done, size=size, last_step_only=last_step_only, u_visible=self.u_observable)
         return plot
 
-
-
 register(
     id='GraphWorld-v0',
     entry_point='modules.rl.environments:GraphWorld'
 )
 
-# class VariableTargetGraphWorld(GraphWorld):
-#     def __init__(self, config, optimization_method='static', fixed_initial_positions=None, state_representation='etUt', state_encoding='nodes', target_range=[1,1]):
-#         self.min_num_targets=target_range[0]
-#         self.max_num_targets=target_range[1]
-#         super(VariableTargetGraphWorld,self).__init__(config, optimization_method='static', fixed_initial_positions=None, state_representation='etUt', state_encoding='nodes')
-#     def reset(self, entry=None):
-#         super(VariableTargetGraphWorld, self).reset(entry)
-#         num_targets = random.randint(self.min_num_targets,self.max_num_targets)
-#         pool = set(range(self.sp.V))
-#         pool.remove(self.state[0])
-#         assert num_targets <= len(pool)
-#         new_targets = np.random.choice(list(pool),num_targets,replace=False)
-#         self.redefine_goal_nodes(new_targets)
-
 class SuperEnv(gym.Env):
+    # Class that can contain multiple environments, chooses one at random at each reset
     def __init__(self, all_env, hashint2env, max_possible_num_nodes = None, max_possible_num_edges = None, probs=None):
+        # all_env: list of environments to be added to the SuperEnv
         super(SuperEnv,self).__init__()
         self.hashint2env = hashint2env
         if max_possible_num_nodes == None:
@@ -619,13 +582,10 @@ class SuperEnv(gym.Env):
 
     def reset(self, hashint=None, entry=None):
         if hashint == None:
-            #self.current_env_nr = random.randint(0, self.num_env-1)
-            #self.current_env_nr = int(np.random.choice(self.num_env, p=self.probs))
             self.current_env_nr = int(self.rng.choice(self.num_env, p=self.probs))
         else:
             self.current_env_nr = self.hashint2env[hashint]
         self.env = self.all_env[self.current_env_nr]
-        #obs = self.env.reset(entry=entry)
         obs = self.env.reset(entry=entry)
 
         self._updateGraphLevelData()
@@ -651,7 +611,7 @@ class SuperEnv(gym.Env):
         return self.env.render_eupaths(mode, fname, t_suffix, size, last_step_only)
 
     def action_masks(self):
-        m = self.env.action_masks()# + [False] * (self.max_num_nodes - self.sp.V)
+        m = self.env.action_masks()
         return m
 
     def observation(self, obs):
