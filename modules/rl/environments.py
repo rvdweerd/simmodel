@@ -188,6 +188,7 @@ class GraphWorld(gym.Env):
         self.state                  = ()   # current internal state in node labels: (e,U1,U2,...)
         self.global_t               = 0
         self.local_t                = 0
+        self.u_observable=[True]*self.sp.U
         self.observation_space = spaces.Box(0., self.sp.U, shape=(self.state_encoding_dim,), dtype=np.float32)
         self.action_space = spaces.Discrete(self.max_outdegree)
         if 'dt' in self.nfm_calculator.name:
@@ -333,6 +334,7 @@ class GraphWorld(gym.Env):
         self.u_paths_taken = [ [] for i in range(self.sp.U)]
         self.state_encoding_dim, self.state_chunks, self.state_len = su.GetStateEncodingDimension(self.state_representation, self.sp.V, self.sp.U)      
         self.world_pool = self.all_worlds
+        self.u_observable=[True]*self.sp.U
         self.reset(self.current_entry)
 
     def reset(self, entry=None):

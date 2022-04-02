@@ -209,6 +209,7 @@ def GetWorldSet(state_repr = 'et', state_enc  = 'tensors', U=[1,2,3], E=[i for i
     prob_list=[]
     for u in U:
         env0.sp.U = u
+        env0.u_observable=[True]*env0.sp.U
         for e in E:
             prob_counter=0
             for W_, hashint, hashstr in register_full[e]:
@@ -221,6 +222,7 @@ def GetWorldSet(state_repr = 'et', state_enc  = 'tensors', U=[1,2,3], E=[i for i
                         assert False
                     u_=1
                     env0.sp.U = u_
+                    env0.u_observable=[True]*env0.sp.U
                     remove_paths_local=True
                 if hashint not in databank_full['U='+str(u_)]:
                     assert False
