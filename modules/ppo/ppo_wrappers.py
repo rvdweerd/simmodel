@@ -74,7 +74,7 @@ class PPO_ObsFlatWrapper(ObservationWrapper):
         super().__init__(env)
         assert max_possible_num_nodes >= self.sp.V
         assert obs_mask in ['None','freq','prob','prob_per_u']
-        assert (obs_rate >=0 and obs_rate <=1) if obs_mask in ['prob','prob_per_u'] else (obs_rate >1e-2 and obs_rate <=1)
+        assert (obs_rate >=0 and obs_rate <=1) if obs_mask in ['prob','prob_per_u','None'] else (obs_rate >1e-2 and obs_rate <=1)
         self.obs_mask = obs_mask  # Type of observation masking of pursuit units
         self.obs_rate = int(1/obs_rate) if obs_mask=='freq' else obs_rate  # If observations are masked, either frequency (mask every n) or probability (mask with probability p)
         self.max_possible_num_nodes = max_possible_num_nodes

@@ -30,6 +30,7 @@ def main(args):
 
         
         WriteTrainParamsToFile(config,hp,tp)
+        trainfunc = train_model2 if config['lstm_type'] == 'FE' else train_model
         for seed in config['seedrange']:
             seed_everything(seed)
             train_env.seed(seed)
@@ -41,7 +42,7 @@ def main(args):
 
             ppo_model, ppo_optimizer, iteration, stop_conditions = start_or_resume_from_checkpoint(train_env, config, hp, tp)
             if seed == config['seed0']: WriteModelParamsToFile(config, ppo_model)
-            score = train_model(train_env, ppo_model, ppo_optimizer, iteration, stop_conditions, hp, tp)
+            score = trainfunc(train_env, ppo_model, ppo_optimizer, iteration, stop_conditions, hp, tp)
 
     if config['eval']:
         train_env = make_custom(config, num_envs=1, asynchronous=tp['asynchronous_environment'])
@@ -66,7 +67,7 @@ def main(args):
             #'Manhattan5x5_DuplicateSetB':[25,300],
             #'Manhattan3x3_WalkAround':[9,300],
             #'MetroU3_e1t31_FixedEscapeInit':[33, 300],
-            #'full_solvable_3x3subs':[9,33],
+            # 'full_solvable_3x3subs':[9,33],
             'Manhattan5x5_FixedEscapeInit':[25,105],
             'Manhattan5x5_VariableEscapeInit':[25,105],
             # 'MetroU3_e17tborder_FixedEscapeInit':[33,300],
@@ -152,7 +153,7 @@ if __name__ == '__main__':
     parser.add_argument('--obs_mask', default='None', type=str, help='U obervation masking type', choices=['None','freq','prob','prob_per_u'])
     parser.add_argument('--obs_rate', default=1.0, type=float)
     parser.add_argument('--emb_dim', default=64, type=int)
-    parser.add_argument('--lstm_type', default='shared-noncat', type=str, choices=['None','shared-concat','shared-noncat','separate-noncat'])
+    parser.add_argument('--lstm_type', default='shared-noncat', type=str, choices=['None','shared-concat','shared-noncat','separate-noncat','FE'])
     parser.add_argument('--lstm_hdim', default=64, type=int)
     parser.add_argument('--lstm_layers', default=1, type=int)
     #parser.add_argument('--lstm_dropout', default=0.0, type=float)
