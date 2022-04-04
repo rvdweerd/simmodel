@@ -83,7 +83,7 @@ def main(args):
         #obs_mask='None'
         #obs_rate=1.
         obs_mask='prob_per_u'
-        obs_rate=.8
+        obs_rate=.6
         
         for world_name in world_dict.keys():
             evalName=world_name+'_obs'+obs_mask

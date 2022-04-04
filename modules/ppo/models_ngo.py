@@ -43,6 +43,12 @@ class MaskablePPOPolicy_shared_lstm_concat(nn.Module):
         #print(self)
         #self.numTrainableParameters()
 
+    def forward(self, features, terminal=None, selector=None):
+        return self.PI(features, terminal, selector), self.V(features, terminal, selector)
+
+    def get_values(self, features, terminal=None, selector=None):
+        return self.V(features, terminal, selector)
+
     def numTrainableParameters(self):
         ps=""
         ps+=self.description+'\n'
@@ -74,6 +80,12 @@ class MaskablePPOPolicy_shared_lstm(nn.Module):
         #print(self)
         #self.numTrainableParameters()
 
+    def forward(self, features, terminal=None, selector=None):
+        return self.PI(features, terminal, selector), self.V(features, terminal, selector)
+
+    def get_values(self, features, terminal=None, selector=None):
+        return self.V(features, terminal, selector)
+
     def numTrainableParameters(self):
         ps=""
         ps+=self.description+'\n'
@@ -104,7 +116,13 @@ class MaskablePPOPolicy(nn.Module):
         self.V  = Critic(state_dim,hp)
         #print(self)
         #self.numTrainableParameters()
-    
+
+    def forward(self, features, terminal=None, selector=None):
+        return self.PI(features, terminal, selector), self.V(features, terminal, selector)
+
+    def get_values(self, features, terminal=None, selector=None):
+        return self.V(features, terminal, selector)
+
     def numTrainableParameters(self):
         ps=""
         ps+=self.description+'\n'
@@ -133,7 +151,13 @@ class MaskablePPOPolicy_FE_LSTM(nn.Module):
         self.V  = Critic(state_dim,hp)
         #print(self)
         #self.numTrainableParameters()
-    
+
+    def forward(self, features, terminal=None, selector=None):
+        return self.PI(features, terminal, selector), self.V(features, terminal, selector)
+
+    def get_values(self, features, terminal=None, selector=None):
+        return self.V(features, terminal, selector)
+
     def numTrainableParameters(self):
         ps=""
         ps+=self.description+'\n'
@@ -147,9 +171,7 @@ class MaskablePPOPolicy_FE_LSTM(nn.Module):
         ps+='------------------------------------------'
         assert total == sum(p.numel() for p in self.parameters() if p.requires_grad)
         return total, ps
-
-
-   
+  
 class FeatureExtractor(nn.Module):
     def __init__(self, state_dim, hp):
         super().__init__()
@@ -263,7 +285,7 @@ class FeatureExtractor_LSTM(nn.Module):
 
         nfm_to_lstm = state[:,:,:(self.node_dim*self.hp.max_possible_nodes)].reshape(seq_len,-1,self.node_dim)
         assert nfm_to_lstm.shape[1] == self.hp.max_possible_nodes * batch_size
-        full_output, self.hidden_cell = self.lstm(nfm_to_lstm, self.hidden_cell)
+        full_output, self.hidden_cell = self.lstm(nfm_to_lstm, self.hidden_cell) # hidden cell defaults to zero tensors if None
         full_output = full_output.reshape(seq_len,batch_size,-1)
         assert full_output.shape[2] == self.hp.max_possible_nodes * self.hidden_size
         state = torch.cat((full_output, state[:,:,(self.node_dim*self.hp.max_possible_nodes):]), dim=2)
@@ -300,7 +322,6 @@ class FeatureExtractor_LSTM(nn.Module):
         features = torch.cat((mu_raw, decoupled_batch[:,None], reachable_nodes_tensor[:,None], num_nodes[:,None]), dim=1)
         
         return features.reshape(seq_len, nodes_in_batch // seq_len, self.emb_dim + 3), nodes_in_batch, valid_entries_idx, num_nodes
-
 
 class Actor(nn.Module):
     def __init__(self, state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev=None, hp=None):

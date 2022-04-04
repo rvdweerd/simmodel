@@ -29,7 +29,7 @@ import modules.gnn.nfm_gen
 # from modules.sim.simdata_utils import SimulateAutomaticMode_PPO
 # from modules.rl.rl_utils import GetFullCoverageSample
 from modules.gnn.construct_trainsets import ConstructTrainSet
-from modules.ppo.models_ngo import MaskablePPOPolicy, MaskablePPOPolicy_shared_lstm, MaskablePPOPolicy_shared_lstm_concat, MaskablePPOPolicy_FE_LSTM
+from modules.ppo.models_ngo import MaskablePPOPolicy, MaskablePPOPolicy_shared_lstm, MaskablePPOPolicy_shared_lstm_concat, MaskablePPOPolicy_FE_LSTM, MaskablePPOPolicy_FE_embLSTM
 # This code is based on 
 # https://gitlab.com/ngoodger/ppo_lstm/-/blob/master/recurrent_ppo.ipynb
 # Heavily adapted to work with customized environment and GNNs (trainable with varying graph sizes in the trainset)
@@ -361,6 +361,8 @@ def start_or_resume_from_checkpoint(env, config, hp, tp):
         ppo_algo = MaskablePPOPolicy_shared_lstm
     elif config['lstm_type'] == 'FE':
         ppo_algo = MaskablePPOPolicy_FE_LSTM
+    elif config['lstm_type'] == 'embFE':
+        ppo_algo = MaskablePPOPolicy_FE_embLSTM        
     else:
         assert False
 
@@ -492,15 +494,14 @@ def gather_trajectories(input_data,hp):
             trajectory_data["critic_cell_states"].append(  ppo_model.V.hidden_cell[1].clone().squeeze(0).reshape(batch_size,-1).cpu() )
             
             # Choose next action 
-            value = ppo_model.V(features, terminal.to(gather_device), selector=selector.flatten().to(torch.bool))
-            #trajectory_data["values"].append( value.squeeze().cpu())
-            trajectory_data["values"].append( value.reshape(-1).cpu())
-            action_dist = ppo_model.PI(features, terminal.to(gather_device), selector=selector.flatten().to(torch.bool))
+            action_dist, value = ppo_model(features, terminal.to(gather_device), selector=selector.flatten().to(torch.bool))
             action = action_dist.sample().reshape(hp.parallel_rollouts, -1)
             if not ppo_model.continuous_action_space:
                 action = action.squeeze(1)
             trajectory_data["actions"].append(action.cpu())
             trajectory_data["action_probabilities"].append(action_dist.log_prob(action).squeeze(0).cpu())
+            #value = ppo_model.V(features, terminal.to(gather_device), selector=selector.flatten().to(torch.bool))
+            trajectory_data["values"].append( value.reshape(-1).cpu())
 
             # Step environment 
             action_np = action.cpu().numpy()
@@ -521,7 +522,7 @@ def gather_trajectories(input_data,hp):
         ppo_model.V.hidden_cell[0][:,terminal_dense,:] = 0.
         ppo_model.V.hidden_cell[1][:,terminal_dense,:] = 0.
 
-        value = ppo_model.V(features.to(gather_device), terminal.to(gather_device))
+        value = ppo_model.get_values(features.to(gather_device), terminal.to(gather_device))
         # Future value for terminal episodes is 0.
         #trajectory_data["values"].append(value.squeeze().cpu() * (1 - terminal))
         trajectory_data["values"].append(value.reshape(-1).cpu() * (1 - terminal))
@@ -586,15 +587,15 @@ def gather_trajectories2(input_data,hp):
             trajectory_data["FE_cell_states"].append(   ppo_model.FE.hidden_cell[1].clone().squeeze(0).reshape(bsize,-1).cpu() )
             
             # Choose next action 
-            value = ppo_model.V(features, terminal.to(gather_device), selector=selector.flatten().to(torch.bool))
-            #trajectory_data["values"].append( value.squeeze().cpu())
-            trajectory_data["values"].append( value.reshape(-1).cpu())
-            action_dist = ppo_model.PI(features, terminal.to(gather_device), selector=selector.flatten().to(torch.bool))
+            action_dist, value = ppo_model(features, terminal.to(gather_device), selector=selector.flatten().to(torch.bool))
             action = action_dist.sample().reshape(hp.parallel_rollouts, -1)
             if not ppo_model.continuous_action_space:
                 action = action.squeeze(1)
             trajectory_data["actions"].append(action.cpu())
             trajectory_data["action_probabilities"].append(action_dist.log_prob(action).squeeze(0).cpu())
+            #value = ppo_model.V(features, terminal.to(gather_device), selector=selector.flatten().to(torch.bool))
+            #trajectory_data["values"].append( value.squeeze().cpu())
+            trajectory_data["values"].append( value.reshape(-1).cpu())
 
             # Step environment 
             action_np = action.cpu().numpy()
@@ -613,7 +614,7 @@ def gather_trajectories2(input_data,hp):
         ppo_model.FE.hidden_cell[1][:,terminal_dense,:] = 0.
         features, nodes_in_batch, valid_entries_idx, num_nodes = ppo_model.FE(state.unsqueeze(0).to(gather_device))        
         
-        value = ppo_model.V(features.to(gather_device), terminal.to(gather_device))
+        value = ppo_model.get_value(features.to(gather_device), terminal.to(gather_device))
         # Future value for terminal episodes is 0.
         #trajectory_data["values"].append(value.squeeze().cpu() * (1 - terminal))
         trajectory_data["values"].append(value.reshape(-1).cpu() * (1 - terminal))
@@ -752,7 +753,7 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions, hp, t
                 features, nodes_in_batch, valid_entries_idx, num_nodes = ppo_model.FE(batch.states)
 
                 selector_bool = batch.selector[0].clone().flatten().to(torch.bool)
-                action_dist = ppo_model.PI(features, selector=selector_bool)
+                action_dist, values = ppo_model(features, selector=selector_bool)
                 # Action dist runs on cpu as a workaround to CUDA illegal memory access.
                 action_probabilities = action_dist.log_prob(batch.actions.to("cpu")).to(tp['train_device'])
                 
@@ -768,7 +769,7 @@ def train_model(env, ppo_model, ppo_optimizer, iteration, stop_conditions, hp, t
                 actor_loss = -torch.mean(torch.min(surrogate_loss_0, surrogate_loss_1)) - torch.mean(hp.entropy_factor * surrogate_loss_2)
                 
                 # Critic loss
-                values = ppo_model.V(features, selector=selector_bool)
+                #values = ppo_model.V(features, selector=selector_bool)
                 critic_loss = F.mse_loss(batch.discounted_returns, values.squeeze(-1))
                 
                 vf_coef = 0.5 # basis: paper & sb3 implementation
@@ -875,7 +876,7 @@ def train_model2(env, ppo_model, ppo_optimizer, iteration, stop_conditions, hp, 
                 features, nodes_in_batch, valid_entries_idx, num_nodes = ppo_model.FE(batch.states)
 
                 selector_bool = batch.selector[0].clone().flatten().to(torch.bool)
-                action_dist = ppo_model.PI(features, selector=selector_bool)
+                action_dist, values = ppo_model(features, selector=selector_bool)
                 # Action dist runs on cpu as a workaround to CUDA illegal memory access.
                 action_probabilities = action_dist.log_prob(batch.actions.to("cpu")).to(tp['train_device'])
                 
@@ -891,7 +892,7 @@ def train_model2(env, ppo_model, ppo_optimizer, iteration, stop_conditions, hp, 
                 actor_loss = -torch.mean(torch.min(surrogate_loss_0, surrogate_loss_1)) - torch.mean(hp.entropy_factor * surrogate_loss_2)
                 
                 # Critic loss
-                values = ppo_model.V(features, selector=selector_bool)
+                #values = ppo_model.V(features, selector=selector_bool)
                 critic_loss = F.mse_loss(batch.discounted_returns, values.squeeze(-1))
                 
                 vf_coef = 0.5 # basis: paper & sb3 implementation

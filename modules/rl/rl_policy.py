@@ -387,6 +387,7 @@ class LSTM_GNN_PPO_Policy(Policy):
 
     def reset_hidden_states(self, env=None):
         #self.lstm_hidden = (torch.zeros([1, 1, self.lstm_hidden_dim], dtype=torch.float), torch.zeros([1, 1, self.lstm_hidden_dim], dtype=torch.float))
+        self.FE.hidden_cell=None
         self.PI.hidden_cell=None
         self.V.hidden_cell=None
 

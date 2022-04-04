@@ -774,6 +774,7 @@ def SimulateAutomaticMode_PPO(env, ppo_policy, t_suffix=True, entries=None):
         entry=random.choice(entries)
     else: entry = None
     obs=env.reset(entry=entry)
+    ppo_policy.reset_hidden_states()
     print('Entry:',env.current_entry)
     
     done=False
