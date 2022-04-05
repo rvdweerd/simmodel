@@ -67,8 +67,8 @@ class EMB_LSTM(nn.Module):
     def __init__(self, state_dim, hp=None):
         super().__init__()
         #self.counter = 0
-        assert hp.lstm_on
-        self.lstm_on = hp.lstm_on
+        #assert hp.lstm_on
+        #self.lstm_on = hp.lstm_on
         self.hp = hp
         self.emb_dim = hp.emb_dim
         #self.action_dim = action_dim
@@ -305,7 +305,7 @@ class FeatureExtractor(nn.Module):
         state=state.reshape(-1,flatvecdim)
         pyg_list=[]
         num_nodes_list=[]
-        valid_entries_idx_list=[]
+        #valid_entries_idx_list=[]
         reachable_nodes_tensor=torch.tensor([]).to(device)
         
         for i in range(batch_size * seq_len):
@@ -315,13 +315,13 @@ class FeatureExtractor(nn.Module):
                 pygei
             ))
             num_nodes_list.append(num_nodes)
-            valid_entries_idx_list.append([i*max_nodes, i*max_nodes + num_nodes])
+            #valid_entries_idx_list.append([i*max_nodes, i*max_nodes + num_nodes])
             reachable_nodes_tensor = torch.cat((reachable_nodes_tensor, reachable_nodes.squeeze()))
         pyg_data = Batch.from_data_list(pyg_list)
         
         # Apply Graph Attention Net to obtain latent node representations mu
         mu_raw = self.gat(pyg_data.x, pyg_data.edge_index) # (num_nodes_in_batch, emb_dim)
-        valid_entries_idx = torch.tensor(valid_entries_idx_list, dtype=torch.int64)
+        #valid_entries_idx = torch.tensor(valid_entries_idx_list, dtype=torch.int64)
         nodes_in_batch = pyg_data.num_nodes
         num_nodes = torch.tensor(num_nodes_list + [0]*(nodes_in_batch-batch_size*seq_len), dtype=torch.float, device=device)
         
@@ -331,7 +331,7 @@ class FeatureExtractor(nn.Module):
         num_nodes = num_nodes[:splitval].repeat(seq_len)
         features = torch.cat((mu_raw, decoupled_batch[:,None], reachable_nodes_tensor[:,None], num_nodes[:,None]), dim=1)
         
-        return features.reshape(seq_len, nodes_in_batch // seq_len, self.emb_dim + 3), nodes_in_batch, valid_entries_idx, num_nodes
+        return features.reshape(seq_len, nodes_in_batch // seq_len, self.emb_dim + 3), nodes_in_batch, None, num_nodes
 
 class FeatureExtractor_LSTM(nn.Module):
     def __init__(self, state_dim, hp):

@@ -718,8 +718,8 @@ def gather_trajectories_EMB(input_data,hp):
 
             if first_pass: # initialize hidden states
                 ppo_model.LSTM.reset_init_state(batch_size*hp.max_possible_nodes, gather_device)
-                ppo_model.PI.reset_init_state(batch_size*hp.max_possible_nodes, gather_device)
-                ppo_model.V.reset_init_state(batch_size*hp.max_possible_nodes, gather_device)
+                #ppo_model.PI.reset_init_state(batch_size*hp.max_possible_nodes, gather_device)
+                #ppo_model.V.reset_init_state(batch_size*hp.max_possible_nodes, gather_device)
                 first_pass = False
             else: # reset hidden states of terminated states to zero
                 terminal_dense = torch.repeat_interleave(terminal.to(torch.bool), torch.ones(batch_size,dtype=torch.int64)*hp.max_possible_nodes, dim=0)
@@ -763,7 +763,7 @@ def gather_trajectories_EMB(input_data,hp):
         ppo_model.LSTM.hidden_cell[1][:,terminal_dense,:] = 0.        
 
         features_mem = ppo_model.LSTM(features,terminal.to(gather_device), selector=selector.flatten().to(torch.bool))
-        value = ppo_model.get_values(features.to(gather_device), terminal.to(gather_device))
+        value = ppo_model.get_values(features_mem.to(gather_device), terminal.to(gather_device))
         # Future value for terminal episodes is 0.
         #trajectory_data["values"].append(value.squeeze().cpu() * (1 - terminal))
         trajectory_data["values"].append(value.reshape(-1).cpu() * (1 - terminal))
