@@ -29,7 +29,7 @@ import modules.gnn.nfm_gen
 # from modules.sim.simdata_utils import SimulateAutomaticMode_PPO
 # from modules.rl.rl_utils import GetFullCoverageSample
 from modules.gnn.construct_trainsets import ConstructTrainSet
-from modules.ppo.models_ngo import MaskablePPOPolicy, MaskablePPOPolicy_EMB_LSTM, MaskablePPOPolicy_shared_lstm_concat, MaskablePPOPolicy_FE_LSTM
+from modules.ppo.models_ngo import MaskablePPOPolicy, MaskablePPOPolicy_CONCAT, MaskablePPOPolicy_EMB_LSTM, MaskablePPOPolicy_FE_LSTM
 # This code is based on 
 # https://gitlab.com/ngoodger/ppo_lstm/-/blob/master/recurrent_ppo.ipynb
 # Heavily adapted to work with customized environment and GNNs (trainable with varying graph sizes in the trainset)
@@ -403,8 +403,10 @@ def start_or_resume_from_checkpoint(env, config, hp, tp):
     
     obsv_dim, action_dim, continuous_action_space = get_env_space(env)
 #['None','shared-concat','shared-noncat','separate-concat','separate-noncat']
-    if config['lstm_type'] == 'None' or config['lstm_type'] == 'separate-noncat':
+    if config['lstm_type'] in ['None','Dual']:	
         ppo_algo = MaskablePPOPolicy
+    elif config['lstm_type'] == 'DualCC':
+        ppo_algo = MaskablePPOPolicy_CONCAT
     elif config['lstm_type'] == 'EMB':
         ppo_algo = MaskablePPOPolicy_EMB_LSTM
     elif config['lstm_type'] == 'FE':
