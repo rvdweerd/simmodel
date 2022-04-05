@@ -288,17 +288,17 @@ class FeatureExtractor_LSTM(nn.Module):
         full_output, self.hidden_cell = self.lstm(nfm_to_lstm, self.hidden_cell) # hidden cell defaults to zero tensors if None
         full_output = full_output.reshape(seq_len,batch_size,-1)
         assert full_output.shape[2] == self.hp.max_possible_nodes * self.hidden_size
-        state = torch.cat((full_output, state[:,:,(self.node_dim*self.hp.max_possible_nodes):]), dim=2)
+        state_mem = torch.cat((full_output, state[:,:,(self.node_dim*self.hp.max_possible_nodes):]), dim=2)
 
-        flatvecdim=state.shape[-1]
-        state=state.reshape(-1,flatvecdim)
+        flatvecdim=state_mem.shape[-1]
+        state_mem=state_mem.reshape(-1,flatvecdim)
         pyg_list=[]
         num_nodes_list=[]
         valid_entries_idx_list=[]
         reachable_nodes_tensor=torch.tensor([]).to(device)
         
         for i in range(batch_size * seq_len):
-            pygx, pygei, reachable_nodes, num_nodes, max_nodes, num_edges, max_edges, node_dim = self._deserialize(state[i])
+            pygx, pygei, reachable_nodes, num_nodes, max_nodes, num_edges, max_edges, node_dim = self._deserialize(state_mem[i])
                 
             pyg_list.append(Data(
                 pygx,

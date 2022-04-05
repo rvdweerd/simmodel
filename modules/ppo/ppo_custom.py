@@ -29,7 +29,7 @@ import modules.gnn.nfm_gen
 # from modules.sim.simdata_utils import SimulateAutomaticMode_PPO
 # from modules.rl.rl_utils import GetFullCoverageSample
 from modules.gnn.construct_trainsets import ConstructTrainSet
-from modules.ppo.models_ngo import MaskablePPOPolicy, MaskablePPOPolicy_shared_lstm, MaskablePPOPolicy_shared_lstm_concat, MaskablePPOPolicy_FE_LSTM, MaskablePPOPolicy_FE_embLSTM
+from modules.ppo.models_ngo import MaskablePPOPolicy, MaskablePPOPolicy_shared_lstm, MaskablePPOPolicy_shared_lstm_concat, MaskablePPOPolicy_FE_LSTM
 # This code is based on 
 # https://gitlab.com/ngoodger/ppo_lstm/-/blob/master/recurrent_ppo.ipynb
 # Heavily adapted to work with customized environment and GNNs (trainable with varying graph sizes in the trainset)
@@ -356,13 +356,13 @@ def start_or_resume_from_checkpoint(env, config, hp, tp):
     if config['lstm_type'] == 'None' or config['lstm_type'] == 'separate-noncat':
         ppo_algo = MaskablePPOPolicy
     elif config['lstm_type'] == 'shared-concat':
-        ppo_algo = MaskablePPOPolicy_shared_lstm_concat
+        assert False#ppo_algo = MaskablePPOPolicy_shared_lstm_concat
     elif config['lstm_type'] == 'shared-noncat':
         ppo_algo = MaskablePPOPolicy_shared_lstm
     elif config['lstm_type'] == 'FE':
         ppo_algo = MaskablePPOPolicy_FE_LSTM
     elif config['lstm_type'] == 'embFE':
-        ppo_algo = MaskablePPOPolicy_FE_embLSTM        
+        assert False#ppo_algo = MaskablePPOPolicy_FE_embLSTM        
     else:
         assert False
 
@@ -573,7 +573,11 @@ def gather_trajectories2(input_data,hp):
                 terminal_dense = torch.repeat_interleave(terminal.to(torch.bool), torch.ones(bsize,dtype=torch.int64)*hp.max_possible_nodes, dim=0)
                 ppo_model.FE.hidden_cell[0][:,terminal_dense,:] = 0.
                 ppo_model.FE.hidden_cell[1][:,terminal_dense,:] = 0.
-                
+
+            # Hidden cells appended before we run the lstm                
+            trajectory_data["FE_hidden_states"].append( ppo_model.FE.hidden_cell[0].clone().squeeze(0).reshape(bsize,-1).cpu() ) # (6,:)
+            trajectory_data["FE_cell_states"].append(   ppo_model.FE.hidden_cell[1].clone().squeeze(0).reshape(bsize,-1).cpu() )
+
             features, nodes_in_batch, valid_entries_idx, num_nodes = ppo_model.FE(state.unsqueeze(0).to(gather_device))
             
             selector=[]
@@ -583,8 +587,6 @@ def gather_trajectories2(input_data,hp):
             trajectory_data["selector"].append(selector.clone())
             batch_size=state.shape[0]
 
-            trajectory_data["FE_hidden_states"].append( ppo_model.FE.hidden_cell[0].clone().squeeze(0).reshape(bsize,-1).cpu() ) # (6,:)
-            trajectory_data["FE_cell_states"].append(   ppo_model.FE.hidden_cell[1].clone().squeeze(0).reshape(bsize,-1).cpu() )
             
             # Choose next action 
             action_dist, value = ppo_model(features, terminal.to(gather_device), selector=selector.flatten().to(torch.bool))
@@ -614,7 +616,7 @@ def gather_trajectories2(input_data,hp):
         ppo_model.FE.hidden_cell[1][:,terminal_dense,:] = 0.
         features, nodes_in_batch, valid_entries_idx, num_nodes = ppo_model.FE(state.unsqueeze(0).to(gather_device))        
         
-        value = ppo_model.get_value(features.to(gather_device), terminal.to(gather_device))
+        value = ppo_model.get_values(features.to(gather_device), terminal.to(gather_device))
         # Future value for terminal episodes is 0.
         #trajectory_data["values"].append(value.squeeze().cpu() * (1 - terminal))
         trajectory_data["values"].append(value.reshape(-1).cpu() * (1 - terminal))
@@ -939,23 +941,24 @@ def make_custom(config, num_envs=1, asynchronous=True, wrappers=None, **kwargs):
     Parameters
     """
     from gym.envs import make as make_
-    dirname = "./results/results_Phase3"
-    filename = dirname+"/"+config['train_on']+"_obs"+config['obs_mask']
-    if config['obs_mask'] != "None": filename += str(config['obs_rate'])
-    filename+=".bin"
-    try:
-        OF=open(filename, "rb")
-        OF.close()
-    except:
-        env,_ = ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset=config['train_on'])
-        pathlib.Path(dirname).mkdir(parents=True, exist_ok=True)
-        with open(filename, "wb") as f:
-            env = pickle.dump(env, f)
+    # dirname = "./results/results_Phase3"
+    # filename = dirname+"/"+config['train_on']+"_"+config['nfm_func']+"_obs"+config['obs_mask']
+    # if config['obs_mask'] != "None": filename += str(config['obs_rate'])
+    # filename+=".bin"
+    # try:
+    #     OF=open(filename, "rb")
+    #     OF.close()
+    # except:
+        # env,_ = ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset=config['train_on'])
+        # pathlib.Path(dirname).mkdir(parents=True, exist_ok=True)
+        # with open(filename, "wb") as f:
+        #     env = pickle.dump(env, f)
 
     def _make_env():
-        print('env func loading started...',end='')
-        with open(filename, "rb") as f:
-            env = pickle.load(f)  
+        #print('env func loading started...',end='')
+        #with open(filename, "rb") as f:
+        #    env = pickle.load(f)  
+        env,_ = ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset=config['train_on'])
 
         if wrappers is not None:
             if callable(wrappers):

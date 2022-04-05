@@ -69,7 +69,7 @@ def main(args):
             #'MetroU3_e1t31_FixedEscapeInit':[33, 300],
             # 'full_solvable_3x3subs':[9,33],
             'Manhattan5x5_FixedEscapeInit':[25,105],
-            'Manhattan5x5_VariableEscapeInit':[25,105],
+            #'Manhattan5x5_VariableEscapeInit':[25,105],
             # 'MetroU3_e17tborder_FixedEscapeInit':[33,300],
             # 'MetroU3_e17tborder_VariableEscapeInit':[33,300],
             # 'NWB_ROT_FixedEscapeInit':[2602,7300],
@@ -82,64 +82,64 @@ def main(args):
             }
         #obs_mask='None'
         #obs_rate=1.
-        obs_mask='prob_per_u'
-        obs_rate=.6
-        
-        for world_name in world_dict.keys():
-            evalName=world_name+'_obs'+obs_mask
-            if obs_mask != 'None': evalName += str(obs_rate)
-            if world_name == "full_solvable_3x3subs":
-                Etest=[0,1,2,3,4,5,6,7,8,9,10]
-                Utest=[1,2,3]
-                evalenv, _, _, _  = GetWorldSet('etUte0U0', 'nfm', U=Utest, E=Etest, edge_blocking=config['edge_blocking'], solve_select=config['solve_select'], reject_duplicates=False, nfm_func=modules.gnn.nfm_gen.nfm_funcs[config['nfm_func']], apply_wrappers=False, maxnodes=world_dict[world_name][0], maxedges=world_dict[world_name][1])
-                for i in range(len(evalenv)):
-                    evalenv[i]=PPO_ObsFlatWrapper(evalenv[i], max_possible_num_nodes=world_dict[world_name][0], max_possible_num_edges=world_dict[world_name][1], obs_mask=obs_mask, obs_rate=obs_rate)
-                    evalenv[i]=PPO_ActWrapper(evalenv[i])
-                env=evalenv[0]
-            else:
-                env = CreateEnv(world_name, max_nodes=world_dict[world_name][0], max_edges = world_dict[world_name][1], nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=None, apply_wrappers=True, obs_mask=obs_mask, obs_rate=obs_rate)
-                evalenv=[env]
-            hp.max_possible_nodes = world_dict[world_name][0]#env.max_possible_num_nodes
-            hp.max_possible_edges = world_dict[world_name][1]#env.max_possible_num_edges
-            def envf():
-                return env
-            env_ = SyncVectorEnv([envf])
+        #obs_mask='prob_per_u'
+        for obs_mask, obs_rate in zip(['None','prob_per_u','prob_per_u','prob_per_u'],[1.,.8,.6,.4]):
+        #for obs_mask, obs_rate in zip(['prob_per_u','prob_per_u'],[.6,.4]):
+            for world_name in world_dict.keys():
+                evalName=world_name+'_obs'+obs_mask
+                if obs_mask != 'None': evalName += str(obs_rate)
+                if world_name == "full_solvable_3x3subs":
+                    Etest=[0,1,2,3,4,5,6,7,8,9,10]
+                    Utest=[1,2,3]
+                    evalenv, _, _, _  = GetWorldSet('etUte0U0', 'nfm', U=Utest, E=Etest, edge_blocking=config['edge_blocking'], solve_select=config['solve_select'], reject_duplicates=False, nfm_func=modules.gnn.nfm_gen.nfm_funcs[config['nfm_func']], apply_wrappers=False, maxnodes=world_dict[world_name][0], maxedges=world_dict[world_name][1])
+                    for i in range(len(evalenv)):
+                        evalenv[i]=PPO_ObsFlatWrapper(evalenv[i], max_possible_num_nodes=world_dict[world_name][0], max_possible_num_edges=world_dict[world_name][1], obs_mask=obs_mask, obs_rate=obs_rate)
+                        evalenv[i]=PPO_ActWrapper(evalenv[i])
+                    env=evalenv[0]
+                else:
+                    env = CreateEnv(world_name, max_nodes=world_dict[world_name][0], max_edges = world_dict[world_name][1], nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=None, apply_wrappers=True, obs_mask=obs_mask, obs_rate=obs_rate)
+                    evalenv=[env]
+                hp.max_possible_nodes = world_dict[world_name][0]#env.max_possible_num_nodes
+                hp.max_possible_edges = world_dict[world_name][1]#env.max_possible_num_edges
+                def envf():
+                    return env
+                env_ = SyncVectorEnv([envf])
 
-            evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
-            for seed in config['seedrange']:
-                logdir_=config['logdir']+'/SEED'+str(seed)
-                tp["base_checkpoint_path"]=f"{logdir_}/checkpoints/"
-                try:
-                    assert os.path.exists(tp['base_checkpoint_path'])
-                except:
-                    continue
-                ppo_model, ppo_optimizer, max_checkpoint_iteration, stop_conditions = start_or_resume_from_checkpoint(env_, config, hp, tp)
-                ppo_policy = LSTM_GNN_PPO_Policy(env, ppo_model, deterministic=tp['eval_deterministic'])
+                evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
+                for seed in config['seedrange']:
+                    logdir_=config['logdir']+'/SEED'+str(seed)
+                    tp["base_checkpoint_path"]=f"{logdir_}/checkpoints/"
+                    try:
+                        assert os.path.exists(tp['base_checkpoint_path'])
+                    except:
+                        continue
+                    ppo_model, ppo_optimizer, max_checkpoint_iteration, stop_conditions = start_or_resume_from_checkpoint(env_, config, hp, tp)
+                    ppo_policy = LSTM_GNN_PPO_Policy(env, ppo_model, deterministic=tp['eval_deterministic'])
 
-                if config['demoruns']:
-                    while True:
-                        a = SimulateAutomaticMode_PPO(env, ppo_policy, t_suffix=False, entries=None)
-                        if a == 'Q': break
+                    if config['demoruns']:
+                        while True:
+                            a = SimulateAutomaticMode_PPO(env, ppo_policy, t_suffix=False, entries=None)
+                            if a == 'Q': break
 
-                result = evaluate_lstm_ppo(logdir=logdir_, config=config, env=evalenv, ppo_policy=ppo_policy, eval_subdir=evalName, max_num_nodes=world_dict[world_name][0])
-                num_unique_graphs, num_graph_instances, avg_return, success_rate = result
-                evalResults[evalName]['num_graphs.........'].append(num_unique_graphs)
-                evalResults[evalName]['num_graph_instances'].append(num_graph_instances)
-                evalResults[evalName]['avg_return.........'].append(avg_return)
-                evalResults[evalName]['success_rate.......'].append(success_rate)
+                    result = evaluate_lstm_ppo(logdir=logdir_, config=config, env=evalenv, ppo_policy=ppo_policy, eval_subdir=evalName, max_num_nodes=world_dict[world_name][0])
+                    num_unique_graphs, num_graph_instances, avg_return, success_rate = result
+                    evalResults[evalName]['num_graphs.........'].append(num_unique_graphs)
+                    evalResults[evalName]['num_graph_instances'].append(num_graph_instances)
+                    evalResults[evalName]['avg_return.........'].append(avg_return)
+                    evalResults[evalName]['success_rate.......'].append(success_rate)
 
-        for ename, results in evalResults.items():
-            OF = open(config['logdir']+'/Results_over_seeds_'+ename+'.txt', 'w')
-            def printing(text):
-                print(text)
-                OF.write(text + "\n")
-            np.set_printoptions(formatter={'float':"{0:0.3f}".format})
-            printing('Results over seeds for evaluation on '+ename+'\n')
-            for category,values in results.items():
-                printing(category)
-                printing('  avg over seeds: '+str(np.mean(values)))
-                printing('  std over seeds: '+str(np.std(values)))
-                printing('  per seed: '+str(np.array(values))+'\n')
+            for ename, results in evalResults.items():
+                OF = open(config['logdir']+'/Results_over_seeds_'+ename+'.txt', 'w')
+                def printing(text):
+                    print(text)
+                    OF.write(text + "\n")
+                np.set_printoptions(formatter={'float':"{0:0.3f}".format})
+                printing('Results over seeds for evaluation on '+ename+'\n')
+                for category,values in results.items():
+                    printing(category)
+                    printing('  avg over seeds: '+str(np.mean(values)))
+                    printing('  std over seeds: '+str(np.std(values)))
+                    printing('  per seed: '+str(np.array(values))+'\n')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)    
