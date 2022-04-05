@@ -30,7 +30,8 @@ def main(args):
 
         
         WriteTrainParamsToFile(config,hp,tp)
-        trainfunc = train_model2 if config['lstm_type'] == 'FE' else train_model
+        trainfuncmap={'FE':train_model_FE,'EMB':train_model_EMB,'None':train_model,'separate-noncat':train_model}
+        trainfunc = trainfuncmap[config['lstm_type']]
         for seed in config['seedrange']:
             seed_everything(seed)
             train_env.seed(seed)
@@ -153,7 +154,7 @@ if __name__ == '__main__':
     parser.add_argument('--obs_mask', default='None', type=str, help='U obervation masking type', choices=['None','freq','prob','prob_per_u'])
     parser.add_argument('--obs_rate', default=1.0, type=float)
     parser.add_argument('--emb_dim', default=64, type=int)
-    parser.add_argument('--lstm_type', default='shared-noncat', type=str, choices=['None','shared-concat','shared-noncat','separate-noncat','FE'])
+    parser.add_argument('--lstm_type', default='shared-noncat', type=str, choices=['None','EMB','separate-noncat','FE'])
     parser.add_argument('--lstm_hdim', default=64, type=int)
     parser.add_argument('--lstm_layers', default=1, type=int)
     #parser.add_argument('--lstm_dropout', default=0.0, type=float)

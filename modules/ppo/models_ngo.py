@@ -63,25 +63,85 @@ class MaskablePPOPolicy_shared_lstm_concat(nn.Module):
         assert total == sum(p.numel() for p in self.parameters() if p.requires_grad)
         return total, ps
 
-class MaskablePPOPolicy_shared_lstm(nn.Module):
+class EMB_LSTM(nn.Module):
+    def __init__(self, state_dim, hp=None):
+        super().__init__()
+        #self.counter = 0
+        assert hp.lstm_on
+        self.lstm_on = hp.lstm_on
+        self.hp = hp
+        self.emb_dim = hp.emb_dim
+        #self.action_dim = action_dim
+        self.hidden_size = hp.hidden_size
+        self.num_recurrent_layers = hp.recurrent_layers
+        assert self.emb_dim == self.hidden_size
+        self.lstm = nn.LSTM(self.emb_dim, self.emb_dim, num_layers = self.num_recurrent_layers)
+        self.hidden_cell = None
+             
+    def reset_init_state(self, batch_size, device):
+        self.hidden_cell = (torch.zeros(self.hp.recurrent_layers, batch_size, self.hidden_size).to(device),
+                            torch.zeros(self.hp.recurrent_layers, batch_size, self.hidden_size).to(device))
+        
+    def forward(self, features_raw, terminal=None, selector=None):
+        # features: (seq_len, num nodes in batch, feat_dim=emb_dim+3)
+        assert len(features_raw.shape)==3
+        seq_len = features_raw.shape[0]
+        max_nodes = self.hp.max_possible_nodes
+        num_nodes= features_raw.shape[1]
+        device = features_raw.device
+
+        mu_raw, batch, reachable, num_nodes_list_orig = torch.split(features_raw,[self.emb_dim,1,1,1],dim=2)
+        batch_size = int(batch.max()) + 1 
+        
+        #batch = batch.squeeze(-1).to(torch.int64) 
+        #reachable = reachable.squeeze(-1).bool() 
+
+        if self.hidden_cell is None or max_nodes * batch_size != self.hidden_cell[0].shape[1]:
+            self.reset_init_state(max_nodes * batch_size, device)
+        if terminal is not None:
+            # Set node cells of graph of the termined episode to 0
+            terminal_dense = torch.repeat_interleave(terminal.to(torch.bool), torch.ones(batch_size,dtype=torch.int64)*max_nodes, dim=0)
+            assert self.hidden_cell[0][:,terminal_dense,:].sum() == 0
+            assert self.hidden_cell[1][:,terminal_dense,:].sum() == 0
+
+        assert selector is not None
+        # num_nodes_list = num_nodes_list_orig[0].squeeze()
+        # if selector == None:
+        #     selector_=[]
+        #     for i in range(batch_size):
+        #         selector_+=[True]*int(num_nodes_list[i]) + [False]*(max_nodes-int(num_nodes_list[i]))
+        #     selector=torch.tensor(selector_,dtype=torch.bool)   
+        
+        full_output, out_hidden_cell = self.lstm(mu_raw, (self.hidden_cell[0][:,selector,:], self.hidden_cell[1][:,selector,:]))
+        self.hidden_cell[0][:,selector,:] = out_hidden_cell[0]
+        self.hidden_cell[1][:,selector,:] = out_hidden_cell[1]
+        mu_mem = full_output # (seq_len, num_nodes in batch, emb_dim)
+        features_mem = torch.cat((mu_mem,batch, reachable, num_nodes_list_orig),dim=2)
+        return features_mem
+
+
+class MaskablePPOPolicy_EMB_LSTM(nn.Module):
     def __init__(self, state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev=None, hp=None):
         super().__init__()
-        if hp.lstm_on:
-            self.description = 'Action Masked PPO Policy with shared LSTM and GATv2 feature extraction'
-        else:
-            self.description = 'Action Masked PPO Policy with LSTM switched off and GATv2 feature extraction'        
+        assert hp.lstm_on
+        self.description = 'Action Masked PPO Policy with GATv2 feature extraction and LSTM applied on node embeddings'
+        
         self.action_dim = action_dim
         self.continuous_action_space = continuous_action_space 
         self.hp=hp
 
         self.FE = FeatureExtractor(state_dim, hp)
+        self.LSTM = EMB_LSTM(state_dim, hp)
+        hp.lstm_on = False # swith LSTM off in Actor/Critic modules
         self.PI = Actor(state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev, hp=hp)
-        self.V  = Critic(state_dim, hp, lstm=self.PI.lstm if self.PI.lstm_on else None)
+        self.V  = Critic(state_dim, hp, lstm=None)
         #print(self)
         #self.numTrainableParameters()
 
     def forward(self, features, terminal=None, selector=None):
-        return self.PI(features, terminal, selector), self.V(features, terminal, selector)
+        prob_dist = self.PI(features, terminal, selector)
+        values = self.V(features, terminal, selector)
+        return prob_dist, values
 
     def get_values(self, features, terminal=None, selector=None):
         return self.V(features, terminal, selector)
