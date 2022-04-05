@@ -122,16 +122,16 @@ class EMB_LSTM(nn.Module):
 class MaskablePPOPolicy_EMB_LSTM(nn.Module):
     def __init__(self, state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev=None, hp=None):
         super().__init__()
-        assert hp.lstm_on
+        #assert hp.lstm_on
         self.description = 'Action Masked PPO Policy with GATv2 feature extraction and LSTM applied on node embeddings'
         
         self.action_dim = action_dim
         self.continuous_action_space = continuous_action_space 
+        hp.lstm_on = False # swith LSTM off in Actor/Critic modules
         self.hp=hp
 
         self.FE = FeatureExtractor(state_dim, hp)
         self.LSTM = EMB_LSTM(state_dim, hp)
-        hp.lstm_on = False # swith LSTM off in Actor/Critic modules
         self.PI = Actor(state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev, hp=hp)
         self.V  = Critic(state_dim, hp, lstm=None)
         #print(self)
