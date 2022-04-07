@@ -65,7 +65,7 @@ def main(args):
                 if a == 'Q': break
 
         evalResults={}
-        evalName='trainset'
+        evalName='trainset'+'_evaldet'+str(tp['eval_deterministic'])[0]
         evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
         for seed in config['seedrange']:
             logdir_=config['logdir']+'/SEED'+str(seed)
@@ -77,7 +77,11 @@ def main(args):
             ppo_model, ppo_optimizer, max_checkpoint_iteration, stop_conditions = start_or_resume_from_checkpoint(train_env, config, hp, tp)
             ppo_policy = LSTM_GNN_PPO_Policy(None, ppo_model, deterministic=tp['eval_deterministic'])
 
-            result = evaluate_lstm_ppo(logdir=logdir_, config=config, env = env_all_list, ppo_policy=ppo_policy, eval_subdir=evalName, max_num_nodes=hp.max_possible_nodes)
+            multiplier=1.
+            if not tp['eval_deterministic']:
+                k=sum([len(k.world_pool) for k in env_all_list])
+                multiplier = max(1,2000//k)
+            result = evaluate_lstm_ppo(logdir=logdir_, config=config, env = env_all_list, ppo_policy=ppo_policy, eval_subdir=evalName, max_num_nodes=hp.max_possible_nodes, multiplier=multiplier)
             num_unique_graphs, num_graph_instances, avg_return, success_rate = result
             evalResults[evalName]['num_graphs.........'].append(num_unique_graphs)
             evalResults[evalName]['num_graph_instances'].append(num_graph_instances)
@@ -85,7 +89,7 @@ def main(args):
             evalResults[evalName]['success_rate.......'].append(success_rate)
 
     for ename, results in evalResults.items():
-        OF = open(config['logdir']+'/Results_over_seeds_'+ename+'.txt', 'w')
+        OF = open(config['logdir']+'/Eval_det'+str(tp['eval_deterministic'])[0]+'_Results_over_seeds_'+ename+'.txt', 'w')
         def printing(text):
             print(text)
             OF.write(text + "\n")
@@ -123,7 +127,7 @@ def main(args):
         for obs_mask, obs_rate in zip(['None','prob_per_u','prob_per_u','prob_per_u'],[1.,.8,.6,.4]):
         #for obs_mask, obs_rate in zip(['prob_per_u','prob_per_u'],[.6,.4]):
             for world_name in world_dict.keys():
-                evalName=world_name+'_obs'+obs_mask
+                evalName=world_name+'_obs'+obs_mask+'_evaldet'+str(tp['eval_deterministic'])[0]
                 if obs_mask != 'None': evalName += str(obs_rate)
                 if world_name == "full_solvable_3x3subs":
                     Etest=[0,1,2,3,4,5,6,7,8,9,10]
@@ -166,7 +170,7 @@ def main(args):
                     evalResults[evalName]['success_rate.......'].append(success_rate)
 
             for ename, results in evalResults.items():
-                OF = open(config['logdir']+'/Results_over_seeds_'+ename+'.txt', 'w')
+                OF = open(config['logdir']+'/Eval_det'+str(tp['eval_deterministic'])[0]+'_Results_over_seeds_'+ename+'.txt', 'w')
                 def printing(text):
                     print(text)
                     OF.write(text + "\n")
@@ -197,11 +201,13 @@ if __name__ == '__main__':
     parser.add_argument('--emb_iterT', default=2, type=int)
     parser.add_argument('--nfm_func', default='NFM_ev_ec_t', type=str)
     parser.add_argument('--qnet', default='gat2', type=str)
+    parser.add_argument('--critic', default='q', type=str, choices=['q','v']) # q=v value route, v=single value route
     parser.add_argument('--train', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
     parser.add_argument('--eval', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])   
     parser.add_argument('--test', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])       
     parser.add_argument('--num_seeds', default=5, type=int)
     parser.add_argument('--seed0', default=10, type=int)
     parser.add_argument('--demoruns', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
+    parser.add_argument('--eval_deter', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
     args=parser.parse_args()
     main(args)

@@ -175,7 +175,7 @@ def evaluate_ppo(logdir, info=False, config=None, env=None, eval_subdir='.', n_e
         printing(k+' '+str(v))
     return num_unique_graphs, num_graph_instances, avg_return, success_rate
 
-def evaluate_lstm_ppo(logdir, info=False, config=None, env=None, ppo_policy=None, eval_subdir='.', n_eval=1000, max_num_nodes=-1):
+def evaluate_lstm_ppo(logdir, info=False, config=None, env=None, ppo_policy=None, eval_subdir='.', n_eval=1000, max_num_nodes=-1, multiplier=1):
     if env==None: return 0,0,0,0   
     try:
         if env==None or len(env)==0:
@@ -191,11 +191,11 @@ def evaluate_lstm_ppo(logdir, info=False, config=None, env=None, ppo_policy=None
         for i,e in enumerate(tqdm.tqdm(env)):
             
 
-            l, returns, c, solves = EvaluatePolicy(e, ppo_policy, e.world_pool, print_runs=False, save_plots=False, logdir=evaldir, eval_arg_func=EvalArgs3, silent_mode=True)
+            l, returns, c, solves = EvaluatePolicy(e, ppo_policy, e.world_pool * multiplier, print_runs=False, save_plots=False, logdir=evaldir, eval_arg_func=EvalArgs3, silent_mode=True)
             num_worlds_requested = 10
             once_every = max(1,len(env)//num_worlds_requested)
             if i % once_every ==0:
-                plotlist = GetFullCoverageSample(returns, e.world_pool, bins=3, n=3)
+                plotlist = GetFullCoverageSample(returns, e.world_pool * multiplier, bins=3, n=3)
                 EvaluatePolicy(e, ppo_policy, plotlist, print_runs=True, save_plots=True, logdir=evaldir, eval_arg_func=EvalArgs3, silent_mode=False, plot_each_timestep=False)
             R+=returns 
             S+=solves

@@ -1,3 +1,4 @@
+from logging import critical
 import torch
 import gym
 #from torch.utils.tensorboard import SummaryWriter
@@ -39,6 +40,7 @@ class HyperParameters():
     max_possible_nodes:   int   = -1
     max_possible_edges:   int   = -1
     emb_dim:              int   = -1
+    critic:               str   = 'q'              
     node_dim:             int   = -1
     lstm_on:              bool  = True
     hidden_size:          float = -1.
@@ -241,6 +243,7 @@ def GetConfigs(args):
     config['edge_blocking']   = True
     config['solve_select']    = 'solvable'
     config['qnet']            = args.qnet
+    config['critic']          = args.critic
     config['train']           = args.train
     config['eval']            = args.eval
     config['test']            = args.test
@@ -255,7 +258,7 @@ def GetConfigs(args):
     if config['obs_mask'] != 'None':
         mask_filestring += str(config['obs_rate'])
     config['rootdir'] = './results/results_Phase3/ppo/'+ config['train_on']+'/'+ \
-                        config['qnet'] + '/'+ \
+                        config['qnet'] + '-' + config['critic'] + '/'+ \
                         'emb'+str(config['emb_dim']) + '_itT'+str(config['emb_iterT']) + '/'+ \
                         'lstm_' + lstm_filestring 
                         
@@ -266,6 +269,7 @@ def GetConfigs(args):
 
     hp = HyperParameters(
                         emb_dim          = config['emb_dim'],
+                        critic           = config['critic'],
                         node_dim         = modules.gnn.nfm_gen.nfm_funcs[config['nfm_func']].F,
                         lstm_on          = config['lstm_type'] != 'None',
                         hidden_size      = config['lstm_hdim'],
@@ -286,9 +290,9 @@ def GetConfigs(args):
         "asynchronous_environment":    False,  # Step env asynchronously using multiprocess or synchronously.
         "invalid_tag_characters":      re.compile(r"[^-/\w\.]"), 
         'save_metrics_tensorboard':    True,
-        'save_parameters_tensorboard': False,
+        'save_parameters_tensorboard': True,
         'checkpoint_frequency':        100,
-        'eval_deterministic':          True}
+        'eval_deterministic':          args.eval_deter}
 
     batch_count = hp.parallel_rollouts * hp.rollout_steps / hp.recurrent_seq_len / hp.batch_size
     print(f"batch_count: {batch_count}")

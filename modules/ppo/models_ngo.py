@@ -472,13 +472,13 @@ class Actor(nn.Module):
             assert self.hidden_cell[1][:,terminal_dense,:].sum() == 0
 
         num_nodes_list = num_nodes_list[0].squeeze()
-        if selector == None:
-            selector_=[]
-            for i in range(batch_size):
-                selector_+=[True]*int(num_nodes_list[i]) + [False]*(max_nodes-int(num_nodes_list[i]))
-            selector=torch.tensor(selector_,dtype=torch.bool)   
-
         if self.lstm_on:
+            if selector == None:
+                selector_=[]
+                for i in range(batch_size):
+                    selector_+=[True]*int(num_nodes_list[i]) + [False]*(max_nodes-int(num_nodes_list[i]))
+                selector=torch.tensor(selector_,dtype=torch.bool)   
+
             full_output, out_hidden_cell = self.lstm(mu_raw, (self.hidden_cell[0][:,selector,:], self.hidden_cell[1][:,selector,:]))
             self.hidden_cell[0][:,selector,:] = out_hidden_cell[0]
             self.hidden_cell[1][:,selector,:] = out_hidden_cell[1]
@@ -539,24 +539,30 @@ class Critic(nn.Module):
         self.hidden_size=hp.hidden_size
         self.num_recurrent_layers=hp.recurrent_layers
         self.hp=hp
+        assert hp.critic in ['q','v']
         
         if self.lstm_on:
             if lstm == None:
                 self.lstm = nn.LSTM(self.emb_dim, self.hidden_size, num_layers=self.num_recurrent_layers)
             else:
                 self.lstm = lstm
-            self.theta6_v = nn.Linear(self.hidden_size, self.emb_dim, True)
-            self.theta7_v = nn.Linear(self.hidden_size, self.emb_dim, True)        
+            if hp.critic == 'q':
+                self.theta6_v = nn.Linear(self.hidden_size, self.emb_dim, True)
+                self.theta7_v = nn.Linear(self.hidden_size, self.emb_dim, True)        
+                self.theta5_v = nn.Linear(2*self.emb_dim, 1, True)
         else:
-            self.theta6_v = nn.Linear(self.emb_dim, self.emb_dim, True)
-            self.theta7_v = nn.Linear(self.emb_dim, self.emb_dim, True)
-        self.theta5_v = nn.Linear(2*self.emb_dim, 1, True)
+            if hp.critic == 'q':
+                self.theta6_v = nn.Linear(self.emb_dim, self.emb_dim, True)
+                self.theta7_v = nn.Linear(self.emb_dim, self.emb_dim, True)
+                self.theta5_v = nn.Linear(2*self.emb_dim, 1, True)
+        if hp.critic == 'v':
+            self.theta8_v = nn.Linear(self.emb_dim, 1, True)
         self.hidden_cell = None
-        
+
     def reset_init_state(self, batch_size, device):
         self.hidden_cell = (torch.zeros(self.hp.recurrent_layers, batch_size, self.hidden_size).to(device),
                             torch.zeros(self.hp.recurrent_layers, batch_size, self.hidden_size).to(device))
-    
+
     def forward(self, features, terminal=None, selector=None):
         # features: [seq_len, bsize, feat_dim=emb_dim+3]
         seq_len = features.shape[0]
@@ -581,13 +587,13 @@ class Critic(nn.Module):
             assert self.hidden_cell[1][:,terminal_dense,:].sum() == 0
 
         num_nodes_list = num_nodes_list[0].squeeze()
-        if selector == None:
-            selector_=[]
-            for i in range(batch_size):
-                selector_ += [True]*int(num_nodes_list[i]) + [False]*(max_nodes-int(num_nodes_list[i]))
-            selector=torch.tensor(selector_,dtype=torch.bool)
 
         if self.lstm_on:
+            if selector == None:
+                selector_=[]
+                for i in range(batch_size):
+                    selector_ += [True]*int(num_nodes_list[i]) + [False]*(max_nodes-int(num_nodes_list[i]))
+                selector=torch.tensor(selector_,dtype=torch.bool)
             full_output, out_hidden_cell  = self.lstm(mu_raw, (self.hidden_cell[0][:,selector,:],self.hidden_cell[1][:,selector,:]) )
             self.hidden_cell[0][:,selector,:] = out_hidden_cell[0]
             self.hidden_cell[1][:,selector,:] = out_hidden_cell[1]
@@ -595,19 +601,24 @@ class Critic(nn.Module):
         else:
             mu_mem = mu_raw
         mu_mem_meanpool = scatter_mean(mu_mem, batch, dim=1) # (batch_size, emb_dim)
-        expander = num_nodes_list[:batch_size].to(torch.int64)       
-        mu_mem_meanpool_expanded = torch.repeat_interleave(mu_mem_meanpool, expander, dim=1) # (num_nodes in batch, emb_dim)
-
-        # Transform node embeddings to graph state / node values
-        global_state = self.theta6_v(mu_mem_meanpool_expanded) # yields (#nodes in batch, emb_dim)
-        local_action = self.theta7_v(mu_mem)  # yields (#nodes in batch, emb_dim)
-        rep = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (#nodes in batch, 2*emb_dim)        
         
-        qvals = self.theta5_v(rep).squeeze(-1)  #(seq_len, nr_nodes in batch)
-        qvals[~reachable] = -torch.inf
-        v = scatter_max(qvals,batch, dim=1)[0]
+        if self.hp.critic == 'q':
+            expander = num_nodes_list[:batch_size].to(torch.int64)       
+            mu_mem_meanpool_expanded = torch.repeat_interleave(mu_mem_meanpool, expander, dim=1) # (num_nodes in batch, emb_dim)
 
-        return v.unsqueeze(-1) # returns (seq_len, nr_nodes in batch, 1)
+            # Transform node embeddings to graph state / node values
+            global_state = self.theta6_v(mu_mem_meanpool_expanded) # yields (#nodes in batch, emb_dim)
+            local_action = self.theta7_v(mu_mem)  # yields (#nodes in batch, emb_dim)
+            
+            rep = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (#nodes in batch, 2*emb_dim)        
+            qvals = self.theta5_v(rep).squeeze(-1)  #(seq_len, nr_nodes in batch)
+            qvals[~reachable] = -torch.inf
+            v = scatter_max(qvals, batch, dim=1)[0]
+        else:
+            v = self.theta8_v(mu_mem_meanpool).squeeze(-1)
+            
+
+        return v.unsqueeze(-1) # returns (seq_len, batch_size, 1)
 
 class Actor_concat(nn.Module):
     def __init__(self, state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev=None, hp=None):
