@@ -16,7 +16,7 @@ def main(args):
     config, hp, tp = GetConfigs(args)   
     
     if config['train']:
-        train_env = make_custom(config, num_envs=hp.parallel_rollouts, asynchronous=tp['asynchronous_environment'])
+        train_env, _ = make_custom(config, num_envs=hp.parallel_rollouts, asynchronous=tp['asynchronous_environment'])
         o=train_env.reset()
         hp.max_possible_nodes = int(o[0,-4])
         hp.max_possible_edges = int(o[0,-2])
@@ -46,21 +46,56 @@ def main(args):
             score = trainfunc(train_env, ppo_model, ppo_optimizer, iteration, stop_conditions, hp, tp)
 
     if config['eval']:
-        train_env = make_custom(config, num_envs=1, asynchronous=tp['asynchronous_environment'])
+        train_env, env_all_list = make_custom(config, num_envs=1, asynchronous=tp['asynchronous_environment'])
+        env_ = train_env.envs[0]
         hp.max_possible_nodes = train_env.envs[0].env.max_possible_num_nodes
         hp.max_possible_edges = train_env.envs[0].env.max_possible_num_edges
         seed = config['seed0']
         logdir_=config['logdir']+'/SEED'+str(seed)
         tp["base_checkpoint_path"]=f"{logdir_}/checkpoints/"
         assert  os.path.exists(tp['base_checkpoint_path'])
-        ppo_model, ppo_optimizer, max_checkpoint_iteration, stop_conditions = start_or_resume_from_checkpoint(train_env, config, hp, tp)
-        env = train_env.envs[0]
-        policy = LSTM_GNN_PPO_Policy(env, ppo_model, deterministic=tp['eval_deterministic'])
-        while True:
-            entries=None#[5012,218,3903]
-            #demo_env = random.choice(evalenv)
-            a = SimulateAutomaticMode_PPO(env, policy, t_suffix=False, entries=entries)
-            if a == 'Q': break
+        
+        if config['demoruns']:
+            ppo_model, ppo_optimizer, max_checkpoint_iteration, stop_conditions = start_or_resume_from_checkpoint(train_env, config, hp, tp)
+            policy = LSTM_GNN_PPO_Policy(None, ppo_model, deterministic=tp['eval_deterministic'])
+            while True:
+                entries=None#[5012,218,3903]
+                #demo_env = random.choice(evalenv)
+                a = SimulateAutomaticMode_PPO(env_, policy, t_suffix=False, entries=entries)
+                if a == 'Q': break
+
+        evalResults={}
+        evalName='trainset'
+        evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
+        for seed in config['seedrange']:
+            logdir_=config['logdir']+'/SEED'+str(seed)
+            tp["base_checkpoint_path"]=f"{logdir_}/checkpoints/"
+            try:
+                assert os.path.exists(tp['base_checkpoint_path'])
+            except:
+                continue
+            ppo_model, ppo_optimizer, max_checkpoint_iteration, stop_conditions = start_or_resume_from_checkpoint(train_env, config, hp, tp)
+            ppo_policy = LSTM_GNN_PPO_Policy(None, ppo_model, deterministic=tp['eval_deterministic'])
+
+            result = evaluate_lstm_ppo(logdir=logdir_, config=config, env = env_all_list, ppo_policy=ppo_policy, eval_subdir=evalName, max_num_nodes=hp.max_possible_nodes)
+            num_unique_graphs, num_graph_instances, avg_return, success_rate = result
+            evalResults[evalName]['num_graphs.........'].append(num_unique_graphs)
+            evalResults[evalName]['num_graph_instances'].append(num_graph_instances)
+            evalResults[evalName]['avg_return.........'].append(avg_return)
+            evalResults[evalName]['success_rate.......'].append(success_rate)
+
+    for ename, results in evalResults.items():
+        OF = open(config['logdir']+'/Results_over_seeds_'+ename+'.txt', 'w')
+        def printing(text):
+            print(text)
+            OF.write(text + "\n")
+        np.set_printoptions(formatter={'float':"{0:0.3f}".format})
+        printing('Results over seeds for evaluation on '+ename+'\n')
+        for category,values in results.items():
+            printing(category)
+            printing('  avg over seeds: '+str(np.mean(values)))
+            printing('  std over seeds: '+str(np.std(values)))
+            printing('  per seed: '+str(np.array(values))+'\n')
 
     if config['test']:
         evalResults={}
@@ -69,6 +104,7 @@ def main(args):
             #'Manhattan3x3_WalkAround':[9,300],
             #'MetroU3_e1t31_FixedEscapeInit':[33, 300],
             # 'full_solvable_3x3subs':[9,33],
+            # 'MemoryTaskU1':[8,16],
             'Manhattan5x5_FixedEscapeInit':[25,105],
             #'Manhattan5x5_VariableEscapeInit':[25,105],
             # 'MetroU3_e17tborder_FixedEscapeInit':[33,300],

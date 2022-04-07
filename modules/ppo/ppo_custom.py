@@ -254,8 +254,15 @@ def GetConfigs(args):
     mask_filestring = config['obs_mask']
     if config['obs_mask'] != 'None':
         mask_filestring += str(config['obs_rate'])
-    config['rootdir'] = './results/results_Phase3/ppo/'+ config['train_on']+'/'+ config['qnet'] + '/omask_' + mask_filestring + '/lstm_' + lstm_filestring + '_bsize' + str(config['batch_size'])
-    config['logdir']  = config['rootdir'] + '/' + config['nfm_func']+'/'+ 'emb'+str(config['emb_dim']) + '_itT'+str(config['emb_iterT'])
+    config['rootdir'] = './results/results_Phase3/ppo/'+ config['train_on']+'/'+ \
+                        config['qnet'] + '/'+ \
+                        'emb'+str(config['emb_dim']) + '_itT'+str(config['emb_iterT']) + '/'+ \
+                        'lstm_' + lstm_filestring 
+                        
+    config['logdir']  = config['rootdir'] + '/' + config['nfm_func']+'/' \
+                        'omask_' + mask_filestring + '/' +\
+                        'bsize' + str(config['batch_size']) #+'_lr{:.1e}'.format(args.lr)
+                        
 
     hp = HyperParameters(
                         emb_dim          = config['emb_dim'],
@@ -1224,12 +1231,13 @@ def make_custom(config, num_envs=1, asynchronous=True, wrappers=None, **kwargs):
         # pathlib.Path(dirname).mkdir(parents=True, exist_ok=True)
         # with open(filename, "wb") as f:
         #     env = pickle.dump(env, f)
-
+    
+    _, env_all_list = ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset=config['train_on'])
     def _make_env():
         #print('env func loading started...',end='')
         #with open(filename, "rb") as f:
         #    env = pickle.load(f)  
-        env,_ = ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset=config['train_on'])
+        env, _ = ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset=config['train_on'])
 
         if wrappers is not None:
             if callable(wrappers):
@@ -1245,4 +1253,7 @@ def make_custom(config, num_envs=1, asynchronous=True, wrappers=None, **kwargs):
         return env
 
     env_fns = [_make_env for _ in range(num_envs)]
-    return AsyncVectorEnv(env_fns) if asynchronous else SyncVectorEnv(env_fns)
+    if asynchronous:
+        return AsyncVectorEnv(env_fns), env_all_list
+    else:
+        return SyncVectorEnv(env_fns), env_all_list
