@@ -13,5 +13,5 @@
 sinfo
 scancel [jobid]
 
-slurm_joblogin [jobid][nodeid]
+slurm_joblogin [jobid][nodeid] (werkt alleen op regular node)
 slurm_jobmonitor [jobid] [nodeid]

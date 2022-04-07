@@ -165,6 +165,64 @@ def TKGraph():
 
     return G, labels, pos
 
+def MemGraph():
+    # Generate example graph from TK's thesis
+    # #
+    # #            0 - 1    
+    # #                  \ 
+    # #                   2
+    # #                  / 
+    # #            3 - 4
+    # #                  \ 
+    # #                   5 
+    # #                  /
+    # #            6 - 7 
+    # #
+    G = nx.DiGraph()
+    G.add_nodes_from([
+        (0,3),
+        (2,3),
+        (4,2),
+        (0,1),
+        (2,1),
+        (4,0),
+        (0,-1),
+        (2,-1),
+    ])
+    G.add_edges_from([
+        ((0,3),(2,3), {'N_pref':1.}),
+        ((2,3),(4,2), {'N_pref':1.}),
+        ((0,1),(2,1), {'N_pref':1.}),
+        ((2,1),(4,2), {'N_pref':1.}),
+        ((2,1),(4,0), {'N_pref':1.}),                        
+        ((0,-1),(2,-1), {'N_pref':1.}),                        
+        ((2,-1),(4,0), {'N_pref':1.}),                        
+
+        ((2,3),(0,3), {'N_pref':1.}),
+        ((4,2),(2,3), {'N_pref':1.}),
+        ((2,1),(0,1), {'N_pref':1.}),
+        ((4,2),(2,1), {'N_pref':1.}),
+        ((4,0),(2,1), {'N_pref':1.}),        
+        ((2,-1),(0,-1), {'N_pref':1.}),                        
+        ((4,0),(2,-1), {'N_pref':1.}),                        
+    ])
+    
+    #H=G.to_undirected()
+    pos = dict( (n,n) for n in G.nodes() )
+    labels = {
+        (0,3):0,
+        (2,3):1,
+        (4,2):2,
+        (0,1):3,
+        (2,1):4,
+        (4,0):5,
+        (0,-1):6,
+        (2,-1):7
+    }
+
+    return G, labels, pos
+
+
 def SparseManhattanGraph(nside=5):
     G=nx.Graph()
     N=nside**2

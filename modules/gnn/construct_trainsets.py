@@ -391,31 +391,61 @@ def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M
             max_possible_num_nodes=config['max_nodes'],
             probs=probs)
 
-    elif tset == 'TEST':
-        config['max_edges']=33
-        config['max_nodes']=9
-        env, _ = get_super_env(Uselected=[2], Eselected=[3,9], config=config, var_targets=None, apply_wrappers=apply_wrappers, remove_paths=remove_paths)
-        env_all_list += env.all_env
+    elif tset == 'MemTask':
+        config['max_nodes']=8
+        config['max_edges']=14
+
+        world_name = 'MemoryTaskU1'
+        env = CreateEnv(world_name, max_nodes=8, max_edges=14, nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+        env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
-        super_env=env
+
+        world_name = 'MemoryTaskU2T'
+        env = CreateEnv(world_name, max_nodes=8, max_edges=14, nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+        env_all_list.append(env)
+        global_env.append(env)
+        probs.append(1)
+
+        world_name = 'MemoryTaskU2B'
+        env = CreateEnv(world_name, max_nodes=8, max_edges=14, nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+        env_all_list.append(env)
+        global_env.append(env)
+        probs.append(1)
+
+        super_env=SuperEnv(
+            global_env,
+            hashint2env=None,
+            max_possible_num_nodes=config['max_nodes'],
+            probs=probs)
+    
+    elif tset == 'TEST':
+        config['max_nodes']=9
+        config['max_edges']=21
+
+        # env, _ = get_super_env(Uselected=[2], Eselected=[3,9], config=config, var_targets=None, apply_wrappers=apply_wrappers, remove_paths=remove_paths)
+        # env_all_list += env.all_env
+        # global_env.append(env)
+        # probs.append(1)
+        # super_env=env
+        
         # world_name = 'Manhattan5x5_FixedEscapeInit'
         # env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
         # env_all_list.append(env)
         # global_env.append(env)
         # probs.append(1)
 
-        # world_name = 'Manhattan3x3_WalkAround'
-        # env = CreateEnv(world_name, max_nodes=9, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
-        # env_all_list.append(env)
-        # global_env.append(env)
-        # probs.append(1)
+        world_name = 'Manhattan3x3_WalkAround'
+        env = CreateEnv(world_name, max_nodes=9, max_edges=21, nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+        env_all_list.append(env)
+        global_env.append(env)
+        probs.append(1)
 
-        # super_env=SuperEnv(
-        #     global_env,
-        #     hashint2env=None,
-        #     max_possible_num_nodes=9,
-        #     probs=probs)
+        super_env=SuperEnv(
+            global_env,
+            hashint2env=None,
+            max_possible_num_nodes=config['max_nodes'],
+            probs=probs)
 
     else:
         assert False

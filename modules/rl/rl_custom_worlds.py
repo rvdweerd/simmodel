@@ -58,6 +58,71 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         env.redefine_goal_nodes([7])
         env.reset()
         return env
+    if world_name == 'MemoryTaskU1':
+        configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
+        conf=configs['MemoryTaskU1']
+        conf['direction_north']=False
+        conf['make_reflexive']=make_reflexive
+        conf['U']=1
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
+        env.register['coords']={((0,1),(0,3)):0, ((0,1),(0,-1)):1}
+        env.register['labels']={(3,0):0,(3,6):1}
+        env.databank['coords']=[
+            {'start_escape_route':(0,1), 'start_units':[(0,3)], 'paths':[[(0,3),(2,3),(4,2)]]},
+            {'start_escape_route':(0,1), 'start_units':[(0,-1)], 'paths':[[(0,-1),(2,-1),(4,0)]]},
+            ]
+        env.databank['labels']=[
+            {'start_escape_route':3, 'start_units':[0], 'paths':[[0,1,2]]},
+            {'start_escape_route':3, 'start_units':[6], 'paths':[[6,7,5]]}
+            ]
+        env.iratios=[1.,1.]
+        env.all_worlds=[0,1]
+        env.world_pool=[0,1]
+        env.redefine_goal_nodes([2,5])
+        env.reset()
+        return env
+    if world_name == 'MemoryTaskU2T': # Top pursuer proceeds to nearest target node
+        configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
+        conf=configs['MemoryTaskU1']
+        conf['direction_north']=False
+        conf['make_reflexive']=make_reflexive
+        conf['U']=2
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
+        env.register['coords']={((0,1),(0,3),(0,-1)):0}
+        env.register['labels']={(3,0,6):0}
+        env.databank['coords']=[
+            {'start_escape_route':(0,1), 'start_units':[(0,3),(0,-1)], 'paths':[[(0,3),(2,3),(4,2)],[(0,-1),(2,-1)]]},
+            ]
+        env.databank['labels']=[
+            {'start_escape_route':3, 'start_units':[0,6], 'paths':[[0,1,2],[6,7]]},
+            ]
+        env.iratios=[1.]
+        env.all_worlds=[0]
+        env.world_pool=[0]
+        env.redefine_goal_nodes([2,5])
+        env.reset()
+        return env
+    if world_name == 'MemoryTaskU2B': # Bottom pursuer proceeds to nearest target node
+        configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
+        conf=configs['MemoryTaskU1']
+        conf['direction_north']=False
+        conf['make_reflexive']=make_reflexive
+        conf['U']=2
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
+        env.register['coords']={((0,1),(0,3),(0,-1)):0}
+        env.register['labels']={(3,0,6):0}
+        env.databank['coords']=[
+            {'start_escape_route':(0,1), 'start_units':[(0,3),(0,-1)], 'paths':[[(0,3),(2,3)],[(0,-1),(2,-1),(4,0)]]},
+            ]
+        env.databank['labels']=[
+            {'start_escape_route':3, 'start_units':[0,6], 'paths':[[0,1],[6,7,5]]},
+            ]
+        env.iratios=[1.]
+        env.all_worlds=[0]
+        env.world_pool=[0]
+        env.redefine_goal_nodes([2,5])
+        env.reset()
+        return env
     if world_name == 'Manhattan5x5_DuplicateSetA':
         configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
         conf=configs['Manhattan5']
