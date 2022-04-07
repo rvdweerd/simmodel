@@ -290,7 +290,7 @@ def GetConfigs(args):
         "asynchronous_environment":    False,  # Step env asynchronously using multiprocess or synchronously.
         "invalid_tag_characters":      re.compile(r"[^-/\w\.]"), 
         'save_metrics_tensorboard':    True,
-        'save_parameters_tensorboard': True,
+        'save_parameters_tensorboard': False,
         'checkpoint_frequency':        100,
         'eval_deterministic':          args.eval_deter}
 

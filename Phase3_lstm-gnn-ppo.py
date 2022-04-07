@@ -6,7 +6,7 @@ from modules.sim.graph_factory import GetWorldSet
 from modules.ppo.ppo_custom import *
 from modules.ppo.helpfuncs import CreateEnv, evaluate_lstm_ppo
 from modules.rl.rl_utils import GetFullCoverageSample
-from modules.rl.rl_policy import LSTM_GNN_PPO_Policy
+from modules.rl.rl_policy import LSTM_GNN_PPO_Policy, LSTM_GNN_PPO_EMB_Policy
 from modules.rl.rl_utils import EvaluatePolicy
 from modules.sim.simdata_utils import SimulateAutomaticMode_PPO, SimulateInteractiveMode_PPO
 from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsFlatWrapper
@@ -57,11 +57,14 @@ def main(args):
         
         if config['demoruns']:
             ppo_model, ppo_optimizer, max_checkpoint_iteration, stop_conditions = start_or_resume_from_checkpoint(train_env, config, hp, tp)
-            policy = LSTM_GNN_PPO_Policy(None, ppo_model, deterministic=tp['eval_deterministic'])
+            if config['lstm_type'] == 'EMB':
+                ppo_policy = LSTM_GNN_PPO_EMB_Policy(None, ppo_model, deterministic=tp['eval_deterministic'])
+            else:
+                ppo_policy = LSTM_GNN_PPO_Policy(None, ppo_model, deterministic=tp['eval_deterministic'])
             while True:
                 entries=None#[5012,218,3903]
                 #demo_env = random.choice(evalenv)
-                a = SimulateAutomaticMode_PPO(env_, policy, t_suffix=False, entries=entries)
+                a = SimulateAutomaticMode_PPO(env_, ppo_policy, t_suffix=False, entries=entries)
                 if a == 'Q': break
 
         evalResults={}
@@ -75,9 +78,12 @@ def main(args):
             except:
                 continue
             ppo_model, ppo_optimizer, max_checkpoint_iteration, stop_conditions = start_or_resume_from_checkpoint(train_env, config, hp, tp)
-            ppo_policy = LSTM_GNN_PPO_Policy(None, ppo_model, deterministic=tp['eval_deterministic'])
+            if config['lstm_type'] == 'EMB':
+                ppo_policy = LSTM_GNN_PPO_EMB_Policy(None, ppo_model, deterministic=tp['eval_deterministic'])
+            else:
+                ppo_policy = LSTM_GNN_PPO_Policy(None, ppo_model, deterministic=tp['eval_deterministic'])
 
-            multiplier=1.
+            multiplier=1
             if not tp['eval_deterministic']:
                 k=sum([len(k.world_pool) for k in env_all_list])
                 multiplier = max(1,2000//k)
@@ -155,7 +161,10 @@ def main(args):
                     except:
                         continue
                     ppo_model, ppo_optimizer, max_checkpoint_iteration, stop_conditions = start_or_resume_from_checkpoint(env_, config, hp, tp)
-                    ppo_policy = LSTM_GNN_PPO_Policy(env, ppo_model, deterministic=tp['eval_deterministic'])
+                    if config['lstm_type'] == 'EMB':
+                        policy = LSTM_GNN_PPO_EMB_Policy(None, ppo_model, deterministic=tp['eval_deterministic'])
+                    else:                   
+                        ppo_policy = LSTM_GNN_PPO_Policy(env, ppo_model, deterministic=tp['eval_deterministic'])
 
                     if config['demoruns']:
                         while True:
