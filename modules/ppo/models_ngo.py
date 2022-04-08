@@ -709,7 +709,7 @@ class Critic_concat(nn.Module):
         self.hidden_size=hp.hidden_size
         self.num_recurrent_layers=hp.recurrent_layers
         self.hp=hp
-        assert hp.critic in ['q'] # v not implemented
+        #assert hp.critic in ['q'] # v not implemented
 
         if self.lstm_on:
             if lstm == None:

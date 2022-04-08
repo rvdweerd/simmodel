@@ -108,17 +108,19 @@ class PPO_ObsFlatWrapper(ObservationWrapper):
                     self.nfm[:, self.nfm_calculator.uindx] = 0 # erase all U observations
             elif self.obs_mask == 'prob': # probability of observing all Us at timestep t
                 self.env.u_observable = [True]*self.env.sp.U                
-                p = np.random.rand() 
-                #print('p=',p)
-                if p > self.obs_rate:
-                    #print('prob criterion: obs set to False')
-                    #all_observable=False
-                    self.env.u_observable = [False]*self.env.sp.U # for plotting purposes
-                    self.nfm[:, self.nfm_calculator.uindx] = 0 # erase all U observations
+                if self.env.global_t > 0:  # first frame always visible
+                    p = np.random.rand() 
+                    #print('p=',p)
+                    if p > self.obs_rate:
+                        #print('prob criterion: obs set to False')
+                        #all_observable=False
+                        self.env.u_observable = [False]*self.env.sp.U # for plotting purposes
+                        self.nfm[:, self.nfm_calculator.uindx] = 0 # erase all U observations
             elif self.obs_mask == 'prob_per_u': # probability of observing an individual U at timestep t
-                mask_u = np.random.rand(self.sp.U) > self.obs_rate
-                self.env.u_observable = list(~mask_u) # for plotting purposes
-                self.mask_units(mask_u)
+                if self.env.global_t > 0:  # first frame always visible
+                    mask_u = np.random.rand(self.sp.U) > self.obs_rate
+                    self.env.u_observable = list(~mask_u) # for plotting purposes
+                    self.mask_units(mask_u) # sets appropriate self.nfm values to 0
             else: assert False    
             #print('\n>> state',self.state,'units observable:',self.u_observable,'units positions:',self.getUpositions(self.local_t))
             assert self.u_observable==self.env.u_observable

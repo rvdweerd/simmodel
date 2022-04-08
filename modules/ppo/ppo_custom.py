@@ -2,6 +2,7 @@ from logging import critical
 import torch
 import gym
 #from torch.utils.tensorboard import SummaryWriter
+import copy
 from torch import optim
 import numpy as np
 import torch.nn.functional as F
@@ -557,20 +558,21 @@ def gather_trajectories(input_data,hp):
             action = action_dist.sample().reshape(hp.parallel_rollouts, -1)
             if not ppo_model.continuous_action_space:
                 action = action.squeeze(1)
-            trajectory_data["actions"].append(action.cpu())
-            trajectory_data["action_probabilities"].append(action_dist.log_prob(action).squeeze(0).cpu())
+            trajectory_data["actions"].append(action.clone().cpu())
+            trajectory_data["action_probabilities"].append(action_dist.log_prob(action).squeeze(0).clone().cpu())
             #value = ppo_model.V(features, terminal.to(gather_device), selector=selector.flatten().to(torch.bool))
-            trajectory_data["values"].append( value.reshape(-1).cpu())
+            trajectory_data["values"].append( value.clone().reshape(-1).cpu())
 
             # Step environment 
             action_np = action.cpu().numpy()
             obsv, reward, done, _ = env.step(action_np)
+            reward=copy.deepcopy(reward)
             terminal = torch.tensor(done).float()
             transformed_reward = hp.scale_reward * torch.max(_min_reward_values, torch.tensor(reward).float())
                                                              
-            trajectory_data["rewards"].append(transformed_reward)
+            trajectory_data["rewards"].append(transformed_reward.clone().cpu())
             trajectory_data["true_rewards"].append(torch.tensor(reward).float())
-            trajectory_data["terminals"].append(terminal)
+            trajectory_data["terminals"].append(terminal.clone().cpu())
     
         # Compute final value to allow for incomplete episodes.
         state = torch.tensor(obsv, dtype=torch.float32)
@@ -584,7 +586,7 @@ def gather_trajectories(input_data,hp):
         value = ppo_model.get_values(features.to(gather_device), terminal.to(gather_device))
         # Future value for terminal episodes is 0.
         #trajectory_data["values"].append(value.squeeze().cpu() * (1 - terminal))
-        trajectory_data["values"].append(value.reshape(-1).cpu() * (1 - terminal))
+        trajectory_data["values"].append((value.reshape(-1).cpu() * (1 - terminal)).clone())
 
     # Combine step lists into tensors.
     trajectory_tensors = {key: torch.stack(value) for key, value in trajectory_data.items()}
@@ -652,21 +654,22 @@ def gather_trajectories_FE(input_data,hp):
             action = action_dist.sample().reshape(hp.parallel_rollouts, -1)
             if not ppo_model.continuous_action_space:
                 action = action.squeeze(1)
-            trajectory_data["actions"].append(action.cpu())
-            trajectory_data["action_probabilities"].append(action_dist.log_prob(action).squeeze(0).cpu())
+            trajectory_data["actions"].append(action.clone().cpu())
+            trajectory_data["action_probabilities"].append(action_dist.log_prob(action).squeeze(0).clone().cpu())
             #value = ppo_model.V(features, terminal.to(gather_device), selector=selector.flatten().to(torch.bool))
             #trajectory_data["values"].append( value.squeeze().cpu())
-            trajectory_data["values"].append( value.reshape(-1).cpu())
+            trajectory_data["values"].append( value.clone().reshape(-1).cpu())
 
             # Step environment 
             action_np = action.cpu().numpy()
             obsv, reward, done, _ = env.step(action_np)
+            reward=copy.deepcopy(reward)
             terminal = torch.tensor(done).float()
             transformed_reward = hp.scale_reward * torch.max(_min_reward_values, torch.tensor(reward).float())
                                                              
-            trajectory_data["rewards"].append(transformed_reward)
+            trajectory_data["rewards"].append(transformed_reward.clone().cpu())
             trajectory_data["true_rewards"].append(torch.tensor(reward).float())
-            trajectory_data["terminals"].append(terminal)
+            trajectory_data["terminals"].append(terminal.clone().cpu())
     
         # Compute final value to allow for incomplete episodes.
         state = torch.tensor(obsv, dtype=torch.float32)
@@ -678,7 +681,7 @@ def gather_trajectories_FE(input_data,hp):
         value = ppo_model.get_values(features.to(gather_device), terminal.to(gather_device))
         # Future value for terminal episodes is 0.
         #trajectory_data["values"].append(value.squeeze().cpu() * (1 - terminal))
-        trajectory_data["values"].append(value.reshape(-1).cpu() * (1 - terminal))
+        trajectory_data["values"].append((value.reshape(-1).cpu() * (1 - terminal)).clone())
 
     # Combine step lists into tensors.
     trajectory_tensors = {key: torch.stack(value) for key, value in trajectory_data.items()}
@@ -747,20 +750,21 @@ def gather_trajectories_EMB(input_data,hp):
             action = action_dist.sample().reshape(hp.parallel_rollouts, -1)
             if not ppo_model.continuous_action_space:
                 action = action.squeeze(1)
-            trajectory_data["actions"].append(action.cpu())
-            trajectory_data["action_probabilities"].append(action_dist.log_prob(action).squeeze(0).cpu())
+            trajectory_data["actions"].append(action.clone().cpu())
+            trajectory_data["action_probabilities"].append(action_dist.log_prob(action).squeeze(0).clone().cpu())
             #value = ppo_model.V(features, terminal.to(gather_device), selector=selector.flatten().to(torch.bool))
-            trajectory_data["values"].append( value.reshape(-1).cpu())
+            trajectory_data["values"].append( value.clone().reshape(-1).cpu())
 
             # Step environment 
             action_np = action.cpu().numpy()
             obsv, reward, done, _ = env.step(action_np)
+            reward=copy.deepcopy(reward)
             terminal = torch.tensor(done).float()
             transformed_reward = hp.scale_reward * torch.max(_min_reward_values, torch.tensor(reward).float())
                                                              
-            trajectory_data["rewards"].append(transformed_reward)
+            trajectory_data["rewards"].append(transformed_reward.clone().cpu())
             trajectory_data["true_rewards"].append(torch.tensor(reward).float())
-            trajectory_data["terminals"].append(terminal)
+            trajectory_data["terminals"].append(terminal.clone().cpu())
     
         # Compute final value to allow for incomplete episodes.
         state = torch.tensor(obsv, dtype=torch.float32)
@@ -777,7 +781,7 @@ def gather_trajectories_EMB(input_data,hp):
         value = ppo_model.get_values(features_mem.to(gather_device), terminal.to(gather_device))
         # Future value for terminal episodes is 0.
         #trajectory_data["values"].append(value.squeeze().cpu() * (1 - terminal))
-        trajectory_data["values"].append(value.reshape(-1).cpu() * (1 - terminal))
+        trajectory_data["values"].append((value.reshape(-1).cpu() * (1 - terminal)).clone())
 
     # Combine step lists into tensors.
     trajectory_tensors = {key: torch.stack(value) for key, value in trajectory_data.items()}

@@ -392,6 +392,7 @@ class GraphWorld(gym.Env):
             self.state    = self._to_state(e_init_labels,u_init_labels)
             self.state0   = self.state
         
+        self.u_observable=[True]*self.sp.U
         self.e_path = [ self.state[0] ]
         new_Upositions = self.getUpositions(self.local_t)
         for i,u in enumerate(new_Upositions):
