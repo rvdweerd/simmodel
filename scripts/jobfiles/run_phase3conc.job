@@ -23,18 +23,18 @@ unset __conda_setup
 cd $HOME/testing/sim
 conda activate rlcourse
 
-#train_on="M5x5Fixed"
-train_on="MemTask-U1"
-batch_size=48
+train_on="M5x5Fixed"
+#train_on="MemTask-U1"
+batch_size=64
 #obs_mask="None"
 #obs_rate=1.0
-#obs_mask="prob_per_u"
-#obs_rate=.75
-obs_mask="freq"
-obs_rate=.2
+obs_mask="prob_per_u"
+obs_rate=.75
+#obs_mask="freq"
+#obs_rate=.2
 emb_dim=24
-#nfm_func="NFM_ev_ec_t_dt_at_um_us"
-nfm_func="NFM_ev_ec_t_dt_at_ustack"
+nfm_func="NFM_ev_ec_t_dt_at_um_us"
+#nfm_func="NFM_ev_ec_t_dt_at_ustack"
 #lstm_hdim=64
 #lstm_type="None"
 #lstm_type="None"
@@ -42,14 +42,14 @@ lstm_hdim=24
 lstm_layers=1
 emb_iterT=5
 qnet="gat2"
-train="False"
+train="True"
 eval="True"
 test="False"
 num_seeds=5
 seed0=0
 demoruns="False"
 parallel_rollouts=4
-rollout_steps=50
+rollout_steps=75
 lr=5e-4
 critic='v'
 eval_deter="False"
@@ -76,7 +76,7 @@ eval_deter="False"
 #for lstm_type in {"FE","EMB","Dual","DualCC"}
 #"DualCC","Dual"
 #for lstm_type in {"DualCC","Dual"}
-for lstm_type in {"None","DualCC"}
+for lstm_type in {"Dual","DualCC"}
 do
     python Phase3_lstm-gnn-ppo.py --train_on $train_on --batch_size $batch_size --lr $lr --obs_mask $obs_mask --obs_rate $obs_rate --emb_dim $emb_dim --lstm_type $lstm_type --lstm_hdim $lstm_hdim --lstm_layers $lstm_layers --emb_iterT $emb_iterT --nfm_func $nfm_func --qnet $qnet --train $train --eval $eval --test $test --num_seeds $num_seeds --seed0 $seed0 --demoruns $demoruns --parallel_rollouts $parallel_rollouts --rollout_steps $rollout_steps --critic $critic --eval_deter $eval_deter &
 done
