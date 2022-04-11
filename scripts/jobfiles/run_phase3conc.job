@@ -4,7 +4,7 @@
 #SBATCH --job-name=gnn_ppo
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --time=24:00:00
+#SBATCH --time=12:00:00
 #SBATCH --mem=48000M
 #SBATCH --output=slurm_output_%A.out
 
@@ -42,17 +42,15 @@ lstm_hdim=24
 lstm_layers=1
 emb_iterT=5
 qnet="gat2"
-train="True"
+train="False"
 eval="True"
 test="False"
-num_seeds=5
-seed0=0
+num_seeds=20
+#seed0=0
 demoruns="False"
 parallel_rollouts=4
 rollout_steps=75
 lr=5e-4
-critic='v'
-eval_deter="False"
 # RUNNING JOBS IN SERIES (no loops)
 # terminalname="seriesrun"
 # tmux new-session -d -s "${terminalname}"
@@ -75,13 +73,19 @@ eval_deter="False"
 #for nfm_func in {"NFM_ev_ec_t_dt_at_um_us",nfm_func="NFM_ev_ec_t_dt_at_ustack"}
 #for lstm_type in {"FE","EMB","Dual","DualCC"}
 #"DualCC","Dual"
-#for lstm_type in {"DualCC","Dual"}
-for lstm_type in {"Dual","DualCC"}
+patience=1000
+lstm_type="None"
+#"None"}
+#for lstm_type in {"None",}
+critic='v'
+seed0=0
+#for seed0 in {0,5,10,15}
+for eval_deter  in {"False","True"}
 do
-    python Phase3_lstm-gnn-ppo.py --train_on $train_on --batch_size $batch_size --lr $lr --obs_mask $obs_mask --obs_rate $obs_rate --emb_dim $emb_dim --lstm_type $lstm_type --lstm_hdim $lstm_hdim --lstm_layers $lstm_layers --emb_iterT $emb_iterT --nfm_func $nfm_func --qnet $qnet --train $train --eval $eval --test $test --num_seeds $num_seeds --seed0 $seed0 --demoruns $demoruns --parallel_rollouts $parallel_rollouts --rollout_steps $rollout_steps --critic $critic --eval_deter $eval_deter &
+    python Phase3_lstm-gnn-ppo.py --train_on $train_on --batch_size $batch_size --lr $lr --obs_mask $obs_mask --obs_rate $obs_rate --emb_dim $emb_dim --lstm_type $lstm_type --lstm_hdim $lstm_hdim --lstm_layers $lstm_layers --emb_iterT $emb_iterT --nfm_func $nfm_func --qnet $qnet --train $train --eval $eval --test $test --num_seeds $num_seeds --seed0 $seed0 --demoruns $demoruns --parallel_rollouts $parallel_rollouts --rollout_steps $rollout_steps --critic $critic --eval_deter $eval_deter --patience $patience &
 done
+wait
 
 #lstm_type="DualCC"
 #nfm_func = "NFM_ev_ec_t_dt_at_ustack"
 #python Phase3_lstm-gnn-ppo.py --train_on $train_on --batch_size $batch_size --lr $lr --obs_mask $obs_mask --obs_rate $obs_rate --emb_dim $emb_dim --lstm_type $lstm_type --lstm_hdim $lstm_hdim --lstm_layers $lstm_layers --emb_iterT $emb_iterT --nfm_func $nfm_func --qnet $qnet --train $train --eval $eval --test $test --num_seeds $num_seeds --seed0 $seed0 --demoruns $demoruns --parallel_rollouts $parallel_rollouts --rollout_steps $rollout_steps --critic $critic --eval_deter $eval_deter &
-wait

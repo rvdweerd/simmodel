@@ -1,4 +1,5 @@
 #from sim_visualization import plot_results
+import copy
 #from dataclasses import dataclass
 import time
 import networkx as nx
@@ -839,6 +840,67 @@ def SimulateAutomaticMode_PPO(env, ppo_policy, t_suffix=True, entries=None):
     print('Done, R=',R,'\n\n')
     env.render_eupaths(fname='results/test',t_suffix=t_suffix,last_step_only=True)
     env.render_eupaths(fname='results/final',t_suffix=t_suffix)
+    if a.lower()!='q':
+        input('')
+    return a
+
+
+def SimulateAutomaticMode_PPO_LSTM(env, ppo_policy_lstm, ppo_policy_no_lstm, t_suffix=True, entries=None):
+    if entries is not None:
+        entry=random.choice(entries)
+    else: entry = None
+    obs=env.reset(entry=entry)
+    env2 = copy.deepcopy(env)
+    obs2=env2.reset(entry=env.current_entry)
+    assert env2.state == env.state
+    assert torch.allclose(obs,obs2)
+
+    ppo_policy_lstm.reset_hidden_states()
+    ppo_policy_no_lstm.reset_hidden_states()
+    
+    print('Entry:',env.current_entry)
+    
+    done=False
+    done2=False
+    endepi=False
+    R=0     
+    R2=0   
+    while not (done and done2):
+        if not done:
+            action, _state = ppo_policy_lstm.sample_greedy_action(obs, torch.tensor(env.neighbors[env.state[0]]), printing=True)
+            env.render_eupaths(fname='results/test_lstm',t_suffix=t_suffix,last_step_only=True)
+        if not done2:
+            print()
+            action2, _state2 = ppo_policy_no_lstm.sample_greedy_action(obs2, torch.tensor(env2.neighbors[env2.state[0]]), printing=True)
+            env2.render_eupaths(fname='results/test_no_lstm',t_suffix=t_suffix,last_step_only=True)
+
+        while True:
+            a=input('\n             [q]-stop current, [enter]-take step, [n1 or n2]-show nfm ...> ')
+            if a.lower() == 'q':
+                endepi=True
+                break
+            if a == 'n1': print(env.obs)
+            if a == 'n2': print(env2.obs)
+            if a == 'c': 
+                env.render_eupaths(fname='results/final_lstm',t_suffix=t_suffix,last_step_only=False)
+                env2.render_eupaths(fname='results/final_no_lstm',t_suffix=t_suffix,last_step_only=False)
+            if a == '': break
+        if endepi:
+            break        
+        if not done:
+            obs,r,done,i = env.step(action)
+        else:
+            env.render_eupaths(fname='results/test_lstm',t_suffix=t_suffix,last_step_only=True)
+
+        if not done2:
+            obs2,r2,done2,i2 = env2.step(action2)
+        else:
+            env2.render_eupaths(fname='results/test_no_lstm',t_suffix=t_suffix,last_step_only=True)
+        R+=r
+        R2+=r2
+    print('Done, R=',R,', R_no_lstm=',R2,'\n\n')
+    env.render_eupaths(fname='results/final_lstm',t_suffix=t_suffix)
+    env2.render_eupaths(fname='results/final_no_lstm',t_suffix=t_suffix)
     if a.lower()!='q':
         input('')
     return a

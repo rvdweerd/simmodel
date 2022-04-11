@@ -5,6 +5,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
+def LSTM_info_from_path(path):
+    i1=path.find('lstm')
+    i2=path.find('NFM')
+    string = path[i1:(i2-1)]
+    infolist = string.split('_')
+    if infolist[1]=='None':
+        return 'None'
+    lstm_type=infolist[1]
+    hdim=infolist[2]
+    nlay=infolist[3]
+    return lstm_type+'-hdim='+hdim+'-num_layers='+nlay
+
 # Extraction function
 def tflog2pandas(path):
     runlog_data = pd.DataFrame({"metric": [], "value": [], "step": []})
@@ -41,10 +53,10 @@ def tdlog2np(path, metric):
         traceback.print_exc()
     return np.array(step), np.array(values)
 
-def CreateLearningCurvePlots(path, n_smoothing=20):
+def CreateLearningCurvePlots(path, n_smoothing=20, nseeds=5, numiter=1200, yrange=[-10.,2.]):
     rawlist=[]
     maxlen=0
-    for seed in range(5):
+    for seed in range(nseeds):
         path_ = path+'/SEED'+str(seed)+'/logs'
         step,rew = tdlog2np(path_,'total_reward')
         rawlist.append(rew)
@@ -52,10 +64,16 @@ def CreateLearningCurvePlots(path, n_smoothing=20):
 
     smtlist=[]
     smoothing_vector=[1/n_smoothing]*n_smoothing
+    best_line_idx=-1
+    globalbest=-1e6
     for i in range(len(rawlist)):
         p=maxlen-len(rawlist[i])
-        rawlist[i]=np.pad(rawlist[i],(0,p),'constant',constant_values=np.mean(rawlist[i][-n_smoothing:]))#'edge')
+        rawlist[i]=np.pad(rawlist[i],(0,p),'constant',constant_values=np.mean(rawlist[i][-n_smoothing*30:]))#'edge')
         avg=np.convolve(smoothing_vector, rawlist[i],mode='valid')
+        localbest=avg.max()
+        if localbest > globalbest:
+            globalbest = localbest
+            best_line_idx=i
         smtlist.append(avg)
     rawlist=np.array(rawlist) # (seeds, max_iterations)
     smtlist=np.array(smtlist) # (seeds, max_iterations)
@@ -65,7 +83,7 @@ def CreateLearningCurvePlots(path, n_smoothing=20):
     smt_maxline=np.max(smtlist,axis=0)
     raw_minline=np.min(rawlist,axis=0)
     raw_maxline=np.max(rawlist,axis=0)
-
+    smt_bestline=smtlist[best_line_idx,:]
     # # PLOT SMOOTHED CURVE FOR EACH SEED
     plt.plot(np.transpose(smtlist))
     plt.savefig(path+'/Train_reward_smoothed_per_seed.png')
@@ -77,21 +95,34 @@ def CreateLearningCurvePlots(path, n_smoothing=20):
     plt.clf()
     
     # PLOT SMOOTHED MAX,AVG,MINMAX RANGE, STD
-    plt.plot(smt_maxline,color="green", label='best seed')
-    plt.plot(smt_avgline,color="gray",alpha=0.6, label='avg seed')
-    plt.fill_between([i for i in range(len(smt_maxline))],smt_avgline-smt_stdline,np.minimum((smt_avgline+smt_stdline),smt_maxline),facecolor='gray',alpha=0.3,label='std')
-    plt.fill_between([i for i in range(len(smt_maxline))],smt_minline,smt_maxline,facecolor='gray',alpha=0.15, label='minmax')
-    plt.legend()
-    ax=plt.gca()
+    fig,ax=plt.subplots(figsize=(5,5))
+    #ax.plot(smt_maxline,color="green", label='best seed')
+    ax.plot(smtlist.transpose(),color="gray",alpha=0.2)
+    ax.plot(smt_bestline,color="green", label='best seed')
+    ax.plot(smt_avgline,color="gray",alpha=0.6, label='avg seed')
+    ax.fill_between([i for i in range(len(smt_maxline))],smt_avgline-smt_stdline,np.minimum((smt_avgline+smt_stdline),smt_maxline),facecolor='gray',alpha=0.3,label='std')
+    ax.fill_between([i for i in range(len(smt_maxline))],smt_minline,smt_maxline,facecolor='gray',alpha=0.15, label='minmax')
+    #ax.legend()
+    #ax=plt.gca()
+    ax.set_xlim([0,numiter])
+    ax.set_ylim(yrange)
+    #plt.ylabel('average reward')
     #ax.axes.get_xaxis().set_visible(False)
-    ax.set_xlim([0,600])
-    ax.set_ylim([-5.,9.])
-    plt.ylabel('avg reward')
+    #ax.axes.get_xaxis().set_ticklabels([])
+    #ax.axes.get_xaxis().axhline(y=0,color='black')
+    #ax.yaxis.set_ticklabels([])
+    ax.axhline(y=0,color='black',linewidth=.5)
+    lstm_dentifier = LSTM_info_from_path(path)
+    plt.title(lstm_dentifier)
     plt.savefig(path+'/Train_reward_Learningcurves.png')
     plt.clf()
 
-root="./results/results_Phase3/ppo/MemTask-U1"
+
+#root="./results/results_Phase3/ppo/MemTask-U1"
+#root="./results/results_Phase3/ppo/M5x5Fixed"
+#root="./results/results_Phase3/ppo/M5x5Fixed/gat2-q/emb24_itT5/lstm_Dual_24_1/NFM_ev_ec_t_dt_at_um_us"
+root="./results/results_Phase3/ppo/M5x5Fixed/gat2-v/emb24_itT5/lstm_None/NFM_ev_ec_t_dt_at_um_us"
 for path in [x[0] for x in os.walk(root)]:
     if os.path.isfile(path+'/train-parameters.txt'):
         #path="./results/results_Phase3/ppo/MemTask-U1/gat2-q/emb24_itT5/lstm_Dual_24_1/NFM_ev_ec_t_dt_at_um_us/omask_freq0.2/bsize48" #folderpath
-        CreateLearningCurvePlots(path=path)
+        CreateLearningCurvePlots(path=path, n_smoothing=30, nseeds=20, numiter=6000, yrange=[-10.,5.])
