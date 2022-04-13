@@ -55,9 +55,9 @@ def main(args):
     ppo_policy_no_lstm = LSTM_GNN_PPO_Policy(None, ppo_model_no_lstm, deterministic=tp2['eval_deterministic'])
     
     while True:
-        entries=None#[5012,218,3903]
+        entries=[1680]#None#[831]#[5012,218,3903]
         #demo_env = random.choice(evalenv)
-        a = SimulateAutomaticMode_PPO_LSTM(env_, ppo_policy_lstm, ppo_policy_no_lstm, t_suffix=False, entries=[831])
+        a = SimulateAutomaticMode_PPO_LSTM(env_, ppo_policy_lstm, ppo_policy_no_lstm, t_suffix=False, entries=entries)
         if a == 'Q': break
 
 if __name__ == '__main__':

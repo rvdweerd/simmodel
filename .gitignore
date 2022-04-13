@@ -3,6 +3,7 @@ __pycache__
 results
 results_Phase1
 results_Phase2
+slurm
 images
 models
 sb3_ppo_tensorboard
