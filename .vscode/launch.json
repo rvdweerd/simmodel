@@ -38,7 +38,7 @@
                     "--emb_iterT","5",
                     "--nfm_func","NFM_ev_ec_t_dt_at_um_us",
                     "--qnet","gat2",
-                    "--train","True",
+                    "--train","False",
                     "--eval","True",
                     "--test","False",
                     "--num_seeds","5",

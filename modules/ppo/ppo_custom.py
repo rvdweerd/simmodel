@@ -239,6 +239,7 @@ def GetConfigs(args):
     config['lstm_type']       = args.lstm_type
     config['lstm_hdim']       = args.lstm_hdim
     config['lstm_layers']     = args.lstm_layers
+    config['recurrent_seq_len'] = args.recurrent_seq_len
     config['emb_iterT']       = args.emb_iterT
     config['nfm_func']        = args.nfm_func
     config['edge_blocking']   = True
@@ -255,6 +256,8 @@ def GetConfigs(args):
     lstm_filestring = config['lstm_type']
     if config['lstm_type'] != 'None':
         lstm_filestring  += '_' + str(config['lstm_hdim']) + '_' + str(config['lstm_layers'])
+    if config['recurrent_seq_len'] != 2:
+        lstm_filestring += '_seqlen' + str(config['recurrent_seq_len'])
     mask_filestring = config['obs_mask']
     if config['obs_mask'] != 'None':
         mask_filestring += str(config['obs_rate'])
