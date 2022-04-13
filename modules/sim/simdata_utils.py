@@ -15,7 +15,7 @@ import torch.nn.functional as F
 from pathlib import Path
 import os
 import pickle
-from modules.sim.sim_graphs import SparseManhattanGraph, graph, CircGraph, TKGraph, MetroGraph, MemGraph
+from modules.sim.sim_graphs import SparseManhattanGraph, graph, CircGraph, TKGraph, MetroGraph, MemGraph, MemGraphLong
 from modules.rl.rl_plotting import PlotAgentsOnGraph
 from modules.optim.escape_route_generator_MC import mutiple_escape_routes
 from modules.optim.optimization_FIP_gurobipy import unit_ranges, optimization_alt, optimization
@@ -128,6 +128,20 @@ def GetConfigs():
             'direction_north': False,       # Directional preference of escaper
             'start_escape_route': '.', # Initial position of escaper
             'fixed_initial_positions': (3,0),
+            'loadAllStartingPositions': False
+        },       
+        "MemoryTaskU1Long": {
+            # Note: ...
+            'graph_type': "MemGraphLong",
+            'make_reflexive': True,
+            'N': 11,    # number of nodes along one side
+            'U': 1,    # number of pursuer units
+            'L': 5,    # Time steps
+            'T': 6,
+            'R': 10,  # Number of escape routes sampled 
+            'direction_north': False,       # Directional preference of escaper
+            'start_escape_route': '.', # Initial position of escaper
+            'fixed_initial_positions': (4,0),
             'loadAllStartingPositions': False
         },        
         "MemoryTaskU2": {
@@ -360,6 +374,17 @@ def DefineSimParameters(config):
         sp.start_escape_route = sp.nodeid2coord[3]
         sp.most_northern_y = max([c[1] for c in sp.G.nodes])
         sp.target_nodes = set([2,5])
+    elif sp.graph_type == 'MemGraphLong':
+        sp.G, sp.labels, sp.pos = MemGraphLong()
+        sp.N = 11             # Number of nodes (FIXED)
+        sp.V = 11             # Total number of vertices (FIXED)
+        #sp.T = sp.L+1         # Total steps in time taken (L + start node)
+        sp.direction_north = False # (NOT VERY INTERESTING IF TRUE)
+        sp.nodeid2coord = dict( (i, n) for i,n in enumerate(sp.G.nodes()) )
+        sp.start_escape_route = sp.nodeid2coord[4]
+        sp.most_northern_y = max([c[1] for c in sp.G.nodes])
+        sp.target_nodes = set([3,7])
+
     elif sp.graph_type == 'TKGraph':
         sp.G, sp.labels, sp.pos = TKGraph()#manhattan_graph(N)
         sp.N = 7              # Number of nodes (FIXED)

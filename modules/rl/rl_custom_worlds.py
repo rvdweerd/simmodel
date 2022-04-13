@@ -81,6 +81,29 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         env.redefine_goal_nodes([2,5])
         env.reset()
         return env
+    if world_name == 'MemoryTaskU1Long':
+        configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
+        conf=configs['MemoryTaskU1Long']
+        conf['direction_north']=False
+        conf['make_reflexive']=make_reflexive
+        conf['U']=1
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
+        env.register['coords']={((-2,1),(-2,3)):0, ((-2,1),(-2,-1)):1}
+        env.register['labels']={(4,0):0,(4,8):1}
+        env.databank['coords']=[
+            {'start_escape_route':(-2,1), 'start_units':[(-2,3)], 'paths':[[(-2,3),(0,3),(2,3),(4,2)]]},
+            {'start_escape_route':(-2,1), 'start_units':[(-2,-1)], 'paths':[[(-2,-1),(0,-1),(2,-1),(4,0)]]},
+            ]
+        env.databank['labels']=[
+            {'start_escape_route':4, 'start_units':[0], 'paths':[[0,1,2,3]]},
+            {'start_escape_route':4, 'start_units':[8], 'paths':[[8,9,10,7]]}
+            ]
+        env.iratios=[1.,1.]
+        env.all_worlds=[0,1]
+        env.world_pool=[0,1]
+        env.redefine_goal_nodes([3,7])
+        env.reset()
+        return env
     if world_name == 'MemoryTaskU2T': # Top pursuer proceeds to nearest target node
         configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
         conf=configs['MemoryTaskU1']

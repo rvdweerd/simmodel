@@ -435,6 +435,23 @@ def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M
             max_possible_num_nodes=config['max_nodes'],
             probs=probs)
 
+    elif tset == 'MemTaskLong-U1':
+        config['max_nodes']=11
+        config['max_edges']=20
+
+        world_name = 'MemoryTaskU1Long'
+        env = CreateEnv(world_name, max_nodes=11, max_edges=20, nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+        env_all_list.append(env)
+        global_env.append(env)
+        probs.append(1)
+
+        super_env=SuperEnv(
+            global_env,
+            hashint2env=None,
+            max_possible_num_nodes=config['max_nodes'],
+            probs=probs)
+
+
     elif tset == 'TEST':
         config['max_nodes']=9
         config['max_edges']=21

@@ -220,6 +220,11 @@ def PlotEUPathsOnGraph_(sp, epath, u_paths, fig_show, fig_save, filename, goal_r
             continue
         colorlist[sp.labels2nodeids[u_path[-1]]]='#0000FF'
 
+    #remove reflexive edges
+    for src,tgt in edgelist_not_taken:
+        if src == tgt:
+            edgelist_not_taken.remove((src,tgt))
+
     if len(epath) > 1:
         for i in range(len(epath)-2,len(epath)-1) if last_step_only else range(len(epath)-1) :
             snode=sp.labels2coord[epath[i]]
