@@ -174,6 +174,30 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         conf['make_reflexive']=make_reflexive
         env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
         return env
+    if world_name == 'Manhattan11x11':
+        configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
+        conf=configs['Manhattan11']
+        conf['direction_north']=False
+        conf['loadAllStartingPositions']=False
+        conf['make_reflexive']=make_reflexive
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
+        return env
+    if world_name == 'CircGraph':
+        configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
+        conf=configs['CircGraph']
+        conf['direction_north']=False
+        conf['loadAllStartingPositions']=False
+        conf['make_reflexive']=make_reflexive
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
+        return env
+    if world_name == 'TKGraph':
+        configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
+        conf=configs['TKGraph']
+        conf['direction_north']=False
+        conf['loadAllStartingPositions']=False
+        conf['make_reflexive']=True
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
+        return env        
     if world_name == 'Manhattan5x5_VariableEscapeInit':
         configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
         conf=configs['Manhattan5']
@@ -300,6 +324,7 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         assert not conf['obj']['G'].is_directed()
         env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
         return env       
+    else: assert False, "Unknown world name: %s" % world_name
 
 def CreateWorlds(run_world_names, make_reflexive=True, state_repr='et', state_enc='nodes'):
     worlds=[]

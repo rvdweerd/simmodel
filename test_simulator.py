@@ -8,15 +8,17 @@ import modules.gnn.nfm_gen
 #world_name='Manhattan3x3_PauseFreezeWorld'
 #world_name='Manhattan3x3_PauseDynamicWorld'
 #world_name='Manhattan3x3_WalkAround'
-world_name='Manhattan5x5_FixedEscapeInit'
+#world_name='MemoryTaskU1'
 #world_name='MetroU3_e17tborder_FixedEscapeInit'
 #world_name='MetroU3_e17t0_FixedEscapeInit'
 #world_name='MetroU3_e1t31_FixedEscapeInit'
-#world_name='SparseManhattan5x5'
+world_name='Manhattan11x11'
 #world_name = 'NWB_test_FixedEscapeInit'
 #world_name='NWB_ROT_FixedEscapeInit'
-N=25#33
-E=105#150
+#world_name='NWB_UTR_FixedEscapeInit'
+
+N=3975
+E=4000
 obs_mask='prob_per_u'
 obs_rate=0.5
 state_repr='etUte0U0'

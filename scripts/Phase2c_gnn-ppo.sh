@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # ## BATCH
-#train_on="M3M5Mix"
+train_on="M3M5Mix"
 #train_on="NWB_AMS"
 #train_on="MixAll33"
-train_on="TEST"
+#train_on="TEST"
 emb=64
 itt=5
 nfm="NFM_ev_ec_t_dt_at_um_us"
@@ -19,7 +19,7 @@ numseeds=1
 #seed0=1
 solveselect='solvable'
 edgeblock="True"
-max_nodes=33
+max_nodes=25
 demoruns="False"
 pursuit="Uon"
 

@@ -41,7 +41,9 @@ def GetConfig(args):
     config['optim_target'] = args.optim_target
     #config['num_episodes'] = args.num_epi 
     #config['memory_size']  = args.mem_size 
-    config['num_step']     = args.num_step
+    config['num_step']      = args.num_step
+    config['obs_mask']      = "None"
+    config['obs_rate']      = 1.0
     #config['bsize']        = 32        
     #config['gamma']        = .9        
     #config['lr_init']      = 1e-3      

@@ -387,6 +387,7 @@ def DefineSimParameters(config):
 
     elif sp.graph_type == 'TKGraph':
         sp.G, sp.labels, sp.pos = TKGraph()#manhattan_graph(N)
+        sp.G = sp.G.to_undirected()
         sp.N = 7              # Number of nodes (FIXED)
         sp.V = 7              # Total number of vertices (FIXED)
         #sp.T = sp.L+1         # Total steps in time taken (L + start node)
@@ -394,7 +395,7 @@ def DefineSimParameters(config):
         sp.nodeid2coord = dict( (i, n) for i,n in enumerate(sp.G.nodes()) )        
         sp.start_escape_route = sp.nodeid2coord[0]
         sp.most_northern_y = max([c[1] for c in sp.G.nodes])
-        sp.target_nodes = set([])
+        sp.target_nodes = set([4,6])
     # Define mappings between node naming conventions
     sp.coord2nodeid = dict( (n, i) for i,n in enumerate(sp.G.nodes()) )
     sp.coord2labels = sp.labels

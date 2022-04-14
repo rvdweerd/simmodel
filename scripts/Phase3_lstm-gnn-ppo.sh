@@ -2,7 +2,8 @@
 
 #train_on="MixAll33"
 #train_on="NWB_AMS+Mix"
-train_on="M5x5Fixed"
+#train_on="M5x5Fixed"
+train_on="M3x5Mix"
 batch_size=48
 #obs_mask="None"
 #obs_rate=1.0
