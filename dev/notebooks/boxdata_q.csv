@@ -1,0 +1,61 @@
+﻿Model,Seed,Avg_return
+q_FE,0,1.5
+q_FE,1,-2
+q_FE,2,-2
+q_FE,3,-2
+q_FE,4,-2
+q_FE,5, 1.5 
+q_FE,6, -2.0 
+q_FE,7, -2.0 
+q_FE,8, -2.0 
+q_FE,9, -2.0 
+q_EMB,0,8
+q_EMB,1,8
+q_EMB,2,8
+q_EMB,3,8
+q_EMB,4,7.3
+q_EMB,5, 7.9 
+q_EMB,6, 7.5 
+q_EMB,7, 7.7 
+q_EMB,8, 7.9 
+q_EMB,9, 5.8 
+q_Dual,0,8
+q_Dual,1,8
+q_Dual,2,8
+q_Dual,3,8
+q_Dual,4,8
+q_Dual,5, 7.9 
+q_Dual,6, 8.0 
+q_Dual,7, 7.8 
+q_Dual,8, 7.8 
+q_Dual,9, 7.7 
+q_DualCC,0,8
+q_DualCC,1,8
+q_DualCC,2,8
+q_DualCC,3,8
+q_DualCC,4,8
+q_DualCC,5, 7.9 
+q_DualCC,6, 7.9 
+q_DualCC,7, 7.9 
+q_DualCC,8, 7.8 
+q_DualCC,9, 7.8 
+q_None,0,-2
+q_None,1,-2
+q_None,2,-2.8
+q_None,3,-2
+q_None,4,-2
+q_None,5, -2.0 
+q_None,6, -2.0 
+q_None,7, -2.5 
+q_None,8, -2.0 
+q_None,9, -2.0 
+q_Ustack,0,-4.3
+q_Ustack,1,8
+q_Ustack,2,8
+q_Ustack,3,7.3
+q_Ustack,4,8
+q_Ustack,5, -0.5 
+q_Ustack,6, 7.9 
+q_Ustack,7, 7.9 
+q_Ustack,8, 2.0 
+q_Ustack,9, 8.0 
