@@ -86,7 +86,7 @@ def main(args):
             multiplier=1
             if not tp['eval_deterministic']:
                 k=sum([len(k.world_pool) for k in env_all_list])
-                multiplier = max(1,2000//k)
+                multiplier = max(1,20000//k)
             result = evaluate_lstm_ppo(logdir=logdir_, config=config, env = env_all_list, ppo_policy=ppo_policy, eval_subdir=evalName, max_num_nodes=hp.max_possible_nodes, multiplier=multiplier)
             num_unique_graphs, num_graph_instances, avg_return, success_rate = result
             evalResults[evalName]['num_graphs.........'].append(num_unique_graphs)
@@ -94,18 +94,18 @@ def main(args):
             evalResults[evalName]['avg_return.........'].append(avg_return)
             evalResults[evalName]['success_rate.......'].append(success_rate)
 
-    for ename, results in evalResults.items():
-        OF = open(config['logdir']+'/Eval_det'+str(tp['eval_deterministic'])[0]+'_Results_over_seeds_'+ename+'.txt', 'w')
-        def printing(text):
-            print(text)
-            OF.write(text + "\n")
-        np.set_printoptions(formatter={'float':"{0:0.3f}".format})
-        printing('Results over seeds for evaluation on '+ename+'\n')
-        for category,values in results.items():
-            printing(category)
-            printing('  avg over seeds: '+str(np.mean(values)))
-            printing('  std over seeds: '+str(np.std(values)))
-            printing('  per seed: '+str(np.array(values))+'\n')
+        for ename, results in evalResults.items():
+            OF = open(config['logdir']+'/Eval_det'+str(tp['eval_deterministic'])[0]+'_Results_over_seeds_'+ename+'.txt', 'w')
+            def printing(text):
+                print(text)
+                OF.write(text + "\n")
+            np.set_printoptions(formatter={'float':"{0:0.3f}".format})
+            printing('Results over seeds for evaluation on '+ename+'\n')
+            for category,values in results.items():
+                printing(category)
+                printing('  avg over seeds: '+str(np.mean(values)))
+                printing('  std over seeds: '+str(np.std(values)))
+                printing('  per seed: '+str(np.array(values))+'\n')
 
     if config['test']:
         evalResults={}
@@ -130,6 +130,7 @@ def main(args):
         #obs_mask='None'
         #obs_rate=1.
         #obs_mask='prob_per_u'
+        print('hello')
         for obs_mask, obs_rate in zip(['None','prob_per_u','prob_per_u','prob_per_u'],[1.,.8,.6,.4]):
         #for obs_mask, obs_rate in zip(['prob_per_u','prob_per_u'],[.6,.4]):
             for world_name in world_dict.keys():
