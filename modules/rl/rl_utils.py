@@ -75,13 +75,13 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
         printing('entries in Q table: '+str(len(policy.Q)))
         printing('Total number of q values stored: '+str(count))
     else:
-        if issubclass(type(policy.model),torch.nn.Module):
+        if issubclass(type(policy.model),torch.nn.Module) and not silent_mode:
             printing(str(policy.model))
             printing('#Trainable parameters: '+str(policy.model.numTrainableParameters()))
-        if issubclass(type(policy.model),PPO):
+        if issubclass(type(policy.model),PPO) and not silent_mode:
             printing(str(policy.model.policy))
             printing('#Trainable parameters: '+str(CalculateNumTrainableParameters(policy.model.policy)))
-    printing('\n-------------------------------------------------------------------------------------------------------')   
+        printing('\n-------------------------------------------------------------------------------------------------------')   
     if len(test_set)==0: test_set=[None]
     MAX_TEST_SET_SIZE = 65000
     if len(test_set) > MAX_TEST_SET_SIZE:

@@ -73,7 +73,7 @@ def main(args):
     config=GetConfig(args)
     #env_train   = config['env_train']
     if args.train: #or args.eval:
-        senv, env_all_train_list = ConstructTrainSet(config, apply_wrappers=True, remove_paths=config['remove_paths'], tset=config['train_on']) #TODO check
+        senv, env_all_train_list = ConstructTrainSet(config, apply_wrappers=True, type_obs_wrap='Dict', remove_paths=config['remove_paths'], tset=config['train_on']) #TODO check
         #env_all_train = [senv]
         if config['demoruns']:
             while True:
@@ -131,19 +131,19 @@ def main(args):
         evalResults={}
         world_dict={ # [max_nodes,max_edges]
             #'Manhattan5x5_DuplicateSetB':[25,300],
-            'Manhattan3x3_WalkAround':[9,300],
+            #'Manhattan3x3_WalkAround':[9,300],
             #'MetroU3_e1t31_FixedEscapeInit':[33, 300],
-            # 'full_solvable_3x3subs':[9,300],
-            # 'Manhattan5x5_FixedEscapeInit':[25,300],
-            # 'Manhattan5x5_VariableEscapeInit':[25,300],
-            # 'MetroU3_e17tborder_FixedEscapeInit':[33,300],
-            # 'MetroU3_e17tborder_VariableEscapeInit':[33,300],
-            # 'NWB_ROT_FixedEscapeInit':[2602,7300],
-            # 'NWB_ROT_VariableEscapeInit':[2602,7300],
-            # 'NWB_test_FixedEscapeInit':[975,4000],
-            # 'NWB_test_VariableEscapeInit':[975,4000],
-            # 'NWB_UTR_FixedEscapeInit':[1182,4000],
-            # 'NWB_UTR_VariableEscapeInit':[1182,4000],
+            'full_solvable_3x3subs':[9,300],
+            'Manhattan5x5_FixedEscapeInit':[25,300],
+            'Manhattan5x5_VariableEscapeInit':[25,300],
+            'MetroU3_e17tborder_FixedEscapeInit':[33,300],
+            'MetroU3_e17tborder_VariableEscapeInit':[33,300],
+            'NWB_ROT_FixedEscapeInit':[2602,7300],
+            'NWB_ROT_VariableEscapeInit':[2602,7300],
+            'NWB_test_FixedEscapeInit':[975,4000],
+            'NWB_test_VariableEscapeInit':[975,4000],
+            'NWB_UTR_FixedEscapeInit':[1182,4000],
+            'NWB_UTR_VariableEscapeInit':[1182,4000],
             # 'SparseManhattan5x5':[25,300],
             }
         #for world_name, node_maxim, var_target, eval_name, eval_num in zip(world_list, node_maxims, var_targets, eval_names, eval_nums):
@@ -163,11 +163,11 @@ def main(args):
                 saved_model = MaskablePPO.load(config['logdir']+'/SEED'+str(config['seed0'])+"/saved_models/model_best")
                 if config['qnet']=='s2v':
                     #saved_policy = s2v_ActorCriticPolicy.load(config['logdir']+'/SEED'+str(config['seed0'])+"/saved_models/policy_last")
-                    saved_policy_deployable=DeployablePPOPolicy(env, saved_model.policy)
+                    saved_policy_deployable=DeployablePPOPolicy(evalenv[0], saved_model.policy)
                     ppo_policy = ActionMaskedPolicySB3_PPO(saved_policy_deployable, deterministic=True)
                 else:
                     #saved_policy = Gat2_ActorCriticPolicy.load(config['logdir']+'/SEED'+str(config['seed0'])+"/saved_models/policy_last")
-                    saved_policy_deployable=DeployablePPOPolicy_gat2(env, saved_model.policy)
+                    saved_policy_deployable=DeployablePPOPolicy_gat2(evalenv[0], saved_model.policy, max_num_nodes=world_dict[world_name][0])
                     ppo_policy = ActionMaskedPolicySB3_PPO(saved_policy_deployable, deterministic=True)
                 while True:
                     entries=None#[5012,218,3903]

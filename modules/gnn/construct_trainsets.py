@@ -7,7 +7,7 @@ from modules.rl.environments import SuperEnv
 #from modules.ppo.models_sb3 import s2v_ActorCriticPolicy, Struc2VecExtractor
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M5Mix'):
+def ConstructTrainSet(config, apply_wrappers=True, type_obs_wrap='Flat', remove_paths=False, tset='M3M5Mix'):
     # Requires:
     # config['max_nodes']
     # config['nfm_func']
@@ -21,53 +21,53 @@ def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M
     if tset == 'M3M5Mix':
         config['max_edges'] = 300
         config['max_nodes'] = 25
-        env, _ = get_super_env(Uselected=[0,1,2,3,4], Eselected=[6,7,8,9], config=config, var_targets=None, apply_wrappers=apply_wrappers, remove_paths=remove_paths)
+        env, _ = get_super_env(Uselected=[0,1,2,3,4], Eselected=[6,7,8,9], config=config, var_targets=None, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, remove_paths=remove_paths)
         env_all_list += env.all_env
         global_env.append(env)
         probs.append(1)
         
-        env, _ = get_super_env(Uselected=[0,1,2,3,4], Eselected=[0,1,2,3,4,5], config=config, var_targets=None, apply_wrappers=apply_wrappers, remove_paths=remove_paths)
+        env, _ = get_super_env(Uselected=[0,1,2,3,4], Eselected=[0,1,2,3,4,5], config=config, var_targets=None, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, remove_paths=remove_paths)
         env_all_list += env.all_env
         global_env.append(env)
         probs.append(2)
 
-        env, _ = get_super_env(Uselected=[0,1,2,3,4], Eselected=[0,1,2,3,4,5], config=config, var_targets=None, apply_wrappers=apply_wrappers, remove_paths=remove_paths)
+        env, _ = get_super_env(Uselected=[0,1,2,3,4], Eselected=[0,1,2,3,4,5], config=config, var_targets=None, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, remove_paths=remove_paths)
         env_all_list += env.all_env
         global_env.append(env)
         probs.append(2)
 
         world_name = 'Manhattan5x5_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(2)
 
         world_name = 'Manhattan5x5_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(2)
 
         world_name = 'Manhattan5x5_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
         world_name = 'Manhattan5x5_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
         world_name = 'Manhattan5x5_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], nfm_func_name=config['nfm_func'], var_targets=[1,1],remove_world_pool=True, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], nfm_func_name=config['nfm_func'], var_targets=[1,1],remove_world_pool=True, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)    
 
         world_name = 'SparseManhattan5x5'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
@@ -80,25 +80,25 @@ def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M
 
     elif tset == 'NWB_AMS':
         world_name = 'NWB_test_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=975, max_edges=3000, nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=975, max_edges=3000, nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
         world_name = 'NWB_test_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=975, max_edges=3000, nfm_func_name = config['nfm_func'], var_targets=[10,20], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=975, max_edges=3000, nfm_func_name = config['nfm_func'], var_targets=[10,20], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
         world_name = 'NWB_test_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=975, max_edges=3000, nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=975, max_edges=3000, nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(.1)
 
         world_name = 'NWB_test_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=975, max_edges=3000, nfm_func_name = config['nfm_func'], var_targets=[10,20], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=975, max_edges=3000, nfm_func_name = config['nfm_func'], var_targets=[10,20], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
@@ -114,100 +114,100 @@ def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M
         config['max_nodes'] = 975
 
         world_name = 'NWB_test_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(3)
 
         world_name = 'NWB_test_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name = config['nfm_func'], var_targets=[10,20], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name = config['nfm_func'], var_targets=[10,20], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(3)
 
         world_name = 'NWB_test_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
         world_name = 'NWB_test_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name = config['nfm_func'], var_targets=[10,20], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name = config['nfm_func'], var_targets=[10,20], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(3)
 
         world_name = 'MetroU3_e17tborder_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
         world_name = 'MetroU3_e17tborder_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,2], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,2], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(3)
 
         world_name = 'MetroU3_e17tborder_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(2)
 
         world_name = 'MetroU3_e17tborder_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,2], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,2], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(3)
 
-        env, _ = get_super_env(Uselected=[0,1,2,3,4], Eselected=[6,7,8,9], config=config, var_targets=None, apply_wrappers=apply_wrappers, remove_paths=remove_paths)
+        env, _ = get_super_env(Uselected=[0,1,2,3,4], Eselected=[6,7,8,9], config=config, var_targets=None, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, remove_paths=remove_paths)
         env_all_list += env.all_env
         global_env.append(env)
         probs.append(5)
         
-        env, _ = get_super_env(Uselected=[0,1,2,3,4], Eselected=[0,1,2,3,4,5], config=config, var_targets=None, apply_wrappers=apply_wrappers, remove_paths=remove_paths)
+        env, _ = get_super_env(Uselected=[0,1,2,3,4], Eselected=[0,1,2,3,4,5], config=config, var_targets=None, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, remove_paths=remove_paths)
         env_all_list += env.all_env
         global_env.append(env)
         probs.append(5)
 
-        env, _ = get_super_env(Uselected=[0,1,2,3,4], Eselected=[0,1,2,3,4,5], config=config, var_targets=None, apply_wrappers=apply_wrappers, remove_paths=remove_paths)
+        env, _ = get_super_env(Uselected=[0,1,2,3,4], Eselected=[0,1,2,3,4,5], config=config, var_targets=None, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, remove_paths=remove_paths)
         env_all_list += env.all_env
         global_env.append(env)
         probs.append(5)
 
         world_name = 'Manhattan5x5_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(2)
 
         world_name = 'Manhattan5x5_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(2)
 
         world_name = 'Manhattan5x5_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
         world_name = 'Manhattan5x5_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(2)
 
         world_name = 'Manhattan5x5_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,1],remove_world_pool=True, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,1],remove_world_pool=True, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)    
 
         world_name = 'SparseManhattan5x5'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
@@ -220,37 +220,37 @@ def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M
 
     elif tset == 'MetroConstructed':
         world_name = 'MetroU3_e17tborder_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=300, nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=300, nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
         world_name = 'MetroU3_e17tborder_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=300, nfm_func_name=config['nfm_func'], var_targets=[1,2], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=300, nfm_func_name=config['nfm_func'], var_targets=[1,2], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
         world_name = 'MetroU3_e17tborder_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=300, nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=300, nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
         world_name = 'MetroU3_e17tborder_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=300, nfm_func_name=config['nfm_func'], var_targets=[1,2], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=300, nfm_func_name=config['nfm_func'], var_targets=[1,2], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
         world_name = 'MetroU3_e1t31_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=300, nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=300, nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(2)
 
         world_name = 'MetroU3_e1t31_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=300, nfm_func_name=config['nfm_func'], var_targets=[1,2], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=300, nfm_func_name=config['nfm_func'], var_targets=[1,2], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
@@ -265,106 +265,106 @@ def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M
         config['max_edges'] = 300
         config['max_nodes'] = 33
         world_name = 'MetroU3_e17tborder_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
         world_name = 'MetroU3_e17tborder_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,2], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,2], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
         world_name = 'MetroU3_e17tborder_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
         world_name = 'MetroU3_e17tborder_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,2], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,2], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
         world_name = 'MetroU3_e1t31_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(2)
 
         world_name = 'MetroU3_e1t31_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,2], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,2], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
-        env, _ = get_super_env(Uselected=[0,1,2,3,4], Eselected=[6,7,8,9], config=config, var_targets=None, apply_wrappers=apply_wrappers, remove_paths=remove_paths)
+        env, _ = get_super_env(Uselected=[0,1,2,3,4], Eselected=[6,7,8,9], config=config, var_targets=None, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, remove_paths=remove_paths)
         env_all_list += env.all_env
         global_env.append(env)
         probs.append(1)
         
-        env, _ = get_super_env(Uselected=[0,1,2,3,4], Eselected=[0,1,2,3,4,5], config=config, var_targets=None, apply_wrappers=apply_wrappers, remove_paths=remove_paths)
+        env, _ = get_super_env(Uselected=[0,1,2,3,4], Eselected=[0,1,2,3,4,5], config=config, var_targets=None, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, remove_paths=remove_paths)
         env_all_list += env.all_env
         global_env.append(env)
         probs.append(2)
 
-        env, _ = get_super_env(Uselected=[0,1,2,3,4], Eselected=[0,1,2,3,4,5], config=config, var_targets=None, apply_wrappers=apply_wrappers, remove_paths=remove_paths)
+        env, _ = get_super_env(Uselected=[0,1,2,3,4], Eselected=[0,1,2,3,4,5], config=config, var_targets=None, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, remove_paths=remove_paths)
         env_all_list += env.all_env
         global_env.append(env)
         probs.append(2)
 
         world_name = 'Manhattan5x5_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(2)
 
         world_name = 'Manhattan5x5_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(2)
 
         world_name = 'Manhattan5x5_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
         world_name = 'Manhattan5x5_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
         world_name = 'Manhattan5x5_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,1],remove_world_pool=True, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,1],remove_world_pool=True, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)    
 
         world_name = 'SparseManhattan5x5'
-        env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
         # world_name = 'Manhattan3x3_WalkAround'
-        # env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        # env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         # env_all_list.append(env)
         # global_env.append(env)
         # probs.append(1)
 
         # world_name = 'Manhattan5x5_DuplicateSetA'
-        # env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        # env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         # env_all_list.append(env)
         # global_env.append(env)
         # probs.append(1)
 
         # world_name = 'Manhattan5x5_DuplicateSetB'
-        # env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        # env = CreateEnv(world_name, max_nodes=33, max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,3], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         # env_all_list.append(env)
         # global_env.append(env)
         # probs.append(1)
@@ -380,7 +380,7 @@ def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M
         config['max_edges']=105
 
         world_name = 'Manhattan5x5_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
@@ -396,19 +396,19 @@ def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M
         config['max_edges']=14
 
         world_name = 'MemoryTaskU1'
-        env = CreateEnv(world_name, max_nodes=8, max_edges=14, nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+        env = CreateEnv(world_name, max_nodes=8, max_edges=14, nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(2)
 
         world_name = 'MemoryTaskU2T'
-        env = CreateEnv(world_name, max_nodes=8, max_edges=14, nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+        env = CreateEnv(world_name, max_nodes=8, max_edges=14, nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
         world_name = 'MemoryTaskU2B'
-        env = CreateEnv(world_name, max_nodes=8, max_edges=14, nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+        env = CreateEnv(world_name, max_nodes=8, max_edges=14, nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
@@ -424,7 +424,7 @@ def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M
         config['max_edges']=14
 
         world_name = 'MemoryTaskU1'
-        env = CreateEnv(world_name, max_nodes=8, max_edges=14, nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+        env = CreateEnv(world_name, max_nodes=8, max_edges=14, nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
@@ -440,7 +440,7 @@ def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M
         config['max_edges']=20
 
         world_name = 'MemoryTaskU1Long'
-        env = CreateEnv(world_name, max_nodes=11, max_edges=20, nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+        env = CreateEnv(world_name, max_nodes=11, max_edges=20, nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
@@ -456,20 +456,20 @@ def ConstructTrainSet(config, apply_wrappers=True, remove_paths=False, tset='M3M
         config['max_nodes']=9
         config['max_edges']=21
 
-        # env, _ = get_super_env(Uselected=[2], Eselected=[3,9], config=config, var_targets=None, apply_wrappers=apply_wrappers, remove_paths=remove_paths)
+        # env, _ = get_super_env(Uselected=[2], Eselected=[3,9], config=config, var_targets=None, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, remove_paths=remove_paths)
         # env_all_list += env.all_env
         # global_env.append(env)
         # probs.append(1)
         # super_env=env
         
         # world_name = 'Manhattan5x5_FixedEscapeInit'
-        # env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers)
+        # env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         # env_all_list.append(env)
         # global_env.append(env)
         # probs.append(1)
 
         world_name = 'Manhattan3x3_WalkAround'
-        env = CreateEnv(world_name, max_nodes=9, max_edges=21, nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+        env = CreateEnv(world_name, max_nodes=9, max_edges=21, nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)

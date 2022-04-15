@@ -20,7 +20,7 @@ from sb3_contrib.common.maskable.evaluation import evaluate_policy
 from sb3_contrib import MaskablePPO
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-def get_super_env(Uselected=[1], Eselected=[4], config=None, var_targets=None, apply_wrappers=True, remove_paths=False):
+def get_super_env(Uselected=[1], Eselected=[4], config=None, var_targets=None, apply_wrappers=True, type_obs_wrap='Flat',remove_paths=False):
     max_nodes=config['max_nodes']
     max_edges=config['max_edges']
     state_repr = 'etUte0U0'
@@ -33,12 +33,16 @@ def get_super_env(Uselected=[1], Eselected=[4], config=None, var_targets=None, a
     env_all_train, hashint2env, env2hashint, env2hashstr = GetWorldSet(state_repr, state_enc, U=Uselected, E=Eselected, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func, var_targets=var_targets, remove_paths=remove_paths)
     if apply_wrappers:
         for i in range(len(env_all_train)):
-            env_all_train[i]=PPO_ObsFlatWrapper(env_all_train[i], max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+            if type_obs_wrap == 'Flat':
+                env_all_train[i]=PPO_ObsFlatWrapper(env_all_train[i], max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+            elif type_obs_wrap == 'Dict':
+                env_all_train[i]=PPO_ObsDictWrapper(env_all_train[i], max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges)
+            else: assert False
             env_all_train[i]=PPO_ActWrapper(env_all_train[i])        
     super_env = SuperEnv(env_all_train, hashint2env, max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges)
     return super_env, env_all_train
 
-def CreateEnv(world_name, max_nodes=9, max_edges=300, nfm_func_name = 'NFM_ev_ec_t_um_us', var_targets=None, remove_world_pool=False, apply_wrappers=True, obs_mask='None', obs_rate=1):
+def CreateEnv(world_name, max_nodes=9, max_edges=300, nfm_func_name = 'NFM_ev_ec_t_um_us', var_targets=None, remove_world_pool=False, apply_wrappers=True, type_obs_wrap='Flat', obs_mask='None', obs_rate=1):
     state_repr='etUte0U0'
     state_enc='nfm'
     edge_blocking = True
@@ -52,7 +56,11 @@ def CreateEnv(world_name, max_nodes=9, max_edges=300, nfm_func_name = 'NFM_ev_ec
     if apply_wrappers:
         #env = PPO_ObsWrapper(env, max_possible_num_nodes = max_nodes)        
         #env = PPO_ObsDictWrapper(env, max_possible_num_nodes = max_nodes, max_possible_num_edges = max_edges)
-        env = PPO_ObsFlatWrapper(env, max_possible_num_nodes = max_nodes, max_possible_num_edges = max_edges, obs_mask=obs_mask, obs_rate=obs_rate)
+        if type_obs_wrap == 'Flat':
+            env = PPO_ObsFlatWrapper(env, max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges, obs_mask=obs_mask, obs_rate=obs_rate)
+        elif type_obs_wrap == 'Dict':
+            env = PPO_ObsDictWrapper(env, max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges)
+        else: assert False
         env = PPO_ActWrapper(env) 
     return env
 
@@ -128,13 +136,13 @@ def evaluate_ppo(logdir, info=False, config=None, env=None, eval_subdir='.', n_e
     
     if type(env) == list:
         if len(env)==0: return 0,0,0,0
+        saved_model = MaskablePPO.load(logdir+"/saved_models/model_best")
+        if config['qnet']=='s2v':
+            saved_policy_deployable=DeployablePPOPolicy(env[0], saved_model.policy)
+        elif config['qnet']=='gat2':
+            saved_policy_deployable=DeployablePPOPolicy_gat2(env[0], saved_model.policy, max_num_nodes=max_num_nodes)
+        ppo_policy = ActionMaskedPolicySB3_PPO(saved_policy_deployable, deterministic=True)
         for i,e in enumerate(tqdm.tqdm(env)):
-            saved_model = MaskablePPO.load(logdir+"/saved_models/model_best")
-            if config['qnet']=='s2v':
-                saved_policy_deployable=DeployablePPOPolicy(e, saved_model.policy)
-            elif config['qnet']=='gat2':
-                saved_policy_deployable=DeployablePPOPolicy_gat2(e, saved_model.policy, max_num_nodes=max_num_nodes)
-            ppo_policy = ActionMaskedPolicySB3_PPO(saved_policy_deployable, deterministic=True)
 
             l, returns, c, solves = EvaluatePolicy(e, ppo_policy, e.world_pool, print_runs=False, save_plots=False, logdir=evaldir, eval_arg_func=EvalArgs3, silent_mode=True)
             num_worlds_requested = 10

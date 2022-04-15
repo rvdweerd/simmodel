@@ -298,7 +298,8 @@ class DeployablePPOPolicy_gat2(nn.Module):
         self.gat2_extractor = Gat2Extractor(env.observation_space,64,trained_policy.features_extractor.T,env.F).to(device)
         self.gat2_extractor.load_state_dict(trained_policy.features_extractor.state_dict())
         
-        self.gat2ACnet = Gat2_ACNetwork(-1,1,1,64,trained_policy.mlp_extractor.max_num_nodes).to(device)
+        #self.gat2ACnet = Gat2_ACNetwork(-1,1,1,64,trained_policy.mlp_extractor.max_num_nodes).to(device)
+        self.gat2ACnet = Gat2_ACNetwork(-1, 1, 1, 64, max_num_nodes).to(device)
         self.gat2ACnet.load_state_dict(trained_policy.mlp_extractor.state_dict())
 
         self.pnet = nn.Linear(1,1,True).to(device)
