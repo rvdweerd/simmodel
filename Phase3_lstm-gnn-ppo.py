@@ -220,6 +220,6 @@ if __name__ == '__main__':
     parser.add_argument('--num_seeds', default=5, type=int)
     parser.add_argument('--seed0', default=10, type=int)
     parser.add_argument('--demoruns', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
-    parser.add_argument('--eval_deter', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
+    parser.add_argument('--eval_deter', type=lambda s: s.lower() in ['true', 't', 'yes', '1'],default=True)
     args=parser.parse_args()
     main(args)
