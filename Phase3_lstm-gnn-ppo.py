@@ -1,4 +1,5 @@
 import argparse
+import random
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from modules.dqn.dqn_utils import seed_everything
@@ -169,7 +170,8 @@ def main(args):
 
                     if config['demoruns']:
                         while True:
-                            a = SimulateAutomaticMode_PPO(env, ppo_policy, t_suffix=False, entries=None)
+                            demoenv=random.choice(evalenv)
+                            a = SimulateAutomaticMode_PPO(demoenv, ppo_policy, t_suffix=False, entries=None)
                             if a == 'Q': break
 
                     result = evaluate_lstm_ppo(logdir=logdir_, config=config, env=evalenv, ppo_policy=ppo_policy, eval_subdir=evalName, max_num_nodes=world_dict[world_name][0])

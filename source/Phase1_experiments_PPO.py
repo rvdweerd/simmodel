@@ -30,7 +30,7 @@ def RunSB3_PPO_Experiment(args):
     total_steps       = hp['total_steps'][env.state_representation]
     eval_deterministic= hp['eval_determ'][env.state_representation]
     sample_multiplier = hp['sampling_m'][env.state_representation]
-    exp_rootdir='./results/PPO/'+world_name+'/'+env.state_representation+'/'
+    exp_rootdir='./results/results_Phase1/PPO/'+world_name+'/'+env.state_representation+'/'
 
     # Train and evaluate
     if TRAIN:
@@ -86,7 +86,7 @@ def RunSB3_PPO_Experiment(args):
     if EVALUATE:
         model = PPO.load(exp_rootdir+'Model_best')
         policy=EpsilonGreedyPolicySB3_PPO(env, model, deterministic=eval_deterministic)
-        lengths, returns, captures = EvaluatePolicy(env, policy, env.world_pool*sample_multiplier, print_runs=False, save_plots=False, logdir=exp_rootdir)
+        lengths, returns, captures, solves = EvaluatePolicy(env, policy, env.world_pool*sample_multiplier, print_runs=False, save_plots=False, logdir=exp_rootdir)
         plotlist = GetFullCoverageSample(returns, env.world_pool*sample_multiplier, bins=10, n=10)
         EvaluatePolicy(env, policy, plotlist, print_runs=True, save_plots=True, logdir=exp_rootdir)
 

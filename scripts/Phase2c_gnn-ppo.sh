@@ -19,7 +19,7 @@ numseeds=9
 #seed0=1
 solveselect='solvable'
 edgeblock="True"
-max_nodes=25
+max_nodes=9
 demoruns="False"
 pursuit="Uon"
 
