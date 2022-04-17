@@ -418,6 +418,7 @@ def start_or_resume_from_checkpoint(env, config, hp, tp):
     
     obsv_dim, action_dim, continuous_action_space = get_env_space(env)
 #['None','shared-concat','shared-noncat','separate-concat','separate-noncat']
+    if config['qnet']=='s2v': assert False, "s2v not implemented"
     if config['lstm_type'] in ['None','Dual']:	
         ppo_algo = MaskablePPOPolicy
     elif config['lstm_type'] == 'DualCC':
