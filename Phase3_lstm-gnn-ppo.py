@@ -117,23 +117,22 @@ def main(args):
             # 'full_solvable_3x3subs':[9,33],
             # 'MemoryTaskU1':[8,16],
             'Manhattan5x5_FixedEscapeInit':[25,105],
-            #'Manhattan5x5_VariableEscapeInit':[25,105],
-            # 'MetroU3_e17tborder_FixedEscapeInit':[33,300],
-            # 'MetroU3_e17tborder_VariableEscapeInit':[33,300],
-            # 'NWB_ROT_FixedEscapeInit':[2602,7300],
-            # 'NWB_ROT_VariableEscapeInit':[2602,7300],
-            # 'NWB_test_FixedEscapeInit':[975,4000],
-            # 'NWB_test_VariableEscapeInit':[975,4000],
-            # 'NWB_UTR_FixedEscapeInit':[1182,4000],
-            # 'NWB_UTR_VariableEscapeInit':[1182,4000],
+            'Manhattan5x5_VariableEscapeInit':[25,105],
+            'MetroU3_e17tborder_FixedEscapeInit':[33,300],
+            'MetroU3_e17tborder_VariableEscapeInit':[33,300],
+            'NWB_ROT_FixedEscapeInit':[2602,7300],
+            'NWB_ROT_VariableEscapeInit':[2602,7300],
+            'NWB_test_FixedEscapeInit':[975,4000],
+            'NWB_test_VariableEscapeInit':[975,4000],
+            'NWB_UTR_FixedEscapeInit':[1182,4000],
+            'NWB_UTR_VariableEscapeInit':[1182,4000],
             # 'SparseManhattan5x5':[25,105],
             }
         #obs_mask='None'
         #obs_rate=1.
         #obs_mask='prob_per_u'
-        print('hello')
-        for obs_mask, obs_rate in zip(['None','prob_per_u','prob_per_u','prob_per_u'],[1.,.8,.6,.4]):
-        #for obs_mask, obs_rate in zip(['prob_per_u','prob_per_u'],[.6,.4]):
+        #for obs_mask, obs_rate in zip(['None','prob_per_u','prob_per_u','prob_per_u'],[1.,.8,.6,.4]):
+        for obs_mask, obs_rate in zip(['None'],[1.]):
             for world_name in world_dict.keys():
                 evalName=world_name+'_obs'+obs_mask+'_evaldet'+str(tp['eval_deterministic'])[0]
                 if obs_mask != 'None': evalName += str(obs_rate)

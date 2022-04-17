@@ -371,9 +371,9 @@ class LSTM_GNN_PPO_Policy(Policy):
         self.continuous_action_space = lstm_ppo_model.continuous_action_space 
         self.hp=lstm_ppo_model.hp
 
-        self.FE = lstm_ppo_model.FE
-        self.PI = lstm_ppo_model.PI
-        self.V  = lstm_ppo_model.V
+        self.FE = lstm_ppo_model.FE.to(device)
+        self.PI = lstm_ppo_model.PI.to(device)
+        self.V  = lstm_ppo_model.V.to(device)
 
 
         self.deterministic = deterministic
@@ -393,7 +393,7 @@ class LSTM_GNN_PPO_Policy(Policy):
 
     def sample_greedy_action(self, obs, available_actions, printing=False):
         with torch.no_grad():
-            features,_,_,_ = self.FE(obs.reshape(1,1,-1).to(dtype=torch.float32).to('cpu'))
+            features,_,_,_ = self.FE(obs.reshape(1,1,-1).to(dtype=torch.float32).to(device))
             prob=self.PI(features)
             self.probs=prob.probs.flatten().cpu().numpy()
             #prob = prob.view(-1)

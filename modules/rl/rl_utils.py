@@ -110,7 +110,8 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
             s_start=env.state
             #action,_ = policy.sample_action(s, env.availableActionsInCurrentState())
             #action,_ = policy.sample_action(env.nfm, env.sp.W, env.neighbors[env.state[0]])
-            action,_ = policy.sample_action(*eval_arg_func(env))
+            with torch.no_grad():
+                action,_ = policy.sample_action(*eval_arg_func(env))
             action_probs = policy.get_action_probs()
             s,r,done,info = env.step(action)
             s_prime = env.state
