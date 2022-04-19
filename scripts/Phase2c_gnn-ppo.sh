@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # ## BATCH
-train_on="M3M5Mix"
-#train_on="NWB_AMS"
+#train_on="M3M5Mix"
+train_on="NWB_AMS"
 #train_on="MixAll33"
 #train_on="TEST"
 emb=64
@@ -12,21 +12,21 @@ nfm="NFM_ev_ec_t_dt_at_um_us"
 norm_agg="True"
 optim='returns'
 nstep=200000 #200000
-train="False"
+train="True"
 eval="False"
-test="True"
-numseeds=9
+test="False"
+numseeds=5
 #seed0=1
 solveselect='solvable'
 edgeblock="True"
-max_nodes=9
+max_nodes=975
 demoruns="False"
 pursuit="Uon"
 
 for seed0 in {"0",}
 #"NFM_ec_t","NFM_ec_dtscaled"}
 do
-    for qnet in {"gat2",}
+    for qnet in {"s2v",}
     do
         tmux new-session -d -s "${qnet}-${seed0}"
         tmux send-keys -t "${qnet}-${seed0}" "conda activate rlcourse-sb3c" Enter
