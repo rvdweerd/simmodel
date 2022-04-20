@@ -100,7 +100,7 @@ def main(args):
                 #n_steps = 1024, #2048
                 seed=seed, \
                 #n_epochs = 10,#10
-                #batch_size=5, #64
+                batch_size=32,#5, #64
                 #clip_range=0.1,\    
                 #max_grad_norm=0.1,\
                 policy_kwargs = policy_kwargs, verbose=2, tensorboard_log=logdir_+"/tb/")

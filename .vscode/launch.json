@@ -49,9 +49,9 @@
                     // "--recurrent_seq_len","2",
 
                     // ARGS FOR Phase 2 PPO
-                    //"--train_on","NWB_AMS",
+                    "--train_on","NWB_AMS",
                     //"--train_on","MetroConstructed",
-                    "--train_on","TEST",
+                    //"--train_on","TEST",
                     //"--train_on","MixAll33",
                     //"--train_on","M3M5Mix",
                     "--emb_dim","64",
@@ -65,14 +65,14 @@
                     "--eval","False",
                     "--test","False",
                     "--num_seeds","1",
-                    "--seed0","1000",
+                    "--seed0","0",
                     "--solve_select","solvable",
                     "--edge_blocking","True",
-                    "--max_nodes","33",
+                    "--max_nodes","975",
                     "--demoruns","False",
                     "--pursuit","Uon",
 
-                    //ARGS FOR Phase2 DQN
+                    // // //ARGS FOR Phase2 DQN
                     // "--emb_dim","64",
                     // "--num_epi","25000",
                     // "--mem_size","5000",
@@ -85,7 +85,7 @@
                     // "--demoruns","False",
                     // "--Etrain","0,1,2,3,4,5,6,7,8,9",
                     // "--Utrain","1,2,3",
-                    // "--qnet","gat2",
+                    // "--qnet","s2v",
                     // "--norm_agg","True",
                     // //"--train_on","NWB_AMS",
                     // //"--train_on","NWB_AMS+Mix",
@@ -93,7 +93,7 @@
                     // //"--train_on","M3M5Mix",
                     // "--train_on","TEST",
                     // //"--train_on","MixAll33",
-                    // "--max_nodes","9",
+                    // "--max_nodes","975",
                     // "--pursuit","Uon",
                     // "--num_seeds","6",
                     // "--seed0","1000",
