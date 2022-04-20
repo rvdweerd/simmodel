@@ -66,6 +66,9 @@ def GetConfig(args):
     config['seedrange']=range(config['seed0'], config['seed0']+config['numseeds'])
     print('seedrange')
     for i in config['seedrange']: print(i)
+    config['obs_mask']=None # not implemented
+    config['obs_rate']=1. # not implemented
+    
     return config
 
 def main(args):
@@ -231,17 +234,17 @@ def main(args):
             # 'Manhattan5x5_DuplicateSetB',
             #'Manhattan3x3_WalkAround',
             # 'MetroU3_e1t31_FixedEscapeInit', 
-            'full_solvable_3x3subs',
-            # 'Manhattan5x5_FixedEscapeInit',
-            # 'Manhattan5x5_VariableEscapeInit',
-            #'MetroU3_e17tborder_FixedEscapeInit',
-            # 'MetroU3_e17tborder_VariableEscapeInit',
-            #'NWB_ROT_FixedEscapeInit',
-            # 'NWB_ROT_VariableEscapeInit',
-            #'NWB_test_FixedEscapeInit',
-            # 'NWB_test_VariableEscapeInit',
-            # 'NWB_UTR_FixedEscapeInit',
-            # 'NWB_UTR_VariableEscapeInit',            
+            #'full_solvable_3x3subs',
+            'Manhattan5x5_FixedEscapeInit',
+            'Manhattan5x5_VariableEscapeInit',
+            'MetroU3_e17tborder_FixedEscapeInit',
+            'MetroU3_e17tborder_VariableEscapeInit',
+            'NWB_ROT_FixedEscapeInit',
+            'NWB_ROT_VariableEscapeInit',
+            'NWB_test_FixedEscapeInit',
+            'NWB_test_VariableEscapeInit',
+            'NWB_UTR_FixedEscapeInit',
+            'NWB_UTR_VariableEscapeInit',            
             # 'SparseManhattan5x5',
             ]
         #node_maxims = [0,0,0,0]
@@ -257,7 +260,7 @@ def main(args):
                 evalenv, _, _, _  = GetWorldSet('etUte0U0', 'nfm', U=Utest, E=Etest, edge_blocking=config['edge_blocking'], solve_select=config['solve_select'], reject_duplicates=False, nfm_func=modules.gnn.nfm_gen.nfm_funcs[config['nfm_func']])
             else:
                 env = CreateEnv(world_name, max_nodes=0, nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=config['remove_paths'], apply_wrappers=False)
-                env.redefine_goal_nodes([0])
+                #env.redefine_goal_nodes([0])
                 evalenv=[env]
             #env = CreateEnv('NWB_test_FixedEscapeInit',max_nodes=975,nfm_func_name = config['nfm_func'],var_targets=None, remove_world_pool=True, apply_wrappers=False)
             #env = CreateEnv('MetroU3_e17tborder_FixedEscapeInit',max_nodes=33,nfm_func_name = config['nfm_func'],var_targets=[1,1], remove_world_pool=True, apply_wrappers=False)
@@ -273,9 +276,9 @@ def main(args):
                 Q_func, Q_net, optimizer, lr_scheduler = init_model(config,fname=config['logdir']+'/SEED'+str(config['seed0'])+'/best_model.tar')
                 policy=GNN_s2v_Policy(Q_func)
                 while True:
-                    entries=[1697]#ROT[427]#[5012,218,3903]
+                    entries=None#[1697]#ROT[427]#[5012,218,3903]
                     env = random.choice(evalenv)
-                    a = SimulateAutomaticMode_DQN(env, policy, t_suffix=True, entries=entries)
+                    a = SimulateAutomaticMode_DQN(env, policy, t_suffix=False, entries=entries)
                     if a == 'Q': break
             
             #evalenv=SuperEnv([env], {1:0}, node_maxim, probs=[1])

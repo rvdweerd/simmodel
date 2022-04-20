@@ -16,22 +16,23 @@ utrain="1,2,3"
 utrain_="123"
 #qnet="s2v"
 #train_on="M3M5Mix"
-train_on="NWB_AMS"
+#train_on="NWB_AMS"
 #train_on="MixAll33"
 #train_on="TEST"
+train_on="NWB_AMS+Mix"
 pursuit="Uon"
 solveselect='solvable'
 edgeblock="True"
 nfm="NFM_ev_ec_t_dt_at_um_us"
 #nfm="NFM_ev_ec_t_dt_at_ustack"
 itt=5
-max_nodes=9
+max_nodes=975
 demoruns="False"
 #seed0=1
-numseeds=5
+numseeds=6
 norm_agg="True"
 
-for seed0 in {"1",}
+for seed0 in {"0",}
 #"2","3","4","5"}
 #"NFM_ec_t","NFM_ec_dtscaled"}
 do
