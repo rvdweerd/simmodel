@@ -162,6 +162,97 @@ class PPO_ObsFlatWrapper(ObservationWrapper):
         # assert torch.allclose(self.sp.EI,py)
         return self.obs
 
+class PPO_ObsFlatWrapper_basic(ObservationWrapper):
+    """Wrapper for constructing a flattened et|Ut observation tensor.
+    """
+    
+    def __init__(self, env, obs_mask='None', obs_rate=1, seed=0):
+        super().__init__(env)
+        assert obs_mask in ['None','freq','prob','prob_per_u','prob_per_u_test']
+        assert (obs_rate >=0 and obs_rate <=1) if obs_mask in ['prob','prob_per_u','None','prob_per_u_test'] else (obs_rate >1e-2 and obs_rate <=1)
+        self.obs_mask = obs_mask  # Type of observation masking of pursuit units
+        self.obs_rate = int(1/obs_rate) if obs_mask=='freq' else obs_rate  # If observations are masked, either frequency (mask every n) or probability (mask with probability p)
+        self.nflat = env.sp.V * (1 + env.nfm_calculator.k)
+        self.observation_space= spaces.Box(0., 10., shape=(self.nflat,), dtype=np.float32)
+        self.action_space     = spaces.Discrete(env.sp.V) # all possible nodes 
+        print('Wrapping the env with a customized observation definition: flattened et|Ut tensor with frame stacking')
+        if obs_mask == 'prob_per_u_test':
+            rng = np.random.default_rng(seed)
+            num_worlds = len(self.all_worlds)
+            self.pre_calculated_masks = rng.integers(2, size=(num_worlds, self.sp.T, self.sp.U), dtype=np.bool)
+            
+    def getUpositions(self,t=0):
+        return self.env.getUpositions(t)
+    
+    def action_masks(self):
+        m = self.env.action_masks() #+ [False] * (self.max_possible_num_nodes - self.V)
+        return m
+
+    def render(self, mode=None, fname=None, t_suffix=True, size=None):
+        return self.env.render(mode,fname,t_suffix,size)
+
+    def observation(self, observation):
+        """convert observation."""
+        # Apply observation masking
+        if self.obs_mask != 'None':
+            #all_observable=True
+            if self.obs_mask == 'freq':
+                self.env.u_observable = [True]*self.env.sp.U
+                if ((self.global_t) % self.obs_rate != 0):
+                    #print('freq criterion: obs set to False')
+                    #all_observable=False
+                    self.env.u_observable = [False]*self.env.sp.U # for plotting purposes
+                    self.nfm[:, self.nfm_calculator.uindx] = 0 # erase all U observations
+            elif self.obs_mask == 'prob': # probability of observing all Us at timestep t
+                self.env.u_observable = [True]*self.env.sp.U                
+                if self.env.global_t > 0:  # first frame always visible
+                    p = np.random.rand() 
+                    #print('p=',p)
+                    if p > self.obs_rate:
+                        #print('prob criterion: obs set to False')
+                        #all_observable=False
+                        self.env.u_observable = [False]*self.env.sp.U # for plotting purposes
+                        self.nfm[:, self.nfm_calculator.uindx] = 0 # erase all U observations
+            elif self.obs_mask == 'prob_per_u': # probability of observing an individual U at timestep t
+                if self.env.global_t > 0:  # first frame always visible
+                    mask_u = np.random.rand(self.sp.U) > self.obs_rate
+                    self.env.u_observable = list(~mask_u) # for plotting purposes
+                    self.mask_units(mask_u) # sets appropriate self.nfm values to 0
+            elif self.obs_mask == 'prob_per_u_test':
+                if self.env.global_t > 0:  # first frame always visible
+                    mask_u = self.pre_calculated_masks[self.current_entry][self.global_t] > self.obs_rate
+                    self.env.u_observable = list(~mask_u) # for plotting purposes
+                    self.mask_units(mask_u) # sets appropriate self.nfm
+            else: assert False    
+            #print('\n>> state',self.state,'units observable:',self.u_observable,'units positions:',self.getUpositions(self.local_t))
+            assert self.u_observable==self.env.u_observable
+            assert self.global_t == self.local_t
+
+        # Convert observation to flat tensor according to init definitions
+        #pv = self.max_possible_num_nodes - self.sp.V  # padding
+        #nfm = nn.functional.pad(self.nfm.clone(),(0,0,0,pv)) # pad downward to (max_N, F)
+        #num_edges = self.sp.EI.shape[1]
+        #pe = self.max_possible_num_edges - num_edges
+        #pygei = nn.functional.pad(self.sp.EI.clone(),(0,pe)) # pad rightward to (2,MAX_EDGES)
+        #reachable = torch.index_select(self.sp.W, 1, torch.tensor(self.state[0])).clone()
+        #reachable = nn.functional.pad(reachable,(0,0,0,pv)) # pad downward to (max_N, 1)
+        stackidx = [1]+[i for i in range(self.F-self.nfm_calculator.k,self.F)]
+        self.obs = self.nfm[:,stackidx].clone().T.flatten()
+
+        # # TEST
+        # # deserialize single obs (:,)
+        # num_nodes, max_nodes, num_edge, max_edges, F = obs[-5:].to(torch.int64).tolist()
+        # nf,py,re,_ = torch.split(obs,(F*max_nodes, 2*max_edges, max_nodes, 5),dim=0)
+        # nf=nf.reshape(max_nodes,-1)[:num_nodes]
+        # py=py.reshape(2,-1)[:,:num_edges].to(torch.int64)
+        # re=re.reshape(-1,1)[:num_nodes].to(torch.int64)
+        # assert nf.shape[1]==F
+        # assert torch.allclose(self.nfm,nf)
+        # assert torch.allclose(self.sp.EI,py)
+        return self.obs
+
+
+
 class PPO_ObsDictWrapper(ObservationWrapper):
     """Wrapper for dict of nfm|W|reachable|pyg_data"""
 

@@ -187,17 +187,16 @@ def CreateLearningCurvePlotsPhase1(path, n_smoothing=20, nseeds=5, numiter=1200,
     plt.clf()
 
 
-#root="./results/results_Phase3/ppo/MemTask-U1"
+root="./results/results_Phase3/ppo/MemTask-U1"
 #root="./results/results_Phase3/ppo/M5x5Fixed"
 #root="./results/results_Phase3/ppo/M5x5Fixed/gat2-q/emb24_itT5/lstm_Dual_24_1/NFM_ev_ec_t_dt_at_um_us"
 #root="./results/results_Phase3/ppo/M5x5Fixed/gat2-v/emb24_itT5/lstm_None/NFM_ev_ec_t_dt_at_um_us"
 
 # USE FOR LSTM
-# for path in [x[0] for x in os.walk(root)]:
-#     if os.path.isfile(path+'/train-parameters.txt'):
-#         #path="./results/results_Phase3/ppo/MemTask-U1/gat2-q/emb24_itT5/lstm_Dual_24_1/NFM_ev_ec_t_dt_at_um_us/omask_freq0.2/bsize48" #folderpath
-#         CreateLearningCurvePlots(path=path, n_smoothing=30, nseeds=20, numiter=6000, yrange=[-10.,5.])
+for path in [x[0] for x in os.walk(root)]:
+    if os.path.isfile(path+'/train-parameters.txt'):
+        #path="./results/results_Phase3/ppo/MemTask-U1/gat2-q/emb24_itT5/lstm_Dual_24_1/NFM_ev_ec_t_dt_at_um_us/omask_freq0.2/bsize48" #folderpath
+        CreateLearningCurvePlots(path=path, n_smoothing=5, nseeds=6, numiter=100, yrange=[-5.,9.])
 
-path="./results/results_Phase1/DQN/Manhattan5x5_VariableEscapeInit/etUt/tensorboard"
-
-CreateLearningCurvePlotsPhase1(path=path, n_smoothing=5, nseeds=5, numiter=None, yrange=[-10.,5.])
+#path="./results/results_Phase1/DQN/Manhattan5x5_VariableEscapeInit/etUt/tensorboard"
+#CreateLearningCurvePlotsPhase1(path=path, n_smoothing=5, nseeds=5, numiter=None, yrange=[-10.,5.])

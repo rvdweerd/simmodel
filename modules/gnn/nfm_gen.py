@@ -317,6 +317,11 @@ class NFM_ev_ec_t_dt_at_ustack():
         # .         ...
         # 5+(k-1)   u position at t
 
+    def reinit(self, k):
+        self.F=5+k
+        self.k=k
+        self.uindx=torch.tensor([5+k-1],dtype=torch.int64)
+
     def init(self, eo):
         eo.F = self.F
         eo.nfm0 = torch.zeros((eo.sp.V,eo.F),dtype=torch.float32)

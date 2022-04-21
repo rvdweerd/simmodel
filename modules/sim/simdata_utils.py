@@ -685,6 +685,7 @@ def SimulatePursuersPathways(conf, optimization_method='dynamic', fixed_initial_
         PlotAgentsOnGraph(sp, e, p, t)
 
 def SimulateInteractiveMode(env, filesave_with_time_suffix=True, entry=None):
+    # actions processed as index of available actions (i.e. not node labels)
     if entry is not None:
         env.reset(entry)
     else:
