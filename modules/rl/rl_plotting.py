@@ -72,10 +72,16 @@ def PlotAgentsOnGraph_(sp, escape_pos, u_paths, timestep, fig_show=False, fig_sa
     # }
     #nx.relabel_nodes(G, labels, copy=True)
     #nx.convert_node_labels_to_integers(G)
-    
+
+    #remove reflexive edges
+    edgelist = [(u,v) for (u,v,d) in G.edges(data=True) if u != v]
+#    for src,tgt in edgelist_not_taken:
+#        if src == tgt:
+#            edgelist_not_taken.remove((src,tgt))
+
     #matplotlib.rcParams['figure.figsize'] = [7, 7]
     #nx.draw_networkx(G, pos, **options)
-    nx.draw_networkx_edges(G, pos, edge_color='grey', width=edgewidth, arrowsize=arrowsize, alpha=1.)#width=1
+    nx.draw_networkx_edges(G, pos, edgelist=edgelist, edge_color='grey', width=edgewidth, arrowsize=arrowsize, alpha=1.)#width=1
     if fontsize>1:
         nx.draw_networkx_labels(G,pos, font_size = fontsize, labels=node_text, font_color='black')#fontsize=8
     nx.draw_networkx_nodes(G, pos, node_size=nodesizelist, node_color=colorlist, edgecolors=node_borderlist, alpha=1.)#alhpa=.6
