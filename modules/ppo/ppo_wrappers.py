@@ -73,6 +73,7 @@ class PPO_ObsFlatWrapper(ObservationWrapper):
     def __init__(self, env, max_possible_num_nodes = 3000, max_possible_num_edges = 4000, obs_mask='None', obs_rate=1, seed=0):
         super().__init__(env)
         assert max_possible_num_nodes >= self.sp.V
+        self.V=self.sp.V
         assert obs_mask in ['None','freq','prob','prob_per_u','prob_per_u_test']
         assert (obs_rate >=0 and obs_rate <=1) if obs_mask in ['prob','prob_per_u','None','prob_per_u_test'] else (obs_rate >1e-2 and obs_rate <=1)
         self.obs_mask = obs_mask  # Type of observation masking of pursuit units
