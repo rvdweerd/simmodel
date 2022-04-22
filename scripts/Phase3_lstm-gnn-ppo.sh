@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #train_on="MixAll33"
-train_on="NWB_AMS"
-#train_on="M5x5Fixed"
+#train_on="NWB_AMS"
+train_on="M5x5Fixed"
 #train_on="M3x5Mix"
 batch_size=48
 obs_mask="None"
@@ -19,13 +19,12 @@ emb_iterT=5
 #nfm_func="NFM_ev_ec_t_dt_at_um_us"
 #nfm_func="NFM_ev_ec_t_dt_at_ustack"
 qnet="gat2"
-train="False"
+train="True"
 eval="False"
-test="True"
-num_seeds=305
+test="False"
+num_seeds=1
 seed0=0
 demoruns="False"
-parallel_rollouts=1
 rollout_steps=150
 
 # RUNNING JOBS IN SERIES (no loops)
@@ -48,11 +47,16 @@ rollout_steps=150
 #do
 #"NFM_ev_ec_t_dt_at_ustack"}
 id="test1"
-for nfm_func in {"NFM_ev_ec_t_dt_at_um_us",}
+for nfm_func in {"NFM_ev_ec_t_dt_at_um_us","NFM_ev_ec_t_dt_at_ustack"}
 do
-    tmux new-session -d -s "${lstm_type}-${id}"
-    tmux send-keys -t "${lstm_type}-${id}" "conda activate rlcourse-sb3c" Enter
-    tmux send-keys -t "${lstm_type}-${id}" "cd ~/testing/sim" Enter
-    tmux send-keys -t "${lstm_type}-${id}" "python Phase3_lstm-gnn-ppo.py --train_on $train_on --batch_size $batch_size --obs_mask $obs_mask --obs_rate $obs_rate --emb_dim $emb_dim --lstm_type $lstm_type --lstm_hdim $lstm_hdim --lstm_layers $lstm_layers --emb_iterT $emb_iterT --nfm_func $nfm_func --qnet $qnet --train $train --eval $eval --test $test --num_seeds $num_seeds --seed0 $seed0 --demoruns $demoruns --parallel_rollouts $parallel_rollouts --rollout_steps $rollout_steps" Enter
+    for lstm_type in {"None","EMB"}
+    do
+        for parallel_rollouts in {3,6}
+        do
+            tmux new-session -d -s "${lstm_type}-${nfm_func}-${parallel_rollouts}"
+            tmux send-keys -t "${lstm_type}-${nfm_func}-${parallel_rollouts}" "conda activate rlcourse-sb3c" Enter
+            tmux send-keys -t "${lstm_type}-${nfm_func}-${parallel_rollouts}" "cd ~/testing/sim" Enter
+            tmux send-keys -t "${lstm_type}-${nfm_func}-${parallel_rollouts}" "python Phase3_lstm-gnn-ppo_simp.py --train_on $train_on --batch_size $batch_size --obs_mask $obs_mask --obs_rate $obs_rate --emb_dim $emb_dim --lstm_type $lstm_type --lstm_hdim $lstm_hdim --lstm_layers $lstm_layers --emb_iterT $emb_iterT --nfm_func $nfm_func --qnet $qnet --train $train --eval $eval --test $test --num_seeds $num_seeds --seed0 $seed0 --demoruns $demoruns --parallel_rollouts $parallel_rollouts --rollout_steps $rollout_steps" Enter
+        done
+    done
 done
-#done

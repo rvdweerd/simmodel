@@ -225,7 +225,7 @@ class TrajectoryDataset_EMB():
 
 
 
-def GetConfigs(args):
+def GetConfigs(args, suffix=""):
     config = {}
     #for i in range(args.num_configs):
     #    config.add(args.config_class(**args.config_args))
@@ -266,10 +266,12 @@ def GetConfigs(args):
                         'emb'+str(config['emb_dim']) + '_itT'+str(config['emb_iterT']) + '/'+ \
                         'lstm_' + lstm_filestring 
                         
+    if suffix != "":
+        config['rootdir'] = config['rootdir'].replace("Phase3","Phase3"+suffix)
     config['logdir']  = config['rootdir'] + '/' + config['nfm_func']+'/' \
                         'omask_' + mask_filestring + '/' +\
-                        'bsize' + str(config['batch_size']) #+'_lr{:.1e}'.format(args.lr)
-                        
+                        'bsize' + str(config['batch_size']) +'ro'+str(args.parallel_rollouts)#+'_lr{:.1e}'.format(args.lr)
+
 
     hp = HyperParameters(
                         emb_dim          = config['emb_dim'],

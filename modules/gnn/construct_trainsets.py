@@ -451,7 +451,6 @@ def ConstructTrainSet(config, apply_wrappers=True, type_obs_wrap='Flat', remove_
             max_possible_num_nodes=config['max_nodes'],
             probs=probs)
 
-
     elif tset == 'TEST':
         config['max_nodes']=9
         config['max_edges']=21
