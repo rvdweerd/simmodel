@@ -211,9 +211,9 @@ class PPO_LSTM(nn.Module):
         return s, a, r, s_prime, done_mask, prob_a,  h_in_lst[0], h_out_lst[0], mask
         
     def train_net(self):
-        s, a, r, s_prime, done_mask, prob_a, (h1_in, h2_in), (h1_out, h2_out), mask = self.make_batch()
-        first_hidden = (h1_in.detach(), h2_in.detach())
-        second_hidden = (h1_out.detach(), h2_out.detach())
+        s, a, r, s_prime, done_mask, prob_a, (h_in, c_in), (h_out, c_out), mask = self.make_batch()
+        first_hidden = (h_in.detach(), c_in.detach())
+        second_hidden = (h_out.detach(), c_out.detach())
 
         for i in range(K_epoch):
             v_prime = self.v(s_prime, second_hidden).squeeze(1)
