@@ -12,7 +12,7 @@ obs_rate=1.0
 emb_dim=64
 #lstm_hdim=64
 #lstm_type="Dual"
-lstm_type="None"
+#lstm_type="Dual"
 lstm_hdim=64
 lstm_layers=1
 emb_iterT=5
@@ -23,7 +23,7 @@ train="True"
 eval="False"
 test="False"
 num_seeds=1
-seed0=0
+#seed0=0
 demoruns="False"
 rollout_steps=150
 
@@ -46,17 +46,14 @@ rollout_steps=150
 #for lstm_type in {"FE","None"}
 #do
 #"NFM_ev_ec_t_dt_at_ustack"}
-id="test1"
-for nfm_func in {"NFM_ev_ec_t_dt_at_um_us","NFM_ev_ec_t_dt_at_ustack"}
+#id="test1"
+nfm_func="NFM_ev_ec_t_dt_at_um_us"
+lstm_type="Dual"
+parallel_rollouts=5
+for seed0 in {0,1,2,3,4,5,6}
 do
-    for lstm_type in {"None","EMB"}
-    do
-        for parallel_rollouts in {3,6}
-        do
-            tmux new-session -d -s "${lstm_type}-${nfm_func}-${parallel_rollouts}"
-            tmux send-keys -t "${lstm_type}-${nfm_func}-${parallel_rollouts}" "conda activate rlcourse-sb3c" Enter
-            tmux send-keys -t "${lstm_type}-${nfm_func}-${parallel_rollouts}" "cd ~/testing/sim" Enter
-            tmux send-keys -t "${lstm_type}-${nfm_func}-${parallel_rollouts}" "python Phase3_lstm-gnn-ppo_simp.py --train_on $train_on --batch_size $batch_size --obs_mask $obs_mask --obs_rate $obs_rate --emb_dim $emb_dim --lstm_type $lstm_type --lstm_hdim $lstm_hdim --lstm_layers $lstm_layers --emb_iterT $emb_iterT --nfm_func $nfm_func --qnet $qnet --train $train --eval $eval --test $test --num_seeds $num_seeds --seed0 $seed0 --demoruns $demoruns --parallel_rollouts $parallel_rollouts --rollout_steps $rollout_steps" Enter
-        done
-    done
+    tmux new-session -d -s "${lstm_type}-$seed0"
+    tmux send-keys -t "${lstm_type}-$seed0" "conda activate rlcourse-sb3c" Enter
+    tmux send-keys -t "${lstm_type}-$seed0" "cd ~/testing/sim" Enter
+    tmux send-keys -t "${lstm_type}-$seed0" "python Phase3_lstm-gnn-ppo_simp.py --train_on $train_on --batch_size $batch_size --obs_mask $obs_mask --obs_rate $obs_rate --emb_dim $emb_dim --lstm_type $lstm_type --lstm_hdim $lstm_hdim --lstm_layers $lstm_layers --emb_iterT $emb_iterT --nfm_func $nfm_func --qnet $qnet --train $train --eval $eval --test $test --num_seeds $num_seeds --seed0 $seed0 --demoruns $demoruns --parallel_rollouts $parallel_rollouts --rollout_steps $rollout_steps" Enter
 done

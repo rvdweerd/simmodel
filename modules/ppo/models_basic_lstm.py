@@ -2,19 +2,14 @@ import copy
 from pathlib import Path
 import numpy as np
 import modules.gnn.nfm_gen
-from modules.gnn.construct_trainsets import ConstructTrainSet
-from modules.ppo.models_sb3_gat2 import Gat2_ActorCriticPolicy, Gat2Extractor
 from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsFlatWrapper_basic
 from modules.rl.rl_custom_worlds import GetCustomWorld
 from modules.sim.simdata_utils import SimulateInteractiveMode_PPO
 from stable_baselines3 import PPO
-from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
-from sb3_contrib import MaskablePPO#, ReccurrentPPO
 import time
 from torch_geometric.nn.conv import MessagePassing, GATv2Conv
 from torch_geometric.nn.models.basic_gnn import BasicGNN
 from torch_geometric.data import Data, Batch
-from torch_scatter import scatter_mean, scatter_add
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -474,6 +469,9 @@ class PPO_GNN_LSTM(nn.Module):
 
         for n_epi in range(100000):
             R=0
+            gathertimes=[]
+            traintimes=[]
+            start_gather_time = time.time()
             for t in range(self.num_rollouts):
                 h_out = (
                     torch.zeros([1, self.num_nodes, self.emb_dim], dtype=torch.float, device=device), 
@@ -500,7 +498,12 @@ class PPO_GNN_LSTM(nn.Module):
                         break
                 self.put_data(transitions)
                 transitions = []
+            end_gather_time = time.time()
+            start_train_time = time.time()
             self.train_net()
+            end_train_time = time.time() 
+            gathertimes.append(end_gather_time-start_gather_time)
+            traintimes.append(end_train_time-start_train_time)
 
             self.tp['writer'].add_scalar('return_per_epi', R/self.num_rollouts, n_epi)
             
@@ -511,9 +514,10 @@ class PPO_GNN_LSTM(nn.Module):
             if n_epi%5000==0 and n_epi!=0:
                 self.checkpoint(n_epi,mean_Return,mode='last')
             if n_epi%print_interval==0 and n_epi!=0:
-                print("# of episode :{}, avg score : {:.1f}".format(n_epi, mean_Return))
+                print("# of episode :{}, avg score : {:.1f}, gather time per iter: {:.1f}, train time per iter: {:.1f}".format(n_epi, mean_Return, np.mean(gathertimes), np.mean(traintimes)))
                 score = 0.0
         env.close()
+        return mean_Return
 
     def numTrainableParameters(self):
         ps=""
@@ -528,6 +532,285 @@ class PPO_GNN_LSTM(nn.Module):
         ps+='------------------------------------------'
         assert total == sum(p.numel() for p in self.parameters() if p.requires_grad)
         return total, ps
+
+class PPO_GNN_Dual_LSTM(nn.Module):
+    def __init__(self, env, config, hp, tp):
+        super(PPO_GNN_Dual_LSTM, self).__init__()
+        self.description="PPO policy, GATv2 extractor, Dual lstm, action masking"
+        self.hp = hp
+        self.tp = tp
+        self.config = config
+        self.data = []
+        self.obs_space = env.observation_space.shape[0]
+        self.act_space = env.action_space
+        self.num_nodes = env.action_space.n
+        self.node_dim = env.F
+        self.emb_dim = hp.emb_dim
+        self.num_rollouts = hp.parallel_rollouts
+        self.num_epochs = hp.batch_size
+        assert config['lstm_type'] == 'Dual'
+        assert config['qnet'] == 'gat2'
+        Path(self.tp["base_checkpoint_path"]).mkdir(parents=True, exist_ok=True)
+        
+        kwargs={'concat':True}
+        self.gat = GATv2(
+            in_channels = self.node_dim,
+            hidden_channels = self.emb_dim,
+            heads = 4,
+            num_layers = 5,
+            out_channels = self.emb_dim,
+            share_weights = True,
+            **kwargs
+        ).to(device)      
+        
+        self.lstm_pi  = nn.LSTM(self.emb_dim,self.emb_dim, device=device)
+        self.lstm_v  = nn.LSTM(self.emb_dim,self.emb_dim, device=device)
+        
+        # Policy network parameters
+        self.theta5_pi = nn.Linear(2*self.emb_dim, 1, True, device=device)#, dtype=torch.float32)
+        self.theta6_pi = nn.Linear(self.emb_dim, self.emb_dim, True, device=device)#, dtype=torch.float32)
+        self.theta7_pi = nn.Linear(self.emb_dim, self.emb_dim, True, device=device)#, dtype=torch.float32)
+
+        # Value network parameters        
+        self.theta5_v = nn.Linear(self.emb_dim, 1, True, device=device)#, dtype=torch.float32)
+        #self.theta6_v = nn.Linear(self.emb_dim, self.emb_dim, True, device=device)#, dtype=torch.float32)
+        #self.theta7_v = nn.Linear(self.emb_dim, self.emb_dim, True, device=device)#, dtype=torch.float32)
+
+        self.optimizer = optim.Adam(self.parameters(), lr=learning_rate)
+
+    def checkpoint(self, n_epi, mean_Return, mode=None):
+        if mode == 'best':
+            print('...New best det results, saving model')
+            OF = open(self.tp["base_checkpoint_path"]+'/model_best_save_history.txt', 'a')
+            OF.write('timestep:'+str(n_epi)+', avg det res:'+str(mean_Return)+'\n')
+            OF.close()            
+            fname = self.tp["base_checkpoint_path"] + "best_model.tar"
+        elif mode == 'last':
+            fname = self.tp["base_checkpoint_path"] + "model_"+str(n_epi)+".tar"
+        else: return
+        #checkpoint = torch.load(fname)
+        #self.load_state_dict(checkpoint['weights'])
+        torch.save({'weights':self.state_dict()}, fname)
+
+    def _deserialize(self, obs):
+        # Deconstruct from an observation as defined by the PPO flattened observation wrapper
+        # Args: obs [ nfm (NxF) | edge_list (Ex2) | reachable (N,) | num_nodes (1,) | max_num_nodes (1,) | num_edges (1,) | max_num_edges (1,) | node_dim (1,)]
+        num_nodes, max_nodes, num_edges, max_edges, node_dim = obs[-5:].to(torch.int64).tolist()
+        nfm , edge_index , reachable, _ = torch.split(obs,(node_dim * max_nodes, 2 * max_edges, max_nodes, 5), dim=0)
+        nfm = nfm.reshape(max_nodes,-1)[:num_nodes]
+        edge_index = edge_index.reshape(2,-1)[:,:num_edges].to(torch.int64)
+        reachable = reachable.reshape(-1,1).to(torch.int64)[:num_nodes]
+        return nfm, edge_index, reachable, num_nodes, max_nodes, num_edges, max_edges, node_dim
+
+    def extract_features(self, x):
+        if len(x.shape) == 1:
+            x = x.view(1,-1)
+        pyg_list=[]
+        reachable_nodes_tensor=torch.tensor([]).to(device)
+        for e in x:
+            pygx, pygei, reachable_nodes, num_nodes, max_nodes, num_edges, max_edges, node_dim = self._deserialize(e)
+            pyg_list.append(Data(
+                pygx,
+                pygei
+            ))
+            reachable_nodes_tensor = torch.cat((reachable_nodes_tensor, reachable_nodes.squeeze())).to(torch.bool)
+        
+        pyg_data = Batch.from_data_list(pyg_list)
+        mu = self.gat(pyg_data.x, pyg_data.edge_index)
+        return mu, pyg_data.batch, reachable_nodes_tensor
+
+    def pi(self, x, hidden, reachable):
+        x=x.to(device)
+        if len(x.shape) == 1:
+            x = x.view(1,-1)
+        seq_len = x.shape[0]        
+        mu, batch, reachable_nodes_tensor = self.extract_features(x) # mu: (seq_len * num_nodes, emb_dim)
+        reachable_nodes_tensor = reachable_nodes_tensor.reshape(seq_len,self.num_nodes)
+        mu = mu.reshape(seq_len,-1,self.emb_dim) # mu: (seq_len, num_nodes, emb_dim)
+        mu, lstm_hidden = self.lstm_pi(mu, hidden)  # mu: (seq_len, num_nodes, emb_dim)
+
+        #mu_meanpool = scatter_mean(mu, batch, dim=1) # mu_meanpool: (seq_len, 1, emb_dim)
+        mu_meanpool = mu.mean(dim=1, keepdim=True) # mu_meanpool: (seq_len, 1, emb_dim). scatter mean not needed: equal size graphs
+        expander = torch.tensor([self.num_nodes]*seq_len, dtype=torch.int64, device=device)
+        mu_meanpool_expanded = torch.repeat_interleave(mu_meanpool, expander, dim=0).reshape(seq_len,self.num_nodes,self.emb_dim) # (seq_len, num_nodes, emb_dim) # (seq_len, num_nodes, emb_dim)
+
+        global_state = self.theta6_pi(mu_meanpool_expanded) # yields (seq_len, nodes in batch, emb_dim)
+        local_action = self.theta7_pi(mu)  # yields (seq_len, nodes in batch, emb_dim)
+        rep = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (#nodes in batch, 2*emb_dim)        
+        prob_logits = self.theta5_pi(rep).squeeze(-1) # (nr_nodes in batch,)
+        prob_logits[~reachable_nodes_tensor]=-torch.inf
+        prob = F.softmax(prob_logits, dim=1)
+        return prob, lstm_hidden
+    
+    def v(self, x, hidden):
+        x=x.to(device)
+        if len(x.shape) == 1:
+            x = x.view(1,-1)
+        seq_len = x.shape[0]        
+        mu, batch, reachable_nodes_tensor = self.extract_features(x) # mu: (seq_len * num_nodes, emb_dim)
+        reachable_nodes_tensor = reachable_nodes_tensor.reshape(seq_len,self.num_nodes)
+        mu = mu.reshape(seq_len,-1,self.emb_dim) # mu: (seq_len, num_nodes, emb_dim)
+        mu, lstm_hidden = self.lstm_v(mu, hidden)
+        
+        #mu_meanpool = scatter_mean(mu, batch, dim=1) # mu_meanpool: (seq_len, 1, emb_dim)
+        mu_meanpool = mu.mean(dim=1, keepdim=True) # mu_meanpool: (seq_len, 1, emb_dim). scatter mean not needed: equal size graphs
+
+        #expander = torch.tensor([self.num_nodes]*seq_len, dtype=torch.int64, device=device)
+        #mu_meanpool_expanded = torch.repeat_interleave(mu_meanpool, expander, dim=0).reshape(seq_len,self.num_nodes,self.emb_dim) # (seq_len, num_nodes, emb_dim)
+        #global_state = self.theta6_pi(mu_meanpool_expanded) # yields (seq_len, nodes in batch, emb_dim)
+        #local_action = self.theta7_pi(mu)  # yields (seq_len, nodes in batch, emb_dim)
+        #v = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (#nodes in batch, 2*emb_dim)        
+        v = self.theta5_v(mu_meanpool)#.squeeze()#-1) # (nr_nodes in batch,)
+        return v, lstm_hidden
+      
+    def put_data(self, transition_buffer):
+        self.data.append(transition_buffer)
+        
+    def make_batch(self):
+        batch = []
+        for i in range(self.num_rollouts):
+            s_lst, a_lst, r_lst, s_prime_lst, prob_a_lst, h_pi_in_lst, h_pi_out_lst, h_v_in_lst, h_v_out_lst, done_lst, mask_lst = [], [], [], [], [], [], [], [], [], [], []
+            for transition in self.data[i]:
+                s, a, r, s_prime, prob_a, h_pi_in, h_pi_out, h_v_in, h_v_out, done, mask = transition
+                
+                s_lst.append(s)
+                a_lst.append([a])
+                r_lst.append([r])
+                s_prime_lst.append(s_prime)
+                prob_a_lst.append([prob_a])
+                h_pi_in_lst.append(h_pi_in)
+                h_pi_out_lst.append(h_pi_out)
+                h_v_in_lst.append(h_v_in)
+                h_v_out_lst.append(h_v_out)
+                done_mask = 0 if done else 1
+                done_lst.append([done_mask])
+                mask_lst.append(mask)
+                
+            s,a,r,s_prime,done_mask,prob_a,mask = torch.stack(s_lst), torch.tensor(a_lst), \
+                                            torch.tensor(r_lst), torch.stack(s_prime_lst), \
+                                            torch.tensor(done_lst, dtype=torch.float), torch.tensor(prob_a_lst), \
+                                            torch.tensor(mask_lst)
+            batch.append((s, a, r, s_prime, done_mask, prob_a,  h_pi_in_lst[0], h_pi_out_lst[0], h_v_in_lst[0], h_v_out_lst[0], mask))
+        self.data = []
+        return batch#s, a, r, s_prime, done_mask, prob_a,  h_in_lst[0], h_out_lst[0], mask
+        
+    def train_net(self):
+        batch = self.make_batch()
+        for _ in range(self.num_epochs):
+            loss_tsr = torch.tensor([])#.to(device)
+            for j in range(self.num_rollouts):
+                s, a, r, s_prime, done_mask, prob_a, (h_pi_in, c_pi_in), (h_pi_out, c_pi_out), (h_v_in, c_v_in), (h_v_out, c_v_out), mask = batch[j]
+                first_hidden_pi = (h_pi_in.detach(), c_pi_in.detach())
+                second_hidden_pi = (h_pi_out.detach(), c_pi_out.detach())
+                first_hidden_v = (h_v_in.detach(), c_v_in.detach())
+                second_hidden_v = (h_v_out.detach(), c_v_out.detach())                
+
+                v_prime = self.v(s_prime, second_hidden_v)[0].squeeze(1).cpu()
+                td_target = r + gamma * v_prime * done_mask
+                v_s = self.v(s, first_hidden_v)[0].squeeze(1).cpu()
+                delta = td_target - v_s
+                delta = delta.detach().numpy()
+
+                advantage_lst = []
+                advantage = 0.0
+                for item in delta[::-1]:
+                    advantage = gamma * lmbda * advantage + item[0]
+                    advantage_lst.append([advantage])
+                advantage_lst.reverse()
+                advantage = torch.tensor(advantage_lst, dtype=torch.float)
+
+                pi, _ = self.pi(s, first_hidden_pi, mask)
+                pi=pi.cpu()
+                pi_a = pi.squeeze(1).gather(1,a)
+                ratio = torch.exp(torch.log(pi_a) - torch.log(prob_a))  # a/b == exp(log(a)-log(b))
+
+                surr1 = ratio * advantage
+                surr2 = torch.clamp(ratio, 1-eps_clip, 1+eps_clip) * advantage
+                loss = -torch.min(surr1, surr2) + F.smooth_l1_loss(v_s , td_target.detach()) #CHECK TODO
+                loss_tsr = torch.concat((loss_tsr,loss.squeeze(-1)))
+            self.optimizer.zero_grad()
+            loss_tsr.mean().backward(retain_graph=True)
+            self.optimizer.step()
+
+    def learn(self, env):
+        score = 0.0
+        print_interval = 50
+        current_max_Return  = -1e6
+
+        for n_epi in range(100000):
+            R=0
+            gathertimes=[]
+            traintimes=[]
+            start_gather_time = time.time()
+            for t in range(self.num_rollouts):
+                h_out_pi = (
+                    torch.zeros([1, self.num_nodes, self.emb_dim], dtype=torch.float, device=device), 
+                    torch.zeros([1, self.num_nodes, self.emb_dim], dtype=torch.float, device=device)
+                    )
+                h_out_v = (
+                    torch.zeros([1, self.num_nodes, self.emb_dim], dtype=torch.float, device=device), 
+                    torch.zeros([1, self.num_nodes, self.emb_dim], dtype=torch.float, device=device)
+                    )                    
+                s = env.reset()
+                done = False
+                transitions=[]
+                while not done:
+                    mask = env.action_masks()
+                    h_in_pi = h_out_pi
+                    h_in_v  = h_out_v
+                    with torch.no_grad():
+                        prob, h_out_pi = self.pi(s, h_in_pi, torch.tensor(mask))
+                        v, h_out_v = self.v(s, h_in_v)
+                    prob = prob.view(-1)
+                    m = Categorical(prob)
+                    a = m.sample().item()
+                    s_prime, r, done, info = env.step(a)
+
+                    transitions.append((s, a, r/10.0, s_prime, prob[a].item(), h_in_pi, h_out_pi, h_in_v, h_out_v, done, mask))
+                    s = s_prime
+
+                    score += r
+                    R += r
+                    if done:
+                        break
+                self.put_data(transitions)
+                transitions = []
+            end_gather_time = time.time()
+            start_train_time = time.time()
+            self.train_net()
+            end_train_time = time.time() 
+            gathertimes.append(end_gather_time-start_gather_time)
+            traintimes.append(end_train_time-start_train_time)
+
+            self.tp['writer'].add_scalar('return_per_epi', R/self.num_rollouts, n_epi)
+            
+            mean_Return = score/print_interval/self.num_rollouts
+            if mean_Return >= current_max_Return:            
+                current_max_Return = mean_Return
+                self.checkpoint(n_epi,mean_Return,mode='best')
+            if n_epi%5000==0 and n_epi!=0:
+                self.checkpoint(n_epi,mean_Return,mode='last')
+            if n_epi%print_interval==0 and n_epi!=0:
+                print("# of episode :{}, avg score : {:.1f}, gather time per iter: {:.1f}, train time per iter: {:.1f}".format(n_epi, mean_Return, np.mean(gathertimes), np.mean(traintimes)))
+                score = 0.0
+        env.close()
+        return mean_Return
+
+    def numTrainableParameters(self):
+        ps=""
+        ps+=self.description+'\n'
+        ps+='------------------------------------------\n'
+        total = 0
+        for name, p in self.named_parameters():
+            if p.requires_grad:
+                total += np.prod(p.shape)
+            ps+=("{:24s} {:12s} requires_grad={}\n".format(name, str(list(p.shape)), p.requires_grad))
+        ps+=("Total number of trainable parameters: {}\n".format(total))
+        ps+='------------------------------------------'
+        assert total == sum(p.numel() for p in self.parameters() if p.requires_grad)
+        return total, ps
+
+
 
 
 def Solve():
