@@ -4,7 +4,7 @@
 #train_on="NWB_AMS"
 train_on="M5x5Fixed"
 #train_on="M3x5Mix"
-batch_size=48
+batch_size=2
 obs_mask="None"
 obs_rate=1.0
 #obs_mask="prob_per_u"

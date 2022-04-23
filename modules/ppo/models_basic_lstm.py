@@ -1,4 +1,5 @@
 import copy
+from pathlib import Path
 import numpy as np
 import modules.gnn.nfm_gen
 from modules.gnn.construct_trainsets import ConstructTrainSet
@@ -283,7 +284,8 @@ class PPO_GNN_LSTM(nn.Module):
             self.lstm_on = False
         else: assert False
         assert config['qnet'] == 'gat2'
-
+        Path(self.tp["base_checkpoint_path"]).mkdir(parents=True, exist_ok=True)
+        
         kwargs={'concat':True}
         self.gat = GATv2(
             in_channels = self.node_dim,
@@ -309,6 +311,20 @@ class PPO_GNN_LSTM(nn.Module):
         #self.theta7_v = nn.Linear(self.emb_dim, self.emb_dim, True, device=device)#, dtype=torch.float32)
 
         self.optimizer = optim.Adam(self.parameters(), lr=learning_rate)
+
+    def checkpoint(self, n_epi, mean_Return, mode=None):
+        if mode == 'best':
+            print('...New best det results, saving model')
+            OF = open(self.tp["base_checkpoint_path"]+'/model_best_save_history.txt', 'a')
+            OF.write('timestep:'+str(n_epi)+', avg det res:'+str(mean_Return)+'\n')
+            OF.close()            
+            fname = self.tp["base_checkpoint_path"] + "best_model.tar"
+        elif mode == 'last':
+            fname = self.tp["base_checkpoint_path"] + "model_"+str(n_epi)+".tar"
+        else: return
+        #checkpoint = torch.load(fname)
+        #self.load_state_dict(checkpoint['weights'])
+        torch.save({'weights':self.state_dict()}, fname)
 
     def _deserialize(self, obs):
         # Deconstruct from an observation as defined by the PPO flattened observation wrapper
@@ -454,6 +470,7 @@ class PPO_GNN_LSTM(nn.Module):
     def learn(self, env):
         score = 0.0
         print_interval = 50
+        current_max_Return  = -1e6
 
         for n_epi in range(100000):
             R=0
@@ -484,9 +501,17 @@ class PPO_GNN_LSTM(nn.Module):
                 self.put_data(transitions)
                 transitions = []
             self.train_net()
+
             self.tp['writer'].add_scalar('return_per_epi', R/self.num_rollouts, n_epi)
+            
+            mean_Return = score/print_interval/self.num_rollouts
+            if mean_Return >= current_max_Return:            
+                current_max_Return = mean_Return
+                self.checkpoint(n_epi,mean_Return,mode='best')
+            if n_epi%5000==0 and n_epi!=0:
+                self.checkpoint(n_epi,mean_Return,mode='last')
             if n_epi%print_interval==0 and n_epi!=0:
-                print("# of episode :{}, avg score : {:.1f}".format(n_epi, score/print_interval/self.num_rollouts))
+                print("# of episode :{}, avg score : {:.1f}".format(n_epi, mean_Return))
                 score = 0.0
         env.close()
 
