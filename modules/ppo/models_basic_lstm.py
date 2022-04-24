@@ -310,13 +310,13 @@ class PPO_GNN_LSTM(nn.Module):
     def checkpoint(self, n_epi, mean_Return, mode=None):
         if mode == 'best':
             print('...New best det results, saving model')
-            OF = open(self.tp["base_checkpoint_path"]+'/model_best_save_history.txt', 'a')
-            OF.write('timestep:'+str(n_epi)+', avg det res:'+str(mean_Return)+'\n')
-            OF.close()            
             fname = self.tp["base_checkpoint_path"] + "best_model.tar"
         elif mode == 'last':
             fname = self.tp["base_checkpoint_path"] + "model_"+str(n_epi)+".tar"
         else: return
+        OF = open(self.tp["base_checkpoint_path"]+'/model_best_save_history.txt', 'a')
+        OF.write('timestep:'+str(n_epi)+', avg det res:'+str(mean_Return)+'\n')
+        OF.close()            
         #checkpoint = torch.load(fname)
         #self.load_state_dict(checkpoint['weights'])
         torch.save({'weights':self.state_dict()}, fname)
@@ -581,13 +581,13 @@ class PPO_GNN_Dual_LSTM(nn.Module):
     def checkpoint(self, n_epi, mean_Return, mode=None):
         if mode == 'best':
             print('...New best det results, saving model')
-            OF = open(self.tp["base_checkpoint_path"]+'/model_best_save_history.txt', 'a')
-            OF.write('timestep:'+str(n_epi)+', avg det res:'+str(mean_Return)+'\n')
-            OF.close()            
             fname = self.tp["base_checkpoint_path"] + "best_model.tar"
         elif mode == 'last':
             fname = self.tp["base_checkpoint_path"] + "model_"+str(n_epi)+".tar"
         else: return
+        OF = open(self.tp["base_checkpoint_path"]+'/model_best_save_history.txt', 'a')
+        OF.write('timestep:'+str(n_epi)+', avg det res:'+str(mean_Return)+'\n')
+        OF.close()            
         #checkpoint = torch.load(fname)
         #self.load_state_dict(checkpoint['weights'])
         torch.save({'weights':self.state_dict()}, fname)
