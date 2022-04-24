@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #train_on="MixAll33"
-#train_on="NWB_AMS"
-train_on="M5x5Fixed"
+train_on="NWB_AMS"
+#train_on="M5x5Fixed"
 #train_on="M3x5Mix"
 batch_size=2
 obs_mask="None"
@@ -22,8 +22,8 @@ qnet="gat2"
 train="True"
 eval="False"
 test="False"
-num_seeds=1
-#seed0=0
+num_seeds=2
+seed0=0
 demoruns="False"
 rollout_steps=150
 
@@ -49,11 +49,11 @@ rollout_steps=150
 #id="test1"
 nfm_func="NFM_ev_ec_t_dt_at_um_us"
 lstm_type="Dual"
-parallel_rollouts=5
-for seed0 in {0,1,2,3,4,5,6}
+parallel_rollouts=4
+for lstm_type in {"EMB","Dual"}
 do
-    tmux new-session -d -s "${lstm_type}-$seed0"
-    tmux send-keys -t "${lstm_type}-$seed0" "conda activate rlcourse-sb3c" Enter
-    tmux send-keys -t "${lstm_type}-$seed0" "cd ~/testing/sim" Enter
-    tmux send-keys -t "${lstm_type}-$seed0" "python Phase3_lstm-gnn-ppo_simp.py --train_on $train_on --batch_size $batch_size --obs_mask $obs_mask --obs_rate $obs_rate --emb_dim $emb_dim --lstm_type $lstm_type --lstm_hdim $lstm_hdim --lstm_layers $lstm_layers --emb_iterT $emb_iterT --nfm_func $nfm_func --qnet $qnet --train $train --eval $eval --test $test --num_seeds $num_seeds --seed0 $seed0 --demoruns $demoruns --parallel_rollouts $parallel_rollouts --rollout_steps $rollout_steps" Enter
+    tmux new-session -d -s "${lstm_type}-${seed0}"
+    tmux send-keys -t "${lstm_type}-${seed0}" "conda activate rlcourse-sb3c" Enter
+    tmux send-keys -t "${lstm_type}-${seed0}" "cd ~/testing/sim" Enter
+    tmux send-keys -t "${lstm_type}-${seed0}" "python Phase3_lstm-gnn-ppo_simp.py --train_on $train_on --batch_size $batch_size --obs_mask $obs_mask --obs_rate $obs_rate --emb_dim $emb_dim --lstm_type $lstm_type --lstm_hdim $lstm_hdim --lstm_layers $lstm_layers --emb_iterT $emb_iterT --nfm_func $nfm_func --qnet $qnet --train $train --eval $eval --test $test --num_seeds $num_seeds --seed0 $seed0 --demoruns $demoruns --parallel_rollouts $parallel_rollouts --rollout_steps $rollout_steps" Enter
 done

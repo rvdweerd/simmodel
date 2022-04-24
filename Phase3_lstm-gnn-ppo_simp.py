@@ -11,7 +11,7 @@ from modules.gnn.construct_trainsets import ConstructTrainSet
 from modules.ppo.ppo_custom import WriteTrainParamsToFile, WriteModelParamsToFile, GetConfigs
 from modules.ppo.helpfuncs import CreateEnv, evaluate_lstm_ppo
 from modules.rl.rl_utils import GetFullCoverageSample
-from modules.rl.rl_policy import LSTM_GNN_PPO_Policy, LSTM_GNN_PPO_EMB_Policy, LSTM_GNN_PPO_EMB_Policy_simp
+from modules.rl.rl_policy import LSTM_GNN_PPO_EMB_Policy_simp, LSTM_GNN_PPO_Dual_Policy_simp
 from modules.rl.rl_utils import EvaluatePolicy
 from modules.sim.simdata_utils import SimulateAutomaticMode_PPO, SimulateInteractiveMode_PPO
 from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsFlatWrapper
@@ -107,9 +107,9 @@ def main(args):
 
                     if config['lstm_type'] == 'EMB':
                         ppo_policy = LSTM_GNN_PPO_EMB_Policy_simp(None, ppo_model, deterministic=tp['eval_deterministic'])
-                    else:                   
-                        pass
-                        #ppo_policy = LSTM_GNN_PPO_Policy(env, ppo_model, deterministic=tp['eval_deterministic'])
+                    elif config['lstm_type'] == 'Dual':                   
+                        ppo_policy = LSTM_GNN_PPO_Dual_Policy_simp(None, ppo_model, deterministic=tp['eval_deterministic'])
+                    else: assert False
 
                     if config['demoruns']:
                         while True:

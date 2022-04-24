@@ -516,6 +516,48 @@ class LSTM_GNN_PPO_EMB_Policy_simp(Policy):
 
         return a, None
 
+class LSTM_GNN_PPO_Dual_Policy_simp(Policy):
+    def __init__(self, env, lstm_ppo_model, deterministic=True):
+        super().__init__('RecurrentNetwork')
+        self.model = lstm_ppo_model
+        self.deterministic = deterministic
+        #self.lstm_hidden_dim = lstm_ppo_model.lstm_hidden_dim
+        self.reset_hidden_states()
+        self.__name__ = 'LSTM_GNN_PPO_Dual_Policy simp model'
+        self.probs = None
+    
+    def get_action_probs(self):
+        return self.probs
+
+    def reset_hidden_states(self, env=None):
+        #self.lstm_hidden = (torch.zeros([1, 1, self.lstm_hidden_dim], dtype=torch.float), torch.zeros([1, 1, self.lstm_hidden_dim], dtype=torch.float))
+        self.h_pi = (
+                    torch.zeros([1, self.model.num_nodes, self.model.emb_dim], dtype=torch.float, device=device), 
+                    torch.zeros([1, self.model.num_nodes, self.model.emb_dim], dtype=torch.float, device=device)
+                    )
+        self.h_v = (
+                    torch.zeros([1, self.model.num_nodes, self.model.emb_dim], dtype=torch.float, device=device), 
+                    torch.zeros([1, self.model.num_nodes, self.model.emb_dim], dtype=torch.float, device=device)
+                    )
+
+    def sample_greedy_action(self, obs, available_actions, printing=False):
+        with torch.no_grad():
+            probs, new_h_pi = self.model.pi(obs, self.h_pi, None)
+            self.probs = probs.flatten().cpu().numpy()
+            if self.deterministic:
+                a=self.probs.argmax().item()
+            else:
+                a=self.probs.sample().item()
+            if printing:
+                ppo_value, new_h_v = self.model.v(obs, self.h_v)
+                np.set_printoptions(formatter={'float':"{0:0.2f}".format})
+                print('available_actions:',available_actions,'prob',self.probs[available_actions],'chosen action',a, 'estimated value of graph state:',ppo_value.detach().cpu().numpy(),end='')
+                self.h_v = new_h_v
+        self.h_pi = new_h_pi
+
+        return a, None
+
+
 
 class EpsilonGreedyPolicyLSTM_PPO2(Policy):
     def __init__(self, env, lstm_ppo_model, deterministic=False):
