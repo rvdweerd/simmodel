@@ -7,14 +7,14 @@
         {
             "name": "Python: Current File",
             "type": "python",
-            "justMyCode": true,
+            "justMyCode": false,
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
             "args" : [
                     // ARGS FOR Phase 3 PPO
-                    "--train_on","TEST",
-                    //"--train_on","NWB_AMS",
+                    //"--train_on","TEST",
+                    "--train_on","NWB_AMS",
                     //"--train_on","NWB_AMS+Mix",
                     //"--train_on","MetroConstructed",
                     //"--train_on","MemTaskLong-U1",
@@ -44,8 +44,8 @@
                     "--eval","False",
                     "--test","True",
                     "--eval_deter","False",
-                    "--num_seeds","5",
-                    "--seed0","2",
+                    "--num_seeds","6",
+                    "--seed0","7",
                     "--demoruns","False",
                     "--parallel_rollouts","4",
                     "--checkpoint_frequency","100",

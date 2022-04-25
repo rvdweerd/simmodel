@@ -76,7 +76,7 @@ def main(args):
         evalResults={}
         world_dict={ # [max_nodes,max_edges]
             #'Manhattan5x5_DuplicateSetB':[25,300],
-            'Manhattan3x3_WalkAround':[9,300],
+            'Manhattan3x3_WalkAround':[9,33],
             #'MetroU3_e1t31_FixedEscapeInit':[33, 300],
             # 'full_solvable_3x3subs':[9,33],
             # 'MemoryTaskU1':[8,16],
@@ -129,10 +129,10 @@ def main(args):
                     elif config['lstm_type'] == 'Dual':
                         ppo_model = PPO_GNN_Dual_LSTM(env, config, hp, tp)
                     ppo_model.load_state_dict(checkpoint['weights'])
-
-                    if config['lstm_type'] == 'EMB':
+                    print('Loaded model from', fname)
+                    if config['lstm_type'] in  ['EMB']:
                         ppo_policy = LSTM_GNN_PPO_EMB_Policy_simp(None, ppo_model, deterministic=tp['eval_deterministic'])
-                    elif config['lstm_type'] == 'Dual':                   
+                    elif config['lstm_type'] in ['Dual','None']:                   
                         ppo_policy = LSTM_GNN_PPO_Dual_Policy_simp(None, ppo_model, deterministic=tp['eval_deterministic'])
                     else: assert False
 

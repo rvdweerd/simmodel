@@ -282,17 +282,17 @@ class PPO_GNN_LSTM(nn.Module):
         assert config['qnet'] == 'gat2'
         Path(self.tp["base_checkpoint_path"]).mkdir(parents=True, exist_ok=True)
         
-        kwargs={'concat':True}
+        kwargs={'concat':False}
         self.gat = GATv2(
             in_channels = self.node_dim,
             hidden_channels = self.emb_dim,
-            heads = 4,
-            num_layers = 5,
+            heads = 2,
+            num_layers = 3,
             out_channels = self.emb_dim,
             share_weights = False,
             **kwargs
         ).to(device)      
-        
+
         if self.lstm_on:
             self.lstm  = nn.LSTM(self.emb_dim,self.emb_dim, device=device)
         
@@ -301,10 +301,13 @@ class PPO_GNN_LSTM(nn.Module):
         self.theta6_pi = nn.Linear(self.emb_dim, self.emb_dim, True, device=device)#, dtype=torch.float32)
         self.theta7_pi = nn.Linear(self.emb_dim, self.emb_dim, True, device=device)#, dtype=torch.float32)
 
-        # Value network parameters        
+        # Value network parameters OPTION 2: LINEAR OPERATOR       
         self.theta5_v = nn.Linear(self.emb_dim, 1, True, device=device)#, dtype=torch.float32)
-        #self.theta6_v = nn.Linear(self.emb_dim, self.emb_dim, True, device=device)#, dtype=torch.float32)
-        #self.theta7_v = nn.Linear(self.emb_dim, self.emb_dim, True, device=device)#, dtype=torch.float32)
+        
+        # Value network parameters OPTION 2: MAX OPERATOR       
+        # self.theta5_v = nn.Linear(2*self.emb_dim, 1, True, device=device)#, dtype=torch.float32)
+        # self.theta6_v = nn.Linear(self.emb_dim, self.emb_dim, True, device=device)#, dtype=torch.float32)
+        # self.theta7_v = nn.Linear(self.emb_dim, self.emb_dim, True, device=device)#, dtype=torch.float32)
 
         self.optimizer = optim.Adam(self.parameters(), lr=learning_rate)
 
@@ -371,7 +374,7 @@ class PPO_GNN_LSTM(nn.Module):
 
         global_state = self.theta6_pi(mu_meanpool_expanded) # yields (seq_len, nodes in batch, emb_dim)
         local_action = self.theta7_pi(mu)  # yields (seq_len, nodes in batch, emb_dim)
-        rep = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (#nodes in batch, 2*emb_dim)        
+        rep = F.relu(torch.cat((global_state, local_action), dim=2)) # concat creates (#nodes in batch, 2*emb_dim)        
         prob_logits = self.theta5_pi(rep).squeeze(-1) # (nr_nodes in batch,)
         prob_logits[~reachable_nodes_tensor]=-torch.inf
         prob = F.softmax(prob_logits, dim=1)
@@ -393,17 +396,21 @@ class PPO_GNN_LSTM(nn.Module):
         #mu_meanpool = scatter_mean(mu, batch, dim=1) # mu_meanpool: (seq_len, 1, emb_dim)
         mu_meanpool = mu.mean(dim=1, keepdim=True) # mu_meanpool: (seq_len, 1, emb_dim). scatter mean not needed: equal size graphs
 
-        #expander = torch.tensor([self.num_nodes]*seq_len, dtype=torch.int64, device=device)
-        #mu_meanpool_expanded = torch.repeat_interleave(mu_meanpool, expander, dim=0).reshape(seq_len,self.num_nodes,self.emb_dim) # (seq_len, num_nodes, emb_dim)
-        #global_state = self.theta6_pi(mu_meanpool_expanded) # yields (seq_len, nodes in batch, emb_dim)
-        #local_action = self.theta7_pi(mu)  # yields (seq_len, nodes in batch, emb_dim)
-        #v = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (#nodes in batch, 2*emb_dim)        
-        # qvals = self.theta5_v(rep).squeeze(-1)  #(seq_len, nr_nodes in batch)
-        # qvals[~reachable] = -torch.inf
-        # v = scatter_max(qvals, batch, dim=1)[0]        
-        
+        # OPTION 1: linear operator
+        #v = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (#nodes in batch, 2*emb_dim)
         v = self.theta5_v(mu_meanpool)#.squeeze()#-1) # (nr_nodes in batch,)
-        return v
+
+        # # OPTION 2: max operator
+        # expander = torch.tensor([self.num_nodes]*seq_len, dtype=torch.int64, device=device)
+        # mu_meanpool_expanded = torch.repeat_interleave(mu_meanpool, expander, dim=0).reshape(seq_len,self.num_nodes,self.emb_dim) # (seq_len, num_nodes, emb_dim)
+        # global_state = self.theta6_v(mu_meanpool_expanded) # yields (seq_len, nodes in batch, emb_dim)
+        # local_action = self.theta7_v(mu)  # yields (seq_len, nodes in batch, emb_dim)
+        # rep = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (#nodes in batch, 2*emb_dim)
+        # qvals = self.theta5_v(rep).squeeze(-1)  #(seq_len, nr_nodes in batch)
+        # qvals[~reachable_nodes_tensor] = -torch.inf
+        # v = qvals.max(dim=1)[0]
+        
+        return v, lstm_hidden
       
     def put_data(self, transition_buffer):
         self.data.append(transition_buffer)
@@ -443,9 +450,11 @@ class PPO_GNN_LSTM(nn.Module):
                 first_hidden = (h_in.detach(), c_in.detach())
                 second_hidden = (h_out.detach(), c_out.detach())
 
-                v_prime = self.v(s_prime, second_hidden).squeeze(1).cpu()
+                v_prime = self.v(s_prime, second_hidden)[0].squeeze(1).cpu()
+                #v_prime = self.v(s_prime, second_hidden)[0].unsqueeze(-1).cpu()
                 td_target = r + gamma * v_prime * done_mask
-                v_s = self.v(s, first_hidden).squeeze(1).cpu()
+                v_s = self.v(s, first_hidden)[0].squeeze(1).cpu()
+                #v_s = self.v(s, first_hidden)[0].unsqueeze(-1).cpu()
                 delta = td_target - v_s
                 delta = delta.detach().numpy()
 
