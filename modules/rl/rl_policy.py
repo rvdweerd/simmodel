@@ -547,7 +547,8 @@ class LSTM_GNN_PPO_Dual_Policy_simp(Policy):
             if self.deterministic:
                 a=self.probs.argmax().item()
             else:
-                a=self.probs.sample().item()
+                distr = torch.distributions.Categorical(probs=probs)
+                a=distr.sample().item()
             if printing:
                 ppo_value, new_h_v = self.model.v(obs, self.h_v)
                 np.set_printoptions(formatter={'float':"{0:0.2f}".format})

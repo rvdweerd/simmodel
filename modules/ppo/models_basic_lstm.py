@@ -58,7 +58,8 @@ def GetEnv():
     state_repr='etUte0U0'
     state_enc='nfm'
     edge_blocking = True
-    env = GetCustomWorld('MemoryTaskU1Long',make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
+    #env = GetCustomWorld('MemoryTaskU1Long',make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
+    env = GetCustomWorld('Manhattan3x3_WalkAround',make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
     nfm_func = modules.gnn.nfm_gen.nfm_funcs['NFM_ev_ec_t_dt_at_ustack']
     nfm_func.reinit(k=2) # set stack size
     env.redefine_nfm(nfm_func)
@@ -288,7 +289,7 @@ class PPO_GNN_LSTM(nn.Module):
             heads = 4,
             num_layers = 5,
             out_channels = self.emb_dim,
-            share_weights = True,
+            share_weights = False,
             **kwargs
         ).to(device)      
         
@@ -309,17 +310,20 @@ class PPO_GNN_LSTM(nn.Module):
 
     def checkpoint(self, n_epi, mean_Return, mode=None):
         if mode == 'best':
-            print('...New best det results, saving model')
+            print('...New best det results, saving model, it=',n_epi,'avg_return=',mean_Return)
             fname = self.tp["base_checkpoint_path"] + "best_model.tar"
         elif mode == 'last':
             fname = self.tp["base_checkpoint_path"] + "model_"+str(n_epi)+".tar"
         else: return
         OF = open(self.tp["base_checkpoint_path"]+'/model_best_save_history.txt', 'a')
-        OF.write('timestep:'+str(n_epi)+', avg det res:'+str(mean_Return)+'\n')
+        OF.write(mode+'timestep:'+str(n_epi)+', avg det res:'+str(mean_Return)+'\n')
         OF.close()            
         #checkpoint = torch.load(fname)
         #self.load_state_dict(checkpoint['weights'])
-        torch.save({'weights':self.state_dict()}, fname)
+        torch.save({
+            'weights':self.state_dict(),
+            'optimizer':self.optimizer.state_dict(),
+        }, fname)
 
     def _deserialize(self, obs):
         # Deconstruct from an observation as defined by the PPO flattened observation wrapper
@@ -394,6 +398,10 @@ class PPO_GNN_LSTM(nn.Module):
         #global_state = self.theta6_pi(mu_meanpool_expanded) # yields (seq_len, nodes in batch, emb_dim)
         #local_action = self.theta7_pi(mu)  # yields (seq_len, nodes in batch, emb_dim)
         #v = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (#nodes in batch, 2*emb_dim)        
+        # qvals = self.theta5_v(rep).squeeze(-1)  #(seq_len, nr_nodes in batch)
+        # qvals[~reachable] = -torch.inf
+        # v = scatter_max(qvals, batch, dim=1)[0]        
+        
         v = self.theta5_v(mu_meanpool)#.squeeze()#-1) # (nr_nodes in batch,)
         return v
       
@@ -462,12 +470,12 @@ class PPO_GNN_LSTM(nn.Module):
             loss_tsr.mean().backward(retain_graph=True)
             self.optimizer.step()
 
-    def learn(self, env):
+    def learn(self, env, it0=0, best_result=-1e6):
         score = 0.0
         print_interval = 50
-        current_max_Return  = -1e6
+        current_max_Return  = best_result
 
-        for n_epi in range(100000):
+        for n_epi in range(it0, 100000):
             R=0
             gathertimes=[]
             traintimes=[]
@@ -507,13 +515,13 @@ class PPO_GNN_LSTM(nn.Module):
 
             self.tp['writer'].add_scalar('return_per_epi', R/self.num_rollouts, n_epi)
             
-            mean_Return = score/print_interval/self.num_rollouts
-            if mean_Return >= current_max_Return:            
-                current_max_Return = mean_Return
-                self.checkpoint(n_epi,mean_Return,mode='best')
-            if n_epi%5000==0 and n_epi!=0:
-                self.checkpoint(n_epi,mean_Return,mode='last')
-            if n_epi%print_interval==0 and n_epi!=0:
+            if n_epi % self.tp['checkpoint_frequency']==0 and n_epi!=it0:
+                self.checkpoint(n_epi,-1e6,mode='last')
+            if n_epi%print_interval==0 and n_epi!=it0:
+                mean_Return = score/print_interval/self.num_rollouts
+                if mean_Return >= current_max_Return:            
+                    current_max_Return = mean_Return
+                    self.checkpoint(n_epi,mean_Return,mode='best')
                 print("# of episode :{}, avg score : {:.1f}, gather time per iter: {:.1f}, train time per iter: {:.1f}".format(n_epi, mean_Return, np.mean(gathertimes), np.mean(traintimes)))
                 score = 0.0
         env.close()
@@ -580,18 +588,21 @@ class PPO_GNN_Dual_LSTM(nn.Module):
 
     def checkpoint(self, n_epi, mean_Return, mode=None):
         if mode == 'best':
-            print('...New best det results, saving model')
+            print('...New best det results, saving model, it=',n_epi,'avg_return=',mean_Return)
             fname = self.tp["base_checkpoint_path"] + "best_model.tar"
         elif mode == 'last':
             fname = self.tp["base_checkpoint_path"] + "model_"+str(n_epi)+".tar"
         else: return
         OF = open(self.tp["base_checkpoint_path"]+'/model_best_save_history.txt', 'a')
-        OF.write('timestep:'+str(n_epi)+', avg det res:'+str(mean_Return)+'\n')
+        OF.write(mode+'timestep:'+str(n_epi)+', avg det res:'+str(mean_Return)+'\n')
         OF.close()            
         #checkpoint = torch.load(fname)
         #self.load_state_dict(checkpoint['weights'])
-        torch.save({'weights':self.state_dict()}, fname)
-
+        torch.save({
+            'weights':self.state_dict(),
+            'optimizer':self.optimizer.state_dict(),
+        }, fname)
+        
     def _deserialize(self, obs):
         # Deconstruct from an observation as defined by the PPO flattened observation wrapper
         # Args: obs [ nfm (NxF) | edge_list (Ex2) | reachable (N,) | num_nodes (1,) | max_num_nodes (1,) | num_edges (1,) | max_num_edges (1,) | node_dim (1,)]
@@ -732,12 +743,12 @@ class PPO_GNN_Dual_LSTM(nn.Module):
             loss_tsr.mean().backward(retain_graph=True)
             self.optimizer.step()
 
-    def learn(self, env):
+    def learn(self, env, it0=0, best_result=-1e6):
         score = 0.0
         print_interval = 50
-        current_max_Return  = -1e6
+        current_max_Return  = best_result
 
-        for n_epi in range(100000):
+        for n_epi in range(it0, 100000):
             R=0
             gathertimes=[]
             traintimes=[]
@@ -784,13 +795,13 @@ class PPO_GNN_Dual_LSTM(nn.Module):
 
             self.tp['writer'].add_scalar('return_per_epi', R/self.num_rollouts, n_epi)
             
-            mean_Return = score/print_interval/self.num_rollouts
-            if mean_Return >= current_max_Return:            
-                current_max_Return = mean_Return
-                self.checkpoint(n_epi,mean_Return,mode='best')
-            if n_epi%5000==0 and n_epi!=0:
+            if n_epi % self.tp['checkpoint_frequency']==0 and n_epi!=it0:
                 self.checkpoint(n_epi,mean_Return,mode='last')
-            if n_epi%print_interval==0 and n_epi!=0:
+            if n_epi%print_interval==0 and n_epi!=it0:
+                mean_Return = score/print_interval/self.num_rollouts
+                if mean_Return >= current_max_Return:            
+                    current_max_Return = mean_Return
+                    self.checkpoint(n_epi,mean_Return,mode='best')
                 print("# of episode :{}, avg score : {:.1f}, gather time per iter: {:.1f}, train time per iter: {:.1f}".format(n_epi, mean_Return, np.mean(gathertimes), np.mean(traintimes)))
                 score = 0.0
         env.close()
@@ -813,9 +824,9 @@ class PPO_GNN_Dual_LSTM(nn.Module):
 
 
 
-def Solve():
-    env = GetEnv()
-    model = PPO(env)
+def Solve(env, model):
+    #env = GetEnv()
+    #model = PPO(env)
     score = 0.0
     print_interval = 20
 
@@ -880,28 +891,3 @@ def Solve_LSTM(env, model):
             score = 0.0
     env.close()
 
-from modules.ppo.helpfuncs import CreateEnv
-from modules.rl.environments import SuperEnv
-if __name__ == '__main__':
-    #Solve()
-    
-    # basic mem task, flat observation vector
-    #env = GetEnv()
-    #model = PPO_LSTM(env)
-    #Solve_LSTM(env,model)
-
-    # basic mem task, nfm/ei/reachable flat vector
-    #nfm_func='NFM_ev_ec_t_dt_at_um_us'
-    nfm_func='NFM_ev_ec_t_dt_at_ustack'
-    env = CreateEnv('MemoryTaskU1', max_nodes=8, max_edges=22, nfm_func_name=nfm_func, var_targets=None, remove_world_pool=False, apply_wrappers=True, type_obs_wrap='Flat', obs_mask='freq', obs_rate=0.2)
-    env_all_list = []
-    env_all_list.append(env)
-    
-    super_env=SuperEnv(
-        [env],
-        hashint2env=None,
-        max_possible_num_nodes=8,
-        probs=[1])
-
-    model = PPO_GNN_LSTM(super_env, emb_dim=24)
-    Solve_LSTM(env, model)

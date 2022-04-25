@@ -18,6 +18,25 @@ from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsFlatWrapper
 from modules.ppo.models_basic_lstm import PPO_GNN_LSTM, PPO_GNN_Dual_LSTM
 #torch.set_num_threads(1) # Max #threads for torch to avoid inefficient util of cpu cores.
 
+def get_last_checkpoint_filename(tp):
+    """
+    Determine latest checkpoint iteration.
+    """
+    if os.path.isdir(tp['base_checkpoint_path']):
+        max_checkpoint_iteration_list = [dirname.split('_')[-1].split('.')[0] for dirname in os.listdir(tp['base_checkpoint_path'])]
+        max_checkpoint_iteration_list = [int(n) for n in max_checkpoint_iteration_list if n.isdigit()]
+        if max_checkpoint_iteration_list == []:
+            return None, 0, -1e6
+        max_checkpoint_iteration = max(max_checkpoint_iteration_list)
+        fname = tp['base_checkpoint_path'] + 'model_' + str(max_checkpoint_iteration) + '.tar'
+        it = max_checkpoint_iteration
+        OF = open(tp['base_checkpoint_path'] + 'model_best_save_history.txt', 'r')
+        lines = OF.readlines()
+        reslist = [float(e.split('res:')[1].split('\n')[0])*.99 for e in lines]
+        best_result = max(reslist)
+    else:
+        return None, 0, -1e6
+    return fname, it, best_result
 
 def main(args):
     config, hp, tp = GetConfigs(args, suffix='simp')   
@@ -38,24 +57,30 @@ def main(args):
             tp['writer'] = SummaryWriter(log_dir=f"{logdir_}/logs")
             tp["base_checkpoint_path"]=f"{logdir_}/checkpoints/"
             tp["seed_path"]=logdir_
-            #tp["workspace_path"]=logdir_
 
             if config['lstm_type'] in ['None', 'EMB']:
                 model = PPO_GNN_LSTM(senv, config, hp, tp)
             elif config['lstm_type'] == 'Dual':
                 model = PPO_GNN_Dual_LSTM(senv, config, hp, tp)
             if seed == config['seed0']: WriteModelParamsToFile(config, model)
-            score = model.learn(senv)
+            last_checkpoint, it0, best_result = get_last_checkpoint_filename(tp)
+            if last_checkpoint is not None:
+                cp = torch.load(last_checkpoint)
+                model.load_state_dict(cp['weights'])
+                model.optimizer.load_state_dict(cp['optimizer'])
+                print(f"Loaded model from {last_checkpoint}")
+                print('Iteration:', it0, 'best_result:', best_result)
+            score = model.learn(senv, it0, best_result)
 
     if config['test']:
         evalResults={}
         world_dict={ # [max_nodes,max_edges]
             #'Manhattan5x5_DuplicateSetB':[25,300],
-            #'Manhattan3x3_WalkAround':[9,300],
+            'Manhattan3x3_WalkAround':[9,300],
             #'MetroU3_e1t31_FixedEscapeInit':[33, 300],
             # 'full_solvable_3x3subs':[9,33],
             # 'MemoryTaskU1':[8,16],
-            'Manhattan5x5_FixedEscapeInit':[25,105],
+            #'Manhattan5x5_FixedEscapeInit':[25,105],
             # 'Manhattan5x5_VariableEscapeInit':[25,105],
             # 'MetroU3_e17tborder_FixedEscapeInit':[33,300],
             # 'MetroU3_e17tborder_VariableEscapeInit':[33,300],
@@ -146,6 +171,7 @@ if __name__ == '__main__':
     parser.add_argument('--parallel_rollouts', default=1, type=int)
     parser.add_argument('--rollout_steps', default=100, type=int)
     parser.add_argument('--patience', default=500, type=int)
+    parser.add_argument('--checkpoint_frequency', default=5000, type=int)
     parser.add_argument('--obs_mask', default='None', type=str, help='U obervation masking type', choices=['None','freq','prob','prob_per_u'])
     parser.add_argument('--obs_rate', default=1.0, type=float)
     parser.add_argument('--emb_dim', default=64, type=int)

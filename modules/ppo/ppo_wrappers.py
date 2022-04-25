@@ -149,7 +149,7 @@ class PPO_ObsFlatWrapper(ObservationWrapper):
                          torch.flatten(pygei), 
                          torch.flatten(reachable),
                          torch.tensor([self.sp.V, self.max_possible_num_nodes, num_edges, self.max_possible_num_edges, self.F]))
-                        ,dim=0)
+                        ,dim=0).clone()
 
         # # TEST
         # # deserialize single obs (:,)
@@ -251,8 +251,6 @@ class PPO_ObsFlatWrapper_basic(ObservationWrapper):
         # assert torch.allclose(self.nfm,nf)
         # assert torch.allclose(self.sp.EI,py)
         return self.obs
-
-
 
 class PPO_ObsDictWrapper(ObservationWrapper):
     """Wrapper for dict of nfm|W|reachable|pyg_data"""

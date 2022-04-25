@@ -297,7 +297,7 @@ def GetConfigs(args, suffix=""):
         "invalid_tag_characters":      re.compile(r"[^-/\w\.]"), 
         'save_metrics_tensorboard':    True,
         'save_parameters_tensorboard': False,
-        'checkpoint_frequency':        100,
+        'checkpoint_frequency':        args.checkpoint_frequency,
         'eval_deterministic':          args.eval_deter}
 
     batch_count = hp.parallel_rollouts * hp.rollout_steps / hp.recurrent_seq_len / hp.batch_size
