@@ -16,7 +16,6 @@ from modules.rl.rl_utils import EvaluatePolicy
 from modules.sim.simdata_utils import SimulateAutomaticMode_PPO, SimulateInteractiveMode_PPO
 from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsFlatWrapper, PPO_ObsBasicDictWrapper
 from modules.ppo.models_basic_lstm import PPO_GNN_Single_LSTM, PPO_GNN_Dual_LSTM
-#torch.set_num_threads(1) # Max #threads for torch to avoid inefficient util of cpu cores.
 
 def get_last_checkpoint_filename(tp):
     """
@@ -41,6 +40,7 @@ def get_last_checkpoint_filename(tp):
 def main(args):
     config, hp, tp = GetConfigs(args, suffix='simp')   
     
+    ##### TRAIN FUNCTION #####
     if config['train']:
         senv, env_all_train_list = ConstructTrainSet(config, apply_wrappers=True, type_obs_wrap='BasicDict', remove_paths=False, tset=config['train_on']) #TODO check
 
@@ -72,6 +72,7 @@ def main(args):
                 print('Iteration:', it0, 'best_result:', best_result)
             score = model.learn(senv, it0, best_result)
 
+    ##### EVALUATION FUNCTION for full test dataset #####
     if config['eval']:
         evalResults={}
         evalName='Trainset'
@@ -81,9 +82,30 @@ def main(args):
             evalResults = GenerateResults(seed, env_all_train_list, evalName, evalResults, config, hp, tp, maxnodes=senv.max_possible_num_nodes)
         SaveResults(evalResults, config, tp)
 
+    ##### TEST FUNCTION #####
     if config['test']:
         evalResults={}
-        world_dict={ # [max_nodes,max_edges]
+        world_dict = SelectTestWorlds()
+        obs_evalmasks = ['freq'] # ['None']['prob_per_u']
+        obs_evalrates = [0.2]    # [1.][0.8]
+        for obs_mask, obs_rate in zip(obs_evalmasks, obs_evalrates):
+            for world_name in world_dict.keys():
+                evalName=world_name+'_obs'+obs_mask+'_evaldet'+str(tp['eval_deterministic'])[0]
+                if obs_mask != 'None': evalName += str(obs_rate)
+                if world_name == "full_solvable_3x3subs":
+                    evalenv = CreateEnvFS(config, obs_mask, obs_rate, max_nodes=world_dict[world_name][0], max_edges=world_dict[world_name][1])
+                else:
+                    env = CreateEnv(world_name, max_nodes=world_dict[world_name][0], max_edges = world_dict[world_name][1], nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=None, apply_wrappers=True, type_obs_wrap='BasicDict', obs_mask=obs_mask, obs_rate=obs_rate)
+                    evalenv=[env]
+
+                evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
+                for seed in config['seedrange']:
+                    evalResults = GenerateResults(seed, evalenv, evalName, evalResults, config, hp, tp, world_dict[world_name][0])
+
+                SaveResults(evalResults, config, tp)
+
+def SelectTestWorlds():
+    world_dict={ # [max_nodes,max_edges]
             #'Manhattan5x5_DuplicateSetB':[25,300],
             #'Manhattan3x3_WalkAround':[9,33],
             #'MetroU3_e1t31_FixedEscapeInit':[33, 300],
@@ -101,25 +123,7 @@ def main(args):
             # 'NWB_UTR_VariableEscapeInit':[1182,4000],
             # 'SparseManhattan5x5':[25,105],
             }
-        #obs_mask='None'
-        #obs_rate=1.
-        #obs_mask='prob_per_u'
-        #for obs_mask, obs_rate in zip(['None','prob_per_u','prob_per_u','prob_per_u'],[1.,.8,.6,.4]):
-        for obs_mask, obs_rate in zip(['freq'],[.2]):
-            for world_name in world_dict.keys():
-                evalName=world_name+'_obs'+obs_mask+'_evaldet'+str(tp['eval_deterministic'])[0]
-                if obs_mask != 'None': evalName += str(obs_rate)
-                if world_name == "full_solvable_3x3subs":
-                    evalenv = CreateEnvFS(config, obs_mask, obs_rate, max_nodes=world_dict[world_name][0], max_edges=world_dict[world_name][1])
-                else:
-                    env = CreateEnv(world_name, max_nodes=world_dict[world_name][0], max_edges = world_dict[world_name][1], nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=None, apply_wrappers=True, type_obs_wrap='BasicDict', obs_mask=obs_mask, obs_rate=obs_rate)
-                    evalenv=[env]
-
-                evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
-                for seed in config['seedrange']:
-                    evalResults = GenerateResults(seed, evalenv, evalName, evalResults, config, hp, tp, world_dict[world_name][0])
-
-                SaveResults(evalResults, config, tp)
+    return world_dict
 
 def GenerateResults(seed, evalenv, evalName, evalResults, config, hp, tp, maxnodes):                    
     logdir_=config['logdir']+'/SEED'+str(seed)
