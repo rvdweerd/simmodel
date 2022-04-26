@@ -481,7 +481,7 @@ class LSTM_GNN_PPO_EMB_Policy(Policy):
         return a, None
 
 class LSTM_GNN_PPO_Single_Policy_simp(Policy):
-    def __init__(self, env, lstm_ppo_model, deterministic=True):
+    def __init__(self, lstm_ppo_model, deterministic=True):
         super().__init__('RecurrentNetwork')
         self.model = lstm_ppo_model
         self.hidden_dim = self.model.lstm.hidden_size if self.model.lstm_on else 1
@@ -518,7 +518,7 @@ class LSTM_GNN_PPO_Single_Policy_simp(Policy):
         return a, None
 
 class LSTM_GNN_PPO_Dual_Policy_simp(Policy):
-    def __init__(self, env, lstm_ppo_model, deterministic=True):
+    def __init__(self, lstm_ppo_model, deterministic=True):
         super().__init__('RecurrentNetwork')
         self.model = lstm_ppo_model
         self.deterministic = deterministic

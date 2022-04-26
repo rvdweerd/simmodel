@@ -258,7 +258,7 @@ class GATv2(BasicGNN):
 
 class PPO_GNN_Model(nn.Module):
     # Base class for PPO-GNN-LSTM implementations
-    def __init__(self, env, config, hp, tp):
+    def __init__(self, config, hp, tp):
         super(PPO_GNN_Model, self).__init__()
         self.hp = hp
         self.tp = tp
@@ -266,9 +266,9 @@ class PPO_GNN_Model(nn.Module):
         self.data = []
         self.ei = []
         #self.obs_space = env.observation_space.shape[0]
-        self.act_space = env.action_space
+        #self.act_space = env.action_space
         #self.num_nodes = env.action_space.n
-        self.node_dim = env.F
+        self.node_dim = hp.node_dim#env.F
         self.emb_dim = hp.emb_dim
         self.num_rollouts = hp.parallel_rollouts
         self.num_epochs = hp.batch_size
@@ -325,15 +325,15 @@ class PPO_GNN_Model(nn.Module):
 
 class PPO_GNN_Single_LSTM(PPO_GNN_Model):
     # Single LSTM acting either on node features (lstm_type='FE') or on embedding ('EMB'). LSTM can be disabled ('None')
-    def __init__(self, env, config, hp, tp):
-        super(PPO_GNN_Single_LSTM, self).__init__(env, config, hp, tp)
+    def __init__(self, config, hp, tp):
+        super(PPO_GNN_Single_LSTM, self).__init__(config, hp, tp)
         self.description="PPO policy, GATv2 extractor, lstm, action masking"
         assert config['lstm_type'] in ['None','EMB','FE']
 
         kwargs={'concat':config['gat_concat']}
         self.gat = GATv2(
             in_channels = self.node_dim,
-            hidden_channels = self.emb_dim*2,
+            hidden_channels = self.emb_dim,
             heads = config['gat_heads'],
             num_layers = config['emb_iterT'],
             out_channels = self.emb_dim,
@@ -574,7 +574,7 @@ class PPO_GNN_Dual_LSTM(PPO_GNN_Model):
         kwargs={'concat':config['gat_concat']}
         self.gat = GATv2(
             in_channels = self.node_dim,
-            hidden_channels = self.emb_dim*2,
+            hidden_channels = self.emb_dim,
             heads = config['gat_heads'],
             num_layers = config['emb_iterT'],
             out_channels = self.emb_dim,

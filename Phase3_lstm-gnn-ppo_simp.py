@@ -9,7 +9,7 @@ from modules.sim.graph_factory import GetWorldSet
 import modules.gnn.nfm_gen
 from modules.gnn.construct_trainsets import ConstructTrainSet
 from modules.ppo.ppo_custom import WriteTrainParamsToFile, WriteModelParamsToFile, GetConfigs
-from modules.ppo.helpfuncs import CreateEnv, evaluate_lstm_ppo
+from modules.ppo.helpfuncs import CreateEnv, CreateEnvFS, evaluate_lstm_ppo
 from modules.rl.rl_utils import GetFullCoverageSample
 from modules.rl.rl_policy import LSTM_GNN_PPO_Single_Policy_simp, LSTM_GNN_PPO_Dual_Policy_simp
 from modules.rl.rl_utils import EvaluatePolicy
@@ -59,9 +59,9 @@ def main(args):
             tp["seed_path"]=logdir_
 
             if config['lstm_type'] in ['None', 'EMB', 'FE']:
-                model = PPO_GNN_Single_LSTM(senv, config, hp, tp)
+                model = PPO_GNN_Single_LSTM(config, hp, tp)
             elif config['lstm_type'] in ['Dual','DualCC']:
-                model = PPO_GNN_Dual_LSTM(senv, config, hp, tp)
+                model = PPO_GNN_Dual_LSTM(config, hp, tp)
             if seed == config['seed0']: WriteModelParamsToFile(config, model)
             last_checkpoint, it0, best_result = get_last_checkpoint_filename(tp)
             if last_checkpoint is not None:
@@ -76,6 +76,10 @@ def main(args):
         evalResults={}
         evalName='Trainset'
         senv, env_all_train_list = ConstructTrainSet(config, apply_wrappers=True, type_obs_wrap='BasicDict', remove_paths=False, tset=config['train_on']) #TODO check
+        evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
+        for seed in config['seedrange']:
+            evalResults = GenerateResults(seed, env_all_train_list, evalName, evalResults, config, hp, tp, maxnodes=senv.max_possible_num_nodes)
+        SaveResults(evalResults, config, tp)
 
     if config['test']:
         evalResults={}
@@ -106,66 +110,66 @@ def main(args):
                 evalName=world_name+'_obs'+obs_mask+'_evaldet'+str(tp['eval_deterministic'])[0]
                 if obs_mask != 'None': evalName += str(obs_rate)
                 if world_name == "full_solvable_3x3subs":
-                    Etest=[0,1,2,3,4,5,6,7,8,9,10]
-                    Utest=[1,2,3]
-                    evalenv, _, _, _  = GetWorldSet('etUte0U0', 'nfm', U=Utest, E=Etest, edge_blocking=config['edge_blocking'], solve_select=config['solve_select'], reject_duplicates=False, nfm_func=modules.gnn.nfm_gen.nfm_funcs[config['nfm_func']], apply_wrappers=False, maxnodes=world_dict[world_name][0], maxedges=world_dict[world_name][1])
-                    for i in range(len(evalenv)):
-                        evalenv[i]=PPO_ObsBasicDictWrapper(evalenv[i], obs_mask=obs_mask, obs_rate=obs_rate)
-                        evalenv[i]=PPO_ActWrapper(evalenv[i])
-                    env=evalenv[0]
+                    evalenv = CreateEnvFS(config, obs_mask, obs_rate, max_nodes=world_dict[world_name][0], max_edges=world_dict[world_name][1])
                 else:
                     env = CreateEnv(world_name, max_nodes=world_dict[world_name][0], max_edges = world_dict[world_name][1], nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=None, apply_wrappers=True, type_obs_wrap='BasicDict', obs_mask=obs_mask, obs_rate=obs_rate)
                     evalenv=[env]
-                #hp.max_possible_nodes = world_dict[world_name][0]#env.max_possible_num_nodes
-                #hp.max_possible_edges = world_dict[world_name][1]#env.max_possible_num_edges
 
                 evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
                 for seed in config['seedrange']:
-                    logdir_=config['logdir']+'/SEED'+str(seed)
-                    tp["base_checkpoint_path"]=f"{logdir_}/checkpoints/"
-                    try:
-                        assert os.path.exists(tp['base_checkpoint_path'])
-                    except:
-                        continue
-                    fname=tp['base_checkpoint_path']+'best_model.tar'
-                    checkpoint = torch.load(fname)
-                    if config['lstm_type'] in ['None', 'EMB','FE']:
-                        ppo_model = PPO_GNN_Single_LSTM(env, config, hp, tp)
-                    elif config['lstm_type'] in ['Dual','DualCC']:
-                        ppo_model = PPO_GNN_Dual_LSTM(env, config, hp, tp)
-                    ppo_model.load_state_dict(checkpoint['weights'])
-                    print('Loaded model from', fname)
-                    if config['lstm_type'] in  ['EMB','FE','None']:
-                        ppo_policy = LSTM_GNN_PPO_Single_Policy_simp(None, ppo_model, deterministic=tp['eval_deterministic'])
-                    elif config['lstm_type'] in ['Dual','DualCC']:                   
-                        ppo_policy = LSTM_GNN_PPO_Dual_Policy_simp(env, ppo_model, deterministic=tp['eval_deterministic'])
-                    else: assert False
+                    evalResults = GenerateResults(seed, evalenv, evalName, evalResults, config, hp, tp, world_dict[world_name][0])
 
-                    if config['demoruns']:
-                        while True:
-                            demoenv=random.choice(evalenv)
-                            a = SimulateAutomaticMode_PPO(demoenv, ppo_policy, t_suffix=False, entries=None)
-                            if a == 'Q': break
+                SaveResults(evalResults, config, tp)
 
-                    result = evaluate_lstm_ppo(logdir=logdir_, config=config, env=evalenv, ppo_policy=ppo_policy, eval_subdir=evalName, max_num_nodes=world_dict[world_name][0])
-                    num_unique_graphs, num_graph_instances, avg_return, success_rate = result
-                    evalResults[evalName]['num_graphs.........'].append(num_unique_graphs)
-                    evalResults[evalName]['num_graph_instances'].append(num_graph_instances)
-                    evalResults[evalName]['avg_return.........'].append(avg_return)
-                    evalResults[evalName]['success_rate.......'].append(success_rate)
+def GenerateResults(seed, evalenv, evalName, evalResults, config, hp, tp, maxnodes):                    
+    logdir_=config['logdir']+'/SEED'+str(seed)
+    tp["base_checkpoint_path"]=f"{logdir_}/checkpoints/"
+    try:
+        assert os.path.exists(tp['base_checkpoint_path'])
+    except:
+        return evalResults
+    fname=tp['base_checkpoint_path']+'best_model.tar'
+    checkpoint = torch.load(fname)
+    if config['lstm_type'] in ['None', 'EMB','FE']:
+        ppo_model = PPO_GNN_Single_LSTM(config, hp, tp)
+    elif config['lstm_type'] in ['Dual','DualCC']:
+        ppo_model = PPO_GNN_Dual_LSTM(config, hp, tp)
+    ppo_model.load_state_dict(checkpoint['weights'])
+    print('Loaded model from', fname)
+    if config['lstm_type'] in  ['EMB','FE','None']:
+        ppo_policy = LSTM_GNN_PPO_Single_Policy_simp(ppo_model, deterministic=tp['eval_deterministic'])
+    elif config['lstm_type'] in ['Dual','DualCC']:                   
+        ppo_policy = LSTM_GNN_PPO_Dual_Policy_simp(ppo_model, deterministic=tp['eval_deterministic'])
+    else: assert False
 
-            for ename, results in evalResults.items():
-                OF = open(config['logdir']+'/Eval_det'+str(tp['eval_deterministic'])[0]+'_Results_over_seeds_'+ename+'.txt', 'w')
-                def printing(text):
-                    print(text)
-                    OF.write(text + "\n")
-                np.set_printoptions(formatter={'float':"{0:0.3f}".format})
-                printing('Results over seeds for evaluation on '+ename+'\n')
-                for category,values in results.items():
-                    printing(category)
-                    printing('  avg over seeds: '+str(np.mean(values)))
-                    printing('  std over seeds: '+str(np.std(values)))
-                    printing('  per seed: '+str(np.array(values))+'\n')
+    if config['demoruns']:
+        while True:
+            demoenv=random.choice(evalenv)
+            a = SimulateAutomaticMode_PPO(demoenv, ppo_policy, t_suffix=False, entries=None)
+            if a == 'Q': break
+
+    result = evaluate_lstm_ppo(logdir=logdir_, config=config, env=evalenv, ppo_policy=ppo_policy, eval_subdir=evalName, max_num_nodes=maxnodes)
+    num_unique_graphs, num_graph_instances, avg_return, success_rate = result
+    evalResults[evalName]['num_graphs.........'].append(num_unique_graphs)
+    evalResults[evalName]['num_graph_instances'].append(num_graph_instances)
+    evalResults[evalName]['avg_return.........'].append(avg_return)
+    evalResults[evalName]['success_rate.......'].append(success_rate)
+
+    return evalResults
+
+def SaveResults(evalResults, config, tp):
+    for ename, results in evalResults.items():
+        OF = open(config['logdir']+'/Eval_det'+str(tp['eval_deterministic'])[0]+'_Results_over_seeds_'+ename+'.txt', 'w')
+        def printing(text):
+            print(text)
+            OF.write(text + "\n")
+        np.set_printoptions(formatter={'float':"{0:0.3f}".format})
+        printing('Results over seeds for evaluation on '+ename+'\n')
+        for category,values in results.items():
+            printing(category)
+            printing('  avg over seeds: '+str(np.mean(values)))
+            printing('  std over seeds: '+str(np.std(values)))
+            printing('  per seed: '+str(np.array(values))+'\n')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)    
