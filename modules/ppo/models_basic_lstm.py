@@ -333,7 +333,7 @@ class PPO_GNN_Single_LSTM(PPO_GNN_Model):
         kwargs={'concat':config['gat_concat']}
         self.gat = GATv2(
             in_channels = self.node_dim,
-            hidden_channels = self.emb_dim,
+            hidden_channels = self.emb_dim*2,
             heads = config['gat_heads'],
             num_layers = config['emb_iterT'],
             out_channels = self.emb_dim,
@@ -574,7 +574,7 @@ class PPO_GNN_Dual_LSTM(PPO_GNN_Model):
         kwargs={'concat':config['gat_concat']}
         self.gat = GATv2(
             in_channels = self.node_dim,
-            hidden_channels = self.emb_dim,
+            hidden_channels = self.emb_dim*2,
             heads = config['gat_heads'],
             num_layers = config['emb_iterT'],
             out_channels = self.emb_dim,
