@@ -252,7 +252,7 @@ def GetConfigs(args, suffix=""):
     config['emb_iterT']       = args.emb_iterT
     config['gat_concat']      = True
     config['gat_heads']       = 4
-    config['gat_share_weights']= True
+    config['gat_share_weights']= False
 
     # Environment parameters
     config['nfm_func']        = args.nfm_func

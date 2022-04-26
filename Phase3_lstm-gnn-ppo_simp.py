@@ -173,7 +173,7 @@ if __name__ == '__main__':
     parser.add_argument('--rollout_steps', default=100, type=int)
     parser.add_argument('--patience', default=500, type=int)
     parser.add_argument('--checkpoint_frequency', default=5000, type=int)
-    parser.add_argument('--obs_mask', default='None', type=str, help='U obervation masking type', choices=['None','freq','prob','prob_per_u'])
+    parser.add_argument('--obs_mask', default='None', type=str, help='U obervation masking type', choices=['None','freq','prob','prob_per_u','mix'])
     parser.add_argument('--obs_rate', default=1.0, type=float)
     parser.add_argument('--emb_dim', default=64, type=int)
     parser.add_argument('--lstm_type', default='None', type=str, choices=['None','EMB','FE','Dual','DualCC'])

@@ -295,12 +295,13 @@ class PPO_GNN_Model(nn.Module):
         if mode == 'best':
             print('...New best det results, saving model, it=',n_epi,'avg_return=',mean_Return)
             fname = self.tp["base_checkpoint_path"] + "best_model.tar"
+            announce = 'BEST_' if mode=='best' else '...._'
+            OF = open(self.tp["base_checkpoint_path"]+'/model_best_save_history.txt', 'a')
+            OF.write(announce+'timestep:'+str(n_epi)+', avg det res:'+str(mean_Return)+'\n')
+            OF.close()            
         elif mode == 'last':
             fname = self.tp["base_checkpoint_path"] + "model_"+str(n_epi)+".tar"
         else: return
-        OF = open(self.tp["base_checkpoint_path"]+'/model_best_save_history.txt', 'a')
-        OF.write(mode+'timestep:'+str(n_epi)+', avg det res:'+str(mean_Return)+'\n')
-        OF.close()            
         #checkpoint = torch.load(fname)
         #self.load_state_dict(checkpoint['weights'])
         torch.save({
@@ -332,7 +333,7 @@ class PPO_GNN_Single_LSTM(PPO_GNN_Model):
         kwargs={'concat':config['gat_concat']}
         self.gat = GATv2(
             in_channels = self.node_dim,
-            hidden_channels = self.emb_dim,
+            hidden_channels = self.emb_dim*2,
             heads = config['gat_heads'],
             num_layers = config['emb_iterT'],
             out_channels = self.emb_dim,
@@ -503,6 +504,7 @@ class PPO_GNN_Single_LSTM(PPO_GNN_Model):
 
     def learn(self, env, it0=0, best_result=-1e6):
         score = 0.0
+        counter = 0
         validation_interval = 50
         current_max_Return  = best_result
 
@@ -541,6 +543,7 @@ class PPO_GNN_Single_LSTM(PPO_GNN_Model):
                         break
                 self.put_data(transitions, s['ei'])
                 transitions = []
+            counter+=1
             end_gather_time = time.time()
             start_train_time = time.time()
             self.train_net()
@@ -551,13 +554,14 @@ class PPO_GNN_Single_LSTM(PPO_GNN_Model):
             self.tp['writer'].add_scalar('return_per_epi', R/self.num_rollouts, n_epi)
             
             if n_epi % self.tp['checkpoint_frequency']==0 and n_epi != it0:
-                self.checkpoint(n_epi,-1e6,mode='last')
+                self.checkpoint(n_epi,score/counter/self.num_rollouts,mode='last')
             if n_epi % validation_interval == 0 and n_epi != it0:
                 mean_Return = score/validation_interval/self.num_rollouts
                 if mean_Return >= current_max_Return:            
                     current_max_Return = mean_Return
                     self.checkpoint(n_epi,mean_Return,mode='best')
                 print("# of episode :{}, avg score : {:.1f}, gather time per iter: {:.1f}, train time per iter: {:.1f}".format(n_epi, mean_Return, np.mean(gathertimes), np.mean(traintimes)))
+                counter=0
                 score = 0.0
         env.close()
         return mean_Return
@@ -570,7 +574,7 @@ class PPO_GNN_Dual_LSTM(PPO_GNN_Model):
         kwargs={'concat':config['gat_concat']}
         self.gat = GATv2(
             in_channels = self.node_dim,
-            hidden_channels = self.emb_dim,
+            hidden_channels = self.emb_dim*2,
             heads = config['gat_heads'],
             num_layers = config['emb_iterT'],
             out_channels = self.emb_dim,
@@ -749,6 +753,7 @@ class PPO_GNN_Dual_LSTM(PPO_GNN_Model):
 
     def learn(self, env, it0=0, best_result=-1e6):
         score = 0.0
+        counter=0
         validation_interval = 50
         current_max_Return  = best_result
 
@@ -794,6 +799,7 @@ class PPO_GNN_Dual_LSTM(PPO_GNN_Model):
                         break
                 self.put_data(transitions, s['ei'])
                 transitions = []
+            counter+=1
             end_gather_time = time.time()
             start_train_time = time.time()
             self.train_net()
@@ -804,7 +810,7 @@ class PPO_GNN_Dual_LSTM(PPO_GNN_Model):
             self.tp['writer'].add_scalar('return_per_epi', R/self.num_rollouts, n_epi)
             
             if n_epi % self.tp['checkpoint_frequency']==0 and n_epi != it0:
-                self.checkpoint(n_epi,-1e6,mode='last')
+                self.checkpoint(n_epi,score/counter/self.num_rollouts,mode='last')
             if n_epi % validation_interval == 0 and n_epi != it0:
                 mean_Return = score/validation_interval/self.num_rollouts
                 if mean_Return >= current_max_Return:            
@@ -812,6 +818,7 @@ class PPO_GNN_Dual_LSTM(PPO_GNN_Model):
                     self.checkpoint(n_epi,mean_Return,mode='best')
                 print("# of episode :{}, avg score : {:.1f}, gather time per iter: {:.1f}, train time per iter: {:.1f}".format(n_epi, mean_Return, np.mean(gathertimes), np.mean(traintimes)))
                 score = 0.0
+                counter=0
         env.close()
         return mean_Return
 
