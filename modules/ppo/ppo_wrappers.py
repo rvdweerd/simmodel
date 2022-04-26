@@ -331,6 +331,87 @@ class PPO_ActWrapper(ActionWrapper):
         #print('Node_select action:',action,'Neighbor_index action:',a)
         return a
 
+class PPO_ObsBasicDictWrapper(ObservationWrapper):
+    """Wrapper for dict of nfm, ei, reachable"""
+
+    def __init__(self, env, obs_mask='None', obs_rate=1, seed=0):
+        super().__init__(env)
+    
+        dspaces  = {
+            'nfm':      spaces.Box(0., self.sp.V, shape=(self.sp.V, self.F), dtype=np.float32),
+            'ei':       spaces.Box(0., self.sp.V, shape=self.sp.EI.shape, dtype=np.float32),
+            'reachable':spaces.Box(0., 1., shape=(self.sp.V,), dtype=np.float32),
+        }
+
+        self.observation_space= spaces.Dict(dspaces)
+        self.action_space     = spaces.Discrete(self.sp.V) # all possible nodes 
+        
+        assert obs_mask in ['None','freq','prob','prob_per_u','prob_per_u_test']
+        assert (obs_rate >=0 and obs_rate <=1) if obs_mask in ['prob','prob_per_u','None','prob_per_u_test'] else (obs_rate >1e-2 and obs_rate <=1)
+        self.obs_mask = obs_mask  # Type of observation masking of pursuit units
+        self.obs_rate = int(1/obs_rate) if obs_mask=='freq' else obs_rate  # If observations are masked, either frequency (mask every n) or probability (mask with probability p)      
+        if obs_mask == 'prob_per_u_test':
+            rng = np.random.default_rng(seed)
+            num_worlds = len(self.all_worlds)
+            self.pre_calculated_masks = rng.integers(2, size=(num_worlds, self.sp.T, self.sp.U), dtype=np.bool)
+
+        print('Wrapping the env with a basic observation dict space: nfm, ei, reachable')
+        
+    def getUpositions(self,t=0):
+        return self.env.getUpositions(t)
+    
+    def render(self, mode=None, fname=None, t_suffix=True, size=None):
+        return self.env.render(mode,fname,t_suffix,size)
+
+    def apply_mask(self):
+        # Apply observation masking
+        if self.obs_mask != 'None':
+            #all_observable=True
+            if self.obs_mask == 'freq':
+                self.env.u_observable = [True]*self.env.sp.U
+                if ((self.global_t) % self.obs_rate != 0):
+                    #print('freq criterion: obs set to False')
+                    #all_observable=False
+                    self.env.u_observable = [False]*self.env.sp.U # for plotting purposes
+                    self.nfm[:, self.nfm_calculator.uindx] = 0 # erase all U observations
+            elif self.obs_mask == 'prob': # probability of observing all Us at timestep t
+                self.env.u_observable = [True]*self.env.sp.U                
+                if self.env.global_t > 0:  # first frame always visible
+                    p = np.random.rand() 
+                    #print('p=',p)
+                    if p > self.obs_rate:
+                        #print('prob criterion: obs set to False')
+                        #all_observable=False
+                        self.env.u_observable = [False]*self.env.sp.U # for plotting purposes
+                        self.nfm[:, self.nfm_calculator.uindx] = 0 # erase all U observations
+            elif self.obs_mask == 'prob_per_u': # probability of observing an individual U at timestep t
+                if self.env.global_t > 0:  # first frame always visible
+                    mask_u = np.random.rand(self.sp.U) > self.obs_rate
+                    self.env.u_observable = list(~mask_u) # for plotting purposes
+                    self.mask_units(mask_u) # sets appropriate self.nfm values to 0
+            elif self.obs_mask == 'prob_per_u_test':
+                if self.env.global_t > 0:  # first frame always visible
+                    mask_u = self.pre_calculated_masks[self.current_entry][self.global_t] > self.obs_rate
+                    self.env.u_observable = list(~mask_u) # for plotting purposes
+                    self.mask_units(mask_u) # sets appropriate self.nfm
+            else: assert False    
+            #print('\n>> state',self.state,'units observable:',self.u_observable,'units positions:',self.getUpositions(self.local_t))
+            assert self.u_observable==self.env.u_observable
+            assert self.global_t == self.local_t
+
+    def observation(self, observation):
+        """convert observation."""
+        self.apply_mask()
+        nfm = self.nfm.clone()
+        ei = self.sp.EI.clone()        
+        reachable = torch.tensor(self.action_masks(), dtype=torch.bool)
+        self.obs = {
+            'nfm':      nfm,
+            'ei':       ei,
+            'reachable':reachable,
+        }
+        return self.obs
+
 # class MaskVelocityWrapper(gym.ObservationWrapper):
 #     """
 #     Gym environment observation wrapper used to mask velocity terms in

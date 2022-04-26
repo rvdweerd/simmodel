@@ -227,32 +227,40 @@ class TrajectoryDataset_EMB():
 
 def GetConfigs(args, suffix=""):
     config = {}
-    #for i in range(args.num_configs):
-    #    config.add(args.config_class(**args.config_args))
-    #return config
-    #config['lstm_dropout']    = args.lstm_dropout
+    
+    # Train regime
     config['train_on']        = args.train_on
     config['batch_size']      = args.batch_size
     config['obs_mask']        = str(args.obs_mask)
     config['obs_rate']        = args.obs_rate
-    config['emb_dim']         = args.emb_dim
-    config['lstm_type']       = args.lstm_type
-    config['lstm_hdim']       = args.lstm_hdim
-    config['lstm_layers']     = args.lstm_layers
     config['recurrent_seq_len'] = args.recurrent_seq_len
-    config['emb_iterT']       = args.emb_iterT
-    config['nfm_func']        = args.nfm_func
-    config['edge_blocking']   = True
-    config['solve_select']    = 'solvable'
-    config['qnet']            = args.qnet
-    config['critic']          = args.critic
     config['train']           = args.train
     config['eval']            = args.eval
     config['test']            = args.test
     config['num_seeds']       = args.num_seeds
     config['seed0']           = args.seed0
-    config['seedrange']=range(config['seed0'], config['seed0']+config['num_seeds'])
     config['demoruns']        = args.demoruns
+    config['num_step']        = args.num_step
+
+    # Model architecture
+    config['qnet']            = args.qnet
+    config['critic']          = args.critic
+    config['emb_dim']         = args.emb_dim
+    config['lstm_type']       = args.lstm_type
+    config['lstm_hdim']       = args.lstm_hdim
+    config['lstm_layers']     = args.lstm_layers
+    config['emb_iterT']       = args.emb_iterT
+    config['gat_concat']      = True
+    config['gat_heads']       = 4
+    config['gat_share_weights']= True
+
+    # Environment parameters
+    config['nfm_func']        = args.nfm_func
+    config['edge_blocking']   = True
+    config['solve_select']    = 'solvable'
+    config['seedrange']=range(config['seed0'], config['seed0']+config['num_seeds'])
+    
+    # File admin
     lstm_filestring = config['lstm_type']
     if config['lstm_type'] != 'None':
         lstm_filestring  += '_' + str(config['lstm_hdim']) + '_' + str(config['lstm_layers'])
@@ -264,18 +272,19 @@ def GetConfigs(args, suffix=""):
     config['rootdir'] = './results/results_Phase3/ppo/'+ config['train_on']+'/'+ \
                         config['qnet'] + '-' + config['critic'] + '/'+ \
                         'emb'+str(config['emb_dim']) + '_itT'+str(config['emb_iterT']) + '/'+ \
-                        'lstm_' + lstm_filestring 
-                        
+                        'lstm_' + lstm_filestring                  
     if suffix != "":
         config['rootdir'] = config['rootdir'].replace("Phase3","Phase3"+suffix)
     config['logdir']  = config['rootdir'] + '/' + config['nfm_func']+'/' \
                         'omask_' + mask_filestring + '/' +\
                         'bsize' + str(config['batch_size']) +'ro'+str(args.parallel_rollouts)#+'_lr{:.1e}'.format(args.lr)
 
-
     hp = HyperParameters(
                         emb_dim          = config['emb_dim'],
                         critic           = config['critic'],
+                        discount         = .98,
+                        gae_lambda       = .95,
+                        ppo_clip         = .2,
                         node_dim         = modules.gnn.nfm_gen.nfm_funcs[config['nfm_func']].F,
                         lstm_on          = config['lstm_type'] != 'None',
                         hidden_size      = config['lstm_hdim'],

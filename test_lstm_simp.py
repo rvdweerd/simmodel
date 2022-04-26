@@ -19,5 +19,5 @@ Solve(env,model)
 #     max_possible_num_nodes=8,
 #     probs=[1])
 
-# model = PPO_GNN_LSTM(super_env, emb_dim=24)
+# model = PPO_GNN_Single_LSTM(super_env, emb_dim=24)
 # Solve_LSTM(env, model)

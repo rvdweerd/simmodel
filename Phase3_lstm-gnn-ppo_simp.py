@@ -14,8 +14,8 @@ from modules.rl.rl_utils import GetFullCoverageSample
 from modules.rl.rl_policy import LSTM_GNN_PPO_EMB_Policy_simp, LSTM_GNN_PPO_Dual_Policy_simp
 from modules.rl.rl_utils import EvaluatePolicy
 from modules.sim.simdata_utils import SimulateAutomaticMode_PPO, SimulateInteractiveMode_PPO
-from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsFlatWrapper
-from modules.ppo.models_basic_lstm import PPO_GNN_LSTM, PPO_GNN_Dual_LSTM
+from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsFlatWrapper, PPO_ObsBasicDictWrapper
+from modules.ppo.models_basic_lstm import PPO_GNN_Single_LSTM, PPO_GNN_Dual_LSTM
 #torch.set_num_threads(1) # Max #threads for torch to avoid inefficient util of cpu cores.
 
 def get_last_checkpoint_filename(tp):
@@ -42,7 +42,7 @@ def main(args):
     config, hp, tp = GetConfigs(args, suffix='simp')   
     
     if config['train']:
-        senv, env_all_train_list = ConstructTrainSet(config, apply_wrappers=True, type_obs_wrap='Flat', remove_paths=False, tset=config['train_on']) #TODO check
+        senv, env_all_train_list = ConstructTrainSet(config, apply_wrappers=True, type_obs_wrap='BasicDict', remove_paths=False, tset=config['train_on']) #TODO check
 
         if config['demoruns']:
             while True:
@@ -58,8 +58,8 @@ def main(args):
             tp["base_checkpoint_path"]=f"{logdir_}/checkpoints/"
             tp["seed_path"]=logdir_
 
-            if config['lstm_type'] in ['None', 'EMB']:
-                model = PPO_GNN_LSTM(senv, config, hp, tp)
+            if config['lstm_type'] in ['None', 'EMB', 'FE']:
+                model = PPO_GNN_Single_LSTM(senv, config, hp, tp)
             elif config['lstm_type'] == 'Dual':
                 model = PPO_GNN_Dual_LSTM(senv, config, hp, tp)
             if seed == config['seed0']: WriteModelParamsToFile(config, model)
@@ -125,7 +125,7 @@ def main(args):
                     fname=tp['base_checkpoint_path']+'best_model.tar'
                     checkpoint = torch.load(fname)
                     if config['lstm_type'] in ['None', 'EMB']:
-                        ppo_model = PPO_GNN_LSTM(env, config, hp, tp)
+                        ppo_model = PPO_GNN_Single_LSTM(env, config, hp, tp)
                     elif config['lstm_type'] == 'Dual':
                         ppo_model = PPO_GNN_Dual_LSTM(env, config, hp, tp)
                     ppo_model.load_state_dict(checkpoint['weights'])
@@ -165,6 +165,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)    
     parser.add_argument('--train_on', default='None', type=str)
+    parser.add_argument('--num_step', default=10000, type=int)
     parser.add_argument('--batch_size', default=48, type=int)
     parser.add_argument('--lr', default=5e-4, type=float)
     parser.add_argument('--recurrent_seq_len', default=2, type=int)
