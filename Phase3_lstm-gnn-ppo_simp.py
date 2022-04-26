@@ -60,7 +60,7 @@ def main(args):
 
             if config['lstm_type'] in ['None', 'EMB', 'FE']:
                 model = PPO_GNN_Single_LSTM(senv, config, hp, tp)
-            elif config['lstm_type'] == 'Dual':
+            elif config['lstm_type'] in ['Dual','DualCC']:
                 model = PPO_GNN_Dual_LSTM(senv, config, hp, tp)
             if seed == config['seed0']: WriteModelParamsToFile(config, model)
             last_checkpoint, it0, best_result = get_last_checkpoint_filename(tp)

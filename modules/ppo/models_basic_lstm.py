@@ -257,6 +257,7 @@ class GATv2(BasicGNN):
                        **kwargs)
 
 class PPO_GNN_Model(nn.Module):
+    # Base class for PPO-GNN-LSTM implementations
     def __init__(self, env, config, hp, tp):
         super(PPO_GNN_Model, self).__init__()
         self.hp = hp
@@ -271,7 +272,7 @@ class PPO_GNN_Model(nn.Module):
         self.emb_dim = hp.emb_dim
         self.num_rollouts = hp.parallel_rollouts
         self.num_epochs = hp.batch_size
-        assert config['lstm_type'] in ['None','EMB','FE']
+        assert config['lstm_type'] in ['None','EMB','FE','Dual','DualCC']
         assert config['qnet'] == 'gat2'
         assert config['critic'] in ['q','v']
         Path(self.tp["base_checkpoint_path"]).mkdir(parents=True, exist_ok=True)
@@ -322,10 +323,12 @@ class PPO_GNN_Model(nn.Module):
         return total, ps
 
 class PPO_GNN_Single_LSTM(PPO_GNN_Model):
+    # Single LSTM acting either on node features (lstm_type='FE') or on embedding ('EMB'). LSTM can be disabled ('None')
     def __init__(self, env, config, hp, tp):
         super(PPO_GNN_Single_LSTM, self).__init__(env, config, hp, tp)
         self.description="PPO policy, GATv2 extractor, lstm, action masking"
-        
+        assert config['lstm_type'] in ['None','EMB','FE']
+
         kwargs={'concat':config['gat_concat']}
         self.gat = GATv2(
             in_channels = self.node_dim,
@@ -559,12 +562,11 @@ class PPO_GNN_Single_LSTM(PPO_GNN_Model):
         env.close()
         return mean_Return
 
-
 class PPO_GNN_Dual_LSTM(PPO_GNN_Model):
     def __init__(self, env, config, hp, tp):
         super(PPO_GNN_Dual_LSTM, self).__init__(env, config, hp, tp)
         self.description="PPO policy, GATv2 extractor, Dual lstm, action masking"
-        
+        assert config['lstm_type'] in ['Dual','DualCC']
         kwargs={'concat':config['gat_concat']}
         self.gat = GATv2(
             in_channels = self.node_dim,
@@ -575,89 +577,112 @@ class PPO_GNN_Dual_LSTM(PPO_GNN_Model):
             share_weights = config['gat_share_weights'],
             **kwargs
         ).to(device)      
-        
-        self.lstm_pi  = nn.LSTM(self.emb_dim,self.emb_dim, device=device)
-        self.lstm_v  = nn.LSTM(self.emb_dim,self.emb_dim, device=device)
+
+        if config['lstm_type'] == 'Dual':
+            self.lstm_pi  = nn.LSTM(self.emb_dim, self.emb_dim, device=device)
+            self.lstm_v   = nn.LSTM(self.emb_dim, self.emb_dim, device=device)
+        if config['lstm_type'] == 'DualCC':
+            self.lstm_pi  = nn.LSTM(2*self.emb_dim, 2*self.emb_dim, device=device)
+            if config['critic'] ==  'v':
+                self.lstm_v   = nn.LSTM(self.emb_dim, self.emb_dim, device=device)        
+            else:
+                self.lstm_v   = nn.LSTM(2*self.emb_dim, 2*self.emb_dim, device=device)        
         
         # Policy network parameters
         self.theta5_pi = nn.Linear(2*self.emb_dim, 1, True, device=device)#, dtype=torch.float32)
         self.theta6_pi = nn.Linear(self.emb_dim, self.emb_dim, True, device=device)#, dtype=torch.float32)
         self.theta7_pi = nn.Linear(self.emb_dim, self.emb_dim, True, device=device)#, dtype=torch.float32)
 
-        # Value network parameters        
-        self.theta5_v = nn.Linear(self.emb_dim, 1, True, device=device)#, dtype=torch.float32)
-        #self.theta6_v = nn.Linear(self.emb_dim, self.emb_dim, True, device=device)#, dtype=torch.float32)
-        #self.theta7_v = nn.Linear(self.emb_dim, self.emb_dim, True, device=device)#, dtype=torch.float32)
+        if config['critic'] ==  'v':
+            # Value network parameters OPTION 2: LINEAR OPERATOR       
+            self.theta5_v = nn.Linear(self.emb_dim, 1, True, device=device)#, dtype=torch.float32)
+        elif config['critic'] ==  'q':
+            # Value network parameters OPTION 2: MAX OPERATOR       
+            self.theta5_v = nn.Linear(2*self.emb_dim, 1, True, device=device)#, dtype=torch.float32)
+            self.theta6_v = nn.Linear(self.emb_dim, self.emb_dim, True, device=device)#, dtype=torch.float32)
+            self.theta7_v = nn.Linear(self.emb_dim, self.emb_dim, True, device=device)#, dtype=torch.float32)
 
         self.optimizer = optim.Adam(self.parameters(), lr=self.hp.learning_rate)
 
-    def extract_features(self, x):
-        if len(x.shape) == 1:
-            x = x.view(1,-1)
+    def process_input(self, nfm, ei, reachable):
+        nfm = nfm.to(device)
+        reachable = reachable.to(device)
+        ei = ei.to(device)
+        if len(nfm.shape) == 2:
+            nfm = nfm[None,:,:]
+            reachable = reachable[None,:]
+        seq_len = nfm.shape[0]
+        num_nodes = nfm.shape[1]
+        return num_nodes, seq_len, nfm, ei, reachable
+
+    def create_embeddings(self, seq_len, nfm, ei):
         pyg_list=[]
-        reachable_nodes_tensor=torch.tensor([]).to(device)
-        for e in x:
-            pygx, pygei, reachable_nodes, num_nodes, max_nodes, num_edges, max_edges, node_dim = self._deserialize(e)
-            pyg_list.append(Data(
-                pygx,
-                pygei
-            ))
-            reachable_nodes_tensor = torch.cat((reachable_nodes_tensor, reachable_nodes.squeeze())).to(torch.bool)
-        
+        for e in nfm:
+            pyg_list.append(Data(e, ei))
         pyg_data = Batch.from_data_list(pyg_list)
         mu = self.gat(pyg_data.x, pyg_data.edge_index)
-        return mu, pyg_data.batch, reachable_nodes_tensor
+        
+        mu = mu.reshape(seq_len, -1, self.emb_dim) # mu: (seq_len, num_nodes, emb_dim)        
+        
+        return mu
 
-    def pi(self, x, hidden, reachable):
-        x=x.to(device)
-        if len(x.shape) == 1:
-            x = x.view(1,-1)
-        seq_len = x.shape[0]        
-        mu, batch, reachable_nodes_tensor = self.extract_features(x) # mu: (seq_len * num_nodes, emb_dim)
-        reachable_nodes_tensor = reachable_nodes_tensor.reshape(seq_len,self.num_nodes)
-        mu = mu.reshape(seq_len,-1,self.emb_dim) # mu: (seq_len, num_nodes, emb_dim)
-        mu, lstm_hidden = self.lstm_pi(mu, hidden)  # mu: (seq_len, num_nodes, emb_dim)
+    def pi(self, nfm, ei, reachable, hidden):
+        num_nodes, seq_len, nfm, ei, reachable = self.process_input(nfm, ei, reachable)
+        mu = self.create_embeddings(seq_len, nfm, ei)
+        if self.config['lstm_type'] == 'Dual':
+            mu, lstm_hidden = self.lstm_pi(mu, hidden)  # mu: (seq_len, num_nodes, emb_dim)
 
-        #mu_meanpool = scatter_mean(mu, batch, dim=1) # mu_meanpool: (seq_len, 1, emb_dim)
-        mu_meanpool = mu.mean(dim=1, keepdim=True) # mu_meanpool: (seq_len, 1, emb_dim). scatter mean not needed: equal size graphs
-        expander = torch.tensor([self.num_nodes]*seq_len, dtype=torch.int64, device=device)
-        mu_meanpool_expanded = torch.repeat_interleave(mu_meanpool, expander, dim=0).reshape(seq_len,self.num_nodes,self.emb_dim) # (seq_len, num_nodes, emb_dim) # (seq_len, num_nodes, emb_dim)
-
+        mu_meanpool = mu.mean(dim=1, keepdim=True) # mu_meanpool: (seq_len, 1, emb_dim). scatter mean not needed: equal size graphs       
+        expander = torch.tensor([num_nodes]*seq_len, dtype=torch.int64, device=device)
+        mu_meanpool_expanded = torch.repeat_interleave(mu_meanpool, expander, dim=0).reshape(seq_len, num_nodes, self.emb_dim) # (seq_len, num_nodes, emb_dim) # (seq_len, num_nodes, emb_dim)
         global_state = self.theta6_pi(mu_meanpool_expanded) # yields (seq_len, nodes in batch, emb_dim)
         local_action = self.theta7_pi(mu)  # yields (seq_len, nodes in batch, emb_dim)
-        rep = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (#nodes in batch, 2*emb_dim)        
+        rep = F.relu(torch.cat((global_state, local_action), dim=2)) # concat creates (#nodes in batch, 2*emb_dim)        
+        if self.config['lstm_type'] == 'DualCC':
+            rep, lstm_hidden = self.lstm_pi(rep, hidden)  
+
         prob_logits = self.theta5_pi(rep).squeeze(-1) # (nr_nodes in batch,)
-        prob_logits[~reachable_nodes_tensor]=-torch.inf
+        prob_logits[~reachable] = -torch.inf
         prob = F.softmax(prob_logits, dim=1)
+
         return prob, lstm_hidden
     
-    def v(self, x, hidden):
-        x=x.to(device)
-        if len(x.shape) == 1:
-            x = x.view(1,-1)
-        seq_len = x.shape[0]        
-        mu, batch, reachable_nodes_tensor = self.extract_features(x) # mu: (seq_len * num_nodes, emb_dim)
-        reachable_nodes_tensor = reachable_nodes_tensor.reshape(seq_len,self.num_nodes)
-        mu = mu.reshape(seq_len,-1,self.emb_dim) # mu: (seq_len, num_nodes, emb_dim)
-        mu, lstm_hidden = self.lstm_v(mu, hidden)
-        
-        #mu_meanpool = scatter_mean(mu, batch, dim=1) # mu_meanpool: (seq_len, 1, emb_dim)
+    def v(self, nfm, ei, reachable, hidden):
+        num_nodes, seq_len, nfm, ei, reachable = self.process_input(nfm, ei, reachable)
+        mu = self.create_embeddings(seq_len, nfm, ei)
+        if self.config['lstm_type'] == 'Dual':        
+            mu, lstm_hidden = self.lstm_v(mu, hidden)  # mu: (seq_len, num_nodes, emb_dim)
+
         mu_meanpool = mu.mean(dim=1, keepdim=True) # mu_meanpool: (seq_len, 1, emb_dim). scatter mean not needed: equal size graphs
 
-        #expander = torch.tensor([self.num_nodes]*seq_len, dtype=torch.int64, device=device)
-        #mu_meanpool_expanded = torch.repeat_interleave(mu_meanpool, expander, dim=0).reshape(seq_len,self.num_nodes,self.emb_dim) # (seq_len, num_nodes, emb_dim)
-        #global_state = self.theta6_pi(mu_meanpool_expanded) # yields (seq_len, nodes in batch, emb_dim)
-        #local_action = self.theta7_pi(mu)  # yields (seq_len, nodes in batch, emb_dim)
-        #v = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (#nodes in batch, 2*emb_dim)        
-        v = self.theta5_v(mu_meanpool)#.squeeze()#-1) # (nr_nodes in batch,)
-        return v, lstm_hidden     
+        # OPTION 1: linear operator
+        if self.config['critic'] == 'v':
+            if self.config['lstm_type'] == 'DualCC':
+                mu_meanpool, lstm_hidden = self.lstm_v(mu_meanpool, hidden)
+            v = self.theta5_v(mu_meanpool).squeeze(-1) # (seq_len, 1)
+
+        # # OPTION 2: max operator
+        if self.config['critic'] == 'q':
+            expander = torch.tensor([num_nodes]*seq_len, dtype=torch.int64, device=device)
+            mu_meanpool_expanded = torch.repeat_interleave(mu_meanpool, expander, dim=0).reshape(seq_len,num_nodes,self.emb_dim) # (seq_len, num_nodes, emb_dim)
+            global_state = self.theta6_v(mu_meanpool_expanded) # yields (seq_len, nodes in batch, emb_dim)
+            local_action = self.theta7_v(mu)  # yields (seq_len, nodes in batch, emb_dim)
+            rep = F.relu(torch.cat([global_state, local_action], dim=2)) # concat creates (#nodes in batch, 2*emb_dim)
+            if self.config['lstm_type'] == 'DualCC':
+                rep, lstm_hidden = self.lstm_v(rep, hidden)
+
+            qvals = self.theta5_v(rep).squeeze(-1)  #(seq_len, nr_nodes in batch)
+            qvals[~reachable] = -torch.inf
+            v = qvals.max(dim=1)[0].unsqueeze(-1)
         
+        return v, lstm_hidden
+         
     def make_batch(self):
         batch = []
         for i in range(self.num_rollouts):
-            s_lst, a_lst, r_lst, s_prime_lst, prob_a_lst, h_pi_in_lst, h_pi_out_lst, h_v_in_lst, h_v_out_lst, done_lst, mask_lst = [], [], [], [], [], [], [], [], [], [], []
+            s_lst, a_lst, r_lst, s_prime_lst, prob_a_lst, h_pi_in_lst, h_pi_out_lst, h_v_in_lst, h_v_out_lst, done_lst, reachable_lst, reachable_prime_lst = [], [], [], [], [], [], [], [], [], [], [], []
             for transition in self.data[i]:
-                s, a, r, s_prime, prob_a, h_pi_in, h_pi_out, h_v_in, h_v_out, done, mask = transition
+                s, a, r, s_prime, prob_a, h_pi_in, h_pi_out, h_v_in, h_v_out, done, reachable, reachable_prime = transition
                 
                 s_lst.append(s)
                 a_lst.append([a])
@@ -670,14 +695,16 @@ class PPO_GNN_Dual_LSTM(PPO_GNN_Model):
                 h_v_out_lst.append(h_v_out)
                 done_mask = 0 if done else 1
                 done_lst.append([done_mask])
-                mask_lst.append(mask)
+                reachable_lst.append(reachable)
+                reachable_prime_lst.append(reachable_prime)
                 
-            s,a,r,s_prime,done_mask,prob_a,mask = torch.stack(s_lst), torch.tensor(a_lst), \
+            s,a,r,s_prime,done_mask,prob_a,reachable,reachable_prime = torch.stack(s_lst), torch.tensor(a_lst), \
                                             torch.tensor(r_lst), torch.stack(s_prime_lst), \
                                             torch.tensor(done_lst, dtype=torch.float), torch.tensor(prob_a_lst), \
-                                            torch.tensor(mask_lst)
-            batch.append((s, a, r, s_prime, done_mask, prob_a,  h_pi_in_lst[0], h_pi_out_lst[0], h_v_in_lst[0], h_v_out_lst[0], mask))
+                                            torch.stack(reachable_lst), torch.stack(reachable_prime_lst)
+            batch.append((s, a, r, s_prime, done_mask, prob_a, h_pi_in_lst[0], h_pi_out_lst[0], h_v_in_lst[0], h_v_out_lst[0], reachable, reachable_prime, self.ei[i]))
         self.data = []
+        self.ei=[]
         return batch#s, a, r, s_prime, done_mask, prob_a,  h_in_lst[0], h_out_lst[0], mask
         
     def train_net(self):
@@ -685,15 +712,17 @@ class PPO_GNN_Dual_LSTM(PPO_GNN_Model):
         for _ in range(self.num_epochs):
             loss_tsr = torch.tensor([])#.to(device)
             for j in range(self.num_rollouts):
-                s, a, r, s_prime, done_mask, prob_a, (h_pi_in, c_pi_in), (h_pi_out, c_pi_out), (h_v_in, c_v_in), (h_v_out, c_v_out), mask = batch[j]
+                nfm, a, r, nfm_prime, done_mask, prob_a, (h_pi_in, c_pi_in), (h_pi_out, c_pi_out), (h_v_in, c_v_in), (h_v_out, c_v_out), reachable, reachable_prime, ei = batch[j]
                 first_hidden_pi = (h_pi_in.detach(), c_pi_in.detach())
                 second_hidden_pi = (h_pi_out.detach(), c_pi_out.detach())
                 first_hidden_v = (h_v_in.detach(), c_v_in.detach())
-                second_hidden_v = (h_v_out.detach(), c_v_out.detach())                
+                second_hidden_v = (h_v_out.detach(), c_v_out.detach()) 
 
-                v_prime = self.v(s_prime, second_hidden_v)[0].squeeze(1).cpu()
+                v_prime = self.v(nfm_prime, ei, reachable_prime, second_hidden_v)[0].cpu()#.squeeze(1).cpu()
+                #v_prime = self.v(s_prime, second_hidden)[0].unsqueeze(-1).cpu()
                 td_target = r + self.hp.discount * v_prime * done_mask
-                v_s = self.v(s, first_hidden_v)[0].squeeze(1).cpu()
+                v_s = self.v(nfm, ei, reachable, first_hidden_v)[0].cpu()#.squeeze(1).cpu()
+                #v_s = self.v(s, first_hidden)[0].unsqueeze(-1).cpu()
                 delta = td_target - v_s
                 delta = delta.detach().numpy()
 
@@ -705,7 +734,7 @@ class PPO_GNN_Dual_LSTM(PPO_GNN_Model):
                 advantage_lst.reverse()
                 advantage = torch.tensor(advantage_lst, dtype=torch.float)
 
-                pi, _ = self.pi(s, first_hidden_pi, mask)
+                pi, _ = self.pi(nfm, ei, reachable, first_hidden_pi)
                 pi=pi.cpu()
                 pi_a = pi.squeeze(1).gather(1,a)
                 ratio = torch.exp(torch.log(pi_a) - torch.log(prob_a))  # a/b == exp(log(a)-log(b))
@@ -725,41 +754,45 @@ class PPO_GNN_Dual_LSTM(PPO_GNN_Model):
 
         for n_epi in range(it0, self.config['num_step'] ):
             R=0
+            h_out = (torch.zeros(1), torch.zeros(1)) # dummy hidden state if lstm is disabled
             gathertimes=[]
             traintimes=[]
             start_gather_time = time.time()
             for t in range(self.num_rollouts):
+                s = env.reset()
+                lstm_v_batchdim = 1 if (self.config['lstm_type']=='DualCC' and self.config['critic']=='v') else env.sp.V
                 h_out_pi = (
-                    torch.zeros([1, self.num_nodes, self.emb_dim], dtype=torch.float, device=device), 
-                    torch.zeros([1, self.num_nodes, self.emb_dim], dtype=torch.float, device=device)
+                    torch.zeros([1, env.sp.V, self.lstm_pi.hidden_size], dtype=torch.float, device=device), 
+                    torch.zeros([1, env.sp.V, self.lstm_pi.hidden_size], dtype=torch.float, device=device)
                     )
                 h_out_v = (
-                    torch.zeros([1, self.num_nodes, self.emb_dim], dtype=torch.float, device=device), 
-                    torch.zeros([1, self.num_nodes, self.emb_dim], dtype=torch.float, device=device)
-                    )                    
-                s = env.reset()
+                        torch.zeros([1, lstm_v_batchdim, self.lstm_v.hidden_size], dtype=torch.float, device=device), 
+                        torch.zeros([1, lstm_v_batchdim, self.lstm_v.hidden_size], dtype=torch.float, device=device)
+                        )                    
+                 
                 done = False
                 transitions=[]
+                
                 while not done:
-                    mask = env.action_masks()
+                    #mask = env.action_masks()
                     h_in_pi = h_out_pi
-                    h_in_v  = h_out_v
+                    h_in_v = h_out_v
                     with torch.no_grad():
-                        prob, h_out_pi = self.pi(s, h_in_pi, torch.tensor(mask))
-                        v, h_out_v = self.v(s, h_in_v)
+                        prob, h_out_pi = self.pi(s['nfm'], s['ei'], s['reachable'], h_in_pi)
+                        v, h_out_v = self.v(s['nfm'], s['ei'], s['reachable'], h_in_v)
                     prob = prob.view(-1)
                     m = Categorical(prob)
                     a = m.sample().item()
                     s_prime, r, done, info = env.step(a)
 
-                    transitions.append((s, a, r/10.0, s_prime, prob[a].item(), h_in_pi, h_out_pi, h_in_v, h_out_v, done, mask))
+                    transitions.append((s['nfm'], a, r/10.0, s_prime['nfm'], prob[a].item(), h_in_pi, h_out_pi, h_in_v, h_out_v, done, s['reachable'], s_prime['reachable']))
                     s = s_prime
 
                     score += r
                     R += r
                     if done:
                         break
-                self.put_data(transitions)
+                self.put_data(transitions, s['ei'])
                 transitions = []
             end_gather_time = time.time()
             start_train_time = time.time()
@@ -771,7 +804,7 @@ class PPO_GNN_Dual_LSTM(PPO_GNN_Model):
             self.tp['writer'].add_scalar('return_per_epi', R/self.num_rollouts, n_epi)
             
             if n_epi % self.tp['checkpoint_frequency']==0 and n_epi != it0:
-                self.checkpoint(n_epi,mean_Return,mode='last')
+                self.checkpoint(n_epi,-1e6,mode='last')
             if n_epi % validation_interval == 0 and n_epi != it0:
                 mean_Return = score/validation_interval/self.num_rollouts
                 if mean_Return >= current_max_Return:            
@@ -781,6 +814,9 @@ class PPO_GNN_Dual_LSTM(PPO_GNN_Model):
                 score = 0.0
         env.close()
         return mean_Return
+
+
+
 
 def Solve(env, model):
     #env = GetEnv()
