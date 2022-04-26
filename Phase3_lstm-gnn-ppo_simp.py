@@ -11,7 +11,7 @@ from modules.gnn.construct_trainsets import ConstructTrainSet
 from modules.ppo.ppo_custom import WriteTrainParamsToFile, WriteModelParamsToFile, GetConfigs
 from modules.ppo.helpfuncs import CreateEnv, evaluate_lstm_ppo
 from modules.rl.rl_utils import GetFullCoverageSample
-from modules.rl.rl_policy import LSTM_GNN_PPO_EMB_Policy_simp, LSTM_GNN_PPO_Dual_Policy_simp
+from modules.rl.rl_policy import LSTM_GNN_PPO_Single_Policy_simp, LSTM_GNN_PPO_Dual_Policy_simp
 from modules.rl.rl_utils import EvaluatePolicy
 from modules.sim.simdata_utils import SimulateAutomaticMode_PPO, SimulateInteractiveMode_PPO
 from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsFlatWrapper, PPO_ObsBasicDictWrapper
@@ -72,14 +72,19 @@ def main(args):
                 print('Iteration:', it0, 'best_result:', best_result)
             score = model.learn(senv, it0, best_result)
 
+    if config['eval']:
+        evalResults={}
+        evalName='Trainset'
+        senv, env_all_train_list = ConstructTrainSet(config, apply_wrappers=True, type_obs_wrap='BasicDict', remove_paths=False, tset=config['train_on']) #TODO check
+
     if config['test']:
         evalResults={}
         world_dict={ # [max_nodes,max_edges]
             #'Manhattan5x5_DuplicateSetB':[25,300],
-            'Manhattan3x3_WalkAround':[9,33],
+            #'Manhattan3x3_WalkAround':[9,33],
             #'MetroU3_e1t31_FixedEscapeInit':[33, 300],
             # 'full_solvable_3x3subs':[9,33],
-            # 'MemoryTaskU1':[8,16],
+            'MemoryTaskU1':[8,16],
             #'Manhattan5x5_FixedEscapeInit':[25,105],
             # 'Manhattan5x5_VariableEscapeInit':[25,105],
             # 'MetroU3_e17tborder_FixedEscapeInit':[33,300],
@@ -96,7 +101,7 @@ def main(args):
         #obs_rate=1.
         #obs_mask='prob_per_u'
         #for obs_mask, obs_rate in zip(['None','prob_per_u','prob_per_u','prob_per_u'],[1.,.8,.6,.4]):
-        for obs_mask, obs_rate in zip(['None'],[1.]):
+        for obs_mask, obs_rate in zip(['freq'],[.2]):
             for world_name in world_dict.keys():
                 evalName=world_name+'_obs'+obs_mask+'_evaldet'+str(tp['eval_deterministic'])[0]
                 if obs_mask != 'None': evalName += str(obs_rate)
@@ -105,14 +110,14 @@ def main(args):
                     Utest=[1,2,3]
                     evalenv, _, _, _  = GetWorldSet('etUte0U0', 'nfm', U=Utest, E=Etest, edge_blocking=config['edge_blocking'], solve_select=config['solve_select'], reject_duplicates=False, nfm_func=modules.gnn.nfm_gen.nfm_funcs[config['nfm_func']], apply_wrappers=False, maxnodes=world_dict[world_name][0], maxedges=world_dict[world_name][1])
                     for i in range(len(evalenv)):
-                        evalenv[i]=PPO_ObsFlatWrapper(evalenv[i], max_possible_num_nodes=world_dict[world_name][0], max_possible_num_edges=world_dict[world_name][1], obs_mask=obs_mask, obs_rate=obs_rate)
+                        evalenv[i]=PPO_ObsBasicDictWrapper(evalenv[i], obs_mask=obs_mask, obs_rate=obs_rate)
                         evalenv[i]=PPO_ActWrapper(evalenv[i])
                     env=evalenv[0]
                 else:
-                    env = CreateEnv(world_name, max_nodes=world_dict[world_name][0], max_edges = world_dict[world_name][1], nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=None, apply_wrappers=True, obs_mask=obs_mask, obs_rate=obs_rate)
+                    env = CreateEnv(world_name, max_nodes=world_dict[world_name][0], max_edges = world_dict[world_name][1], nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=None, apply_wrappers=True, type_obs_wrap='BasicDict', obs_mask=obs_mask, obs_rate=obs_rate)
                     evalenv=[env]
-                hp.max_possible_nodes = world_dict[world_name][0]#env.max_possible_num_nodes
-                hp.max_possible_edges = world_dict[world_name][1]#env.max_possible_num_edges
+                #hp.max_possible_nodes = world_dict[world_name][0]#env.max_possible_num_nodes
+                #hp.max_possible_edges = world_dict[world_name][1]#env.max_possible_num_edges
 
                 evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
                 for seed in config['seedrange']:
@@ -124,16 +129,16 @@ def main(args):
                         continue
                     fname=tp['base_checkpoint_path']+'best_model.tar'
                     checkpoint = torch.load(fname)
-                    if config['lstm_type'] in ['None', 'EMB']:
+                    if config['lstm_type'] in ['None', 'EMB','FE']:
                         ppo_model = PPO_GNN_Single_LSTM(env, config, hp, tp)
-                    elif config['lstm_type'] == 'Dual':
+                    elif config['lstm_type'] in ['Dual','DualCC']:
                         ppo_model = PPO_GNN_Dual_LSTM(env, config, hp, tp)
                     ppo_model.load_state_dict(checkpoint['weights'])
                     print('Loaded model from', fname)
-                    if config['lstm_type'] in  ['EMB']:
-                        ppo_policy = LSTM_GNN_PPO_EMB_Policy_simp(None, ppo_model, deterministic=tp['eval_deterministic'])
-                    elif config['lstm_type'] in ['Dual','None']:                   
-                        ppo_policy = LSTM_GNN_PPO_Dual_Policy_simp(None, ppo_model, deterministic=tp['eval_deterministic'])
+                    if config['lstm_type'] in  ['EMB','FE','None']:
+                        ppo_policy = LSTM_GNN_PPO_Single_Policy_simp(None, ppo_model, deterministic=tp['eval_deterministic'])
+                    elif config['lstm_type'] in ['Dual','DualCC']:                   
+                        ppo_policy = LSTM_GNN_PPO_Dual_Policy_simp(env, ppo_model, deterministic=tp['eval_deterministic'])
                     else: assert False
 
                     if config['demoruns']:

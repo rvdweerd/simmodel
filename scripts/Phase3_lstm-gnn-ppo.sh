@@ -15,8 +15,8 @@ emb_dim=24
 lstm_hdim=24
 lstm_layers=1
 emb_iterT=5
-#nfm_func="NFM_ev_ec_t_dt_at_um_us"
-nfm_func="NFM_ev_ec_t_dt_at_ustack"
+nfm_func="NFM_ev_ec_t_dt_at_um_us"
+#nfm_func="NFM_ev_ec_t_dt_at_ustack"
 qnet="gat2"
 #critic='v'
 train="True"
@@ -29,13 +29,13 @@ rollout_steps=150
 num_step=1000
 
 parallel_rollouts=4
-for lstm_type in {"None",}
+for lstm_type in {"FE",}
 do
     for critic in {"q","v"}
     do
-        tmux new-session -d -s "${lstm_type}-stck-${critic}"
-        tmux send-keys -t "${lstm_type}-stck-${critic}" "conda activate rlcourse-sb3c" Enter
-        tmux send-keys -t "${lstm_type}-stck-${critic}" "cd ~/testing/sim" Enter
-        tmux send-keys -t "${lstm_type}-stck-${critic}" "python Phase3_lstm-gnn-ppo_simp.py --train_on $train_on --batch_size $batch_size --obs_mask $obs_mask --obs_rate $obs_rate --emb_dim $emb_dim --lstm_type $lstm_type --lstm_hdim $lstm_hdim --lstm_layers $lstm_layers --emb_iterT $emb_iterT --nfm_func $nfm_func --qnet $qnet --train $train --eval $eval --test $test --num_seeds $num_seeds --seed0 $seed0 --demoruns $demoruns --parallel_rollouts $parallel_rollouts --rollout_steps $rollout_steps --critic $critic --num_step $num_step" Enter
+        tmux new-session -d -s "${lstm_type}-${critic}"
+        tmux send-keys -t "${lstm_type}-${critic}" "conda activate rlcourse-sb3c" Enter
+        tmux send-keys -t "${lstm_type}-${critic}" "cd ~/testing/sim" Enter
+        tmux send-keys -t "${lstm_type}-${critic}" "python Phase3_lstm-gnn-ppo_simp.py --train_on $train_on --batch_size $batch_size --obs_mask $obs_mask --obs_rate $obs_rate --emb_dim $emb_dim --lstm_type $lstm_type --lstm_hdim $lstm_hdim --lstm_layers $lstm_layers --emb_iterT $emb_iterT --nfm_func $nfm_func --qnet $qnet --train $train --eval $eval --test $test --num_seeds $num_seeds --seed0 $seed0 --demoruns $demoruns --parallel_rollouts $parallel_rollouts --rollout_steps $rollout_steps --critic $critic --num_step $num_step" Enter
     done
 done
