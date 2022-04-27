@@ -2,7 +2,7 @@ import copy
 import modules.gnn.nfm_gen
 from modules.ppo.models_sb3_gat2 import DeployablePPOPolicy_gat2
 from modules.ppo.models_sb3_s2v import s2v_ActorCriticPolicy, Struc2VecExtractor, DeployablePPOPolicy
-from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsWrapper, PPO_ObsDictWrapper, VarTargetWrapper, PPO_ObsFlatWrapper, PPO_ObsBasicDictWrapper
+from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsWrapper, PPO_ObsDictWrapper, VarTargetWrapper, PPO_ObsBasicDictWrapper, PPO_ObsBasicDictWrapperCRE
 from modules.rl.environments import GraphWorld
 from modules.rl.rl_utils import EvaluatePolicy, EvalArgs1, EvalArgs2, EvalArgs3, GetFullCoverageSample
 from modules.rl.rl_policy import ActionMaskedPolicySB3_PPO
@@ -33,14 +33,23 @@ def get_super_env(Uselected=[1], Eselected=[4], config=None, var_targets=None, a
     env_all_train, hashint2env, env2hashint, env2hashstr = GetWorldSet(state_repr, state_enc, U=Uselected, E=Eselected, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func, var_targets=var_targets, remove_paths=remove_paths)
     if apply_wrappers:
         for i in range(len(env_all_train)):
-            if type_obs_wrap == 'Flat':
-                env_all_train[i]=PPO_ObsFlatWrapper(env_all_train[i], max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
-            elif type_obs_wrap == 'Dict':
+            #if type_obs_wrap == 'Flat':
+            #    env_all_train[i]=PPO_ObsFlatWrapper(env_all_train[i], max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+            if type_obs_wrap == 'Dict':
                 env_all_train[i]=PPO_ObsDictWrapper(env_all_train[i], max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges)
             else: assert False
             env_all_train[i]=PPO_ActWrapper(env_all_train[i])        
     super_env = SuperEnv(env_all_train, hashint2env, max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges)
     return super_env, env_all_train
+
+def  CreateEnvFS(config, obs_mask, obs_rate, max_nodes, max_edges):
+    Etest=[0,1,2,3,4,5,6,7,8,9,10]
+    Utest=[1,2,3]
+    evalenv, _, _, _  = GetWorldSet('etUte0U0', 'nfm', U=Utest, E=Etest, edge_blocking=config['edge_blocking'], solve_select=config['solve_select'], reject_duplicates=False, nfm_func=modules.gnn.nfm_gen.nfm_funcs[config['nfm_func']], apply_wrappers=False, maxnodes=world_dict[world_name][0], maxedges=world_dict[world_name][1])
+    for i in range(len(evalenv)):
+        evalenv[i]=PPO_ObsBasicDictWrapper(evalenv[i], obs_mask=obs_mask, obs_rate=obs_rate)
+        evalenv[i]=PPO_ActWrapper(evalenv[i])
+    return evalenv
 
 def CreateEnv(world_name, max_nodes=9, max_edges=300, nfm_func_name = 'NFM_ev_ec_t_um_us', var_targets=None, remove_world_pool=False, apply_wrappers=True, type_obs_wrap='Flat', obs_mask='None', obs_rate=1):
     state_repr='etUte0U0'
@@ -56,12 +65,14 @@ def CreateEnv(world_name, max_nodes=9, max_edges=300, nfm_func_name = 'NFM_ev_ec
     if apply_wrappers:
         #env = PPO_ObsWrapper(env, max_possible_num_nodes = max_nodes)        
         #env = PPO_ObsDictWrapper(env, max_possible_num_nodes = max_nodes, max_possible_num_edges = max_edges)
-        if type_obs_wrap == 'Flat':
-            env = PPO_ObsFlatWrapper(env, max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges, obs_mask=obs_mask, obs_rate=obs_rate)
-        elif type_obs_wrap == 'Dict':
+        #if type_obs_wrap == 'Flat':
+        #    env = PPO_ObsFlatWrapper(env, max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges, obs_mask=obs_mask, obs_rate=obs_rate)
+        if type_obs_wrap == 'Dict':
             env = PPO_ObsDictWrapper(env, max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges)
         elif type_obs_wrap == 'BasicDict':
             env = PPO_ObsBasicDictWrapper(env, obs_mask=obs_mask, obs_rate=obs_rate)
+        elif type_obs_wrap == 'BasicDictCRE':
+            env = PPO_ObsBasicDictWrapperCRE(env, obs_mask=obs_mask, obs_rate=obs_rate)            
         else: assert False
         env = PPO_ActWrapper(env) 
     return env

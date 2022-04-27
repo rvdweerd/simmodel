@@ -696,9 +696,9 @@ def SimulateInteractiveMode(env, filesave_with_time_suffix=True, entry=None):
     R=0
     env.render(mode=None, fname="results/test", t_suffix=filesave_with_time_suffix)
     while not done:
-        print('e position:',env.state[0],env.sp.labels2coord[env.state[0]])
-        print('u paths (node labels):',env.u_paths)
-        print('u paths (node coords): ',end='')
+        #print('e position:',env.state[0],env.sp.labels2coord[env.state[0]])
+        #print('u paths (node labels):',env.u_paths)
+        #print('u paths (node coords): ',end='')
         for p in env.u_paths:
             print('[',end='')
             for e in p:
@@ -712,7 +712,7 @@ def SimulateInteractiveMode(env, filesave_with_time_suffix=True, entry=None):
                 break
         print('------------')
         print('Current state:',s, 'spath to goal', env.sp.spath_to_target, '('+str(env.sp.spath_length)+' steps)')
-        print('Current obs:','\n'+str(env.obs) if env.state_encoding=='nfm' else env.obs)
+        #print('Current obs:','\n'+str(env.obs) if env.state_encoding=='nfm' else env.obs)
         n = env.neighbors[env.state[0]]
         print('Available actions: ',n)
         while True:
@@ -840,7 +840,7 @@ def SimulateAutomaticMode_PPO(env, ppo_policy, t_suffix=True, entries=None):
         entry=random.choice(entries)
     else: entry = None
     obs=env.reset(entry=entry)
-    ppo_policy.reset_hidden_states()
+    ppo_policy.reset_hidden_states(env)
     print('Entry:',env.current_entry)
     
     done=False

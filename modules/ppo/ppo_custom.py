@@ -237,6 +237,7 @@ def GetConfigs(args, suffix=""):
     config['train']           = args.train
     config['eval']            = args.eval
     config['test']            = args.test
+    config['test_heur']       = args.test_heur
     config['num_seeds']       = args.num_seeds
     config['seed0']           = args.seed0
     config['demoruns']        = args.demoruns
@@ -259,6 +260,7 @@ def GetConfigs(args, suffix=""):
     config['edge_blocking']   = True
     config['solve_select']    = 'solvable'
     config['seedrange']=range(config['seed0'], config['seed0']+config['num_seeds'])
+    config['type_obs_wrap']        = args.type_obs_wrap
     
     # File admin
     lstm_filestring = config['lstm_type']
@@ -275,7 +277,7 @@ def GetConfigs(args, suffix=""):
                         'lstm_' + lstm_filestring                  
     if suffix != "":
         config['rootdir'] = config['rootdir'].replace("Phase3","Phase3"+suffix)
-    config['logdir']  = config['rootdir'] + '/' + config['nfm_func']+'/' \
+    config['logdir']  = config['rootdir'] + '/' + config['nfm_func']+'-'+config['type_obs_wrap']+'/' \
                         'omask_' + mask_filestring + '/' +\
                         'bsize' + str(config['batch_size']) +'ro'+str(args.parallel_rollouts)#+'_lr{:.1e}'.format(args.lr)
 
