@@ -412,23 +412,87 @@ class PPO_ObsBasicDictWrapper(ObservationWrapper):
         }
         return self.obs
 
-# class MaskVelocityWrapper(gym.ObservationWrapper):
-#     """
-#     Gym environment observation wrapper used to mask velocity terms in
-#     observations. The intention is the make the MDP partially observatiable.
-#     """
-#     def __init__(self, env):
-#         super(MaskVelocityWrapper, self).__init__(env)
-#         if ENV == "CartPole-v1":
-#             self.mask = np.array([1., 0., 1., 0.])
-#         elif ENV == "Pendulum-v0":
-#             self.mask = np.array([1., 1., 0.])
-#         elif ENV == "LunarLander-v2":
-#             self.mask = np.array([1., 1., 0., 0., 1., 0., 1., 1,])
-#         elif ENV == "LunarLanderContinuous-v2":
-#             self.mask = np.array([1., 1., 0., 0., 1., 0., 1., 1,])
-#         else:
-#             raise NotImplementedError
 
-#     def observation(self, observation):
-#         return  observation * self.mask
+class CollisionRiskEstimator():
+    def __init__(self, G, neighbors, out_degree, label2coord, coord2label):
+        self.G = G
+        self.num_nodes = G.number_of_nodes()
+        self.neighbors = neighbors
+        self.us_cache = set()
+        self.reset_ew_objects()
+        self.out_degree = out_degree
+        self.label2coord = label2coord
+        self.coord2label = coord2label
+
+    def reset_ew_objects(self):
+        self.ew_static = {}
+        self.node_risks = torch.zeros(self.num_nodes)
+
+    def propagate_node_risks(self):
+        new_node_risks = torch.zeros(self.num_nodes)
+        for u in torch.nonzero(self.node_risks).flatten().tolist():
+            idx_neighbors = torch.tensor(self.neighbors[u],dtype=torch.int64)
+            distributed_prob = self.node_risks[u]/self.out_degree[u]
+            new_node_risks[idx_neighbors] += distributed_prob            
+        self.node_risks = new_node_risks
+
+    def update_static_edge_risks(self, us):
+        for u in torch.nonzero(us).flatten().tolist():
+            if u not in self.us_cache:
+                self.us_cache.add(u)
+                u_coord = self.label2coord[u]
+                for e in self.G.in_edges(u_coord):
+                    self.ew_static[e] = 1000
+
+    def update_dynamic_edge_risks(self):
+        self.ew_current = {(u,v):0 for (u,v) in self.G.edges()}
+        self.ew_vis = {}
+        for e in self.ew_static:
+            self.ew_current[e] = self.ew_static[e]
+            e_vis=(self.coord2label[e[0]],self.coord2label[e[1]])
+            self.ew_vis[e_vis] = self.ew_static[e]
+        for u in torch.nonzero(self.node_risks).flatten().tolist():
+            u_coord = self.label2coord[u]
+            for e in self.G.in_edges(u_coord):            
+                self.ew_current[e] += self.node_risks[u]
+                e_vis=(self.coord2label[e[0]],self.coord2label[e[1]])
+                if e_vis not in self.ew_vis: self.ew_vis[e_vis]=0.
+                self.ew_vis[e_vis] += self.node_risks[u]
+    
+    def process_new_observation(self, nfm):
+        um=nfm[:,-2]
+        us=nfm[:,-1]
+
+        # Address moving pursuers
+        self.node_risks += um # assign new risks sources given observed positions
+        self.propagate_node_risks() # distribute next position risks based on available pursuer moves
+        print('next node_risks:',self.node_risks)
+        
+        # Address static pursuers
+        self.update_static_edge_risks(us)
+        self.update_dynamic_edge_risks()
+        print('current edge risks',self.ew_current)
+        print('current edge risks',self.ew_vis)
+
+class PPO_ObsBasicDictWrapperCL(PPO_ObsBasicDictWrapper):
+    def __init__(self, env, obs_mask='None', obs_rate=1, seed=0):
+        super().__init__(env, obs_mask, obs_rate, seed)       
+        self.CRE = CollisionRiskEstimator(env.sp.G, env.neighbors, env.out_degree, env.sp.labels2coord, env.sp.coord2labels)
+        assert env.nfm_calculator.name == 'nfm-ev-ec-t-dt-at-um-us'
+
+    def reset(self, **kwargs):
+        print('###############################  RESET')
+        self.CRE.reset_ew_objects()
+        s = self.env.reset(**kwargs)
+        observation = self.observation(s) # applies probabilistic masking of pursuer positions
+        self.CRE.process_new_observation(observation['nfm'])
+        return observation
+
+    def step(self, action):
+        print('###############################  UPDATE')
+        s, reward, done, info = self.env.step(action)
+        observation = self.observation(s) # applies probabilistic masking of pursuer positions
+        self.CRE.process_new_observation(observation['nfm'])
+        return observation, reward, done, info
+
+    
