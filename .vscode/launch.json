@@ -51,7 +51,7 @@
                     "--eval_deter","True",
                     "--num_seeds","10",
                     "--seed0","0",
-                    "--demoruns","True",
+                    "--demoruns","False",
                     "--parallel_rollouts","4",
                     "--checkpoint_frequency","5000",
                     "--type_obs_wrap","BasicDict",
