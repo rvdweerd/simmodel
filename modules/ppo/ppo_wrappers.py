@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn 
 import numpy as np
 import random
+import networkx as nx
 MAX_NODES=2700
 MAX_EDGES=4000
 
@@ -412,21 +413,23 @@ class PPO_ObsBasicDictWrapper(ObservationWrapper):
         }
         return self.obs
 
-
 class CollisionRiskEstimator():
     def __init__(self, G, neighbors, out_degree, label2coord, coord2label):
+        self.set_graph_properties(G, neighbors, out_degree, label2coord, coord2label)
+        self.reset()
+
+    def set_graph_properties(self, G, neighbors, out_degree, label2coord, coord2label):
         self.G = G
         self.num_nodes = G.number_of_nodes()
         self.neighbors = neighbors
-        self.us_cache = set()
-        self.reset_ew_objects()
         self.out_degree = out_degree
         self.label2coord = label2coord
         self.coord2label = coord2label
 
-    def reset_ew_objects(self):
+    def reset(self):
         self.ew_static = {}
         self.node_risks = torch.zeros(self.num_nodes)
+        self.us_cache = set()
 
     def propagate_node_risks(self):
         new_node_risks = torch.zeros(self.num_nodes)
@@ -442,9 +445,9 @@ class CollisionRiskEstimator():
                 self.us_cache.add(u)
                 u_coord = self.label2coord[u]
                 for e in self.G.in_edges(u_coord):
-                    self.ew_static[e] = 1000
+                    self.ew_static[e] = torch.tensor([1000.])
 
-    def update_dynamic_edge_risks(self):
+    def calculate_edge_risks(self):
         self.ew_current = {(u,v):0 for (u,v) in self.G.edges()}
         self.ew_vis = {}
         for e in self.ew_static:
@@ -466,33 +469,53 @@ class CollisionRiskEstimator():
         # Address moving pursuers
         self.node_risks += um # assign new risks sources given observed positions
         self.propagate_node_risks() # distribute next position risks based on available pursuer moves
-        print('next node_risks:',self.node_risks)
+        #print('next node_risks:',self.node_risks)
         
         # Address static pursuers
         self.update_static_edge_risks(us)
-        self.update_dynamic_edge_risks()
-        print('current edge risks',self.ew_current)
-        print('current edge risks',self.ew_vis)
+
+        return self.node_risks
+
+    def get_best_path(self, source_node_id, target_node_ids=[2,3]):
+        self.calculate_edge_risks()
+        source = self.label2coord[source_node_id]
+        target = [self.label2coord[n] for n in target_node_ids]
+        
+        print('current node risks',self.node_risks)
+        
+        print('current edge risks')
+        for k,v in self.ew_vis.items(): print(k,'{:.2f}'.format(v.item()))
+
+
+        for t in target:
+            d,p = nx.single_source_dijkstra(self.G, source, t, weight=lambda u,v,d: self.ew_current[(u,v)])
+            print('path cost',d)
+            print('path',[self.coord2label[n] for n in p])
 
 class PPO_ObsBasicDictWrapperCL(PPO_ObsBasicDictWrapper):
     def __init__(self, env, obs_mask='None', obs_rate=1, seed=0):
         super().__init__(env, obs_mask, obs_rate, seed)       
+        self.F = self.F+1
         self.CRE = CollisionRiskEstimator(env.sp.G, env.neighbors, env.out_degree, env.sp.labels2coord, env.sp.coord2labels)
         assert env.nfm_calculator.name == 'nfm-ev-ec-t-dt-at-um-us'
 
     def reset(self, **kwargs):
         print('###############################  RESET')
-        self.CRE.reset_ew_objects()
+        self.CRE.reset()
         s = self.env.reset(**kwargs)
         observation = self.observation(s) # applies probabilistic masking of pursuer positions
-        self.CRE.process_new_observation(observation['nfm'])
+        node_risks = self.CRE.process_new_observation(observation['nfm'])
+        #self.CRE.get_best_path(self.env.state[0], self.env.sp.target_nodes)
+        observation['nfm'] = torch.cat([observation['nfm'], node_risks.clone()[:,None]], dim=1)
         return observation
 
     def step(self, action):
         print('###############################  UPDATE')
         s, reward, done, info = self.env.step(action)
         observation = self.observation(s) # applies probabilistic masking of pursuer positions
-        self.CRE.process_new_observation(observation['nfm'])
+        node_risks = self.CRE.process_new_observation(observation['nfm'])
+        #self.CRE.get_best_path(self.env.state[0], self.env.sp.target_nodes)
+        observation['nfm'] = torch.cat([observation['nfm'], node_risks.clone()[:,None]], dim=1)
         return observation, reward, done, info
 
     
