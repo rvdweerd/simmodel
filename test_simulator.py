@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from modules.rl.rl_custom_worlds import GetCustomWorld
 from modules.sim.simdata_utils import SimulateInteractiveMode
-from modules.ppo.ppo_wrappers import PPO_ObsFlatWrapper, PPO_ObsBasicDictWrapper, PPO_ObsBasicDictWrapperCL
+from modules.ppo.ppo_wrappers import PPO_ObsFlatWrapper, PPO_ObsBasicDictWrapper, PPO_ObsBasicDictWrapperCRE
 import matplotlib.pyplot as plt
 import modules.gnn.nfm_gen
 
@@ -29,7 +29,7 @@ nfm_func=modules.gnn.nfm_gen.nfm_funcs['NFM_ev_ec_t_dt_at_um_us']
 env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
 env.redefine_nfm(nfm_func)
 #env=PPO_ObsFlatWrapper(env, max_possible_num_nodes=N, max_possible_num_edges=E, obs_mask=obs_mask, obs_rate=obs_rate)
-env=PPO_ObsBasicDictWrapperCL(env, obs_mask=obs_mask, obs_rate=obs_rate)
+env=PPO_ObsBasicDictWrapperCRE(env, obs_mask=obs_mask, obs_rate=obs_rate)
 
 for epi in range(0):
     done=False

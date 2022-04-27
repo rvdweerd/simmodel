@@ -492,7 +492,8 @@ class CollisionRiskEstimator():
             print('path cost',d)
             print('path',[self.coord2label[n] for n in p])
 
-class PPO_ObsBasicDictWrapperCL(PPO_ObsBasicDictWrapper):
+class PPO_ObsBasicDictWrapperCRE(PPO_ObsBasicDictWrapper):
+    # Wrapper that adds collission risk estimation to the node feature matrix
     def __init__(self, env, obs_mask='None', obs_rate=1, seed=0):
         super().__init__(env, obs_mask, obs_rate, seed)       
         self.F = self.F+1
@@ -500,7 +501,7 @@ class PPO_ObsBasicDictWrapperCL(PPO_ObsBasicDictWrapper):
         assert env.nfm_calculator.name == 'nfm-ev-ec-t-dt-at-um-us'
 
     def reset(self, **kwargs):
-        print('###############################  RESET')
+        #print('###############################  RESET')
         self.CRE.reset()
         s = self.env.reset(**kwargs)
         observation = self.observation(s) # applies probabilistic masking of pursuer positions
@@ -510,7 +511,7 @@ class PPO_ObsBasicDictWrapperCL(PPO_ObsBasicDictWrapper):
         return observation
 
     def step(self, action):
-        print('###############################  UPDATE')
+        #print('###############################  UPDATE')
         s, reward, done, info = self.env.step(action)
         observation = self.observation(s) # applies probabilistic masking of pursuer positions
         node_risks = self.CRE.process_new_observation(observation['nfm'])

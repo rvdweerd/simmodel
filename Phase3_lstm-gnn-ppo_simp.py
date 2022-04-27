@@ -42,7 +42,8 @@ def main(args):
     
     ##### TRAIN FUNCTION #####
     if config['train']:
-        senv, env_all_train_list = ConstructTrainSet(config, apply_wrappers=True, type_obs_wrap='BasicDict', remove_paths=False, tset=config['train_on']) #TODO check
+        senv, env_all_train_list = ConstructTrainSet(config, apply_wrappers=True, type_obs_wrap=config['type_obs_wrap'], remove_paths=False, tset=config['train_on']) #TODO check
+        hp.node_dim = env_all_train_list[0].F
 
         if config['demoruns']:
             while True:
@@ -204,5 +205,6 @@ if __name__ == '__main__':
     parser.add_argument('--seed0', default=10, type=int)
     parser.add_argument('--demoruns', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
     parser.add_argument('--eval_deter', type=lambda s: s.lower() in ['true', 't', 'yes', '1'],default=True)
+    parser.add_argument('--type_obs_wrap', default='', type=str)
     args=parser.parse_args()
     main(args)
