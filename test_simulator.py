@@ -43,5 +43,5 @@ for epi in range(0):
 
 while True:
     print('Shortest path', env.sp.spath_to_target,'length:', env.sp.spath_length,'hops')   
-    SimulateInteractiveMode(env, filesave_with_time_suffix=False)
+    SimulateInteractiveMode(env, filesave_with_time_suffix=False, entry=None)
 

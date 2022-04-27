@@ -237,6 +237,7 @@ def GetConfigs(args, suffix=""):
     config['train']           = args.train
     config['eval']            = args.eval
     config['test']            = args.test
+    config['test_heur']       = args.test_heur
     config['num_seeds']       = args.num_seeds
     config['seed0']           = args.seed0
     config['demoruns']        = args.demoruns

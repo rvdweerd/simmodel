@@ -6,6 +6,8 @@ import torch
 from torch.distributions import Categorical
 #from torch import optim
 import torch.nn.functional as F
+from modules.ppo.ppo_wrappers import CollisionRiskEstimator
+
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 class Policy():
@@ -204,6 +206,30 @@ class ShortestPathPolicy(Policy):
         if s.shape[0] == 33:
             return next_node, None
         return action, None
+
+class ColllisionRiskAvoidancePolicy(Policy):
+    def __init__(self, env):
+        super().__init__('Heuristic policy - CollisionRiskAvoidance')
+        # assumes env to have dict wrapper  
+        assert env.nfm_calculator.name == 'nfm-ev-ec-t-dt-at-um-us'
+        self.CRE = CollisionRiskEstimator(env.sp.G, env.neighbors, env.out_degree, env.sp.labels2coord, env.sp.coord2labels)
+        self.target_nodes=env.sp.target_nodes
+
+    def reset_hidden_states(self, env):
+        self.CRE.reset()
+        #self.CRE.set_graph_properties(env.sp.G, env.neighbors, env.out_degree, env.sp.labels2coord, env.sp.coord2labels)
+        self.target_nodes=env.sp.target_nodes
+
+    def sample_action(self, s, available_actions=None):
+        return self.sample_greedy_action(s, available_actions)
+
+    def sample_greedy_action(self, s, available_actions=None, printing=False):
+        node_risks = self.CRE.process_new_observation(s['nfm'])
+        spos = torch.nonzero(s['nfm'][:,1]).flatten().item()
+        p, (best_path_cost, best_path) = self.CRE.get_best_next_nodeid(spos, self.target_nodes)
+        if printing:
+            print('best path:',best_path,'Action chosen:',p)
+        return p, None
 
 class EpsilonGreedyPolicyDQN(Policy):
     """
@@ -558,8 +584,6 @@ class LSTM_GNN_PPO_Dual_Policy_simp(Policy):
         self.h_pi = new_h_pi
 
         return a, None
-
-
 
 class EpsilonGreedyPolicyLSTM_PPO2(Policy):
     def __init__(self, env, lstm_ppo_model, deterministic=False):

@@ -419,7 +419,7 @@ class CollisionRiskEstimator():
         self.reset()
 
     def set_graph_properties(self, G, neighbors, out_degree, label2coord, coord2label):
-        self.G = G
+        self.G = G.to_directed()
         self.num_nodes = G.number_of_nodes()
         self.neighbors = neighbors
         self.out_degree = out_degree
@@ -448,7 +448,8 @@ class CollisionRiskEstimator():
                     self.ew_static[e] = torch.tensor([1000.])
 
     def calculate_edge_risks(self):
-        self.ew_current = {(u,v):0 for (u,v) in self.G.edges()}
+        MINCOST=.1
+        self.ew_current = {(u,v):MINCOST for (u,v) in self.G.edges()}
         self.ew_vis = {}
         for e in self.ew_static:
             self.ew_current[e] = self.ew_static[e]
@@ -459,7 +460,7 @@ class CollisionRiskEstimator():
             for e in self.G.in_edges(u_coord):            
                 self.ew_current[e] += self.node_risks[u]
                 e_vis=(self.coord2label[e[0]],self.coord2label[e[1]])
-                if e_vis not in self.ew_vis: self.ew_vis[e_vis]=0.
+                if e_vis not in self.ew_vis: self.ew_vis[e_vis]=MINCOST
                 self.ew_vis[e_vis] += self.node_risks[u]
     
     def process_new_observation(self, nfm):
@@ -476,21 +477,30 @@ class CollisionRiskEstimator():
 
         return self.node_risks
 
-    def get_best_path(self, source_node_id, target_node_ids=[2,3]):
+    def get_best_next_nodeid(self, source_node_id, target_node_ids=[2,3]):
         self.calculate_edge_risks()
         source = self.label2coord[source_node_id]
         target = [self.label2coord[n] for n in target_node_ids]
         
-        print('current node risks',self.node_risks)
+        #print('current node risks',self.node_risks)
         
-        print('current edge risks')
-        for k,v in self.ew_vis.items(): print(k,'{:.2f}'.format(v.item()))
+        #print('current edge risks')
+        #for k,v in self.ew_vis.items(): print(k,'{:.2f}'.format(v.item()))
 
-
+        best_path_cost = 1e9
         for t in target:
             d,p = nx.single_source_dijkstra(self.G, source, t, weight=lambda u,v,d: self.ew_current[(u,v)])
-            print('path cost',d)
-            print('path',[self.coord2label[n] for n in p])
+            #print('path cost',d)
+            #print('path',[self.coord2label[n] for n in p])
+            if d < best_path_cost:
+                best_path_cost = d
+                best_path = p
+        best_path = [self.coord2label[n] for n in best_path] 
+        if len(best_path)>1:               
+            #print('best path',best_path,'cost',best_path_cost,'NEXT NODE:',best_path[1])
+            return best_path[1], (best_path_cost, best_path)
+        else:
+            return best_path[0], (best_path_cost, best_path)
 
 class PPO_ObsBasicDictWrapperCRE(PPO_ObsBasicDictWrapper):
     # Wrapper that adds collission risk estimation to the node feature matrix
@@ -500,13 +510,13 @@ class PPO_ObsBasicDictWrapperCRE(PPO_ObsBasicDictWrapper):
         self.CRE = CollisionRiskEstimator(env.sp.G, env.neighbors, env.out_degree, env.sp.labels2coord, env.sp.coord2labels)
         assert env.nfm_calculator.name == 'nfm-ev-ec-t-dt-at-um-us'
 
-    def reset(self, **kwargs):
+    def reset(self, entry=None, **kwargs):
         #print('###############################  RESET')
         self.CRE.reset()
-        s = self.env.reset(**kwargs)
+        s = self.env.reset(entry=entry, **kwargs)
         observation = self.observation(s) # applies probabilistic masking of pursuer positions
         node_risks = self.CRE.process_new_observation(observation['nfm'])
-        #self.CRE.get_best_path(self.env.state[0], self.env.sp.target_nodes)
+        #self.CRE.get_best_next_nodeid(self.env.state[0], self.env.sp.target_nodes)
         observation['nfm'] = torch.cat([observation['nfm'], node_risks.clone()[:,None]], dim=1)
         return observation
 
@@ -515,7 +525,7 @@ class PPO_ObsBasicDictWrapperCRE(PPO_ObsBasicDictWrapper):
         s, reward, done, info = self.env.step(action)
         observation = self.observation(s) # applies probabilistic masking of pursuer positions
         node_risks = self.CRE.process_new_observation(observation['nfm'])
-        #self.CRE.get_best_path(self.env.state[0], self.env.sp.target_nodes)
+        #self.CRE.get_best_next_nodeid(self.env.state[0], self.env.sp.target_nodes)
         observation['nfm'] = torch.cat([observation['nfm'], node_risks.clone()[:,None]], dim=1)
         return observation, reward, done, info
 
