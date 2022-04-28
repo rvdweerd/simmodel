@@ -1,4 +1,5 @@
 from itertools import combinations
+import tqdm
 import torch
 from stable_baselines3 import PPO
 import gym
@@ -87,7 +88,7 @@ def EvaluatePolicy(env, policy, test_set, print_runs=True, save_plots=False, log
     MAX_TEST_SET_SIZE = 65000
     if len(test_set) > MAX_TEST_SET_SIZE:
         test_set=list(np.random.choice(test_set,size=MAX_TEST_SET_SIZE,replace=False))
-    for i, entry in enumerate(test_set):
+    for i, entry in enumerate(tqdm.tqdm(test_set)):
         s=env.reset(entry = entry) 
         policy.reset_hidden_states(env)
         iratios_sampled.append(env.iratio)

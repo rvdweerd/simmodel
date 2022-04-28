@@ -501,7 +501,10 @@ class CollisionRiskEstimator():
 
         best_path_cost = 1e9
         for t in target:
-            d,p = nx.single_source_dijkstra(self.G, source, t, weight=lambda u,v,d: self.ew_current[(u,v)])
+            try:
+                d,p = nx.single_source_dijkstra(self.G, source, t, weight=lambda u,v,d: self.ew_current[(u,v)])
+            except:
+                continue
             #print('path cost',d)
             #print('path',[self.coord2label[n] for n in p])
             if d < best_path_cost:

@@ -147,10 +147,10 @@ def SelectTestWorlds():
             #'MetroU3_e17tborder_VariableEscapeInit':[33,300],
             #'NWB_ROT_FixedEscapeInit':[2602,7300],
             #'NWB_ROT_VariableEscapeInit':[2602,7300],
-            'NWB_test_FixedEscapeInit':[975,4000],
+            #'NWB_test_FixedEscapeInit':[975,4000],
             #'NWB_test_VariableEscapeInit':[975,4000],
-            # 'NWB_UTR_FixedEscapeInit':[1182,4000],
-            #'NWB_UTR_VariableEscapeInit':[1182,4000],
+            #'NWB_UTR_FixedEscapeInit':[1182,4000],
+            'NWB_UTR_VariableEscapeInit':[1182,4000],
             #'SparseManhattan5x5':[25,105],
             }
     return world_dict

@@ -209,7 +209,7 @@ def evaluate_lstm_ppo(logdir, info=False, config=None, env=None, ppo_policy=None
     
     if type(env) == list:
         if len(env)==0: return 0,0,0,0
-        for i,e in enumerate(tqdm.tqdm(env)):
+        for i,e in enumerate(env):
             
 
             l, returns, c, solves = EvaluatePolicy(e, ppo_policy, e.world_pool * multiplier, print_runs=False, save_plots=False, logdir=evaldir, eval_arg_func=EvalArgs1, silent_mode=True)
