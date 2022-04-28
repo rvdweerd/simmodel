@@ -648,8 +648,8 @@ class PPO_GNN_Single_LSTM(PPO_GNN_Model):
         return mean_Return
 
 class PPO_GNN_Dual_LSTM(PPO_GNN_Model):
-    def __init__(self, env, config, hp, tp):
-        super(PPO_GNN_Dual_LSTM, self).__init__(env, config, hp, tp)
+    def __init__(self, config, hp, tp):
+        super(PPO_GNN_Dual_LSTM, self).__init__(config, hp, tp)
         self.description="PPO policy, GATv2 extractor, Dual lstm, action masking"
         assert config['lstm_type'] in ['Dual','DualCC']
         kwargs={'concat':config['gat_concat']}

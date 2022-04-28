@@ -536,7 +536,7 @@ class LSTM_GNN_PPO_Single_Policy_simp(Policy):
             else:
                 a=self.probs.sample().item()
             if printing:
-                ppo_value = self.model.v(obs['nfm'], obs['ei'], obs['reachable'], self.h)
+                ppo_value, _ = self.model.v(obs['nfm'], obs['ei'], obs['reachable'], self.h)
                 np.set_printoptions(formatter={'float':"{0:0.2f}".format})
                 print('available_actions:',available_actions,'prob',self.probs[available_actions],'chosen action',a, 'estimated value of graph state:',ppo_value.detach().cpu().numpy(),end='')
         self.h = new_h
