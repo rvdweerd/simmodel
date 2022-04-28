@@ -29,7 +29,7 @@ nfm_func=modules.gnn.nfm_gen.nfm_funcs['NFM_ev_ec_t_dt_at_um_us']
 env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
 env.redefine_nfm(nfm_func)
 #env=PPO_ObsFlatWrapper(env, max_possible_num_nodes=N, max_possible_num_edges=E, obs_mask=obs_mask, obs_rate=obs_rate)
-env=PPO_ObsBasicDictWrapperCRE(env, obs_mask=obs_mask, obs_rate=obs_rate)
+env=PPO_ObsBasicDictWrapper(env, obs_mask=obs_mask, obs_rate=obs_rate)
 
 for epi in range(0):
     done=False

@@ -98,7 +98,7 @@ class GraphWorld(gym.Env):
         self.reset()
 
     def mask_units(self, mask_u):
-        self.nfm_calculator.mask_units(self, mask_u)
+        return self.nfm_calculator.mask_units(self, mask_u)
 
     def get_custom_nfm(self, epath, targetnodes, upaths):
         return self.nfm_calculator.get_custom_nfm(self, epath, targetnodes, upaths)

@@ -14,7 +14,7 @@ from modules.rl.rl_utils import GetFullCoverageSample
 from modules.rl.rl_policy import ColllisionRiskAvoidancePolicy, LSTM_GNN_PPO_Single_Policy_simp, LSTM_GNN_PPO_Dual_Policy_simp
 from modules.rl.rl_utils import EvaluatePolicy
 from modules.sim.simdata_utils import SimulateAutomaticMode_PPO, SimulateInteractiveMode_PPO
-from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsFlatWrapper, PPO_ObsBasicDictWrapper
+from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsBasicDictWrapper
 from modules.ppo.models_basic_lstm import PPO_GNN_Single_LSTM, PPO_GNN_Dual_LSTM
 
 def get_last_checkpoint_filename(tp):
@@ -114,8 +114,8 @@ def main(args):
         config['rootdir']=config['rootdir'][:l+to]
         evalResults={}
         world_dict = SelectTestWorlds()
-        obs_evalmasks = ['None'] # ['None']['prob_per_u']
-        obs_evalrates = [0.2]    # [1.][0.8]
+        obs_evalmasks = ['None','prob_per_u_test','prob_per_u_test','prob_per_u_test','prob_per_u_test','prob_per_u_test'] # ['None']['prob_per_u']
+        obs_evalrates = [1.0,0.9,0.8,0.7,0.6,0.5]    # [1.][0.8]
         for obs_mask, obs_rate in zip(obs_evalmasks, obs_evalrates):
             for world_name in world_dict.keys():
                 evalName=world_name+'_obs'+obs_mask
@@ -138,18 +138,18 @@ def SelectTestWorlds():
             #'Manhattan5x5_DuplicateSetB':[25,300],
             #'Manhattan3x3_WalkAround':[9,33],
             #'MetroU3_e1t31_FixedEscapeInit':[33, 300],
-            # 'full_solvable_3x3subs':[9,33],
+            #'full_solvable_3x3subs':[9,33],
             #'MemoryTaskU1':[8,16],
             #'Manhattan5x5_FixedEscapeInit':[25,105],
             #'Manhattan5x5_VariableEscapeInit':[25,105],
-            # 'MetroU3_e17tborder_FixedEscapeInit':[33,300],
-            # 'MetroU3_e17tborder_VariableEscapeInit':[33,300],
-            # 'NWB_ROT_FixedEscapeInit':[2602,7300],
-            # 'NWB_ROT_VariableEscapeInit':[2602,7300],
-            'NWB_test_FixedEscapeInit':[975,4000],
-            # 'NWB_test_VariableEscapeInit':[975,4000],
-            # 'NWB_UTR_FixedEscapeInit':[1182,4000],
-            # 'NWB_UTR_VariableEscapeInit':[1182,4000],
+            #'MetroU3_e17tborder_FixedEscapeInit':[33,300],
+            #'MetroU3_e17tborder_VariableEscapeInit':[33,300],
+            #'NWB_ROT_FixedEscapeInit':[2602,7300],
+            #'NWB_ROT_VariableEscapeInit':[2602,7300],
+            #'NWB_test_FixedEscapeInit':[975,4000],
+            #'NWB_test_VariableEscapeInit':[975,4000],
+           # 'NWB_UTR_FixedEscapeInit':[1182,4000],
+            'NWB_UTR_VariableEscapeInit':[1182,4000],
             #'SparseManhattan5x5':[25,105],
             }
     return world_dict
