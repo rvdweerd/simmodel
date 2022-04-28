@@ -45,7 +45,7 @@ def get_super_env(Uselected=[1], Eselected=[4], config=None, var_targets=None, a
 def  CreateEnvFS(config, obs_mask, obs_rate, max_nodes, max_edges):
     Etest=[0,1,2,3,4,5,6,7,8,9,10]
     Utest=[1,2,3]
-    evalenv, _, _, _  = GetWorldSet('etUte0U0', 'nfm', U=Utest, E=Etest, edge_blocking=config['edge_blocking'], solve_select=config['solve_select'], reject_duplicates=False, nfm_func=modules.gnn.nfm_gen.nfm_funcs[config['nfm_func']], apply_wrappers=False, maxnodes=world_dict[world_name][0], maxedges=world_dict[world_name][1])
+    evalenv, _, _, _  = GetWorldSet('etUte0U0', 'nfm', U=Utest, E=Etest, edge_blocking=config['edge_blocking'], solve_select=config['solve_select'], reject_duplicates=False, nfm_func=modules.gnn.nfm_gen.nfm_funcs[config['nfm_func']], apply_wrappers=False, maxnodes=max_nodes, maxedges=max_edges)
     for i in range(len(evalenv)):
         evalenv[i]=PPO_ObsBasicDictWrapper(evalenv[i], obs_mask=obs_mask, obs_rate=obs_rate)
         evalenv[i]=PPO_ActWrapper(evalenv[i])

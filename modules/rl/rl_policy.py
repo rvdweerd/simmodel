@@ -216,8 +216,8 @@ class ColllisionRiskAvoidancePolicy(Policy):
         self.target_nodes=env.sp.target_nodes
 
     def reset_hidden_states(self, env):
+        self.CRE.set_graph_properties(env.sp.G, env.neighbors, env.out_degree, env.sp.labels2coord, env.sp.coord2labels)
         self.CRE.reset()
-        #self.CRE.set_graph_properties(env.sp.G, env.neighbors, env.out_degree, env.sp.labels2coord, env.sp.coord2labels)
         self.target_nodes=env.sp.target_nodes
 
     def sample_action(self, s, available_actions=None):
