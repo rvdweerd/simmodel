@@ -307,6 +307,7 @@ class NFM_ev_ec_t_dt_at_um_us():
         
 class NFM_ev_ec_t_dt_at_ustack():
     def __init__(self, k=3):
+        assert k>1
         self.name='nfm-ev-ec-t-dt-at-ustack'
         self.F=5+k
         self.k=k

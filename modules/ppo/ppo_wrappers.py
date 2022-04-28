@@ -476,11 +476,14 @@ class CollisionRiskEstimator():
         um=nfm[:,-2]
         us=nfm[:,-1]
 
+        settled_idx = us>0
+        self.node_risks[settled_idx] = 0.
         # Address moving pursuers
         self.node_risks += um # assign new risks sources given observed positions
         self.propagate_node_risks() # distribute next position risks based on available pursuer moves
         #print('next node_risks:',self.node_risks)
-        
+        self.node_risks[settled_idx] = 1.
+
         # Address static pursuers
         self.update_static_edge_risks(us)
 
@@ -515,6 +518,7 @@ class PPO_ObsBasicDictWrapperCRE(PPO_ObsBasicDictWrapper):
     # Wrapper that adds collission risk estimation to the node feature matrix
     def __init__(self, env, obs_mask='None', obs_rate=1, seed=0):
         super().__init__(env, obs_mask, obs_rate, seed)       
+        print('Extendding the observation wrapper: Adding risk collission estimation to the node feature matrix')
         self.F = self.F+1
         self.CRE = CollisionRiskEstimator(env.sp.G, env.neighbors, env.out_degree, env.sp.labels2coord, env.sp.coord2labels)
         assert env.nfm_calculator.name == 'nfm-ev-ec-t-dt-at-um-us'

@@ -2,14 +2,14 @@
 
 #train_on="MixAll33"
 #train_on="NWB_AMS_mixed_obs"
-train_on="HeurCRE"
+#train_on="HeurCRE"
 #train_on="M5x5Fixed"
-#train_on="M3x5Mix"
+train_on="M5x5F_mixed_obs"
 #train_on="MemTask-U1"
 batch_size=2
 #obs_mask="mix"
-obs_mask="None"
-obs_rate=1.0
+obs_mask="mix"
+obs_rate=0.0
 #obs_mask="prob_per_u"
 #obs_rate=.5
 emb_dim=48
@@ -17,23 +17,23 @@ emb_dim=48
 lstm_hdim=48
 lstm_layers=1
 emb_iterT=5
-nfm_func="NFM_ev_ec_t_dt_at_um_us"
-#nfm_func="NFM_ev_ec_t_dt_at_ustack"
+#nfm_func="NFM_ev_ec_t_dt_at_um_us"
+nfm_func="NFM_ev_ec_t_dt_at_ustack"
 qnet="gat2"
 critic='v'
 train="False"
 eval="False"
-test="False"
-test_heur="True"
-num_seeds=5
+test="True"
+test_heur="False"
+num_seeds=15
 #seed0=0
 demoruns="False"
 num_step=70000
 type_obs_wrap="BasicDict"
 parallel_rollouts=4
-idn="HEUR"
-id="UTRV"
-for lstm_type in {"EMB",}
+idn="eval"
+id="M5-ustack5"
+for lstm_type in {"None",}
 do
     for seed0 in {0,}
     do

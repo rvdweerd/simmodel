@@ -87,8 +87,8 @@ def main(args):
     if config['test']:
         evalResults={}
         world_dict = SelectTestWorlds()
-        obs_evalmasks = ['prob_per_u_test'] # ['None']['prob_per_u']
-        obs_evalrates = [0.9]    # [1.][0.8]
+        obs_evalmasks = ['prob_per_u_test','prob_per_u_test','prob_per_u_test','prob_per_u_test','prob_per_u_test'] # ['None']['prob_per_u']
+        obs_evalrates = [0.9,.8,.7,.6,.5]    # [1.][0.8]
         for obs_mask, obs_rate in zip(obs_evalmasks, obs_evalrates):
             for world_name in world_dict.keys():
                 evalName=world_name+'_obs'+obs_mask+'_evaldet'+str(tp['eval_deterministic'])[0]
@@ -115,7 +115,7 @@ def main(args):
         evalResults={}
         world_dict = SelectTestWorlds()
         obs_evalmasks = ['None','prob_per_u_test','prob_per_u_test','prob_per_u_test','prob_per_u_test','prob_per_u_test'] # ['None']['prob_per_u']
-        obs_evalrates = [1.0,0.9,0.8,0.7,0.6,0.5]    # [1.][0.8]
+        obs_evalrates = [1.,0.9,0.8,0.7,0.6,0.5]    # [1.][0.8]
         for obs_mask, obs_rate in zip(obs_evalmasks, obs_evalrates):
             for world_name in world_dict.keys():
                 evalName=world_name+'_obs'+obs_mask
@@ -124,6 +124,7 @@ def main(args):
                     evalenv = CreateEnvFS(config, obs_mask, obs_rate, max_nodes=world_dict[world_name][0], max_edges=world_dict[world_name][1])
                 else:
                     env = CreateEnv(world_name, max_nodes=world_dict[world_name][0], max_edges = world_dict[world_name][1], nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=None, apply_wrappers=True, type_obs_wrap='BasicDict', obs_mask=obs_mask, obs_rate=obs_rate)
+                    assert config['type_obs_wrap']=='BasicDict'
                     evalenv=[env]
 
                 evalResults[evalName]={'num_graphs.........':[],'num_graph_instances':[],'avg_return.........':[],'success_rate.......':[],} 
@@ -140,15 +141,15 @@ def SelectTestWorlds():
             #'MetroU3_e1t31_FixedEscapeInit':[33, 300],
             #'full_solvable_3x3subs':[9,33],
             #'MemoryTaskU1':[8,16],
-            'Manhattan5x5_FixedEscapeInit':[25,105],
+            #'Manhattan5x5_FixedEscapeInit':[25,105],
             #'Manhattan5x5_VariableEscapeInit':[25,105],
             #'MetroU3_e17tborder_FixedEscapeInit':[33,300],
             #'MetroU3_e17tborder_VariableEscapeInit':[33,300],
             #'NWB_ROT_FixedEscapeInit':[2602,7300],
             #'NWB_ROT_VariableEscapeInit':[2602,7300],
-            #'NWB_test_FixedEscapeInit':[975,4000],
+            'NWB_test_FixedEscapeInit':[975,4000],
             #'NWB_test_VariableEscapeInit':[975,4000],
-           # 'NWB_UTR_FixedEscapeInit':[1182,4000],
+            # 'NWB_UTR_FixedEscapeInit':[1182,4000],
             #'NWB_UTR_VariableEscapeInit':[1182,4000],
             #'SparseManhattan5x5':[25,105],
             }
@@ -200,7 +201,7 @@ def GenerateResultsHeur(evalenv, evalName, evalResults, config, hp, tp, maxnodes
     if config['demoruns']:
         while True:
             demoenv=random.choice(evalenv)
-            a = SimulateAutomaticMode_PPO(demoenv, ppo_policy, t_suffix=False, entries=None)
+            a = SimulateAutomaticMode_PPO(demoenv, ppo_policy, t_suffix=True, entries=None)
             if a == 'Q': break
 
     result = evaluate_lstm_ppo(logdir=logdir_, config=config, env=evalenv, ppo_policy=ppo_policy, eval_subdir=evalName, max_num_nodes=maxnodes)

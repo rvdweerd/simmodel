@@ -523,7 +523,7 @@ class GraphWorld(gym.Env):
         plot = PlotEPathOnGraph_(self.sp, self.e_path, p, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes), size=size)
         return plot
 
-    def render_eupaths(self, mode=None, fname=None, t_suffix=True, size=None, last_step_only=False):
+    def render_eupaths(self, mode=None, fname=None, t_suffix=True, size=None, last_step_only=False, node_risks=None, planned_path=None):
         if t_suffix:
             file_name = fname+'_t='+str(self.global_t)
         else: 
@@ -534,7 +534,7 @@ class GraphWorld(gym.Env):
             else:
                 size='small'
         done = self.state[0] in self.sp.target_nodes or self.state[0] in self.state[1:]
-        plot = PlotEUPathsOnGraph_(self.sp, self.e_path, self.u_paths_taken, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes), done=done, size=size, last_step_only=last_step_only, u_visible=self.u_observable)
+        plot = PlotEUPathsOnGraph_(self.sp, self.e_path, self.u_paths_taken, fig_show=False, fig_save=True, filename=file_name, goal_reached=(self.state[0] in self.sp.target_nodes), done=done, size=size, last_step_only=last_step_only, u_visible=self.u_observable, node_risks=node_risks, planned_path=planned_path)
         return plot
 
 register(

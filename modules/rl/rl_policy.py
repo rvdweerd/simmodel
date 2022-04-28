@@ -229,7 +229,7 @@ class ColllisionRiskAvoidancePolicy(Policy):
         p, (best_path_cost, best_path) = self.CRE.get_best_next_nodeid(spos, self.target_nodes)
         if printing:
             print('best path:',best_path,'Action chosen:',p)
-        return p, None
+        return p, (node_risks.tolist(), best_path)
 
 class EpsilonGreedyPolicyDQN(Policy):
     """

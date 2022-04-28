@@ -845,28 +845,34 @@ def SimulateAutomaticMode_PPO(env, ppo_policy, t_suffix=True, entries=None):
     
     done=False
     endepi=False
-    R=0        
+    R=0
+    fisttime=True        
     while not done:
-        action, _state = ppo_policy.sample_greedy_action(obs, torch.tensor(env.neighbors[env.state[0]]), printing=True)
-        
-        env.render_eupaths(fname='results/test',t_suffix=t_suffix,last_step_only=True)
+        action, info_container = ppo_policy.sample_greedy_action(obs, torch.tensor(env.neighbors[env.state[0]]), printing=True)
+        if info_container != None:
+            node_risks, best_path = info_container
+            env.render_eupaths(fname='results/test_startframe',t_suffix=t_suffix,last_step_only=True, node_risks=node_risks, planned_path=None)
+            firsttime=False            
+            print('node_risks', node_risks)
+        env.render_eupaths(fname='results/test',t_suffix=t_suffix,last_step_only=True, node_risks=node_risks, planned_path=best_path)
         #ppo_value = ppo_policy.model.predict_values(obs)#[None,:].to(device))
 
-        while True:
-            a=input('\n             [q]-stop current, [enter]-take step, [n]-show nfm ...> ')
-            if a.lower() == 'q':
-                endepi=True
-                break
-            if a == 'n': print(env.obs)
-            if a == 'c': env.render_eupaths(fname='results/final',t_suffix=t_suffix,last_step_only=False)
-            if a == '': break
-        if endepi:
-            break        
+        # while True:
+        #     a=input('\n             [q]-stop current, [enter]-take step, [n]-show nfm ...> ')
+        #     if a.lower() == 'q':
+        #         endepi=True
+        #         break
+        #     if a == 'n': print(env.obs)
+        #     if a == 'c': env.render_eupaths(fname='results/final',t_suffix=t_suffix,last_step_only=False)
+        #     if a == '': break
+        # if endepi:
+        #     break        
         obs,r,done,i = env.step(action)
         R+=r
     print('Done, R=',R,'\n\n')
     env.render_eupaths(fname='results/test',t_suffix=t_suffix,last_step_only=True)
     env.render_eupaths(fname='results/final',t_suffix=t_suffix)
+    a=input('\n             [q]-stop current, [enter]-take step, [n]-show nfm ...> ')
     if a.lower()!='q':
         input('')
     return a

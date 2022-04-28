@@ -176,7 +176,7 @@ def PlotEPathOnGraph_(sp, epath, pursuers_pos, fig_show, fig_save, filename, goa
 
     return out
 
-def PlotEUPathsOnGraph_(sp, epath, u_paths, fig_show, fig_save, filename, goal_reached, done, size='small', last_step_only=False, u_visible=True):
+def PlotEUPathsOnGraph_(sp, epath, u_paths, fig_show, fig_save, filename, goal_reached, done, size='small', last_step_only=False, u_visible=True, node_risks=None, planned_path=None):
     if sp.V > 50:
         nodesize = 10 # 400 1200
         edgewidth = .5 # 5
@@ -210,6 +210,13 @@ def PlotEUPathsOnGraph_(sp, epath, u_paths, fig_show, fig_save, filename, goal_r
     edgelist_takenE=[]
     edgelist_takenU=[]
     
+    if planned_path != None:
+        edgelist_plannedE=[]
+        for i in range(len(planned_path)-1):
+            snode=sp.labels2coord[planned_path[i]]
+            tnode=sp.labels2coord[planned_path[i+1]]
+            edgelist_plannedE.append((snode,tnode))
+
     #if u_visible or not last_step_only:
     for i,u_path in enumerate(u_paths):
         node_borderlist[sp.labels2nodeids[u_path[-1]]] = 'blue'
@@ -241,6 +248,7 @@ def PlotEUPathsOnGraph_(sp, epath, u_paths, fig_show, fig_save, filename, goal_r
                 edgelist_not_taken.remove((tnode,snode))
             edgelist_takenE.append((snode,tnode))
 
+
     nx.draw_networkx_edges(G, pos, edgelist=edgelist_not_taken, edge_color='grey', width=edgewidth, alpha=1.)#width=1
     nx.draw_networkx_edges(G, pos, edgelist=edgelist_takenE, edge_color='red', arrowsize=25, width=edgewidth*2, alpha=1.)#width=1
     nx.draw_networkx_edges(G, pos, edgelist=edgelist_takenU, edge_color='blue', arrowsize=arrowsize, width=edgewidth*2, alpha=1.)#width=1
@@ -248,6 +256,13 @@ def PlotEUPathsOnGraph_(sp, epath, u_paths, fig_show, fig_save, filename, goal_r
         nx.draw_networkx_labels(G,pos, font_size = fontsize, labels=node_text, font_color='black')#fontsize=8
     nx.draw_networkx_nodes(G, pos, node_size=nodesizelist, node_color=colorlist, edgecolors=node_borderlist, alpha=1.)#alhpa=.6
     
+    if node_risks != None:
+        node_risks = [min(node_risks[sp.labels2nodeids[i]],1.)*nodesize*15 for i in range(len(node_risks))]
+        nx.draw_networkx_nodes(G, pos, node_size=node_risks, node_color='red', edgecolors='red', alpha=.2)#alhpa=.6
+
+    if planned_path != None:
+        nx.draw_networkx_edges(G, pos, edgelist=edgelist_plannedE, edge_color='green', width=edgewidth*8, alpha=1.)
+
     plt.axis('off')
     plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, hspace = -0.5, wspace = 0)
     ax = plt.gca()
