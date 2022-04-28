@@ -58,7 +58,7 @@ def CreateLearningCurvePlots(path, n_smoothing=20, nseeds=5, numiter=1200, yrang
     maxlen=0
     for seed in range(nseeds):
         path_ = path+'/SEED'+str(seed)+'/logs'
-        step,rew = tdlog2np(path_,'total_reward')
+        step,rew = tdlog2np(path_,'return_per_epi')
         rawlist.append(rew)
         maxlen = max(maxlen, len(rew))
 
@@ -97,10 +97,10 @@ def CreateLearningCurvePlots(path, n_smoothing=20, nseeds=5, numiter=1200, yrang
     # PLOT SMOOTHED MAX,AVG,MINMAX RANGE, STD
     fig,ax=plt.subplots(figsize=(5,5))
     #ax.plot(smt_maxline,color="green", label='best seed')
-    ax.plot(smtlist.transpose(),color="gray",alpha=0.2)
-    ax.plot(smt_bestline,color="green", label='best seed')
-    ax.plot(smt_avgline,color="gray",alpha=0.6, label='avg seed')
-    ax.fill_between([i for i in range(len(smt_maxline))],smt_avgline-smt_stdline,np.minimum((smt_avgline+smt_stdline),smt_maxline),facecolor='gray',alpha=0.3,label='std')
+    #ax.plot(smtlist.transpose(),color="gray",alpha=0.2)
+    #ax.plot(smt_bestline,color="green", label='best seed')
+    ax.plot(smt_avgline,color="orange",alpha=1., label='avg seed')
+    ax.fill_between([i for i in range(len(smt_maxline))],smt_avgline-smt_stdline,np.minimum((smt_avgline+smt_stdline),smt_maxline),facecolor='orange',alpha=0.4,label='std')
     ax.fill_between([i for i in range(len(smt_maxline))],smt_minline,smt_maxline,facecolor='gray',alpha=0.15, label='minmax')
     #ax.legend()
     #ax=plt.gca()
@@ -112,8 +112,8 @@ def CreateLearningCurvePlots(path, n_smoothing=20, nseeds=5, numiter=1200, yrang
     #ax.axes.get_xaxis().axhline(y=0,color='black')
     #ax.yaxis.set_ticklabels([])
     ax.axhline(y=0,color='black',linewidth=.5)
-    lstm_dentifier = LSTM_info_from_path(path)
-    plt.title(lstm_dentifier)
+    #lstm_dentifier = LSTM_info_from_path(path)
+    #plt.title(lstm_dentifier)
     plt.savefig(path+'/Train_reward_Learningcurves.png')
     plt.clf()
 
@@ -186,8 +186,8 @@ def CreateLearningCurvePlotsPhase1(path, n_smoothing=20, nseeds=5, numiter=1200,
     plt.savefig(path+'/Train_reward_Learningcurves.png')
     plt.clf()
 
-
-root="./results/results_Phase3/ppo/MemTask-U1"
+root="./results/results_Phase3simp/test_lstm_simp"
+#root="./results/results_Phase3simp/ppo/MemTask-U1"
 #root="./results/results_Phase3/ppo/M5x5Fixed"
 #root="./results/results_Phase3/ppo/M5x5Fixed/gat2-q/emb24_itT5/lstm_Dual_24_1/NFM_ev_ec_t_dt_at_um_us"
 #root="./results/results_Phase3/ppo/M5x5Fixed/gat2-v/emb24_itT5/lstm_None/NFM_ev_ec_t_dt_at_um_us"
@@ -196,7 +196,7 @@ root="./results/results_Phase3/ppo/MemTask-U1"
 for path in [x[0] for x in os.walk(root)]:
     if os.path.isfile(path+'/train-parameters.txt'):
         #path="./results/results_Phase3/ppo/MemTask-U1/gat2-q/emb24_itT5/lstm_Dual_24_1/NFM_ev_ec_t_dt_at_um_us/omask_freq0.2/bsize48" #folderpath
-        CreateLearningCurvePlots(path=path, n_smoothing=5, nseeds=6, numiter=100, yrange=[-5.,9.])
+        CreateLearningCurvePlots(path=path, n_smoothing=15, nseeds=10, numiter=500, yrange=[-9.,9.])
 
 #path="./results/results_Phase1/DQN/Manhattan5x5_VariableEscapeInit/etUt/tensorboard"
 #CreateLearningCurvePlotsPhase1(path=path, n_smoothing=5, nseeds=5, numiter=None, yrange=[-10.,5.])

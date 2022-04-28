@@ -4,7 +4,7 @@
 #SBATCH --job-name=gnn_ppo
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --time=12:00:00
+#SBATCH --time=48:00:00
 #SBATCH --mem=48000M
 #SBATCH --output=slurm_output_%A.out
 
@@ -23,69 +23,38 @@ unset __conda_setup
 cd $HOME/testing/sim
 conda activate rlcourse
 
-train_on="M5x5Fixed"
+train_on="M5x5F_mixed_obs"
 #train_on="MemTask-U1"
-batch_size=64
+batch_size=2
 #obs_mask="None"
 #obs_rate=1.0
-obs_mask="prob_per_u"
-obs_rate=.75
+obs_mask="mix"
+obs_rate=0
 #obs_mask="freq"
 #obs_rate=.2
-emb_dim=24
-nfm_func="NFM_ev_ec_t_dt_at_um_us"
-#nfm_func="NFM_ev_ec_t_dt_at_ustack"
+emb_dim=48
 #lstm_hdim=64
 #lstm_type="None"
-#lstm_type="None"
-lstm_hdim=24
+lstm_hdim=48
 lstm_layers=1
 emb_iterT=5
 qnet="gat2"
-train="False"
-eval="True"
+train="True"
+eval="False"
 test="False"
-num_seeds=20
-#seed0=0
+num_seeds=5
 demoruns="False"
 parallel_rollouts=4
 rollout_steps=75
 lr=5e-4
-# RUNNING JOBS IN SERIES (no loops)
-# terminalname="seriesrun"
-# tmux new-session -d -s "${terminalname}"
-# tmux send-keys -t "${terminalname}" "conda activate rlcourse-sb3c" Enter
-# tmux send-keys -t "${terminalname}" "cd ~/testing/sim" Enter
-
-# tmux send-keys -t "${terminalname}" "python Phase3_lstm-gnn-ppo.py --train_on $train_on --batch_size $batch_size --obs_mask $obs_mask --obs_rate $obs_rate --emb_dim $emb_dim --lstm_type $lstm_type --lstm_hdim $lstm_hdim --lstm_layers $lstm_layers --emb_iterT $emb_iterT --nfm_func $nfm_func --qnet $qnet --train $train --eval $eval --test $test --num_seeds $num_seeds --seed0 $seed0 --demoruns $demoruns --parallel_rollouts $parallel_rollouts --rollout_steps $rollout_steps" Enter
-# lstm_type="shared-concat"
-# tmux send-keys -t "${terminalname}" "python Phase3_lstm-gnn-ppo.py --train_on $train_on --batch_size $batch_size --obs_mask $obs_mask --obs_rate $obs_rate --emb_dim $emb_dim --lstm_type $lstm_type --lstm_hdim $lstm_hdim --lstm_layers $lstm_layers --emb_iterT $emb_iterT --nfm_func $nfm_func --qnet $qnet --train $train --eval $eval --test $test --num_seeds $num_seeds --seed0 $seed0 --demoruns $demoruns --parallel_rollouts $parallel_rollouts --rollout_steps $rollout_steps" Enter
-# lstm_type="separate-noncat"
-# tmux send-keys -t "${terminalname}" "python Phase3_lstm-gnn-ppo.py --train_on $train_on --batch_size $batch_size --obs_mask $obs_mask --obs_rate $obs_rate --emb_dim $emb_dim --lstm_type $lstm_type --lstm_hdim $lstm_hdim --lstm_layers $lstm_layers --emb_iterT $emb_iterT --nfm_func $nfm_func --qnet $qnet --train $train --eval $eval --test $test --num_seeds $num_seeds --seed0 $seed0 --demoruns $demoruns --parallel_rollouts $parallel_rollouts --rollout_steps $rollout_steps" Enter
-
-#RUNNING JOBS IN PARALLEL
-#for obs_mask in {"prob_per_u","None"}
-#"shared-noncat","separate-noncat","shared-concat","None"}
-#   for lstm_hdim in {24,64}
-#for lstm_type in {"FE","None"}
-#do
-#"NFM_ev_ec_t_dt_at_ustack"}
-#for nfm_func in {"NFM_ev_ec_t_dt_at_um_us",nfm_func="NFM_ev_ec_t_dt_at_ustack"}
-#for lstm_type in {"FE","EMB","Dual","DualCC"}
-#"DualCC","Dual"
-patience=1000
-lstm_type="None"
-#"None"}
-#for lstm_type in {"None",}
-critic='v'
-seed0=0
-#for seed0 in {0,5,10,15}
-for eval_deter  in {"False","True"}
+num_step=70000
+critic="q"
+lstm_type="FE"
+eval_deter="True"
+nfm_func="NFM_ev_ec_t_dt_at_um_us"
+#nfm_func="NFM_ev_ec_t_dt_at_ustack"
+for seed0 in {0,5,10}
 do
-    python Phase3_lstm-gnn-ppo.py --train_on $train_on --batch_size $batch_size --lr $lr --obs_mask $obs_mask --obs_rate $obs_rate --emb_dim $emb_dim --lstm_type $lstm_type --lstm_hdim $lstm_hdim --lstm_layers $lstm_layers --emb_iterT $emb_iterT --nfm_func $nfm_func --qnet $qnet --train $train --eval $eval --test $test --num_seeds $num_seeds --seed0 $seed0 --demoruns $demoruns --parallel_rollouts $parallel_rollouts --rollout_steps $rollout_steps --critic $critic --eval_deter $eval_deter --patience $patience &
+    python Phase3_lstm-gnn-ppo_simp.py --train_on $train_on --batch_size $batch_size --lr $lr --obs_mask $obs_mask --obs_rate $obs_rate --emb_dim $emb_dim --lstm_type $lstm_type --lstm_hdim $lstm_hdim --lstm_layers $lstm_layers --emb_iterT $emb_iterT --nfm_func $nfm_func --qnet $qnet --train $train --eval $eval --test $test --num_seeds $num_seeds --seed0 $seed0 --demoruns $demoruns --parallel_rollouts $parallel_rollouts --rollout_steps $rollout_steps --critic $critic --eval_deter $eval_deter --num_step $num_step&
 done
 wait
-
-#lstm_type="DualCC"
-#nfm_func = "NFM_ev_ec_t_dt_at_ustack"
-#python Phase3_lstm-gnn-ppo.py --train_on $train_on --batch_size $batch_size --lr $lr --obs_mask $obs_mask --obs_rate $obs_rate --emb_dim $emb_dim --lstm_type $lstm_type --lstm_hdim $lstm_hdim --lstm_layers $lstm_layers --emb_iterT $emb_iterT --nfm_func $nfm_func --qnet $qnet --train $train --eval $eval --test $test --num_seeds $num_seeds --seed0 $seed0 --demoruns $demoruns --parallel_rollouts $parallel_rollouts --rollout_steps $rollout_steps --critic $critic --eval_deter $eval_deter &

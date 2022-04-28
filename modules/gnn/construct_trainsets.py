@@ -218,6 +218,39 @@ def ConstructTrainSet(config, apply_wrappers=True, type_obs_wrap='Flat', remove_
             max_possible_num_nodes=config['max_nodes'],
             probs=probs)
 
+    elif tset == 'NWB_AMS_mixed_obs':
+        config['max_nodes']=975
+        config['max_edges']=3000
+        assert config['obs_mask']=='mix'
+        for world_name in ['NWB_test_FixedEscapeInit', 'NWB_test_VariableEscapeInit']:
+            env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask='None', obs_rate=1.0)
+            env_all_list.append(env)
+            global_env.append(env)
+            probs.append(.1)
+
+            for rate in [0.9, 0.8, 0.7,0.6,0.5]:
+                env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask='prob_per_u', obs_rate=rate)
+                env_all_list.append(env)
+                global_env.append(env)
+            probs+=[1,3,5,3,1]
+
+            env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[10,20], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask='None', obs_rate=1.0)
+            env_all_list.append(env)
+            global_env.append(env)
+            probs.append(.1)
+
+            for rate in [0.9, 0.8, 0.7,0.6,0.5]:
+                env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[10,20], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask='prob_per_u', obs_rate=rate)
+                env_all_list.append(env)
+                global_env.append(env)
+            probs+=[1,3,5,3,1]
+
+        super_env=SuperEnv(
+            global_env,
+            hashint2env=None,
+            max_possible_num_nodes=config['max_nodes'],
+            probs=probs)       
+
     elif tset == 'MetroConstructed':
         world_name = 'MetroU3_e17tborder_VariableEscapeInit'
         env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=300, nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
@@ -451,10 +484,33 @@ def ConstructTrainSet(config, apply_wrappers=True, type_obs_wrap='Flat', remove_
             max_possible_num_nodes=config['max_nodes'],
             probs=probs)
 
+    elif tset == 'M5x5F_mixed_obs':
+        config['max_nodes']=25
+        config['max_edges']=105
+        assert config['obs_mask']=='mix'
+        world_name = 'Manhattan5x5_FixedEscapeInit'
+
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask='None', obs_rate=1.0)
+        env_all_list.append(env)
+        global_env.append(env)
+        probs.append(1)
+
+        for rate in [0.9, 0.8, 0.7,0.6,0.5]:
+            env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask='prob_per_u', obs_rate=rate)
+            env_all_list.append(env)
+            global_env.append(env)
+            probs.append(1)
+
+        super_env=SuperEnv(
+            global_env,
+            hashint2env=None,
+            max_possible_num_nodes=config['max_nodes'],
+            probs=probs)
+
 
     elif tset == 'TEST':
         config['max_nodes']=9
-        config['max_edges']=21
+        config['max_edges']=33
 
         # env, _ = get_super_env(Uselected=[2], Eselected=[3,9], config=config, var_targets=None, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, remove_paths=remove_paths)
         # env_all_list += env.all_env
@@ -469,7 +525,7 @@ def ConstructTrainSet(config, apply_wrappers=True, type_obs_wrap='Flat', remove_
         # probs.append(1)
 
         world_name = 'Manhattan3x3_WalkAround'
-        env = CreateEnv(world_name, max_nodes=9, max_edges=21, nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)

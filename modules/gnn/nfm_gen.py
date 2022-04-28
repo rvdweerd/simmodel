@@ -293,14 +293,18 @@ class NFM_ev_ec_t_dt_at_um_us():
                 eo.nfm[path[eo.local_t],5] += 1
 
     def mask_units(self, eo, mask_u):
+        masked_nfm = eo.nfm.clone()
         for unit_index, path in enumerate(eo.u_paths): 
             if mask_u[unit_index]:
                 if eo.local_t >= len(path)-1: #unit has settled
                     assert path[-1] in eo.state
-                    eo.nfm[path[-1],6] -= 1
+                    masked_nfm[path[-1],6] -= 1
+                    assert masked_nfm[path[-1],6] >= 0
                 else:
-                    eo.nfm[path[eo.local_t],5] -= 1
-
+                    masked_nfm[path[eo.local_t],5] -= 1
+                    assert masked_nfm[path[eo.local_t],5] >= 0  
+        return masked_nfm
+        
 class NFM_ev_ec_t_dt_at_ustack():
     def __init__(self, k=3):
         self.name='nfm-ev-ec-t-dt-at-ustack'
@@ -318,6 +322,7 @@ class NFM_ev_ec_t_dt_at_ustack():
         # 5+(k-1)   u position at t
 
     def reinit(self, k):
+        assert k>=1
         self.F=5+k
         self.k=k
         self.uindx=torch.tensor([5+k-1],dtype=torch.int64)
