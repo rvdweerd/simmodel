@@ -1,10 +1,20 @@
 from modules.ppo.models_basic_lstm import GetEnv, Solve_LSTM, Solve, PPO_LSTM, PPO
-#Solve()
+from modules.dqn.dqn_utils import seed_everything
 
-# basic mem task, flat observation vector
-env = GetEnv()
-model = PPO(env)
-Solve(env,model)
+# Test worlds:
+w1='MemoryTaskU1'               # Basic memory task, best score = 8.0
+w2='MemoryTaskU1Long'           # Basic memory task with one extra step, best score = 7.0
+w3='Manhattan3x3_WalkAround'    # Avoidance task, best score = 6.0
+
+for seed in range(10):
+    # Seeding
+    seed_everything(seed)
+    saveto='results/results_Phase3simp/test_lstm_simp1/SEED'+str(seed)+'/logs'
+
+    # basic mem task, flat observation vector
+    env = GetEnv(world_name=w1, num_frame_stack=1)
+    model = PPO_LSTM(env, emb_dim=256)
+    Solve_LSTM(env, model, logdir=saveto)
 
 # # basic mem task, nfm/ei/reachable flat vector
 # #nfm_func='NFM_ev_ec_t_dt_at_um_us'

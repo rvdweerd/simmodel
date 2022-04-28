@@ -318,6 +318,7 @@ class NFM_ev_ec_t_dt_at_ustack():
         # 5+(k-1)   u position at t
 
     def reinit(self, k):
+        assert k>=1
         self.F=5+k
         self.k=k
         self.uindx=torch.tensor([5+k-1],dtype=torch.int64)
