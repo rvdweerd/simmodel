@@ -362,12 +362,16 @@ class NFM_ev_ec_t_dt_at_ustack():
                 eo.nfm[path[eo.local_t],-1] += 1
 
     def mask_units(self, eo, mask_u):
+        #masked_nfm = eo.nfm.clone()
         for unit_index, path in enumerate(eo.u_paths): 
             if mask_u[unit_index]:
                 if eo.local_t >= len(path)-1: #unit has settled
                     eo.nfm[path[-1],-1] -= 1
+                    assert eo.nfm[path[-1],-1] >= 0
                 else:
                     eo.nfm[path[eo.local_t],-1] -= 1
+                    assert eo.nfm[path[eo.local_t],-1] >= 0
+        return eo.nfm.clone()
 
 class NFM_ec_t():
     def __init__(self):

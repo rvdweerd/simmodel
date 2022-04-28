@@ -63,8 +63,8 @@ class PPO_ObsWrapper(ObservationWrapper):
         p = self.max_nodes - self.V
         nfm = nn.functional.pad(self.nfm,(0,0,0,p))
         W = nn.functional.pad(self.sp.W,(0,p,0,p))
-        obs = torch.cat((nfm, W, torch.index_select(W, 1, torch.tensor(self.state[0]))),1)
-        return obs
+        self.obs = torch.cat((nfm, W, torch.index_select(W, 1, torch.tensor(self.state[0]))),1)
+        return self.obs
 
 # class PPO_ObsFlatWrapper(ObservationWrapper):
 #     """Wrapper for constructing a flattened nfm|edge_list|reachable nodes observation tensor.
@@ -304,7 +304,7 @@ class PPO_ObsDictWrapper(ObservationWrapper):
         pygei = self.sp.EI.clone()        
         pygei = nn.functional.pad(pygei,(0, self.max_edges - self.sp.EI.shape[1])) # pad rightward to (2,MAX_EDGES)
         #obs = torch.cat((nfm, W, torch.index_select(W, 1, torch.tensor(self.state[0]))),1)
-        obs = {
+        self.obs = {
             'nfm':      nfm,
             'W':        W,
             'reachable_nodes':reachable,
@@ -313,7 +313,7 @@ class PPO_ObsDictWrapper(ObservationWrapper):
             'num_nodes':self.sp.V,
             'num_edges':self.sp.EI.shape[1],
         }
-        return obs
+        return self.obs
 
 class PPO_ActWrapper(ActionWrapper):
     """Wrapper for processing actions defined as next node label."""

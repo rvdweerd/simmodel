@@ -30,6 +30,7 @@ def EvalArgs2(env):
 def EvalArgs3(env):
     # arguments of the call to the policy class that samples an action
     # this is used when observation wrappers are used
+    assert False # need to check; use EvalArgs1 instead
     return env.observation(None), env.availableActionsInCurrentState()
 
 def EvalArgsSP(env):
