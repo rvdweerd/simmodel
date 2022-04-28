@@ -15,11 +15,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Categorical
+from torch.utils.tensorboard import SummaryWriter
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-# Core framework for this approach taken from https://github.com/seungeunrho/minimalRL
-
 def GetLocalConfig():
+    # admin for experiments
     config={}
     config['train_on'] = "MemTask-U1"
     config['max_nodes'] = 8
@@ -53,15 +53,17 @@ def GetLocalConfig():
     config['seedrange']=range(config['seed0'], config['seed0']+config['numseeds'])    
     return config
 
-def GetEnv():
+def GetEnv(world_name='Manhattan3x3_WalkAround', num_frame_stack=1):
+    # admin to load custom environment
+    assert num_frame_stack >= 1
     config = GetLocalConfig()
     state_repr='etUte0U0'
     state_enc='nfm'
     edge_blocking = True
     #env = GetCustomWorld('MemoryTaskU1Long',make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
-    env = GetCustomWorld('Manhattan3x3_WalkAround',make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
+    env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
     nfm_func = modules.gnn.nfm_gen.nfm_funcs['NFM_ev_ec_t_dt_at_ustack']
-    nfm_func.reinit(k=2) # set stack size
+    nfm_func.reinit(k=num_frame_stack) # set stack size
     env.redefine_nfm(nfm_func)
     env.capture_on_edges = edge_blocking
     env = PPO_ObsFlatWrapper_basic(env, obs_mask='freq', obs_rate=.2)
@@ -70,14 +72,16 @@ def GetEnv():
     return env
 
 class PPO(nn.Module):
-    def __init__(self, env):
+    # Core framework for this approach taken from https://github.com/seungeunrho/minimalRL
+    def __init__(self, env, emb_dim=32):
         super(PPO, self).__init__()
         self.data = []
+        self.emb_dim = emb_dim
         self.obs_space = env.observation_space.shape[0]
         self.act_space = env.action_space.n
-        self.fc1   = nn.Linear(self.obs_space, 256)
-        self.fc_pi = nn.Linear(256,self.act_space)
-        self.fc_v  = nn.Linear(256,1)
+        self.fc1   = nn.Linear(self.obs_space, self.emb_dim)
+        self.fc_pi = nn.Linear(self.emb_dim,self.act_space)
+        self.fc_v  = nn.Linear(self.emb_dim,1)
         self.optimizer = optim.Adam(self.parameters(), lr=5e-4)
         self.K_epoch  = 2
         self.gamma    = .98
@@ -148,6 +152,40 @@ class PPO(nn.Module):
             loss.mean().backward()
             self.optimizer.step()
 
+def Solve(env, model, logdir='temp'):
+    score = 0.0
+    validation_interval = 1
+    T_horizon     = 200
+    tb_writer = SummaryWriter(log_dir=logdir)
+    
+    for n_epi in range(500):
+        s = env.reset()
+        done = False
+        while not done:
+            for t in range(T_horizon):
+                mask = env.action_masks()
+                prob = model.pi(s, torch.tensor(mask) )
+                m = Categorical(prob)
+                a = m.sample().item()
+                s_prime, r, done, info = env.step(a)
+
+                model.put_data((s, a, r/10.0, s_prime, prob[a].item(), done, mask))
+                s = s_prime
+
+                score += r
+                if done:
+                    break
+
+            model.train_net()
+
+        if n_epi % validation_interval == 0 and n_epi!=0:
+            avg_return = score/validation_interval
+            tb_writer.add_scalar('return_per_epi', avg_return, n_epi)            
+            if n_epi % 20 == 0:
+                print("# of episode :{}, avg score : {:.1f}".format(n_epi, avg_return))
+            score = 0.0
+    env.close()
+
 class PPO_LSTM(nn.Module):
     def __init__(self, env, emb_dim=32):
         super(PPO_LSTM, self).__init__()
@@ -159,6 +197,8 @@ class PPO_LSTM(nn.Module):
         self.emb_dim = emb_dim
         self.gamma    = .98
         self.eps_clip = 0.1        
+        self.K_epoch  = 2       
+        self.lmbda    = .95       
 
         self.fc1   = nn.Linear(self.obs_space,emb_dim)
         self.lstm  = nn.LSTM(emb_dim,emb_dim)
@@ -214,7 +254,7 @@ class PPO_LSTM(nn.Module):
         first_hidden = (h_in.detach(), c_in.detach())
         second_hidden = (h_out.detach(), c_out.detach())
 
-        for i in range(self.num_epochs):
+        for i in range(self.K_epoch):
             v_prime = self.v(s_prime, second_hidden).squeeze(1)
             td_target = r + self.gamma * v_prime * done_mask
             v_s = self.v(s, first_hidden).squeeze(1)
@@ -240,6 +280,47 @@ class PPO_LSTM(nn.Module):
             self.optimizer.zero_grad()
             loss.mean().backward(retain_graph=True)
             self.optimizer.step()
+
+def Solve_LSTM(env, model, logdir='temp'):
+    score = 0.0
+    validation_interval = 1
+    T_horizon     = 200
+    tb_writer = SummaryWriter(log_dir=logdir)
+    
+    for n_epi in range(500):
+        h_out = (
+            torch.zeros([1, 1, model.emb_dim], dtype=torch.float, device='cpu'), 
+            torch.zeros([1, 1, model.emb_dim], dtype=torch.float, device='cpu')
+            )
+        s = env.reset()
+        done = False
+
+        while not done:
+            for t in range(T_horizon):
+                mask = env.action_masks()
+                h_in = h_out
+                prob, h_out = model.pi(s, h_in, torch.tensor(mask))
+                prob = prob.view(-1)
+                m = Categorical(prob)
+                a = m.sample().item()
+                s_prime, r, done, info = env.step(a)
+
+                model.put_data((s, a, r/10.0, s_prime, prob[a].item(), h_in, h_out, done, mask))
+                s = s_prime
+
+                score += r
+                if done:
+                    break
+
+            model.train_net()
+
+        if n_epi % validation_interval == 0 and n_epi!=0:
+            avg_return = score/validation_interval
+            tb_writer.add_scalar('return_per_epi', avg_return, n_epi)               
+            if n_epi % 20 == 0:
+                print("# of episode :{}, avg score : {:.1f}".format(n_epi, score/validation_interval))
+            score = 0.0
+    env.close()
 
 class GATv2(BasicGNN):
     r"""
@@ -821,76 +902,4 @@ class PPO_GNN_Dual_LSTM(PPO_GNN_Model):
                 counter=0
         env.close()
         return mean_Return
-
-
-
-
-def Solve(env, model):
-    #env = GetEnv()
-    #model = PPO(env)
-    score = 0.0
-    validation_interval = 20
-    T_horizon     = 200
-
-    for n_epi in range(10000):
-        s = env.reset()
-        done = False
-        while not done:
-            for t in range(T_horizon):
-                mask = env.action_masks()
-                prob = model.pi(s, torch.tensor(mask) )
-                m = Categorical(prob)
-                a = m.sample().item()
-                s_prime, r, done, info = env.step(a)
-
-                model.put_data((s, a, r/10.0, s_prime, prob[a].item(), done, mask))
-                s = s_prime
-
-                score += r
-                if done:
-                    break
-
-            model.train_net()
-
-        if n_epi % validation_interval == 0 and n_epi!=0:
-            print("# of episode :{}, avg score : {:.1f}".format(n_epi, score/validation_interval))
-            score = 0.0
-    env.close()
-
-def Solve_LSTM(env, model):
-    score = 0.0
-    validation_interval = 20
-    T_horizon     = 200
-
-    for n_epi in range(10000):
-        h_out = (
-            torch.zeros([1, model.num_nodes, model.emb_dim], dtype=torch.float, device=device), 
-            torch.zeros([1, model.num_nodes, model.emb_dim], dtype=torch.float, device=device)
-            )
-        s = env.reset()
-        done = False
-
-        while not done:
-            for t in range(T_horizon):
-                mask = env.action_masks()
-                h_in = h_out
-                prob, h_out = model.pi(s, h_in, torch.tensor(mask))
-                prob = prob.view(-1)
-                m = Categorical(prob)
-                a = m.sample().item()
-                s_prime, r, done, info = env.step(a)
-
-                model.put_data((s, a, r/10.0, s_prime, prob[a].item(), h_in, h_out, done, mask))
-                s = s_prime
-
-                score += r
-                if done:
-                    break
-
-            model.train_net()
-
-        if n_epi % validation_interval == 0 and n_epi!=0:
-            print("# of episode :{}, avg score : {:.1f}".format(n_epi, score/validation_interval))
-            score = 0.0
-    env.close()
 
