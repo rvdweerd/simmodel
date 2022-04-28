@@ -500,6 +500,7 @@ class CollisionRiskEstimator():
         #for k,v in self.ew_vis.items(): print(k,'{:.2f}'.format(v.item()))
 
         best_path_cost = 1e9
+        best_path = None
         for t in target:
             try:
                 d,p = nx.single_source_dijkstra(self.G, source, t, weight=lambda u,v,d: self.ew_current[(u,v)])
@@ -510,6 +511,8 @@ class CollisionRiskEstimator():
             if d < best_path_cost:
                 best_path_cost = d
                 best_path = p
+        if best_path == None:
+            best_path = [source_node_id]
         best_path = [self.coord2label[n] for n in best_path] 
         if len(best_path)>1:               
             #print('best path',best_path,'cost',best_path_cost,'NEXT NODE:',best_path[1])
