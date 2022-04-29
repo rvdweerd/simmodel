@@ -512,7 +512,7 @@ class CollisionRiskEstimator():
                 best_path_cost = d
                 best_path = p
         if best_path == None:
-            best_path = [source_node_id]
+            best_path = [source]
         best_path = [self.coord2label[n] for n in best_path] 
         if len(best_path)>1:               
             #print('best path',best_path,'cost',best_path_cost,'NEXT NODE:',best_path[1])
