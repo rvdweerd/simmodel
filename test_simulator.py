@@ -4,20 +4,39 @@ from modules.sim.simdata_utils import SimulateInteractiveMode
 from modules.ppo.ppo_wrappers import PPO_ObsBasicDictWrapper, PPO_ObsBasicDictWrapperCRE
 import matplotlib.pyplot as plt
 import modules.gnn.nfm_gen
+import pickle
 
-#world_name='Manhattan3x3_PauseFreezeWorld'
-#world_name='Manhattan3x3_PauseDynamicWorld'
-#world_name='Manhattan3x3_WalkAround'
-#world_name='MemoryTaskU1'
+# world_list=[
+#     'NWB_test_FixedEscapeInit',
+#     'Manhattan5x5_FixedEscapeInit',
+#     'Manhattan3x3_PauseFreezeWorld',
+#     'MetroU3_e17tborder_FixedEscapeInit',
+#     'Manhattan11x11',
+#     'NWB_ROT_FixedEscapeInit',
+#     'NWB_UTR_FixedEscapeInit',
+# ]
+# target_node_info={}
+# target_node_info['world_list']=world_list
+# graph_type_list=[]
+# for w in world_list:
+#     env = GetCustomWorld(w, make_reflexive=True, state_repr='et', state_enc='tensors')
+#     gtype=env.sp.graph_type+'_N='+str(env.sp.N)
+#     graph_type_list.append(gtype)
+#     info={
+#         'N':env.sp.N,
+#         'U':env.sp.U,
+#         'L':env.sp.L,
+#         'R':env.sp.R,
+#         'target_nodes_labels':env.sp.target_nodes,
+#         'target_nodes_coord':[env.sp.labels2coord[l] for l in env.sp.target_nodes],
+#     }
+#     target_node_info[gtype]=info
+# out_file = open("datasets/target_node_info.pkl", "wb")
+# pickle.dump(target_node_info, out_file)
+# out_file.close()
+
+
 world_name='MetroU3_e17tborder_FixedEscapeInit'
-#world_name='MetroU3_e17t0_FixedEscapeInit'
-#world_name='MetroU3_e1t31_FixedEscapeInit'
-#world_name='Manhattan11x11'
-#world_name='Manhattan5x5_FixedEscapeInit'
-#world_name = 'NWB_test_FixedEscapeInit'
-#world_name='NWB_ROT_FixedEscapeInit'
-#world_name='NWB_UTR_FixedEscapeInit'
-
 N=33#25#3975
 E=300#105#4000
 obs_mask='prob_per_u'
