@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from modules.rl.rl_custom_worlds import GetCustomWorld
 from modules.sim.simdata_utils import SimulateInteractiveMode
-from modules.ppo.ppo_wrappers import PPO_ObsFlatWrapper, PPO_ObsBasicDictWrapper, PPO_ObsBasicDictWrapperCRE
+from modules.ppo.ppo_wrappers import PPO_ObsBasicDictWrapper, PPO_ObsBasicDictWrapperCRE
 import matplotlib.pyplot as plt
 import modules.gnn.nfm_gen
 
@@ -18,8 +18,8 @@ world_name='MetroU3_e17tborder_FixedEscapeInit'
 #world_name='NWB_ROT_FixedEscapeInit'
 #world_name='NWB_UTR_FixedEscapeInit'
 
-N=25#3975
-E=105#4000
+N=33#25#3975
+E=300#105#4000
 obs_mask='prob_per_u'
 obs_rate=0.5
 state_repr='etUte0U0'
