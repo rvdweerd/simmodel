@@ -174,6 +174,16 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         conf['make_reflexive']=make_reflexive
         env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
         return env
+    if world_name == 'Manhattan5x5_FixedEscapeInit2':
+        configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
+        conf=configs['Manhattan5']
+        conf['graph_type']= "Manhattan2"
+        conf['R']=5
+        conf['direction_north']=False
+        conf['loadAllStartingPositions']=False
+        conf['make_reflexive']=make_reflexive
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
+        return env        
     if world_name == 'Manhattan11x11':
         configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
         conf=configs['Manhattan11']
@@ -283,7 +293,28 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         #conf['obj']['G']=conf['obj']['G'].to_undirected()
         assert not conf['obj']['G'].is_directed()
         env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
-        return env       
+        return env   
+    if world_name  in ['NWB_test_FixedEscapeInit2', 'NWB_test_VariableEscapeInit2']:
+        conf={
+            'graph_type': "NWBGraph2",
+            'make_reflexive': False,            
+            'N': 975,    # number of nodes along one side
+            'U': 10,    # number of pursuer units
+            'L': 50,    # Time steps
+            'T': 50,
+            'R': 113,  # Number of escape routes sampled 
+            'direction_north': False,       # Directional preference of escaper
+            #'start_escape_route': 'bottom_center', # Initial position of escaper (always bottom center)
+            #'fixed_initial_positions': (1,5,7,28),
+            'loadAllStartingPositions': False
+        }
+        if world_name == 'NWB_test_VariableEscapeInit2':
+            conf['loadAllStartingPositions'] = True
+        conf['obj'] = nx.read_gpickle('datasets/G_nwb/4.GEPHI_to_SIM/G_test_DAM_1km_edited_V=975.bin')
+        #conf['obj']['G']=conf['obj']['G'].to_undirected()
+        assert not conf['obj']['G'].is_directed()
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
+        return env             
     if world_name  in ['NWB_ROT_FixedEscapeInit', 'NWB_ROT_VariableEscapeInit']:
         conf={
             'graph_type': "NWBGraphROT",

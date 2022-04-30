@@ -328,7 +328,7 @@ def DefineSimParameters(config):
         sp.most_northern_y = max([c[1] for c in sp.G.nodes])
         #sp.target_nodes = set([sp.labels[sp.N//2,sp.N-1]])
         sp.target_nodes = set([sp.N*(sp.N-1)+i for i in range(sp.N)])
-    if sp.graph_type == 'Manhattan':
+    if sp.graph_type in ['Manhattan','Manhattan2']:
         sp.G, sp.labels, sp.pos = graph(config['N'])
         sp.N = config['N']
         sp.V = sp.N**2        # Total number of vertices
@@ -339,7 +339,7 @@ def DefineSimParameters(config):
         sp.most_northern_y = max([c[1] for c in sp.G.nodes])
         #sp.target_nodes = set([sp.labels[sp.N//2,sp.N-1]])
         sp.target_nodes = set([sp.N*(sp.N-1)+i for i in range(sp.N)])
-    elif sp.graph_type == 'MetroGraph':
+    elif sp.graph_type in ['MetroGraph', 'MetroGraph2']:
         sp.G, sp.labels, sp.pos = MetroGraph()#manhattan_graph(N)
         sp.N = config['N']
         sp.V = sp.N             # Total number of vertices (FIXED)
@@ -854,7 +854,7 @@ def SimulateAutomaticMode_PPO(env, ppo_policy, t_suffix=True, entries=None):
             env.render_eupaths(fname='results/test_startframe',t_suffix=t_suffix,last_step_only=True, node_risks=node_risks, planned_path=None)
             firsttime=False            
             print('node_risks', node_risks)
-        env.render_eupaths(fname='results/test',t_suffix=t_suffix,last_step_only=True, node_risks=node_risks, planned_path=best_path)
+        env.render_eupaths(fname='results/test',t_suffix=t_suffix,last_step_only=True, node_risks=None, planned_path=None)
         #ppo_value = ppo_policy.model.predict_values(obs)#[None,:].to(device))
 
         # while True:
