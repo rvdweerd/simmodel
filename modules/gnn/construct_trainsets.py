@@ -80,25 +80,25 @@ def ConstructTrainSet(config, apply_wrappers=True, type_obs_wrap='Flat', remove_
 
     elif tset == 'NWB_AMS':
         world_name = 'NWB_test_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=975, max_edges=3000, nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
+        env = CreateEnv(world_name, max_nodes=975, max_edges=1425, nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
         world_name = 'NWB_test_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=975, max_edges=3000, nfm_func_name = config['nfm_func'], var_targets=[10,20], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
+        env = CreateEnv(world_name, max_nodes=975, max_edges=1425, nfm_func_name = config['nfm_func'], var_targets=[10,20], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
         world_name = 'NWB_test_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=975, max_edges=3000, nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
+        env = CreateEnv(world_name, max_nodes=975, max_edges=1425, nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(.1)
 
         world_name = 'NWB_test_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=975, max_edges=3000, nfm_func_name = config['nfm_func'], var_targets=[10,20], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
+        env = CreateEnv(world_name, max_nodes=975, max_edges=1425, nfm_func_name = config['nfm_func'], var_targets=[10,20], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
@@ -110,7 +110,7 @@ def ConstructTrainSet(config, apply_wrappers=True, type_obs_wrap='Flat', remove_
             probs=probs)
 
     elif tset == 'NWB_AMS+Mix':
-        config['max_edges'] = 3000
+        config['max_edges'] = 1425
         config['max_nodes'] = 975
 
         world_name = 'NWB_test_VariableEscapeInit'
@@ -220,7 +220,7 @@ def ConstructTrainSet(config, apply_wrappers=True, type_obs_wrap='Flat', remove_
 
     elif tset == 'NWB_AMS_mixed_obs':
         config['max_nodes']=975
-        config['max_edges']=3000
+        config['max_edges']=1425
         assert config['obs_mask']=='mix'
         for world_name in ['NWB_test_FixedEscapeInit', 'NWB_test_VariableEscapeInit']:
             env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask='None', obs_rate=1.0)
@@ -316,8 +316,6 @@ def ConstructTrainSet(config, apply_wrappers=True, type_obs_wrap='Flat', remove_
             hashint2env=None,
             max_possible_num_nodes=config['max_nodes'],
             probs=probs)
-
-
 
     elif tset == 'MixAll33':
         config['max_edges'] = 300
@@ -531,7 +529,6 @@ def ConstructTrainSet(config, apply_wrappers=True, type_obs_wrap='Flat', remove_
             hashint2env=None,
             max_possible_num_nodes=config['max_nodes'],
             probs=probs)
-
 
     elif tset == 'TEST':
         config['max_nodes']=9

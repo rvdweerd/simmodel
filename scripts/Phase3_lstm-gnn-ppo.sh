@@ -2,7 +2,8 @@
 
 #train_on="MixAll33"
 #train_on="NWB_AMS_mixed_obs"
-train_on="HeurCRE"
+train_on="NWB_AMS"
+#train_on="HeurCRE"
 #train_on="M5x5Fixed"
 #train_on="M5x5F_mixed_obs"
 #train_on="MemTask-U1"
@@ -21,18 +22,18 @@ nfm_func="NFM_ev_ec_t_dt_at_um_us"
 #nfm_func="NFM_ev_ec_t_dt_at_ustack"
 qnet="gat2"
 critic='v'
-train="False"
+train="True"
 eval="False"
 test="False"
-test_heur="True"
-num_seeds=1
+test_heur="False"
+num_seeds=3
 #seed0=0
 demoruns="False"
-num_step=70000
+num_step=50000
 type_obs_wrap="BasicDict"
 parallel_rollouts=4
-idn="Heur"
-id="UTR2"
+idn="AMS"
+id="trainPPOsimp_no_lstm"
 for lstm_type in {"None",}
 do
     for seed0 in {0,}
