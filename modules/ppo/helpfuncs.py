@@ -2,7 +2,7 @@ import copy
 import modules.gnn.nfm_gen
 from modules.ppo.models_sb3_gat2 import DeployablePPOPolicy_gat2
 from modules.ppo.models_sb3_s2v import s2v_ActorCriticPolicy, Struc2VecExtractor, DeployablePPOPolicy
-from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsWrapper, PPO_ObsDictWrapper, VarTargetWrapper, PPO_ObsBasicDictWrapper, PPO_ObsBasicDictWrapperCRE
+from modules.ppo.ppo_wrappers import PPO_ActWrapper, PPO_ObsFlatWrapper, PPO_ObsDictWrapper, VarTargetWrapper, PPO_ObsBasicDictWrapper, PPO_ObsBasicDictWrapperCRE
 from modules.rl.environments import GraphWorld
 from modules.rl.rl_utils import EvaluatePolicy, EvalArgs1, EvalArgs2, EvalArgs3, GetFullCoverageSample
 from modules.rl.rl_policy import ActionMaskedPolicySB3_PPO
@@ -72,7 +72,9 @@ def CreateEnv(world_name, max_nodes=9, max_edges=300, nfm_func_name = 'NFM_ev_ec
         elif type_obs_wrap == 'BasicDict':
             env = PPO_ObsBasicDictWrapper(env, obs_mask=obs_mask, obs_rate=obs_rate)
         elif type_obs_wrap == 'BasicDictCRE':
-            env = PPO_ObsBasicDictWrapperCRE(env, obs_mask=obs_mask, obs_rate=obs_rate)            
+            env = PPO_ObsBasicDictWrapperCRE(env, obs_mask=obs_mask, obs_rate=obs_rate) 
+        elif type_obs_wrap == 'obs_flat':                       
+            env = PPO_ObsFlatWrapper(env, max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges, obs_mask=obs_mask, obs_rate=obs_rate)
         else: assert False
         env = PPO_ActWrapper(env) 
     return env

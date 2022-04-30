@@ -71,7 +71,10 @@ def main(args):
                 model.optimizer.load_state_dict(cp['optimizer'])
                 print(f"Loaded model from {last_checkpoint}")
                 print('Iteration:', it0, 'best_result:', best_result)
-            score = model.learn(senv, it0, best_result)
+            try:
+                score = model.learn(senv, it0, best_result)
+            except:
+                continue
 
     ##### EVALUATION FUNCTION FOR TRAINED POLICY for full test dataset #####
     if config['eval']:
