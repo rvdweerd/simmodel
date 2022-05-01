@@ -522,6 +522,7 @@ class LSTM_GNN_PPO_Single_Policy_simp(Policy):
 
     def reset_hidden_states(self, env=None):
         #self.lstm_hidden = (torch.zeros([1, 1, self.lstm_hidden_dim], dtype=torch.float), torch.zeros([1, 1, self.lstm_hidden_dim], dtype=torch.float))
+        #env.pre_calculated_masks = env.rng.random(size=(len(env.all_worlds), env.sp.T+1, env.sp.U), dtype=np.float32)
         self.h = (
                     torch.zeros([1, env.sp.V, self.hidden_dim], dtype=torch.float, device=device), 
                     torch.zeros([1, env.sp.V, self.hidden_dim], dtype=torch.float, device=device)

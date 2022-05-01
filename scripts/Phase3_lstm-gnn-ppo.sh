@@ -2,14 +2,14 @@
 
 #train_on="MixAll33"
 #train_on="NWB_AMS_mixed_obs"
-train_on="NWB_AMS"
+#train_on="NWB_AMS"
 #train_on="HeurCRE"
 #train_on="M5x5Fixed"
-#train_on="M5x5F_mixed_obs"
+train_on="M5x5F_mixed_obs"
 #train_on="MemTask-U1"
 batch_size=2
 #obs_mask="mix"
-obs_mask="None"
+obs_mask="mix"
 obs_rate=0.0
 #obs_mask="prob_per_u"
 #obs_rate=.5
@@ -26,17 +26,17 @@ train="True"
 eval="False"
 test="False"
 test_heur="False"
-num_seeds=3
+num_seeds=5
 #seed0=0
 demoruns="False"
 num_step=50000
 type_obs_wrap="BasicDict"
 parallel_rollouts=4
-idn="AMS"
-id="trainPPOsimp_no_lstm"
+idn="AMSmix"
+id="EMB"
 for lstm_type in {"None",}
 do
-    for seed0 in {0,}
+    for seed0 in {100,}
     do
         tmux new-session -d -s "${idn}-${id}"
         tmux send-keys -t "${idn}-${id}" "conda activate rlcourse-sb3c" Enter

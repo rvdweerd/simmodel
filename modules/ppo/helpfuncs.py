@@ -49,6 +49,7 @@ def  CreateEnvFS(config, obs_mask, obs_rate, max_nodes, max_edges):
     for i in range(len(evalenv)):
         evalenv[i]=PPO_ObsBasicDictWrapper(evalenv[i], obs_mask=obs_mask, obs_rate=obs_rate)
         evalenv[i]=PPO_ActWrapper(evalenv[i])
+        assert len(evalenv[i].world_pool) == len(evalenv[i].all_worlds)
     return evalenv
 
 def CreateEnv(world_name, max_nodes=9, max_edges=300, nfm_func_name = 'NFM_ev_ec_t_um_us', var_targets=None, remove_world_pool=False, apply_wrappers=True, type_obs_wrap='Flat', obs_mask='None', obs_rate=1):

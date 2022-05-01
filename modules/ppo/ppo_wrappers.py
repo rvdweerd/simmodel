@@ -357,10 +357,10 @@ class PPO_ObsBasicDictWrapper(ObservationWrapper):
         assert (obs_rate >=0 and obs_rate <=1) if obs_mask in ['prob','prob_per_u','None','prob_per_u_test'] else (obs_rate >1e-2 and obs_rate <=1)
         self.obs_mask = obs_mask  # Type of observation masking of pursuit units
         self.obs_rate = int(1/obs_rate) if obs_mask=='freq' else obs_rate  # If observations are masked, either frequency (mask every n) or probability (mask with probability p)      
+        self.rng = np.random.default_rng(seed)
         if obs_mask == 'prob_per_u_test':
-            rng = np.random.default_rng(seed)
-            num_worlds = len(self.all_worlds)
-            self.pre_calculated_masks = rng.random(size=(num_worlds, self.sp.T+1, self.sp.U), dtype=np.float32)
+            num_worlds = max(self.all_worlds)+1
+            self.pre_calculated_masks = self.rng.random(size=(num_worlds, self.sp.T+1, self.sp.U), dtype=np.float32)
 
         print('Wrapping the env with a basic observation dict space: nfm, ei, reachable')
         
