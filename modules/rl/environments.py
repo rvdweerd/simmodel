@@ -438,9 +438,9 @@ class GraphWorld(gym.Env):
             print('env.step() ======> Warning: action out of bounds <======')
         else:          
             next_node = self.neighbors[self.state[0]][action_idx]
-            reward = -1.
+            reward = -.1
             if next_node == self.state[0]:
-               reward = -1.5
+               reward = -.15
         self.global_t += 1
         self.local_t  += 1
         

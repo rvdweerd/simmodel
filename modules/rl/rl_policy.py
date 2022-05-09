@@ -531,15 +531,15 @@ class LSTM_GNN_PPO_Single_Policy_simp(Policy):
     def sample_greedy_action(self, obs, available_actions, printing=False):
         with torch.no_grad():
             probs, new_h = self.model.pi(obs['nfm'], obs['ei'], obs['reachable'], self.h)
-            self.probs = probs.flatten().cpu().numpy()
+            self.probs = probs.flatten().cpu()#.numpy()
             if self.deterministic:
                 a=self.probs.argmax().item()
             else:
-                a=self.probs.sample().item()
+                a=Categorical(probs=self.probs).sample().item()
             if printing:
                 ppo_value, _ = self.model.v(obs['nfm'], obs['ei'], obs['reachable'], self.h)
                 np.set_printoptions(formatter={'float':"{0:0.2f}".format})
-                print('available_actions:',available_actions,'prob',self.probs[available_actions],'chosen action',a, 'estimated value of graph state:',ppo_value.detach().cpu().numpy(),end='')
+                print('available_actions:',available_actions,'prob',self.probs.numpy()[available_actions],'chosen action',a, 'estimated value of graph state:',ppo_value.detach().cpu().numpy(),end='')
         self.h = new_h
 
         return a, None

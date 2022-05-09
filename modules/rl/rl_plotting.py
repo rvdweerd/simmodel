@@ -229,7 +229,7 @@ def PlotEUPathsOnGraph_(sp, epath, u_paths, fig_show, fig_save, filename, goal_r
                 tnode=sp.labels2coord[u_path[j+1]]
                 edgelist_takenU.append((snode,tnode))
         
-        if (not u_visible[i]) and (last_step_only and (not done)):
+        if (not u_visible[i]) and (not done): #(last_step_only and (not done)):
             continue
         colorlist[sp.labels2nodeids[u_path[-1]]]='#0000FF'
 
@@ -250,7 +250,7 @@ def PlotEUPathsOnGraph_(sp, epath, u_paths, fig_show, fig_save, filename, goal_r
 
 
     nx.draw_networkx_edges(G, pos, edgelist=edgelist_not_taken, edge_color='grey', width=edgewidth, alpha=1.)#width=1
-    nx.draw_networkx_edges(G, pos, edgelist=edgelist_takenE, edge_color='red', arrowsize=25, width=edgewidth*2, alpha=1.)#width=1
+    nx.draw_networkx_edges(G, pos, edgelist=edgelist_takenE, edge_color='red', arrowsize=arrowsize, width=edgewidth*4, alpha=1.)#width=1
     nx.draw_networkx_edges(G, pos, edgelist=edgelist_takenU, edge_color='blue', arrowsize=arrowsize, width=edgewidth*2, alpha=1.)#width=1
     if fontsize > 1:
         nx.draw_networkx_labels(G,pos, font_size = fontsize, labels=node_text, font_color='black')#fontsize=8
@@ -261,7 +261,7 @@ def PlotEUPathsOnGraph_(sp, epath, u_paths, fig_show, fig_save, filename, goal_r
         nx.draw_networkx_nodes(G, pos, node_size=node_risks, node_color='red', edgecolors='red', alpha=.2)#alhpa=.6
 
     if planned_path != None:
-        nx.draw_networkx_edges(G, pos, edgelist=edgelist_plannedE, edge_color='green', width=edgewidth*8, alpha=1.)
+        nx.draw_networkx_edges(G, pos, edgelist=edgelist_plannedE, edge_color='red', style=':',width=edgewidth*4, alpha=1.)
 
     plt.axis('off')
     plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, hspace = -0.5, wspace = 0)

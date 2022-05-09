@@ -4,6 +4,7 @@ from tensorboard.backend.event_processing.event_accumulator import EventAccumula
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import matplotlib.ticker as ticker
 
 def LSTM_info_from_path(path):
     i1=path.find('lstm')
@@ -53,14 +54,33 @@ def tdlog2np(path, metric):
         traceback.print_exc()
     return np.array(step), np.array(values)
 
-def CreateLearningCurvePlots(path, n_smoothing=20, nseeds=5, numiter=1200, yrange=[-10.,2.]):
+def realign(stepsource, valuesource, steptarget):
+    newlist=[]
+    for s in steptarget:
+        if s < stepsource[0]:
+            newlist.append(valuesource[0])
+        else:
+            idx = np.searchsorted(stepsource, s, side='left', sorter=None)
+            #newlist.append(valuesource[idx])
+            interpolated = valuesource[idx-1] + (valuesource[idx]-valuesource[idx-1])*(s-stepsource[idx-1])/(stepsource[idx]-stepsource[idx-1])
+            newlist.append(interpolated)
+    return np.array(newlist)
+
+def CreateLearningCurvePlots(path, n_smoothing=21, seed0=0, nseeds=5, numiter=1200, yrange=[-10.,2.]):
+    assert n_smoothing%2==1
     rawlist=[]
+    steplist=[]
     maxlen=0
-    for seed in range(nseeds):
+    for seed in range(seed0, seed0+nseeds):
         path_ = path+'/SEED'+str(seed)+'/logs'
         step,rew = tdlog2np(path_,'return_per_epi')
         rawlist.append(rew)
+        steplist.append(step)
         maxlen = max(maxlen, len(rew))
+
+    # USE if step arrays are not aligned (seed 2200 issue)
+    #rawlist[0]=realign(steplist[0],rawlist[0],steplist[1])
+    steparray=steplist[-1]
 
     smtlist=[]
     smoothing_vector=[1/n_smoothing]*n_smoothing
@@ -95,16 +115,18 @@ def CreateLearningCurvePlots(path, n_smoothing=20, nseeds=5, numiter=1200, yrang
     plt.clf()
     
     # PLOT SMOOTHED MAX,AVG,MINMAX RANGE, STD
+    steparray=steparray[(n_smoothing//2):-(n_smoothing//2)]
     fig,ax=plt.subplots(figsize=(5,5))
     #ax.plot(smt_maxline,color="green", label='best seed')
-    #ax.plot(smtlist.transpose(),color="gray",alpha=0.2)
-    #ax.plot(smt_bestline,color="green", label='best seed')
-    ax.plot(smt_avgline,color="orange",alpha=1., label='avg seed')
-    ax.fill_between([i for i in range(len(smt_maxline))],smt_avgline-smt_stdline,np.minimum((smt_avgline+smt_stdline),smt_maxline),facecolor='orange',alpha=0.4,label='std')
-    ax.fill_between([i for i in range(len(smt_maxline))],smt_minline,smt_maxline,facecolor='gray',alpha=0.15, label='minmax')
+    #ax.plot(steparray,smtlist.transpose(),color="gray",alpha=.2, linewidth=0.4)
+    #ax.plot(steparray,smt_bestline,color="green", label='best seed', linewidth=0.4)
+    ax.plot(steparray,smt_avgline,color="orange",alpha=1., label='avg seed')
+    ax.fill_between(steparray,smt_avgline-smt_stdline,np.minimum((smt_avgline+smt_stdline),smt_maxline),facecolor='orange',alpha=0.4,label='std')
+    ax.fill_between(steparray,smt_minline,smt_maxline,facecolor='gray',alpha=0.15, label='minmax')
     #ax.legend()
     #ax=plt.gca()
     ax.set_xlim([0,numiter])
+    ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, pos: '{:,.0f}'.format(x/1000) + 'k'))
     ax.set_ylim(yrange)
     #plt.ylabel('average reward')
     #ax.axes.get_xaxis().set_visible(False)
@@ -164,10 +186,10 @@ def CreateLearningCurvePlotsPhase1(path, n_smoothing=20, nseeds=5, numiter=1200,
     #ax.plot(smt_maxline,color="green", label='best seed')
     
     #ax.plot(step,smtlist.transpose(),color="orange",alpha=.2)
-    #ax.plot(smt_bestline,color="green", label='best seed')
     ax.plot(step,smt_avgline,color="orange",alpha=1., label='avg seed')
     ax.fill_between(step,raw_minline,raw_maxline,facecolor='orange',alpha=0.35, label='minmax')
     ax.fill_between(step,smt_avgline-smt_stdline,np.minimum((smt_avgline+smt_stdline),smt_maxline),facecolor='gray',alpha=0.3,label='std')
+    #ax.plot(smt_bestline,color="green", label='best seed')
     #ax.legend()
     #ax=plt.gca()
     if numiter==None:
@@ -186,17 +208,18 @@ def CreateLearningCurvePlotsPhase1(path, n_smoothing=20, nseeds=5, numiter=1200,
     plt.savefig(path+'/Train_reward_Learningcurves.png')
     plt.clf()
 
-root="./results/results_Phase3simp/test_lstm_simp"
+#root="./results/results_Phase3simp/test_lstm_simp"
 #root="./results/results_Phase3simp/ppo/MemTask-U1"
 #root="./results/results_Phase3/ppo/M5x5Fixed"
 #root="./results/results_Phase3/ppo/M5x5Fixed/gat2-q/emb24_itT5/lstm_Dual_24_1/NFM_ev_ec_t_dt_at_um_us"
 #root="./results/results_Phase3/ppo/M5x5Fixed/gat2-v/emb24_itT5/lstm_None/NFM_ev_ec_t_dt_at_um_us"
+root="./results/results_Phase3simp/ppo/NWB_AMS_mixed_obs/gat2-q/emb64_itT5"
 
 # USE FOR LSTM
 for path in [x[0] for x in os.walk(root)]:
     if os.path.isfile(path+'/train-parameters.txt'):
         #path="./results/results_Phase3/ppo/MemTask-U1/gat2-q/emb24_itT5/lstm_Dual_24_1/NFM_ev_ec_t_dt_at_um_us/omask_freq0.2/bsize48" #folderpath
-        CreateLearningCurvePlots(path=path, n_smoothing=15, nseeds=10, numiter=500, yrange=[-9.,9.])
+        CreateLearningCurvePlots(path=path, seed0=2201, nseeds=2, n_smoothing=301, numiter=25000, yrange=[-9.,9.])
 
 #path="./results/results_Phase1/DQN/Manhattan5x5_VariableEscapeInit/etUt/tensorboard"
 #CreateLearningCurvePlotsPhase1(path=path, n_smoothing=5, nseeds=5, numiter=None, yrange=[-10.,5.])
