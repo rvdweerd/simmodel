@@ -64,10 +64,6 @@ def CreateEnv(world_name, max_nodes=9, max_edges=300, nfm_func_name = 'NFM_ev_ec
     if var_targets is not None:
         env = VarTargetWrapper(env, var_targets)
     if apply_wrappers:
-        #env = PPO_ObsWrapper(env, max_possible_num_nodes = max_nodes)        
-        #env = PPO_ObsDictWrapper(env, max_possible_num_nodes = max_nodes, max_possible_num_edges = max_edges)
-        #if type_obs_wrap == 'Flat':
-        #    env = PPO_ObsFlatWrapper(env, max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges, obs_mask=obs_mask, obs_rate=obs_rate)
         if type_obs_wrap == 'Dict':
             env = PPO_ObsDictWrapper(env, max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges)
         elif type_obs_wrap == 'BasicDict':
@@ -212,13 +208,11 @@ def evaluate_lstm_ppo(logdir, info=False, config=None, env=None, ppo_policy=None
     
     if type(env) == list:
         if len(env)==0: return 0,0,0,0
-        for i,e in enumerate(env):
-            
-
+        for i,e in enumerate(env):           
             l, returns, c, solves = EvaluatePolicy(e, ppo_policy, e.world_pool * multiplier, print_runs=False, save_plots=False, logdir=evaldir, eval_arg_func=EvalArgs1, silent_mode=True)
             num_worlds_requested = 10
             once_every = max(1,len(env)//num_worlds_requested)
-            if i % once_every ==0:
+            if i % once_every == 0:
                 plotlist = GetFullCoverageSample(returns, e.world_pool * multiplier, bins=3, n=3)
                 EvaluatePolicy(e, ppo_policy, plotlist, print_runs=True, save_plots=True, logdir=evaldir, eval_arg_func=EvalArgs1, silent_mode=False, plot_each_timestep=False)
             R+=returns 
@@ -231,10 +225,10 @@ def evaluate_lstm_ppo(logdir, info=False, config=None, env=None, ppo_policy=None
     def printing(text):
         print(text)
         OF.write(text + "\n")
-    num_unique_graphs=-1#len(env_all)
-    num_graph_instances=len(R)
-    avg_return=np.mean(R)
-    num_solved=np.sum(S)
+    num_unique_graphs = -1 #len(env_all)
+    num_graph_instances = len(R)
+    avg_return = np.mean(R)
+    num_solved = np.sum(S)
     success_rate = num_solved/len(S)
     printing('Total unique graphs evaluated: '+str(num_unique_graphs))
     printing('Total instances evaluated: '+str(num_graph_instances)+' Avg reward: {:.2f}'.format(avg_return))

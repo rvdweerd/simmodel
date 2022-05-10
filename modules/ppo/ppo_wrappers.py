@@ -158,17 +158,6 @@ class PPO_ObsFlatWrapper(ObservationWrapper):
                          torch.tensor([self.sp.V, self.max_possible_num_nodes, num_edges, self.max_possible_num_edges, self.F]))
                         ,dim=0).clone()
         return self.obs
-#         # # TEST
-#         # # deserialize single obs (:,)
-#         # num_nodes, max_nodes, num_edge, max_edges, F = obs[-5:].to(torch.int64).tolist()
-#         # nf,py,re,_ = torch.split(obs,(F*max_nodes, 2*max_edges, max_nodes, 5),dim=0)
-#         # nf=nf.reshape(max_nodes,-1)[:num_nodes]
-#         # py=py.reshape(2,-1)[:,:num_edges].to(torch.int64)
-#         # re=re.reshape(-1,1)[:num_nodes].to(torch.int64)
-#         # assert nf.shape[1]==F
-#         # assert torch.allclose(self.nfm,nf)
-#         # assert torch.allclose(self.sp.EI,py)
-#         return self.obs
 
 class PPO_ObsFlatWrapper_basic(ObservationWrapper):
     """Wrapper for constructing a flattened et|Ut observation tensor.

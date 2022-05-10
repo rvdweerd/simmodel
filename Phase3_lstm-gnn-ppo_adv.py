@@ -114,22 +114,22 @@ def main(args):
             #'Manhattan5x5_DuplicateSetB':[25,300],
             #'Manhattan3x3_WalkAround':[9,300],
             #'MetroU3_e1t31_FixedEscapeInit':[33, 300],
-            # 'full_solvable_3x3subs':[9,33],
+            #'full_solvable_3x3subs':[9,33],
             # 'MemoryTaskU1':[8,16],
-            #'Manhattan5x5_FixedEscapeInit':[25,105],
-            #'Manhattan5x5_VariableEscapeInit':[25,105],
-            #'MetroU3_e17tborder_FixedEscapeInit':[33,300],
-            #'MetroU3_e17tborder_VariableEscapeInit':[33,300],
-            #'NWB_ROT_FixedEscapeInit':[2602,7300],
-            #'NWB_ROT_VariableEscapeInit':[2602,7300],
+            'Manhattan5x5_FixedEscapeInit':[25,105],
+            'Manhattan5x5_VariableEscapeInit':[25,105],
+            'MetroU3_e17tborder_FixedEscapeInit':[33,300],
+            'MetroU3_e17tborder_VariableEscapeInit':[33,300],
+            'NWB_ROT_FixedEscapeInit':[2602,7300],
+            'NWB_ROT_VariableEscapeInit':[2602,7300],
             'NWB_test_FixedEscapeInit':[975,4000],
-            #'NWB_test_VariableEscapeInit':[975,4000],
-            #'NWB_UTR_FixedEscapeInit':[1182,4000],
-            #'NWB_UTR_VariableEscapeInit':[1182,4000],
+            'NWB_test_VariableEscapeInit':[975,4000],
+            'NWB_UTR_FixedEscapeInit':[1182,4000],
+            'NWB_UTR_VariableEscapeInit':[1182,4000],
             # 'SparseManhattan5x5':[25,105],
             }
-        obs_evalmasks = ['prob_per_u_test','prob_per_u_test','prob_per_u_test','prob_per_u_test','prob_per_u_test'] # ['None']['prob_per_u']
-        obs_evalrates = [0.9,.8,.7,.6,.5]    # [1.][0.8]
+        obs_evalmasks = ['None']#'prob_per_u_test','prob_per_u_test','prob_per_u_test','prob_per_u_test','prob_per_u_test'] # ['None']['prob_per_u']
+        obs_evalrates = [1.0]#0.9,.8,.7,.6,.5]    # [1.][0.8]
         for obs_mask, obs_rate in zip(obs_evalmasks, obs_evalrates):
             for world_name in world_dict.keys():
                 evalName=world_name+'_obs'+obs_mask+'_evaldet'+str(tp['eval_deterministic'])[0]

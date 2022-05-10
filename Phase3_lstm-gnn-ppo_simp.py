@@ -90,8 +90,8 @@ def main(args):
     if config['test']:
         evalResults={}
         world_dict = SelectTestWorlds()
-        obs_evalmasks = ['prob_per_u_test','prob_per_u_test','prob_per_u_test','prob_per_u_test','prob_per_u_test'] # ['None']['prob_per_u']
-        obs_evalrates = [0.7,.8,.7,.6,.5]    # [1.][0.8]
+        obs_evalmasks = 10*['prob_per_u_test']
+        obs_evalrates = [.9,.8,.7,.6,.5,.4,.3,.2,.1,0.0]    # [1.][0.8]
         for obs_mask, obs_rate in zip(obs_evalmasks, obs_evalrates):
             for world_name in world_dict.keys():
                 evalName=world_name+'_obs'+obs_mask+'_evaldet'+str(tp['eval_deterministic'])[0]
@@ -117,8 +117,8 @@ def main(args):
         config['rootdir']=config['rootdir'][:l+to]
         evalResults={}
         world_dict = SelectTestWorlds()
-        obs_evalmasks = ['prob_per_u_test','prob_per_u_test','prob_per_u_test','prob_per_u_test','prob_per_u_test']
-        obs_evalrates = [1.0,0.3,0.2,0.1,0.]
+        obs_evalmasks = 6*['prob_per_u_test']
+        obs_evalrates = [.5,.4,.3,.2,.1,0.0]
         for obs_mask, obs_rate in zip(obs_evalmasks, obs_evalrates):
             for world_name in world_dict.keys():
                 evalName=world_name+'_obs'+obs_mask

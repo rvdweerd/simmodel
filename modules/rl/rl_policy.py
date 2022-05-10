@@ -225,7 +225,7 @@ class ColllisionRiskAvoidancePolicy(Policy):
 
     def sample_greedy_action(self, s, available_actions=None, printing=False):
         node_risks = self.CRE.process_new_observation(s['nfm'])
-        spos = torch.nonzero(s['nfm'][:,1]).flatten().item()
+        spos = torch.nonzero(s['nfm'][:,1]).flatten().item() # current E position
         p, (best_path_cost, best_path) = self.CRE.get_best_next_nodeid(spos, self.target_nodes)
         if printing:
             print('best path:',best_path,'Action chosen:',p)
