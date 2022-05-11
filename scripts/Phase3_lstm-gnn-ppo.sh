@@ -1,14 +1,15 @@
 #!/bin/bash
 
 #train_on="MixAll33"
-train_on="NWB_AMS_mixed_obs"
-#train_on="NWB_AMS"
+#train_on="NWB_AMS_mixed_obs"
+#train_on="TEST"
+train_on="NWB_AMS"
 #train_on="HeurCRE"
 #train_on="M5x5Fixed"
 #train_on="M5x5F_mixed_obs"
 #train_on="MemTask-U1"
 batch_size=2
-obs_mask="mix"
+obs_mask="None"
 #obs_mask="None"
 obs_rate=0.0
 #obs_mask="prob_per_u"
@@ -20,7 +21,7 @@ lstm_layers=1
 emb_iterT=5
 nfm_func="NFM_ev_ec_t_dt_at_um_us"
 #nfm_func="NFM_ev_ec_t_dt_at_ustack"
-qnet="gat2"
+qnet="s2v"
 critic='q'
 train="True"
 eval="False"
@@ -37,9 +38,9 @@ id="newseeds"
 eval_deter="True"
 #idn="AMSmix-TEST"
 #id="EMB64"
-for lstm_type in {"EMB",}
+for lstm_type in {"None",}
 do
-    for seed0 in {1000,}
+    for seed0 in {0,}
     do
         tmux new-session -d -s "${idn}-${id}"
         tmux send-keys -t "${idn}-${id}" "conda activate rlcourse-sb3c" Enter

@@ -492,9 +492,9 @@ class PPO_GNN_Single_LSTM(PPO_GNN_Model):
         #for layer in self.theta1_extras:
         #    s1 = layer(F.relu(s1))  # we apply the extra layer
         
-        s3_1 = F.relu(self.theta4(Ws.unsqueeze(3)))  # (batch_size, nr_nodes, nr_nodes, emb_dim) - each "weigth" is a p-dim vector        
-        s3_2 = torch.sum(s3_1, dim=1)  # (batch_size, nr_nodes, emb_dim) - the embedding for each node
-        s3 = self.theta3(s3_2)  # (batch_size, nr_nodes, emb_dim)
+        s3_1 = F.relu(self.theta4(Ws.unsqueeze(2)))  # (nr_nodes, nr_nodes, emb_dim) - each "weigth" is a p-dim vector        
+        s3_2 = torch.sum(s3_1, dim=0)  # (nr_nodes, emb_dim) - the embedding for each node
+        s3 = self.theta3(s3_2)  # (nr_nodes, emb_dim)
         
         for t in range(self.T):
             s2 = self.theta2(conn_matrices.matmul(mu))    
@@ -510,9 +510,10 @@ class PPO_GNN_Single_LSTM(PPO_GNN_Model):
             pyg_data = Batch.from_data_list(pyg_list)
             mu = self.gat(pyg_data.x, pyg_data.edge_index)
         else:
-            Ws = to_dense_adj(ei)
+            Ws = to_dense_adj(ei)[0]
             assert ei.dim() == 2
-            mu = self.s2v(nfm, Ws.expand(nfm.shape[0], -1, -1))
+            assert Ws.dim() == 2
+            mu = self.s2v(nfm, Ws)
         
         mu = mu.reshape(seq_len, -1, self.emb_dim) # mu: (seq_len, num_nodes, emb_dim)        
         if self.config['lstm_type'] == 'EMB':
