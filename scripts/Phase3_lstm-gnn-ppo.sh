@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #train_on="MixAll33"
-train_on="NWB_AMS_mixed_obs2"
+train_on="NWB_AMS_mixed_obs"
 #train_on="NWB_AMS"
 #train_on="HeurCRE"
 #train_on="M5x5Fixed"
@@ -26,20 +26,20 @@ train="True"
 eval="False"
 test="False"
 test_heur="False"
-num_seeds=3
+num_seeds=5
 #seed0=0
 demoruns="False"
-num_step=25001
+num_step=25000
 type_obs_wrap="BasicDict"
 parallel_rollouts=4
 idn="train"
-id="ams-mix2"
+id="newseeds"
 eval_deter="True"
 #idn="AMSmix-TEST"
 #id="EMB64"
-for lstm_type in {"None",}
+for lstm_type in {"EMB",}
 do
-    for seed0 in {0,}
+    for seed0 in {1000,}
     do
         tmux new-session -d -s "${idn}-${id}"
         tmux send-keys -t "${idn}-${id}" "conda activate rlcourse-sb3c" Enter

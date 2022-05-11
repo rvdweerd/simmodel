@@ -229,7 +229,7 @@ def PlotEUPathsOnGraph_(sp, epath, u_paths, fig_show, fig_save, filename, goal_r
                 tnode=sp.labels2coord[u_path[j+1]]
                 edgelist_takenU.append((snode,tnode))
         
-        if (not u_visible[i]) and (not done): #(last_step_only and (not done)):
+        if (not u_visible[i]):# and (not done): #(last_step_only and (not done)):
             continue
         colorlist[sp.labels2nodeids[u_path[-1]]]='#0000FF'
 

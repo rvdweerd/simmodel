@@ -213,13 +213,13 @@ def CreateLearningCurvePlotsPhase1(path, n_smoothing=20, nseeds=5, numiter=1200,
 #root="./results/results_Phase3/ppo/M5x5Fixed"
 #root="./results/results_Phase3/ppo/M5x5Fixed/gat2-q/emb24_itT5/lstm_Dual_24_1/NFM_ev_ec_t_dt_at_um_us"
 #root="./results/results_Phase3/ppo/M5x5Fixed/gat2-v/emb24_itT5/lstm_None/NFM_ev_ec_t_dt_at_um_us"
-root="./results/results_Phase3simp/ppo/NWB_AMS_mixed_obs/gat2-q/emb64_itT5"
+root="./results/results_Phase3simp/ppo/NWB_AMS_mixed_obs/gat2-q/emb64_itT5/lstm_EMB_64_1"
 
 # USE FOR LSTM
 for path in [x[0] for x in os.walk(root)]:
     if os.path.isfile(path+'/train-parameters.txt'):
         #path="./results/results_Phase3/ppo/MemTask-U1/gat2-q/emb24_itT5/lstm_Dual_24_1/NFM_ev_ec_t_dt_at_um_us/omask_freq0.2/bsize48" #folderpath
-        CreateLearningCurvePlots(path=path, seed0=2200, nseeds=3, n_smoothing=201, numiter=16000, yrange=[-9.,9.])
+        CreateLearningCurvePlots(path=path, seed0=2200, nseeds=3, n_smoothing=201, numiter=25000, yrange=[-9.,9.])
 
 #path="./results/results_Phase1/DQN/Manhattan5x5_VariableEscapeInit/etUt/tensorboard"
 #CreateLearningCurvePlotsPhase1(path=path, n_smoothing=5, nseeds=5, numiter=None, yrange=[-10.,5.])

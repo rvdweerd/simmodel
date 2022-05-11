@@ -71,10 +71,10 @@ def main(args):
                 model.optimizer.load_state_dict(cp['optimizer'])
                 print(f"Loaded model from {last_checkpoint}")
                 print('Iteration:', it0, 'best_result:', best_result)
-            try:
-                score = model.learn(senv, it0, best_result)
-            except:
-                continue
+            #try:
+            score = model.learn(senv, it0, best_result)
+            #except:
+            #    pass#continue
 
     ##### EVALUATION FUNCTION FOR TRAINED POLICY for full test dataset #####
     if config['eval']:
@@ -90,8 +90,8 @@ def main(args):
     if config['test']:
         evalResults={}
         world_dict = SelectTestWorlds()
-        obs_evalmasks = 10*['prob_per_u_test']
-        obs_evalrates = [.9,.8,.7,.6,.5,.4,.3,.2,.1,0.0]    # [1.][0.8]
+        obs_evalmasks = ['None']#1*['prob_per_u_test']
+        obs_evalrates = [1.]#,.9,.8,.7,.6,.5,.4,.3,.2,.1,0.0]    # [1.][0.8]
         for obs_mask, obs_rate in zip(obs_evalmasks, obs_evalrates):
             for world_name in world_dict.keys():
                 evalName=world_name+'_obs'+obs_mask+'_evaldet'+str(tp['eval_deterministic'])[0]
@@ -117,8 +117,8 @@ def main(args):
         config['rootdir']=config['rootdir'][:l+to]
         evalResults={}
         world_dict = SelectTestWorlds()
-        obs_evalmasks = 6*['prob_per_u_test']
-        obs_evalrates = [.5,.4,.3,.2,.1,0.0]
+        obs_evalmasks = 5*['prob_per_u_test']
+        obs_evalrates = [.4,.3,.2,.1,0.0]
         for obs_mask, obs_rate in zip(obs_evalmasks, obs_evalrates):
             for world_name in world_dict.keys():
                 evalName=world_name+'_obs'+obs_mask
@@ -139,22 +139,22 @@ def main(args):
 def SelectTestWorlds():
     world_dict={ # [max_nodes,max_edges]
             #'Manhattan5x5_DuplicateSetB':[25,300],
-            #'Manhattan3x3_WalkAround':[9,33],
-            #'MetroU3_e1t31_FixedEscapeInit':[33, 300],
+            #'Manhattan3x3_WalkAround':[9,21],
+            #'MetroU3_e1t31_FixedEscapeInit':[33, 119],
             #'MemoryTaskU1':[8,16],
-            #'full_solvable_3x3subs':[9,33],
+            #'full_solvable_3x3subs':[9,21],
             #'Manhattan5x5_FixedEscapeInit':[25,105],
             #'Manhattan5x5_FixedEscapeInit2':[25,105],
             #'Manhattan5x5_VariableEscapeInit':[25,105],
-            #'MetroU3_e17tborder_FixedEscapeInit':[33,300],
-            #'MetroU3_e17tborder_VariableEscapeInit':[33,300],
-            #'NWB_ROT_FixedEscapeInit':[2602,7300],
-            #'NWB_ROT_VariableEscapeInit':[2602,7300],
-            'NWB_test_FixedEscapeInit':[975,1425],
+            'MetroU3_e17tborder_FixedEscapeInit':[33,119],
+            #'MetroU3_e17tborder_VariableEscapeInit':[33,119],
+            #'NWB_ROT_FixedEscapeInit':[2602,7266],
+            #'NWB_UTR_FixedEscapeInit':[1182,3204],
+            #'NWB_ROT_VariableEscapeInit':[2602,7266],
+            #'NWB_test_FixedEscapeInit':[975,1425],
             #'NWB_test_FixedEscapeInit2':[975,1425],
             #'NWB_test_VariableEscapeInit':[975,1425],
-            #'NWB_UTR_FixedEscapeInit':[1182,4000],
-            #'NWB_UTR_VariableEscapeInit':[1182,4000],
+            #'NWB_UTR_VariableEscapeInit':[1182,3204],
             #'SparseManhattan5x5':[25,105],
             }
     return world_dict

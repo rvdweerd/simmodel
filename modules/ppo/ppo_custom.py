@@ -311,9 +311,9 @@ def GetConfigs(args, suffix=""):
         'checkpoint_frequency':        args.checkpoint_frequency,
         'eval_deterministic':          args.eval_deter}
 
-    batch_count = hp.parallel_rollouts * hp.rollout_steps / hp.recurrent_seq_len / hp.batch_size
-    print(f"batch_count: {batch_count}")
-    assert batch_count >= 1., "Less than 1 batch per trajectory.  Are you sure that's what you want?"  
+    #batch_count = hp.parallel_rollouts * hp.rollout_steps / hp.recurrent_seq_len / hp.batch_size
+    #print(f"batch_count: {batch_count}")
+    #assert batch_count >= 1., "Less than 1 batch per trajectory.  Are you sure that's what you want?"  
     return config, hp, tp
 
 def WriteTrainParamsToFile(config,hp,tp):

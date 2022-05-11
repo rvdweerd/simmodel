@@ -306,7 +306,7 @@ class NFM_ev_ec_t_dt_at_um_us():
         return masked_nfm
         
 class NFM_ev_ec_t_dt_at_ustack():
-    def __init__(self, k=3):
+    def __init__(self, k=5):
         assert k>1
         self.name='nfm-ev-ec-t-dt-at-ustack'
         self.F=5+k

@@ -10,6 +10,7 @@ import time
 from torch_geometric.nn.conv import MessagePassing, GATv2Conv
 from torch_geometric.nn.models.basic_gnn import BasicGNN
 from torch_geometric.data import Data, Batch
+from torch_geometric.utils import to_dense_adj
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -354,7 +355,7 @@ class PPO_GNN_Model(nn.Module):
         self.num_rollouts = hp.parallel_rollouts
         self.num_epochs = hp.batch_size
         assert config['lstm_type'] in ['None','EMB','FE','Dual','DualCC']
-        assert config['qnet'] == 'gat2'
+        assert config['qnet'] in ['gat2','s2v']
         assert config['critic'] in ['q','v']
         Path(self.tp["base_checkpoint_path"]).mkdir(parents=True, exist_ok=True)
 
@@ -411,16 +412,27 @@ class PPO_GNN_Single_LSTM(PPO_GNN_Model):
         self.description="PPO policy, GATv2 extractor, lstm, action masking"
         assert config['lstm_type'] in ['None','EMB','FE']
 
-        kwargs={'concat':config['gat_concat']}
-        self.gat = GATv2(
-            in_channels = self.node_dim,
-            hidden_channels = self.emb_dim*2,
-            heads = config['gat_heads'],
-            num_layers = config['emb_iterT'],
-            out_channels = self.emb_dim,
-            share_weights = config['gat_share_weights'],
-            **kwargs
-        ).to(device)      
+        if config['qnet'] == 'gat2':
+            kwargs={'concat':config['gat_concat']}
+            self.gat = GATv2(
+                in_channels = self.node_dim,
+                hidden_channels = self.emb_dim*2,
+                heads = config['gat_heads'],
+                num_layers = config['emb_iterT'],
+                out_channels = self.emb_dim,
+                share_weights = config['gat_share_weights'],
+                **kwargs
+            ).to(device)      
+        elif config['qnet'] == 's2v':
+            self.emb_dim    = config['emb_dim']
+            self.T          = config['emb_iterT']
+            self.node_dim   = hp.node_dim            
+            self.theta1a    = nn.Linear(self.node_dim, self.emb_dim, True, device=device)#, dtype=torch.float32)
+            self.theta1b    = nn.Linear(self.emb_dim, self.emb_dim, True, device=device)#, dtype=torch.float32)
+            self.theta2     = nn.Linear(self.emb_dim, self.emb_dim, True, device=device)#, dtype=torch.float32)
+            self.theta3     = nn.Linear(self.emb_dim, self.emb_dim, True, device=device)#, dtype=torch.float32)
+            self.theta4     = nn.Linear(1, self.emb_dim, True, device=device)#, dtype=torch.float32)
+        else: assert False
 
         if config['lstm_type'] == 'EMB':
             self.lstm_on=True
@@ -462,12 +474,45 @@ class PPO_GNN_Single_LSTM(PPO_GNN_Model):
             lstm_hidden = hidden
         return num_nodes, seq_len, nfm, ei, reachable, lstm_hidden
 
+    def s2v(self, xv, Ws):
+        # xv: The node features (batch_size, num_nodes, node_dim)
+        # Ws: The graphs (batch_size, num_nodes, num_nodes)
+        num_nodes = xv.shape[1]
+        batch_size = xv.shape[0]
+        
+        # pre-compute 1-0 connection matrices masks (batch_size, num_nodes, num_nodes)
+        #conn_matrices = torch.where(Ws > 0, torch.ones_like(Ws), torch.zeros_like(Ws)).to(device)
+        conn_matrices = Ws # we have only edge weights of 1
+
+        # Graph embedding
+        # Note: we first compute s1 and s3 once, as they are not dependent on mu
+        mu = torch.zeros(batch_size, num_nodes, self.emb_dim,device=device)#, dtype=torch.float32)#,device=device)
+        #s1 = self.theta1a(xv)  # (batch_size, num_nodes, emb_dim)
+        s1 = self.theta1b(F.relu(self.theta1a(xv)))  # (batch_size, num_nodes, emb_dim)
+        #for layer in self.theta1_extras:
+        #    s1 = layer(F.relu(s1))  # we apply the extra layer
+        
+        s3_1 = F.relu(self.theta4(Ws.unsqueeze(3)))  # (batch_size, nr_nodes, nr_nodes, emb_dim) - each "weigth" is a p-dim vector        
+        s3_2 = torch.sum(s3_1, dim=1)  # (batch_size, nr_nodes, emb_dim) - the embedding for each node
+        s3 = self.theta3(s3_2)  # (batch_size, nr_nodes, emb_dim)
+        
+        for t in range(self.T):
+            s2 = self.theta2(conn_matrices.matmul(mu))    
+            mu = F.relu(s1 + s2 + s3) # (batch_size, nr_nodes, emb_dim)
+        
+        return mu
+
     def create_embeddings(self, seq_len, nfm, ei, lstm_hidden):
-        pyg_list=[]
-        for e in nfm:
-            pyg_list.append(Data(e, ei))
-        pyg_data = Batch.from_data_list(pyg_list)
-        mu = self.gat(pyg_data.x, pyg_data.edge_index)
+        if self.config['qnet'] == 'gat2':
+            pyg_list=[]
+            for e in nfm:
+                pyg_list.append(Data(e, ei))
+            pyg_data = Batch.from_data_list(pyg_list)
+            mu = self.gat(pyg_data.x, pyg_data.edge_index)
+        else:
+            Ws = to_dense_adj(ei)
+            assert ei.dim() == 2
+            mu = self.s2v(nfm, Ws.expand(nfm.shape[0], -1, -1))
         
         mu = mu.reshape(seq_len, -1, self.emb_dim) # mu: (seq_len, num_nodes, emb_dim)        
         if self.config['lstm_type'] == 'EMB':

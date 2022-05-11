@@ -566,7 +566,7 @@ def ConstructTrainSet(config, apply_wrappers=True, type_obs_wrap='Flat', remove_
 
     elif tset == 'TEST':
         config['max_nodes']=9
-        config['max_edges']=33
+        config['max_edges']=21
 
         # env, _ = get_super_env(Uselected=[2], Eselected=[3,9], config=config, var_targets=None, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, remove_paths=remove_paths)
         # env_all_list += env.all_env
