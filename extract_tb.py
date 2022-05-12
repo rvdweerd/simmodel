@@ -73,7 +73,10 @@ def CreateLearningCurvePlots(path, n_smoothing=21, seed0=0, nseeds=5, numiter=12
     maxlen=0
     for seed in range(seed0, seed0+nseeds):
         path_ = path+'/SEED'+str(seed)+'/logs'
-        step,rew = tdlog2np(path_,'return_per_epi')
+        try:
+            step,rew = tdlog2np(path_,'return_per_epi')
+        except:
+            continue
         rawlist.append(rew)
         steplist.append(step)
         maxlen = max(maxlen, len(rew))
@@ -136,7 +139,7 @@ def CreateLearningCurvePlots(path, n_smoothing=21, seed0=0, nseeds=5, numiter=12
     ax.axhline(y=0,color='black',linewidth=.5)
     #lstm_dentifier = LSTM_info_from_path(path)
     #plt.title(lstm_dentifier)
-    plt.savefig(path+'/Train_reward_Learningcurves.png')
+    plt.savefig(path+'/Train_reward_Learningcurves_'+str(n_smoothing)+'.png')
     plt.clf()
 
 def CreateLearningCurvePlotsPhase1(path, n_smoothing=20, nseeds=5, numiter=1200, yrange=[-10.,2.]):
@@ -219,7 +222,7 @@ root="./results/results_Phase3simp/ppo/NWB_AMS_mixed_obs/gat2-q/emb64_itT5/lstm_
 for path in [x[0] for x in os.walk(root)]:
     if os.path.isfile(path+'/train-parameters.txt'):
         #path="./results/results_Phase3/ppo/MemTask-U1/gat2-q/emb24_itT5/lstm_Dual_24_1/NFM_ev_ec_t_dt_at_um_us/omask_freq0.2/bsize48" #folderpath
-        CreateLearningCurvePlots(path=path, seed0=2200, nseeds=3, n_smoothing=201, numiter=25000, yrange=[-9.,9.])
+        CreateLearningCurvePlots(path=path, seed0=2200, nseeds=4, n_smoothing=201, numiter=25000, yrange=[-9.,9.])
 
 #path="./results/results_Phase1/DQN/Manhattan5x5_VariableEscapeInit/etUt/tensorboard"
 #CreateLearningCurvePlotsPhase1(path=path, n_smoothing=5, nseeds=5, numiter=None, yrange=[-10.,5.])
