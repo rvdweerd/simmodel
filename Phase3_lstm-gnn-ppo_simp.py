@@ -117,8 +117,8 @@ def main(args):
         config['rootdir']=config['rootdir'][:l+to]
         evalResults={}
         world_dict = SelectTestWorlds()
-        obs_evalmasks = 5*['prob_per_u_test']
-        obs_evalrates = [1.,.3,.2,.1,0.0]
+        obs_evalmasks = 1*['prob_per_u_test']
+        obs_evalrates = [config['eval_rate']] #[1.,.3,.2,.1,0.0]
         for obs_mask, obs_rate in zip(obs_evalmasks, obs_evalrates):
             for world_name in world_dict.keys():
                 evalName=world_name+'_obs'+obs_mask
@@ -150,10 +150,10 @@ def SelectTestWorlds():
             #'MetroU3_e17tborder_VariableEscapeInit':[33,119],
             #'NWB_UTR_FixedEscapeInit2':[1182,3204],
             #'NWB_ROT_FixedEscapeInit':[2602,7266],
-            'NWB_ROT_FixedEscapeInit2':[2602,7266],
+            #'NWB_ROT_FixedEscapeInit2':[2602,7266],
             #'NWB_ROT_VariableEscapeInit':[2602,7266],
             #'NWB_test_FixedEscapeInit':[975,1425],
-            #'NWB_test_FixedEscapeInit2':[975,1425],
+            'NWB_test_FixedEscapeInit2':[975,1425],
             #'NWB_test_VariableEscapeInit':[975,1425],
             #'NWB_UTR_VariableEscapeInit':[1182,3204],
             #'SparseManhattan5x5':[25,105],
@@ -245,6 +245,7 @@ if __name__ == '__main__':
     parser.add_argument('--checkpoint_frequency', default=5000, type=int)
     parser.add_argument('--obs_mask', default='None', type=str, help='U obervation masking type', choices=['None','freq','prob','prob_per_u','mix'])
     parser.add_argument('--obs_rate', default=1.0, type=float)
+    parser.add_argument('--eval_rate', default=1.0, type=float)
     parser.add_argument('--emb_dim', default=64, type=int)
     parser.add_argument('--lstm_type', default='None', type=str, choices=['None','EMB','FE','Dual','DualCC'])
     parser.add_argument('--lstm_hdim', default=64, type=int)

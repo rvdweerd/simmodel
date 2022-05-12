@@ -1,0 +1,66 @@
+#!/bin/bash
+#SBATCH --job-name=heuristics
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=12
+#SBATCH --time=32:00:00
+#SBATCH --mem=48000M
+#SBATCH --output=slurm_output_%A.out
+
+__conda_setup="$('/home/weerdr/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/weerdr/miniconda3/etc/profile.d/conda.sh" ]; then
+        . "/home/weerdr/miniconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/weerdr/miniconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+
+cd $HOME/testing/sim
+conda activate rlcourse
+
+#train_on="M5x5Fixed"
+train_on="HeurCRE"
+batch_size=48
+#obs_mask="None"
+#obs_rate=1.0
+#obs_mask="prob_per_u"
+#obs_rate=.75
+obs_mask="None"
+obs_rate=0.0
+emb_dim=64
+#lstm_hdim=64
+lstm_type="None"
+#lstm_type="None"
+lstm_hdim=24
+lstm_layers=1
+emb_iterT=5
+#nfm_func="NFM_ev_ec_t_dt_at_um_us"
+#nfm_func="NFM_ev_ec_t_dt_at_ustack"
+qnet="gat2"
+train="False"
+eval="False"
+test="False"
+test_heur="True"
+type_obs_wrap="BasicDict"
+num_seeds=1
+seed0=0
+demoruns="False"
+parallel_rollouts=4
+rollout_steps=75
+#lr=5e-4
+num_step=70000
+critic="q"
+lstm_type="None"
+eval_deter="True"
+nfm_func="NFM_ev_ec_t_dt_at_um_us"
+#nfm_func="NFM_ev_ec_t_dt_at_ustack"
+for evalrate in {0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2,0.1,0.0,1.0}
+do
+    python Phase3_lstm-gnn-ppo_simp.py --eval_rate $eval_rate --train_on $train_on --batch_size $batch_size --obs_mask $obs_mask --obs_rate $obs_rate --emb_dim $emb_dim --lstm_type $lstm_type --lstm_hdim $lstm_hdim --lstm_layers $lstm_layers --emb_iterT $emb_iterT --nfm_func $nfm_func --qnet $qnet --train $train --eval $eval --test $test --num_seeds $num_seeds --seed0 $seed0 --demoruns $demoruns --parallel_rollouts $parallel_rollouts --critic $critic --num_step $num_step --test_heur $test_heur --type_obs_wrap $type_obs_wrap --eval_deter $eval_deter&
+done
+wait
+
+           

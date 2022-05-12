@@ -233,6 +233,7 @@ def GetConfigs(args, suffix=""):
     config['batch_size']      = args.batch_size
     config['obs_mask']        = str(args.obs_mask)
     config['obs_rate']        = args.obs_rate
+    config['eval_rate']       = args.eval_rate
     config['recurrent_seq_len'] = args.recurrent_seq_len
     config['train']           = args.train
     config['eval']            = args.eval
