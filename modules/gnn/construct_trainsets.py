@@ -78,30 +78,35 @@ def ConstructTrainSet(config, apply_wrappers=True, type_obs_wrap='Flat', remove_
             max_possible_num_nodes=33,
             probs=probs)
 
-    elif tset == 'NWB_AMS':
-        world_name = 'NWB_test_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=975, max_edges=1425, nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
+    elif tset in ['NWB_AMS','NWB_AMS2']:
+        if tset == 'NWB_AMS': # corresponds to U optim method1: random walk assumption for E
+            world_nameV = 'NWB_test_VariableEscapeInit'
+            world_nameF = 'NWB_test_FixedEscapeInit'
+        else: # corresponds to U optim method2: shortest path walk to targt nodes assumption for E
+            world_nameV = 'NWB_test_VariableEscapeInit2'
+            world_nameF = 'NWB_test_FixedEscapeInit2'
+
+        env = CreateEnv(world_nameV, max_nodes=975, max_edges=1425, nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(1)
 
-        world_name = 'NWB_test_VariableEscapeInit'
-        env = CreateEnv(world_name, max_nodes=975, max_edges=1425, nfm_func_name = config['nfm_func'], var_targets=[10,20], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
-        env_all_list.append(env)
-        global_env.append(env)
-        probs.append(1)
+        if tset == 'NWB_AMS': # can't apply variable targets to optim2; would require U optim at every step: too costly
+            env = CreateEnv(world_nameV, max_nodes=975, max_edges=1425, nfm_func_name = config['nfm_func'], var_targets=[10,20], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
+            env_all_list.append(env)
+            global_env.append(env)
+            probs.append(1)
 
-        world_name = 'NWB_test_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=975, max_edges=1425, nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
+        env = CreateEnv(world_nameF, max_nodes=975, max_edges=1425, nfm_func_name = config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
         env_all_list.append(env)
         global_env.append(env)
         probs.append(.1)
 
-        world_name = 'NWB_test_FixedEscapeInit'
-        env = CreateEnv(world_name, max_nodes=975, max_edges=1425, nfm_func_name = config['nfm_func'], var_targets=[10,20], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
-        env_all_list.append(env)
-        global_env.append(env)
-        probs.append(1)
+        if tset == 'NWB_AMS': # can't apply variable targets to optim2; would require U optim at every step: too costly
+            env = CreateEnv(world_nameF, max_nodes=975, max_edges=1425, nfm_func_name = config['nfm_func'], var_targets=[10,20], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
+            env_all_list.append(env)
+            global_env.append(env)
+            probs.append(1)
 
         super_env=SuperEnv(
             global_env,
@@ -283,7 +288,6 @@ def ConstructTrainSet(config, apply_wrappers=True, type_obs_wrap='Flat', remove_
             hashint2env=None,
             max_possible_num_nodes=config['max_nodes'],
             probs=probs)       
-
 
     elif tset == 'MetroConstructed':
         world_name = 'MetroU3_e17tborder_VariableEscapeInit'
