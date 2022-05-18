@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #train_on="MixAll33"
-train_on="NWB_AMS2_mixed_obs"
+train_on="NWB_AMS_mixed_obs"
 #train_on="TEST"
 #train_on="NWB_AMS"
 #train_on="HeurCRE"
@@ -12,8 +12,6 @@ batch_size=2
 obs_mask="mix"
 #obs_mask="None"
 obs_rate=0.0
-#obs_mask="prob_per_u"
-#obs_rate=.5
 emb_dim=64
 #lstm_hdim=64
 lstm_hdim=64
@@ -27,24 +25,25 @@ train="True"
 eval="False"
 test="False"
 test_heur="False"
-num_seeds=5
+num_seeds=1
 #seed0=0
 demoruns="False"
-num_step=25000
+num_step=25001
 type_obs_wrap="BasicDict"
 parallel_rollouts=4
 idn="train"
-id="opt2"
+id="with_tb"
 eval_deter="True"
+eval_rate=-0.5
 #idn="AMSmix-TEST"
 #id="EMB64"
 for lstm_type in {"EMB",}
 do
-    for seed0 in {0,}
+    for seed0 in {2200,}
     do
         tmux new-session -d -s "${idn}-${id}"
         tmux send-keys -t "${idn}-${id}" "conda activate rlcourse-sb3c" Enter
         tmux send-keys -t "${idn}-${id}" "cd ~/testing/sim" Enter
-        tmux send-keys -t "${idn}-${id}" "python Phase3_lstm-gnn-ppo_simp.py --train_on $train_on --batch_size $batch_size --obs_mask $obs_mask --obs_rate $obs_rate --emb_dim $emb_dim --lstm_type $lstm_type --lstm_hdim $lstm_hdim --lstm_layers $lstm_layers --emb_iterT $emb_iterT --nfm_func $nfm_func --qnet $qnet --train $train --eval $eval --test $test --num_seeds $num_seeds --seed0 $seed0 --demoruns $demoruns --parallel_rollouts $parallel_rollouts --critic $critic --num_step $num_step --test_heur $test_heur --type_obs_wrap $type_obs_wrap --eval_deter $eval_deter" Enter
+        tmux send-keys -t "${idn}-${id}" "python Phase3_lstm-gnn-ppo_simp.py --train_on $train_on --batch_size $batch_size --obs_mask $obs_mask --obs_rate $obs_rate --emb_dim $emb_dim --lstm_type $lstm_type --lstm_hdim $lstm_hdim --lstm_layers $lstm_layers --emb_iterT $emb_iterT --nfm_func $nfm_func --qnet $qnet --train $train --eval $eval --test $test --num_seeds $num_seeds --seed0 $seed0 --demoruns $demoruns --parallel_rollouts $parallel_rollouts --critic $critic --num_step $num_step --test_heur $test_heur --type_obs_wrap $type_obs_wrap --eval_deter $eval_deter --eval_rate $eval_rate" Enter
     done
 done

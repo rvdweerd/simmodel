@@ -411,7 +411,7 @@ class PPO_GNN_Single_LSTM(PPO_GNN_Model):
         super(PPO_GNN_Single_LSTM, self).__init__(config, hp, tp)
         self.description="PPO policy, GATv2 extractor, lstm, action masking"
         assert config['lstm_type'] in ['None','EMB','FE']
-
+        print('device',device)
         if config['qnet'] == 'gat2':
             kwargs={'concat':config['gat_concat']}
             self.gat = GATv2(
@@ -591,9 +591,14 @@ class PPO_GNN_Single_LSTM(PPO_GNN_Model):
         self.ei=[]
         return batch#s, a, r, s_prime, done_mask, prob_a,  h_in_lst[0], h_out_lst[0], mask
         
-    def train_net(self):
+    def train_net(self, n_epi=0):
         batch = self.make_batch()
+        rlist, l1list, l2list ,l3list, ltlist = [],[],[],[],[]
         for _ in range(self.num_epochs):
+            ratio_tsr = torch.tensor([])
+            loss1_tsr = torch.tensor([])#.to(device)
+            loss2_tsr = torch.tensor([])#.to(device)
+            loss3_tsr = torch.tensor([])#.to(device)
             loss_tsr = torch.tensor([])#.to(device)
             for j in range(self.num_rollouts):
                 nfm, a, r, nfm_prime, done_mask, prob_a, (h_in, c_in), (h_out, c_out), reachable, reachable_prime, ei = batch[j]
@@ -623,11 +628,36 @@ class PPO_GNN_Single_LSTM(PPO_GNN_Model):
 
                 surr1 = ratio * advantage
                 surr2 = torch.clamp(ratio, 1 - self.hp.ppo_clip, 1 + self.hp.ppo_clip) * advantage
-                loss = -torch.min(surr1, surr2) + F.smooth_l1_loss(v_s , td_target.detach()) #CHECK TODO
-                loss_tsr = torch.concat((loss_tsr,loss.squeeze(-1)))
+                #loss = -torch.min(surr1, surr2) + F.smooth_l1_loss(v_s , td_target.detach()) #CHECK TODO
+                loss1 = -torch.min(surr1, surr2).mean()
+                loss2 = F.smooth_l1_loss(v_s , td_target.detach())
+                loss3 = -torch.distributions.Categorical(probs=pi).entropy().mean()
+                ratio_tsr = torch.concat((ratio_tsr,ratio.mean().unsqueeze(-1)))#,device='cpu') 
+                loss1_tsr = torch.concat((loss1_tsr,loss1.unsqueeze(-1)))#,device='cpu') 
+                loss2_tsr = torch.concat((loss2_tsr,loss2.unsqueeze(-1)))#,device='cpu') 
+                loss3_tsr = torch.concat((loss3_tsr,loss3.unsqueeze(-1)))#,device='cpu') 
+                #loss_tsr = torch.concat((loss_tsr,loss.squeeze(-1)))
+            ratio=ratio_tsr.mean()
+            loss1=loss1_tsr.mean()
+            loss2=loss2_tsr.mean()
+            loss3=loss3_tsr.mean()
+            c1=1.
+            c2=.5
+            c3=0.
+            loss = c1*loss1 + c2*loss2 + c3*loss3
             self.optimizer.zero_grad()
-            loss_tsr.mean().backward(retain_graph=True)
+            loss.backward(retain_graph=False)
             self.optimizer.step()
+            rlist.append(ratio.detach().cpu().item())
+            l1list.append(loss1.detach().cpu().item())
+            l2list.append(loss2.detach().cpu().item())
+            l3list.append(loss3.detach().cpu().item())
+            ltlist.append(loss.detach().cpu().item())
+        self.tp['writer'].add_scalar('ratio', np.mean(rlist), n_epi)
+        self.tp['writer'].add_scalar('loss1_ratio', np.mean(l1list), n_epi)
+        self.tp['writer'].add_scalar('loss2_value', np.mean(l2list), n_epi)
+        self.tp['writer'].add_scalar('loss3_entropy', np.mean(l3list), n_epi)
+        self.tp['writer'].add_scalar('loss_total', np.mean(ltlist), n_epi)
 
     def learn(self, env, it0=0, best_result=-1e6):
         score = 0.0
@@ -673,7 +703,7 @@ class PPO_GNN_Single_LSTM(PPO_GNN_Model):
             counter+=1
             end_gather_time = time.time()
             start_train_time = time.time()
-            self.train_net()
+            self.train_net(n_epi)
             end_train_time = time.time() 
             gathertimes.append(end_gather_time-start_gather_time)
             traintimes.append(end_train_time-start_train_time)
