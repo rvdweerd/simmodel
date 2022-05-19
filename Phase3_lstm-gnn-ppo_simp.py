@@ -117,8 +117,8 @@ def main(args):
         config['rootdir']=config['rootdir'][:l+to]
         evalResults={}
         world_dict = SelectTestWorlds()
-        obs_evalmasks = 11*['prob_per_u_test']
-        obs_evalrates = [1.,.9,.8,.7,.6,.5,.4,.3,.2,.1,0.]#[config['eval_rate']] #[1.,.3,.2,.1,0.0]
+        obs_evalmasks = 5*['prob_per_u_test']
+        obs_evalrates = [.4,.3,.2,.1,0.]#[config['eval_rate']] #[1.,.3,.2,.1,0.0]
         for obs_mask, obs_rate in zip(obs_evalmasks, obs_evalrates):
             for world_name in world_dict.keys():
                 evalName=world_name+'_obs'+obs_mask
