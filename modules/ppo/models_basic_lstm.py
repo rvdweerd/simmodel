@@ -596,10 +596,10 @@ class PPO_GNN_Single_LSTM(PPO_GNN_Model):
         rlist, l1list, l2list ,l3list, ltlist = [],[],[],[],[]
         for _ in range(self.num_epochs):
             ratio_tsr = torch.tensor([])
-            loss1_tsr = torch.tensor([])#.to(device)
-            loss2_tsr = torch.tensor([])#.to(device)
-            loss3_tsr = torch.tensor([])#.to(device)
-            loss_tsr = torch.tensor([])#.to(device)
+            mean_loss1_tsr = torch.tensor([])#.to(device)
+            mean_loss2_tsr = torch.tensor([])#.to(device)
+            mean_loss3_tsr = torch.tensor([])#.to(device)
+            mean_loss_tsr = torch.tensor([])#.to(device)
             for j in range(self.num_rollouts):
                 nfm, a, r, nfm_prime, done_mask, prob_a, (h_in, c_in), (h_out, c_out), reachable, reachable_prime, ei = batch[j]
                 first_hidden = (h_in.detach(), c_in.detach())
@@ -628,30 +628,31 @@ class PPO_GNN_Single_LSTM(PPO_GNN_Model):
 
                 surr1 = ratio * advantage
                 surr2 = torch.clamp(ratio, 1 - self.hp.ppo_clip, 1 + self.hp.ppo_clip) * advantage
-                #loss = -torch.min(surr1, surr2) + F.smooth_l1_loss(v_s , td_target.detach()) #CHECK TODO
-                loss1 = -torch.min(surr1, surr2).mean()
+                
+                loss1 = -torch.min(surr1, surr2)
                 loss2 = F.smooth_l1_loss(v_s , td_target.detach())
-                loss3 = -torch.distributions.Categorical(probs=pi).entropy().mean()
-                ratio_tsr = torch.concat((ratio_tsr,ratio.mean().unsqueeze(-1)))#,device='cpu') 
-                loss1_tsr = torch.concat((loss1_tsr,loss1.unsqueeze(-1)))#,device='cpu') 
-                loss2_tsr = torch.concat((loss2_tsr,loss2.unsqueeze(-1)))#,device='cpu') 
-                loss3_tsr = torch.concat((loss3_tsr,loss3.unsqueeze(-1)))#,device='cpu') 
-                #loss_tsr = torch.concat((loss_tsr,loss.squeeze(-1)))
-            ratio=ratio_tsr.mean()
-            loss1=loss1_tsr.mean()
-            loss2=loss2_tsr.mean()
-            loss3=loss3_tsr.mean()
-            c1=1.
-            c2=.5
-            c3=0.
-            loss = c1*loss1 + c2*loss2 + c3*loss3
+                loss3 = -torch.distributions.Categorical(probs=pi).entropy()
+                loss = loss1 + loss2 # note: We fix c1=1, c2=0 (see PPO paper)
+                loss_tsr = torch.concat((loss_tsr,loss.squeeze(-1)))
+                
+                # log individual loss components
+                mean_ratio_tsr = torch.concat((mean_ratio_tsr,ratio.mean().unsqueeze(-1)))#,device='cpu') 
+                mean_loss1_tsr = torch.concat((mean_loss1_tsr,loss1.mean().unsqueeze(-1)))#,device='cpu') 
+                mean_loss2_tsr = torch.concat((mean_loss2_tsr,loss2.unsqueeze(-1)))#,device='cpu') 
+                mean_loss3_tsr = torch.concat((mean_loss3_tsr,loss3.mean().unsqueeze(-1)))#,device='cpu') 
+            ratio_=mean_ratio_tsr.mean()
+            loss1_=mean_loss1_tsr.mean()
+            loss2_=mean_loss2_tsr.mean()
+            loss3_=mean_loss3_tsr.mean()
+            
             self.optimizer.zero_grad()
-            loss.backward(retain_graph=False)
+            loss_tsr.mean().backward(retain_graph=False)
             self.optimizer.step()
-            rlist.append(ratio.detach().cpu().item())
-            l1list.append(loss1.detach().cpu().item())
-            l2list.append(loss2.detach().cpu().item())
-            l3list.append(loss3.detach().cpu().item())
+            
+            rlist.append(ratio_.detach().cpu().item())
+            l1list.append(loss1_.detach().cpu().item())
+            l2list.append(loss2_.detach().cpu().item())
+            l3list.append(loss3_.detach().cpu().item())
             ltlist.append(loss.detach().cpu().item())
         self.tp['writer'].add_scalar('ratio', np.mean(rlist), n_epi)
         self.tp['writer'].add_scalar('loss1_ratio', np.mean(l1list), n_epi)
