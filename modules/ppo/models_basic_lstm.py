@@ -595,21 +595,19 @@ class PPO_GNN_Single_LSTM(PPO_GNN_Model):
         batch = self.make_batch()
         rlist, l1list, l2list ,l3list, ltlist = [],[],[],[],[]
         for _ in range(self.num_epochs):
-            ratio_tsr = torch.tensor([])
-            mean_loss1_tsr = torch.tensor([])#.to(device)
-            mean_loss2_tsr = torch.tensor([])#.to(device)
-            mean_loss3_tsr = torch.tensor([])#.to(device)
-            mean_loss_tsr = torch.tensor([])#.to(device)
+            mean_ratio_tsr = torch.tensor([])
+            mean_loss1_tsr = torch.tensor([])
+            mean_loss2_tsr = torch.tensor([])
+            mean_loss3_tsr = torch.tensor([])
+            loss_tsr = torch.tensor([])
             for j in range(self.num_rollouts):
                 nfm, a, r, nfm_prime, done_mask, prob_a, (h_in, c_in), (h_out, c_out), reachable, reachable_prime, ei = batch[j]
                 first_hidden = (h_in.detach(), c_in.detach())
                 second_hidden = (h_out.detach(), c_out.detach())
 
-                v_prime = self.v(nfm_prime, ei, reachable_prime, second_hidden)[0].cpu()#.squeeze(1).cpu()
-                #v_prime = self.v(s_prime, second_hidden)[0].unsqueeze(-1).cpu()
+                v_prime = self.v(nfm_prime, ei, reachable_prime, second_hidden)[0].cpu()
                 td_target = r + self.hp.discount * v_prime * done_mask
-                v_s = self.v(nfm, ei, reachable, first_hidden)[0].cpu()#.squeeze(1).cpu()
-                #v_s = self.v(s, first_hidden)[0].unsqueeze(-1).cpu()
+                v_s = self.v(nfm, ei, reachable, first_hidden)[0].cpu()
                 delta = td_target - v_s
                 delta = delta.detach().numpy()
 
@@ -633,27 +631,29 @@ class PPO_GNN_Single_LSTM(PPO_GNN_Model):
                 loss2 = F.smooth_l1_loss(v_s , td_target.detach())
                 loss3 = -torch.distributions.Categorical(probs=pi).entropy()
                 loss = loss1 + loss2 # note: We fix c1=1, c2=0 (see PPO paper)
+                #loss = -torch.min(surr1, surr2) + F.smooth_l1_loss(v_s , td_target.detach())
                 loss_tsr = torch.concat((loss_tsr,loss.squeeze(-1)))
                 
                 # log individual loss components
-                mean_ratio_tsr = torch.concat((mean_ratio_tsr,ratio.mean().unsqueeze(-1)))#,device='cpu') 
-                mean_loss1_tsr = torch.concat((mean_loss1_tsr,loss1.mean().unsqueeze(-1)))#,device='cpu') 
-                mean_loss2_tsr = torch.concat((mean_loss2_tsr,loss2.unsqueeze(-1)))#,device='cpu') 
-                mean_loss3_tsr = torch.concat((mean_loss3_tsr,loss3.mean().unsqueeze(-1)))#,device='cpu') 
+                mean_ratio_tsr = torch.concat((mean_ratio_tsr,ratio.detach().cpu().mean().unsqueeze(-1))) 
+                mean_loss1_tsr = torch.concat((mean_loss1_tsr,loss1.detach().cpu().mean().unsqueeze(-1))) 
+                mean_loss2_tsr = torch.concat((mean_loss2_tsr,loss2.detach().cpu().unsqueeze(-1))) 
+                mean_loss3_tsr = torch.concat((mean_loss3_tsr,loss3.detach().cpu().mean().unsqueeze(-1))) 
             ratio_=mean_ratio_tsr.mean()
             loss1_=mean_loss1_tsr.mean()
             loss2_=mean_loss2_tsr.mean()
             loss3_=mean_loss3_tsr.mean()
             
             self.optimizer.zero_grad()
-            loss_tsr.mean().backward(retain_graph=False)
+            loss_tsr.mean().backward(retain_graph=True)
+            torch.nn.utils.clip_grad.clip_grad_norm_(self.parameters(), 0.5)
             self.optimizer.step()
             
-            rlist.append(ratio_.detach().cpu().item())
-            l1list.append(loss1_.detach().cpu().item())
-            l2list.append(loss2_.detach().cpu().item())
-            l3list.append(loss3_.detach().cpu().item())
-            ltlist.append(loss.detach().cpu().item())
+            rlist.append(ratio_.item())
+            l1list.append(loss1_.item())
+            l2list.append(loss2_.item())
+            l3list.append(loss3_.item())
+            ltlist.append(loss_tsr.mean().detach().cpu().item())
         self.tp['writer'].add_scalar('ratio', np.mean(rlist), n_epi)
         self.tp['writer'].add_scalar('loss1_ratio', np.mean(l1list), n_epi)
         self.tp['writer'].add_scalar('loss2_value', np.mean(l2list), n_epi)
