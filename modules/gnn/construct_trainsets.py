@@ -237,7 +237,7 @@ def ConstructTrainSet(config, apply_wrappers=True, type_obs_wrap='Flat', remove_
             env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask='None', obs_rate=1.0)
             env_all_list.append(env)
             global_env.append(env)
-            probs.append(.1)
+            probs.append(1)
 
             for rate in [0.9, 0.8, 0.7,0.6,0.5]:
                 env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=None, remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask='prob_per_u', obs_rate=rate)
@@ -249,7 +249,7 @@ def ConstructTrainSet(config, apply_wrappers=True, type_obs_wrap='Flat', remove_
                 env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[10,20], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask='None', obs_rate=1.0)
                 env_all_list.append(env)
                 global_env.append(env)
-                probs.append(.1)
+                probs.append(1)
 
                 for rate in [0.9, 0.8, 0.7,0.6,0.5]:
                     env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[10,20], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, obs_mask='prob_per_u', obs_rate=rate)

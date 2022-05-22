@@ -646,7 +646,7 @@ class PPO_GNN_Single_LSTM(PPO_GNN_Model):
             
             self.optimizer.zero_grad()
             loss_tsr.mean().backward(retain_graph=True)
-            torch.nn.utils.clip_grad.clip_grad_norm_(self.parameters(), 0.5)
+            #torch.nn.utils.clip_grad.clip_grad_norm_(self.parameters(), 0.5)
             self.optimizer.step()
             
             rlist.append(ratio_.item())
