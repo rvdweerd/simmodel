@@ -333,6 +333,46 @@ def SparseManhattanGraph(nside=5):
     labels = dict([(v,k) for k,v in nodes.items()])
     return G, labels, pos
 
+def BifurGraph():
+    # Generate example graph from TK's thesis
+    # #      o - o - o - o - o - o - o - o - o           
+    # #    /
+    # #  o - o - o - o - o - o - o - o - o
+    # #    \
+    # #      o - o - o - o - o - o - o - o - o         
+    ##
+    G = nx.DiGraph()
+    nodelist = [
+        (0,0),
+        (1,0), (2,0), (3,0), (4,0), (5,0), (6,0), (7,0), (8,0),
+        (1,1), (2,1), (3,1), (4,1), (5,1), (6,1), (7,1), (8,1), (9,1),
+        (1,-1),(2,-1),(3,-1),(4,-1),(5,-1),(6,-1),(7,-1),(8,-1),(9,-1),        
+    ]
+    G.add_nodes_from(nodelist)
+
+    edgelist=[]
+    edgelist += [ ((i,0), (i+1,0), {'N_pref':1.}) for i in range(1,8)] # center line 
+    edgelist += [ ((i+1,0), (i,0), {'N_pref':1.}) for i in range(1,8)] # center line reversed
+    edgelist += [ ((i,1), (i+1,1), {'N_pref':1.}) for i in range(1,9)] # top line
+    edgelist += [ ((i+1,1), (i,1), {'N_pref':1.}) for i in range(1,9)] # top line reversed
+    edgelist += [ ((i,-1), (i+1,-1), {'N_pref':1.}) for i in range(1,9)] # bottom line
+    edgelist += [ ((i+1,-1), (i,-1), {'N_pref':1.}) for i in range(1,9)] # bottom line reversed
+    edgelist += [
+        ((0,0),(1,1), {'N_pref':-1}),
+        ((1,1),(0,0), {'N_pref':-1}),
+        ((0,0),(1,0), {'N_pref':-1}),
+        ((1,0),(0,0), {'N_pref':-1}),
+        ((0,0),(1,-1), {'N_pref':-1}),
+        ((1,-1),(0,0), {'N_pref':-1})]
+    assert len(edgelist)==52
+    G.add_edges_from(edgelist)
+    
+    #H=G.to_undirected()
+    pos = dict( (n,n) for n in G.nodes() )
+    labels = { n:i for i,n in enumerate(nodelist) }
+    return G, labels, pos
+
+
 def MetroGraph():
     # Generate example graph 
     ##

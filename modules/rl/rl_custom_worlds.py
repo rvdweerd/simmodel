@@ -78,6 +78,17 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         env.redefine_goal_nodes([2,5])
         env.reset()
         return env
+    if world_name == 'BifurGraphTask1':
+        configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
+        conf=configs['BifurGraphTask1']
+        conf['direction_north']=False
+        conf['make_reflexive']=make_reflexive
+        conf['U']=1
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
+        #env.redefine_goal_nodes([8,17,26])
+        env.world_pool=[6]#[20,4,5,17,25,7,6,19]
+        env.reset()
+        return env        
     if world_name == 'MemoryTaskU1Long':
         configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
         conf=configs['MemoryTaskU1Long']

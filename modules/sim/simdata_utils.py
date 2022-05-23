@@ -15,7 +15,7 @@ import torch.nn.functional as F
 from pathlib import Path
 import os
 import pickle
-from modules.sim.sim_graphs import SparseManhattanGraph, graph, CircGraph, TKGraph, MetroGraph, MemGraph, MemGraphLong
+from modules.sim.sim_graphs import SparseManhattanGraph, graph, CircGraph, TKGraph, MetroGraph, MemGraph, MemGraphLong, BifurGraph
 from modules.rl.rl_plotting import PlotAgentsOnGraph
 from modules.optim.escape_route_generator_MC import mutiple_escape_routes
 from modules.optim.optimization_FIP_gurobipy import unit_ranges, optimization_alt, optimization
@@ -129,7 +129,21 @@ def GetConfigs():
             'start_escape_route': '.', # Initial position of escaper
             'fixed_initial_positions': (3,0),
             'loadAllStartingPositions': False
-        },       
+        },     
+        "BifurGraphTask1": {
+            # Note: ...
+            'graph_type': "BifurGraph",
+            'make_reflexive': True,
+            'N': 27,    # number of nodes along one side
+            'U': 1,    # number of pursuer units
+            'L': 12,    # Time steps
+            'T': 18,
+            'R': 100,  # Number of escape routes sampled 
+            'direction_north': False,       # Directional preference of escaper
+            'start_escape_route': '.', # Initial position of escaper
+            'fixed_initial_positions': (0,8),
+            'loadAllStartingPositions': False
+        },     
         "MemoryTaskU1Long": {
             # Note: ...
             'graph_type': "MemGraphLong",
@@ -316,7 +330,6 @@ def DefineSimParameters(config):
         sp.direction_north = config['direction_north']
         sp.start_escape_route = config['obj']['centernode_coord']
         sp.target_nodes=config['obj']['target_nodes']
-    
     if sp.graph_type == 'SparseManhattan':
         sp.G, sp.labels, sp.pos = SparseManhattanGraph(config['N'])
         sp.N = config['N']
@@ -384,7 +397,6 @@ def DefineSimParameters(config):
         sp.start_escape_route = sp.nodeid2coord[4]
         sp.most_northern_y = max([c[1] for c in sp.G.nodes])
         sp.target_nodes = set([3,7])
-
     elif sp.graph_type == 'TKGraph':
         sp.G, sp.labels, sp.pos = TKGraph()#manhattan_graph(N)
         sp.G = sp.G.to_undirected()
@@ -396,6 +408,15 @@ def DefineSimParameters(config):
         sp.start_escape_route = sp.nodeid2coord[0]
         sp.most_northern_y = max([c[1] for c in sp.G.nodes])
         sp.target_nodes = set([4,6])
+    elif sp.graph_type == 'BifurGraph':
+        sp.G, sp.labels, sp.pos = BifurGraph()#manhattan_graph(N)
+        sp.N = 27                  # Number of nodes (FIXED)
+        sp.V = 27              # Total number of vertices (FIXED)
+        sp.direction_north = False # (NOT VERY INTERESTING IF TRUE)
+        sp.nodeid2coord = dict( (i, n) for i,n in enumerate(sp.G.nodes()) )
+        sp.coord2nodeid = dict( (n, i) for i,n in enumerate(sp.G.nodes()) )
+        sp.target_nodes = set([8,17,26])
+        sp.start_escape_route = sp.nodeid2coord[0]        
     # Define mappings between node naming conventions
     sp.coord2nodeid = dict( (n, i) for i,n in enumerate(sp.G.nodes()) )
     sp.coord2labels = sp.labels
