@@ -18,6 +18,7 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         hashint=4007
         env_idx=hashint2env[hashint]
         env=evalenv[env_idx]
+        #env.redefine_goal_nodes([2,8])
         env.redefine_goal_nodes([5])
         entry=0
         env.world_pool=[entry]
@@ -259,6 +260,47 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         conf['make_reflexive']=make_reflexive
         env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
         return env
+    if world_name == 'MetroU2_e17tborder_VariableEscapeInit':
+        configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
+        conf=configs['MetroGraphU3']
+        conf['U']=2
+        conf['direction_north']=False
+        conf['loadAllStartingPositions']=True
+        assert conf['T'] ==  20
+        conf['make_reflexive']=make_reflexive
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
+        return env 
+    if world_name == 'MetroU1_e17tborder_VariableEscapeInit':
+        configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
+        conf=configs['MetroGraphU3']
+        conf['U']=1
+        conf['direction_north']=False
+        conf['loadAllStartingPositions']=True
+        assert conf['T'] ==  20
+        conf['make_reflexive']=make_reflexive
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
+        return env    
+    if world_name == 'MetroU2_e17tborder_FixedEscapeInit':
+        configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
+        conf=configs['MetroGraphU3']
+        conf['U']=2
+        conf['direction_north']=False
+        conf['loadAllStartingPositions']=False
+        assert conf['T'] ==  20
+        conf['make_reflexive']=make_reflexive
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
+        return env 
+    if world_name == 'MetroU1_e17tborder_FixedEscapeInit':
+        configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
+        conf=configs['MetroGraphU3']
+        conf['U']=1
+        conf['direction_north']=False
+        conf['loadAllStartingPositions']=False
+        assert conf['T'] ==  20
+        conf['make_reflexive']=make_reflexive
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None,state_representation=state_repr, state_encoding=state_enc)
+        return env                     
+
     if world_name == 'MetroU3_e17t31_FixedEscapeInit':
         configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
         conf=configs['MetroGraphU3']

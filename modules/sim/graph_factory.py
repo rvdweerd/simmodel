@@ -263,7 +263,7 @@ def GetWorldSet(state_repr = 'et', state_enc  = 'tensors', U=[1,2,3], E=[i for i
                         env._remove_world_pool()
                     env.reset()
                     if var_targets is not None:
-                        env = VarTargetWrapper(env)
+                        env = VarTargetWrapper(env, var_targets)
                     if apply_wrappers:
                         env=PPO_ObsDictWrapper(env, max_possible_num_nodes = maxnodes, max_possible_num_edges = maxedges)        
                         env=PPO_ActWrapper(env)        

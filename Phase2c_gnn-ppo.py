@@ -130,6 +130,7 @@ def main(args):
         # eval_nums = [1, 1000,200]
         evalResults={}
         world_dict={ # [max_nodes,max_edges]
+            'Manhattan3x3_PredictionExample':[9,27]
             #'Manhattan5x5_DuplicateSetB':[25,300],
             #'Manhattan3x3_WalkAround':[9,300],
             #'MetroU3_e1t31_FixedEscapeInit':[33, 300],
@@ -138,12 +139,12 @@ def main(args):
             #'Manhattan5x5_VariableEscapeInit':[25,300],
             #'MetroU3_e17tborder_FixedEscapeInit':[33,300],
             #'MetroU3_e17tborder_VariableEscapeInit':[33,300],
-            'NWB_ROT_FixedEscapeInit':[2602,7300],
-            'NWB_ROT_VariableEscapeInit':[2602,7300],
-            'NWB_test_FixedEscapeInit':[975,4000],
-            'NWB_test_VariableEscapeInit':[975,4000],
-            'NWB_UTR_FixedEscapeInit':[1182,4000],
-            'NWB_UTR_VariableEscapeInit':[1182,4000],
+            #'NWB_ROT_FixedEscapeInit':[2602,7300],
+            #'NWB_ROT_VariableEscapeInit':[2602,7300],
+            #'NWB_test_FixedEscapeInit':[975,4000],
+            #'NWB_test_VariableEscapeInit':[975,4000],
+            #NWB_UTR_FixedEscapeInit':[1182,4000],
+            #'NWB_UTR_VariableEscapeInit':[1182,4000],
             # 'SparseManhattan5x5':[25,300],
             }
         #for world_name, node_maxim, var_target, eval_name, eval_num in zip(world_list, node_maxims, var_targets, eval_names, eval_nums):

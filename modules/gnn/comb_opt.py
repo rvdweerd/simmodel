@@ -165,8 +165,10 @@ class QNet_GATv2(QNet_GAT):
         self.gat = GATv2(
             in_channels = self.node_dim,
             hidden_channels = self.emb_dim,
+            heads = 2,
             num_layers = 5,
             out_channels = self.emb_dim,
+            share_weights=False,
             **kwargs
         ).to(device)
         self.theta5 = nn.Linear(2*self.emb_dim, 1, True, dtype=torch.float32)

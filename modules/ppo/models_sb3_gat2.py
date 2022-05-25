@@ -55,7 +55,7 @@ class Gat2Extractor(BaseFeaturesExtractor):
         self.gat = GATv2(
             in_channels = self.node_dim,
             hidden_channels = self.emb_dim,
-            heads = 1,
+            heads = 2,#1,
             num_layers = emb_iter_T,
             out_channels = self.emb_dim,
             share_weights = False,

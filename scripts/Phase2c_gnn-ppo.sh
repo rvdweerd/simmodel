@@ -3,7 +3,8 @@
 # ## BATCH
 #train_on="M3M5Mix"
 #train_on="NWB_AMS"
-train_on="MixM5Met_T"
+#train_on="MixM5Met_T"
+train_on="M3_012456"
 #train_on="MixAll33"
 #train_on="TEST"
 emb_dim=64
@@ -12,7 +13,7 @@ nfm="NFM_ev_ec_t_dt_at_um_us"
 #qnet="s2v"
 norm_agg="True"
 optim='returns'
-nstep=50000 #200000
+nstep=200000 #200000
 train="True"
 eval="False"
 test="False"
@@ -20,7 +21,7 @@ numseeds=1
 #seed0=1
 solveselect='solvable'
 edgeblock="True"
-max_nodes=33
+max_nodes=9
 demoruns="False"
 pursuit="Uon"
 

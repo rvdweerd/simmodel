@@ -30,7 +30,7 @@ def get_super_env(Uselected=[1], Eselected=[4], config=None, var_targets=None, a
     solve_select = config['solve_select'] # only solvable worlds (so best achievable performance is 100%)
     reject_u_duplicates = False
 
-    env_all_train, hashint2env, env2hashint, env2hashstr = GetWorldSet(state_repr, state_enc, U=Uselected, E=Eselected, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func, var_targets=var_targets, remove_paths=remove_paths)
+    env_all_train, hashint2env, env2hashint, env2hashstr, probs = GetWorldSet(state_repr, state_enc, U=Uselected, E=Eselected, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func, var_targets=var_targets, remove_paths=remove_paths, return_probs=True)
     if apply_wrappers:
         for i in range(len(env_all_train)):
             #if type_obs_wrap == 'Flat':
@@ -39,7 +39,7 @@ def get_super_env(Uselected=[1], Eselected=[4], config=None, var_targets=None, a
                 env_all_train[i]=PPO_ObsDictWrapper(env_all_train[i], max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges)
             else: assert False
             env_all_train[i]=PPO_ActWrapper(env_all_train[i])        
-    super_env = SuperEnv(env_all_train, hashint2env, max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges)
+    super_env = SuperEnv(env_all_train, hashint2env, max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges, probs=probs)
     return super_env, env_all_train
 
 def  CreateEnvFS(config, obs_mask, obs_rate, max_nodes, max_edges):
