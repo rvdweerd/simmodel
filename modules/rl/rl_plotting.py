@@ -183,9 +183,9 @@ def PlotEUPathsOnGraph_(sp, epath, u_paths, fig_show, fig_save, filename, goal_r
         fontsize = 1 # 8 12
         arrowsize = 5 # 25
     else:
-        nodesize = 400 # 400 1200
-        edgewidth = 1 # 5
-        fontsize = 8 # 8 12
+        nodesize =  400 # 400 1200
+        edgewidth = 1 # 1 5
+        fontsize =  8 # 8 12
         arrowsize = 25 # 25
     G=sp.G#.to_directed()
     labels=sp.labels

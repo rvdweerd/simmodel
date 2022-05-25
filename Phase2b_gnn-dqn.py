@@ -192,10 +192,11 @@ def main(args):
             #   Evaluate learned model on another (out of distribution) graph
             #
             world_names=[
-                'Manhattan5x5_FixedEscapeInit',
-                'Manhattan5x5_VariableEscapeInit',
-                'MetroU3_e17tborder_FixedEscapeInit',
-                'SparseManhattan5x5',
+                'Manhattan3x3_PredictionExample',            
+                #'Manhattan5x5_FixedEscapeInit',
+                #'Manhattan5x5_VariableEscapeInit',
+                #'MetroU3_e17tborder_FixedEscapeInit',
+                #'SparseManhattan5x5',
             ]
             state_repr='etUte0U0'
             state_enc='nfm'
@@ -235,16 +236,17 @@ def main(args):
             #'Manhattan3x3_WalkAround',
             # 'MetroU3_e1t31_FixedEscapeInit', 
             #'full_solvable_3x3subs',
-            'Manhattan5x5_FixedEscapeInit',
-            'Manhattan5x5_VariableEscapeInit',
-            'MetroU3_e17tborder_FixedEscapeInit',
-            'MetroU3_e17tborder_VariableEscapeInit',
-            'NWB_ROT_FixedEscapeInit',
-            'NWB_ROT_VariableEscapeInit',
-            'NWB_test_FixedEscapeInit',
-            'NWB_test_VariableEscapeInit',
-            'NWB_UTR_FixedEscapeInit',
-            'NWB_UTR_VariableEscapeInit',            
+            'Manhattan3x3_PredictionExample', 
+            # 'Manhattan5x5_FixedEscapeInit',
+            # 'Manhattan5x5_VariableEscapeInit',
+            # 'MetroU3_e17tborder_FixedEscapeInit',
+            # 'MetroU3_e17tborder_VariableEscapeInit',
+            # 'NWB_ROT_FixedEscapeInit',
+            # 'NWB_ROT_VariableEscapeInit',
+            # 'NWB_test_FixedEscapeInit',
+            # 'NWB_test_VariableEscapeInit',
+            # 'NWB_UTR_FixedEscapeInit',
+            # 'NWB_UTR_VariableEscapeInit',            
             # 'SparseManhattan5x5',
             ]
         #node_maxims = [0,0,0,0]
@@ -278,7 +280,7 @@ def main(args):
                 while True:
                     entries=None#[1697]#ROT[427]#[5012,218,3903]
                     env = random.choice(evalenv)
-                    a = SimulateAutomaticMode_DQN(env, policy, t_suffix=False, entries=entries)
+                    a = SimulateAutomaticMode_DQN(env, policy, t_suffix=True, entries=entries)
                     if a == 'Q': break
             
             #evalenv=SuperEnv([env], {1:0}, node_maxim, probs=[1])

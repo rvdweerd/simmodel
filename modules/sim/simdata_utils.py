@@ -708,7 +708,7 @@ def SimulatePursuersPathways(conf, optimization_method='dynamic', fixed_initial_
 def SimulateInteractiveMode(env, filesave_with_time_suffix=True, entry=None):
     # actions processed as index of available actions (i.e. not node labels)
     if entry is not None:
-        env.reset(entry)
+        env.reset(entry=entry)
     else:
         env.reset()
     print('ENTRY:',env.current_entry)
@@ -782,7 +782,7 @@ def SimulateAutomaticMode_DQN(env, dqn_policy, t_suffix=True, entries=None):
         if endepi:
             break        
         obs,r,done,i = env.step(action)
-    env.render_eupaths(fname='results/test',t_suffix=t_suffix,last_step_only=True)
+    env.render_eupaths(fname='results/test',t_suffix=t_suffix, last_step_only=True)
     env.render_eupaths(fname='results/final',t_suffix=t_suffix)
     if a.lower()!='q':
         input('')

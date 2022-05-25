@@ -116,16 +116,17 @@ def main(args):
             #'MetroU3_e1t31_FixedEscapeInit':[33, 300],
             #'full_solvable_3x3subs':[9,33],
             # 'MemoryTaskU1':[8,16],
-            'Manhattan5x5_FixedEscapeInit':[25,105],
-            'Manhattan5x5_VariableEscapeInit':[25,105],
-            'MetroU3_e17tborder_FixedEscapeInit':[33,300],
-            'MetroU3_e17tborder_VariableEscapeInit':[33,300],
-            'NWB_ROT_FixedEscapeInit':[2602,7300],
-            'NWB_ROT_VariableEscapeInit':[2602,7300],
-            'NWB_test_FixedEscapeInit':[975,4000],
-            'NWB_test_VariableEscapeInit':[975,4000],
-            'NWB_UTR_FixedEscapeInit':[1182,4000],
-            'NWB_UTR_VariableEscapeInit':[1182,4000],
+            'Manhattan3x3_PredictionExample':[9,9],
+            # 'Manhattan5x5_FixedEscapeInit':[25,105],
+            # 'Manhattan5x5_VariableEscapeInit':[25,105],
+            # 'MetroU3_e17tborder_FixedEscapeInit':[33,300],
+            # 'MetroU3_e17tborder_VariableEscapeInit':[33,300],
+            # 'NWB_ROT_FixedEscapeInit':[2602,7300],
+            # 'NWB_ROT_VariableEscapeInit':[2602,7300],
+            # 'NWB_test_FixedEscapeInit':[975,4000],
+            # 'NWB_test_VariableEscapeInit':[975,4000],
+            # 'NWB_UTR_FixedEscapeInit':[1182,4000],
+            # 'NWB_UTR_VariableEscapeInit':[1182,4000],
             # 'SparseManhattan5x5':[25,105],
             }
         obs_evalmasks = ['None']#'prob_per_u_test','prob_per_u_test','prob_per_u_test','prob_per_u_test','prob_per_u_test'] # ['None']['prob_per_u']
@@ -222,5 +223,6 @@ if __name__ == '__main__':
     parser.add_argument('--eval_deter', type=lambda s: s.lower() in ['true', 't', 'yes', '1'],default=True)
     parser.add_argument('--type_obs_wrap', default='obs_flat', type=str)
     parser.add_argument('--test_heur', type=lambda s: s.lower() in ['true', 't', 'yes', '1'],default=False)
+    parser.add_argument('--eval_rate', default=-1., type=float)
     args=parser.parse_args()
     main(args)

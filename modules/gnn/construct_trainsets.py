@@ -18,7 +18,41 @@ def ConstructTrainSet(config, apply_wrappers=True, type_obs_wrap='Flat', remove_
     env_all_list=[]
     config['solve_select'] = 'solvable'
 
-    if tset == 'M3M5Mix':
+    if tset == 'MixM5Met_T':
+        config['max_edges'] = 119
+        config['max_nodes'] = 33
+        
+        world_name = 'Manhattan5x5_VariableEscapeInit'
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,2], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
+        env_all_list.append(env)
+        global_env.append(env)
+        probs.append(1)
+
+        world_name = 'Manhattan5x5_FixedEscapeInit'
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,2], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
+        env_all_list.append(env)
+        global_env.append(env)
+        probs.append(1)
+
+        world_name = 'MetroU3_e17tborder_VariableEscapeInit'
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,2], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
+        env_all_list.append(env)
+        global_env.append(env)
+        probs.append(1)
+
+        world_name = 'MetroU3_e17tborder_FixedEscapeInit'
+        env = CreateEnv(world_name, max_nodes=config['max_nodes'], max_edges=config['max_edges'], nfm_func_name=config['nfm_func'], var_targets=[1,2], remove_world_pool=remove_paths, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap)
+        env_all_list.append(env)
+        global_env.append(env)
+        probs.append(1)
+
+        super_env=SuperEnv(
+            global_env,
+            hashint2env=None,
+            max_possible_num_nodes=config['max_nodes'],
+            probs=probs)
+
+    elif tset == 'M3M5Mix':
         config['max_edges'] = 300
         config['max_nodes'] = 25
         env, _ = get_super_env(Uselected=[0,1,2,3,4], Eselected=[6,7,8,9], config=config, var_targets=None, apply_wrappers=apply_wrappers, type_obs_wrap=type_obs_wrap, remove_paths=remove_paths)

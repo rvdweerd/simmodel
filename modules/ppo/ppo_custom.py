@@ -460,7 +460,7 @@ def start_or_resume_from_checkpoint(env, config, hp, tp):
         ppo_model_state_dict, ppo_optimizer_state_dict, stop_conditions = load_checkpoint(max_checkpoint_iteration, hp, tp)
         
         ppo_model.load_state_dict(ppo_model_state_dict, strict=True)
-        ppo_optimizer.load_state_dict(ppo_optimizer_state_dict)#, strict=True)
+        #ppo_optimizer.load_state_dict(ppo_optimizer_state_dict)#, strict=True)
 
         # We have to move manually move optimizer states to TRAIN_DEVICE manually since optimizer doesn't yet have a "to" method.
         for state in ppo_optimizer.state.values():

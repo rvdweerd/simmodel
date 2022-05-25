@@ -1,11 +1,28 @@
 import modules.sim.simdata_utils as su
 from modules.rl.rl_utils import CreateDuplicatesTrainsets
 from modules.rl.environments import GraphWorld
-from modules.sim.graph_factory import GetWorldSet
+from modules.sim.graph_factory import GetWorldSet, LoadData
 import modules.gnn.nfm_gen
 import networkx as nx
  
 def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='nodes'):
+    if world_name == 'Manhattan3x3_PredictionExample':
+        nfm_func = modules.gnn.nfm_gen.NFM_ev_ec_t_um_us()
+        edge_blocking = True
+        solve_select = 'solvable'
+        reject_u_duplicates = False
+        Etrain=[3]
+        Utrain=[1]
+        databank_full, register_full, solvable = LoadData(edge_blocking = True)
+        evalenv, hashint2env, env2hashint, env2hashstr = GetWorldSet(state_repr, state_enc, U=Utrain, E=Etrain, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func)
+        hashint=4007
+        env_idx=hashint2env[hashint]
+        env=evalenv[env_idx]
+        env.redefine_goal_nodes([5])
+        entry=0
+        env.world_pool=[entry]
+        return env
+
     if world_name == 'Manhattan3x3_PauseFreezeWorld':
         configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
         conf=configs['Manhattan3']

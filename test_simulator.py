@@ -36,10 +36,11 @@ import pickle
 # out_file.close()
 
 
-world_name='MetroU3_e17tborder_FixedEscapeInit'
+#world_name='MetroU3_e17tborder_FixedEscapeInit'
+world_name='Manhattan11x11_FixedEscapeInit'
 N=33#25#3975
 E=300#105#4000
-obs_mask='prob_per_u'
+obs_mask='None'
 obs_rate=0.5
 state_repr='etUte0U0'
 state_enc='nfm'

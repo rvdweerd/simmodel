@@ -240,7 +240,7 @@ class FeatureExtractor(nn.Module):
         self.gat = GATv2(
             in_channels = self.node_dim,
             hidden_channels = self.emb_dim,
-            heads = 1,#2,
+            heads = 1,#2,#1,#2,
             num_layers = self.T,
             out_channels = self.emb_dim,
             share_weights = False,#True,

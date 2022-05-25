@@ -72,7 +72,7 @@ class Gat2Extractor(BaseFeaturesExtractor):
         reachable_nodes = observations['reachable_nodes'].clone() #(bsize,numnodes,1)
         num_nodes=observations['num_nodes'] #(bsize,1)
         num_edges=observations['num_edges'] #(bsize,1)
-        assert num_edges.max() < pygei.shape[-1]
+        assert num_edges.max() <= pygei.shape[-1]
         bsize=len(num_nodes)
         if bsize>1:
             k=0
