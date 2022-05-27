@@ -35,11 +35,21 @@ import pickle
 # pickle.dump(target_node_info, out_file)
 # out_file.close()
 
-
+#world_name='CircGraph'
+world_name='TKGraph'
+#world_name='BifurGraphTask1'
+#world_name='MemoryTaskU1'
 #world_name='MetroU3_e17tborder_FixedEscapeInit'
-world_name='Manhattan11x11_FixedEscapeInit'
-N=33#25#3975
-E=300#105#4000
+#world_name='Manhattan11x11_FixedEscapeInit'
+#world_name='MetroU1_e17tborder_VariableEscapeInit'
+#world_name='NWB_test_FixedEscapeInit'
+#world_name='NWB_ROT_FixedEscapeInit'
+#world_name='NWB_UTR_FixedEscapeInit'
+#world_name='Manhattan3x3_WalkAround'
+#world_name='Manhattan5x5_FixedEscapeInit'
+#world_name='SparseManhattan5x5'
+N=975#33#25#3975
+E=3000#105#4000
 obs_mask='None'
 obs_rate=0.5
 state_repr='etUte0U0'
@@ -48,6 +58,7 @@ nfm_func=modules.gnn.nfm_gen.nfm_funcs['NFM_ev_ec_t_dt_at_um_us']
 #nfm_func=modules.gnn.nfm_gen.nfm_funcs['NFM_ev_ec_t_dt_at_ustack']
 env = GetCustomWorld(world_name, make_reflexive=True, state_repr=state_repr, state_enc=state_enc)
 env.redefine_nfm(nfm_func)
+#env.redefine_goal_nodes([])
 #env=PPO_ObsFlatWrapper(env, max_possible_num_nodes=N, max_possible_num_edges=E, obs_mask=obs_mask, obs_rate=obs_rate)
 env=PPO_ObsBasicDictWrapper(env, obs_mask=obs_mask, obs_rate=obs_rate)
 

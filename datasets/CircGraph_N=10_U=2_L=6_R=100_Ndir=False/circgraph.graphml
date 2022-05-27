@@ -1,0 +1,172 @@
+<?xml version='1.0' encoding='utf-8'?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">
+  <key attr.name="weight" attr.type="long" for="edge" id="d2" />
+  <key attr.name="N_pref" attr.type="long" for="edge" id="d1" />
+  <key attr.name="N_pref" attr.type="double" for="edge" id="d0" />
+  <graph edgedefault="directed">
+    <node id="(3, 6)" />
+    <node id="(1, 5)" />
+    <node id="(5, 5)" />
+    <node id="(0, 3)" />
+    <node id="(2, 3)" />
+    <node id="(4, 3)" />
+    <node id="(6, 3)" />
+    <node id="(1, 1)" />
+    <node id="(5, 1)" />
+    <node id="(3, 0)" />
+    <edge source="(3, 6)" target="(1, 5)">
+      <data key="d0">0.4</data>
+    </edge>
+    <edge source="(3, 6)" target="(5, 5)">
+      <data key="d0">0.4</data>
+    </edge>
+    <edge source="(3, 6)" target="(2, 3)">
+      <data key="d0">0.1</data>
+    </edge>
+    <edge source="(3, 6)" target="(4, 3)">
+      <data key="d0">0.1</data>
+    </edge>
+    <edge source="(3, 6)" target="(3, 6)">
+      <data key="d1">-1</data>
+      <data key="d2">1</data>
+    </edge>
+    <edge source="(1, 5)" target="(3, 6)">
+      <data key="d0">0.4</data>
+    </edge>
+    <edge source="(1, 5)" target="(0, 3)">
+      <data key="d0">0.4</data>
+    </edge>
+    <edge source="(1, 5)" target="(2, 3)">
+      <data key="d0">0.2</data>
+    </edge>
+    <edge source="(1, 5)" target="(1, 5)">
+      <data key="d1">-1</data>
+      <data key="d2">1</data>
+    </edge>
+    <edge source="(5, 5)" target="(3, 6)">
+      <data key="d0">0.4</data>
+    </edge>
+    <edge source="(5, 5)" target="(4, 3)">
+      <data key="d0">0.2</data>
+    </edge>
+    <edge source="(5, 5)" target="(6, 3)">
+      <data key="d0">0.4</data>
+    </edge>
+    <edge source="(5, 5)" target="(5, 5)">
+      <data key="d1">-1</data>
+      <data key="d2">1</data>
+    </edge>
+    <edge source="(0, 3)" target="(1, 5)">
+      <data key="d0">0.8</data>
+    </edge>
+    <edge source="(0, 3)" target="(2, 3)">
+      <data key="d0">0.2</data>
+    </edge>
+    <edge source="(0, 3)" target="(1, 1)">
+      <data key="d0">0.0</data>
+    </edge>
+    <edge source="(0, 3)" target="(0, 3)">
+      <data key="d1">-1</data>
+      <data key="d2">1</data>
+    </edge>
+    <edge source="(2, 3)" target="(3, 6)">
+      <data key="d0">0.4</data>
+    </edge>
+    <edge source="(2, 3)" target="(1, 5)">
+      <data key="d0">0.4</data>
+    </edge>
+    <edge source="(2, 3)" target="(0, 3)">
+      <data key="d0">0.1</data>
+    </edge>
+    <edge source="(2, 3)" target="(4, 3)">
+      <data key="d0">0.1</data>
+    </edge>
+    <edge source="(2, 3)" target="(1, 1)">
+      <data key="d0">0.0</data>
+    </edge>
+    <edge source="(2, 3)" target="(3, 0)">
+      <data key="d0">0.0</data>
+    </edge>
+    <edge source="(2, 3)" target="(2, 3)">
+      <data key="d1">-1</data>
+      <data key="d2">1</data>
+    </edge>
+    <edge source="(4, 3)" target="(3, 6)">
+      <data key="d0">0.4</data>
+    </edge>
+    <edge source="(4, 3)" target="(5, 5)">
+      <data key="d0">0.4</data>
+    </edge>
+    <edge source="(4, 3)" target="(2, 3)">
+      <data key="d0">0.1</data>
+    </edge>
+    <edge source="(4, 3)" target="(6, 3)">
+      <data key="d0">0.1</data>
+    </edge>
+    <edge source="(4, 3)" target="(3, 0)">
+      <data key="d0">0.0</data>
+    </edge>
+    <edge source="(4, 3)" target="(5, 1)">
+      <data key="d0">0.0</data>
+    </edge>
+    <edge source="(4, 3)" target="(4, 3)">
+      <data key="d1">-1</data>
+      <data key="d2">1</data>
+    </edge>
+    <edge source="(6, 3)" target="(5, 5)">
+      <data key="d0">0.8</data>
+    </edge>
+    <edge source="(6, 3)" target="(4, 3)">
+      <data key="d0">0.2</data>
+    </edge>
+    <edge source="(6, 3)" target="(5, 1)">
+      <data key="d0">0.0</data>
+    </edge>
+    <edge source="(6, 3)" target="(6, 3)">
+      <data key="d1">-1</data>
+      <data key="d2">1</data>
+    </edge>
+    <edge source="(1, 1)" target="(0, 3)">
+      <data key="d0">0.5</data>
+    </edge>
+    <edge source="(1, 1)" target="(2, 3)">
+      <data key="d0">0.5</data>
+    </edge>
+    <edge source="(1, 1)" target="(3, 0)">
+      <data key="d0">0.0</data>
+    </edge>
+    <edge source="(1, 1)" target="(1, 1)">
+      <data key="d1">-1</data>
+      <data key="d2">1</data>
+    </edge>
+    <edge source="(5, 1)" target="(4, 3)">
+      <data key="d0">0.5</data>
+    </edge>
+    <edge source="(5, 1)" target="(6, 3)">
+      <data key="d0">0.5</data>
+    </edge>
+    <edge source="(5, 1)" target="(3, 0)">
+      <data key="d0">0.0</data>
+    </edge>
+    <edge source="(5, 1)" target="(5, 1)">
+      <data key="d1">-1</data>
+      <data key="d2">1</data>
+    </edge>
+    <edge source="(3, 0)" target="(1, 1)">
+      <data key="d0">0.25</data>
+    </edge>
+    <edge source="(3, 0)" target="(2, 3)">
+      <data key="d0">0.25</data>
+    </edge>
+    <edge source="(3, 0)" target="(4, 3)">
+      <data key="d0">0.25</data>
+    </edge>
+    <edge source="(3, 0)" target="(5, 1)">
+      <data key="d0">0.25</data>
+    </edge>
+    <edge source="(3, 0)" target="(3, 0)">
+      <data key="d1">-1</data>
+      <data key="d2">1</data>
+    </edge>
+  </graph>
+</graphml>

@@ -583,7 +583,8 @@ def scale0_vec(a, newrange=[0.1,1.]):
     lowmark=aval.min()
     b=aval-lowmark
     bmax=b.max()
-    assert bmax > 0
+    if bmax == 0:
+        return a/a.max()
     brange=newrange[1]-newrange[0]
     b=b/bmax * brange + newrange[0]
     #print(b)
@@ -596,11 +597,11 @@ def scale0_vec(a, newrange=[0.1,1.]):
 
 from collections import deque
 def GetNodeScores(sp, neighbors):
+    nodescores=torch.zeros(sp.V,dtype=torch.float32)
+    scaled_nodescores=torch.zeros(sp.V,dtype=torch.float32)
+    min_target_distances=torch.ones(sp.V)*torch.inf
     if len(sp.target_nodes) > 0:
         #print('calculating node scores...')
-        nodescores=torch.zeros(sp.V,dtype=torch.float32)
-        scaled_nodescores=torch.zeros(sp.V,dtype=torch.float32)
-        min_target_distances=torch.ones(sp.V)*torch.inf
         # go over all target nodes
         for t in sp.target_nodes:
             q = deque()
@@ -627,6 +628,7 @@ def GetNodeScores(sp, neighbors):
 
         infidx=min_target_distances==torch.inf
         min_target_distances[infidx]=min_target_distances[~infidx].max()+1
+    
     return nodescores, scaled_nodescores, min_target_distances
 
 def make_dirname(sp):

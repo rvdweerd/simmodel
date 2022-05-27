@@ -17,8 +17,8 @@ emb_dim=64
 lstm_hdim=64
 lstm_layers=1
 emb_iterT=5
-#nfm_func="NFM_ev_ec_t_dt_at_um_us"
-nfm_func="NFM_ev_ec_t_dt_at_ustack"
+nfm_func="NFM_ev_ec_t_dt_at_um_us"
+#nfm_func="NFM_ev_ec_t_dt_at_ustack"
 qnet="gat2"
 critic='q'
 train="False"
@@ -32,14 +32,14 @@ num_step=25001
 type_obs_wrap="BasicDict"
 parallel_rollouts=4
 idn="test"
-id="ams2-fstack"
+id="utr-u15"
 eval_deter="True"
 eval_rate=-0.5
 #idn="AMSmix-TEST"
 #id="EMB64"
-for lstm_type in {"None",}
+for lstm_type in {"EMB",}
 do
-    for seed0 in {0,}
+    for seed0 in {2200,}
     do
         tmux new-session -d -s "${idn}-${id}"
         tmux send-keys -t "${idn}-${id}" "conda activate rlcourse-sb3c" Enter

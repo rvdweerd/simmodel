@@ -1,0 +1,299 @@
+<?xml version='1.0' encoding='utf-8'?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">
+  <key attr.name="N_pref" attr.type="double" for="edge" id="d2" />
+  <key attr.name="weight" attr.type="long" for="edge" id="d1" />
+  <key attr.name="N_pref" attr.type="long" for="edge" id="d0" />
+  <graph edgedefault="directed">
+    <node id="(0, 0)" />
+    <node id="(1, 0)" />
+    <node id="(2, 0)" />
+    <node id="(3, 0)" />
+    <node id="(4, 0)" />
+    <node id="(5, 0)" />
+    <node id="(6, 0)" />
+    <node id="(7, 0)" />
+    <node id="(8, 0)" />
+    <node id="(1, 1)" />
+    <node id="(2, 1)" />
+    <node id="(3, 1)" />
+    <node id="(4, 1)" />
+    <node id="(5, 1)" />
+    <node id="(6, 1)" />
+    <node id="(7, 1)" />
+    <node id="(8, 1)" />
+    <node id="(9, 1)" />
+    <node id="(1, -1)" />
+    <node id="(2, -1)" />
+    <node id="(3, -1)" />
+    <node id="(4, -1)" />
+    <node id="(5, -1)" />
+    <node id="(6, -1)" />
+    <node id="(7, -1)" />
+    <node id="(8, -1)" />
+    <node id="(9, -1)" />
+    <edge source="(0, 0)" target="(1, 1)">
+      <data key="d0">-1</data>
+    </edge>
+    <edge source="(0, 0)" target="(1, 0)">
+      <data key="d0">-1</data>
+    </edge>
+    <edge source="(0, 0)" target="(1, -1)">
+      <data key="d0">-1</data>
+    </edge>
+    <edge source="(0, 0)" target="(0, 0)">
+      <data key="d0">-1</data>
+      <data key="d1">1</data>
+    </edge>
+    <edge source="(1, 0)" target="(2, 0)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(1, 0)" target="(0, 0)">
+      <data key="d0">-1</data>
+    </edge>
+    <edge source="(1, 0)" target="(1, 0)">
+      <data key="d0">-1</data>
+      <data key="d1">1</data>
+    </edge>
+    <edge source="(2, 0)" target="(3, 0)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(2, 0)" target="(1, 0)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(2, 0)" target="(2, 0)">
+      <data key="d0">-1</data>
+      <data key="d1">1</data>
+    </edge>
+    <edge source="(3, 0)" target="(4, 0)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(3, 0)" target="(2, 0)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(3, 0)" target="(3, 0)">
+      <data key="d0">-1</data>
+      <data key="d1">1</data>
+    </edge>
+    <edge source="(4, 0)" target="(5, 0)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(4, 0)" target="(3, 0)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(4, 0)" target="(4, 0)">
+      <data key="d0">-1</data>
+      <data key="d1">1</data>
+    </edge>
+    <edge source="(5, 0)" target="(6, 0)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(5, 0)" target="(4, 0)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(5, 0)" target="(5, 0)">
+      <data key="d0">-1</data>
+      <data key="d1">1</data>
+    </edge>
+    <edge source="(6, 0)" target="(7, 0)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(6, 0)" target="(5, 0)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(6, 0)" target="(6, 0)">
+      <data key="d0">-1</data>
+      <data key="d1">1</data>
+    </edge>
+    <edge source="(7, 0)" target="(8, 0)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(7, 0)" target="(6, 0)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(7, 0)" target="(7, 0)">
+      <data key="d0">-1</data>
+      <data key="d1">1</data>
+    </edge>
+    <edge source="(8, 0)" target="(7, 0)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(8, 0)" target="(8, 0)">
+      <data key="d0">-1</data>
+      <data key="d1">1</data>
+    </edge>
+    <edge source="(1, 1)" target="(2, 1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(1, 1)" target="(0, 0)">
+      <data key="d0">-1</data>
+    </edge>
+    <edge source="(1, 1)" target="(1, 1)">
+      <data key="d0">-1</data>
+      <data key="d1">1</data>
+    </edge>
+    <edge source="(2, 1)" target="(3, 1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(2, 1)" target="(1, 1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(2, 1)" target="(2, 1)">
+      <data key="d0">-1</data>
+      <data key="d1">1</data>
+    </edge>
+    <edge source="(3, 1)" target="(4, 1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(3, 1)" target="(2, 1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(3, 1)" target="(3, 1)">
+      <data key="d0">-1</data>
+      <data key="d1">1</data>
+    </edge>
+    <edge source="(4, 1)" target="(5, 1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(4, 1)" target="(3, 1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(4, 1)" target="(4, 1)">
+      <data key="d0">-1</data>
+      <data key="d1">1</data>
+    </edge>
+    <edge source="(5, 1)" target="(6, 1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(5, 1)" target="(4, 1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(5, 1)" target="(5, 1)">
+      <data key="d0">-1</data>
+      <data key="d1">1</data>
+    </edge>
+    <edge source="(6, 1)" target="(7, 1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(6, 1)" target="(5, 1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(6, 1)" target="(6, 1)">
+      <data key="d0">-1</data>
+      <data key="d1">1</data>
+    </edge>
+    <edge source="(7, 1)" target="(8, 1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(7, 1)" target="(6, 1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(7, 1)" target="(7, 1)">
+      <data key="d0">-1</data>
+      <data key="d1">1</data>
+    </edge>
+    <edge source="(8, 1)" target="(9, 1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(8, 1)" target="(7, 1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(8, 1)" target="(8, 1)">
+      <data key="d0">-1</data>
+      <data key="d1">1</data>
+    </edge>
+    <edge source="(9, 1)" target="(8, 1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(9, 1)" target="(9, 1)">
+      <data key="d0">-1</data>
+      <data key="d1">1</data>
+    </edge>
+    <edge source="(1, -1)" target="(2, -1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(1, -1)" target="(0, 0)">
+      <data key="d0">-1</data>
+    </edge>
+    <edge source="(1, -1)" target="(1, -1)">
+      <data key="d0">-1</data>
+      <data key="d1">1</data>
+    </edge>
+    <edge source="(2, -1)" target="(3, -1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(2, -1)" target="(1, -1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(2, -1)" target="(2, -1)">
+      <data key="d0">-1</data>
+      <data key="d1">1</data>
+    </edge>
+    <edge source="(3, -1)" target="(4, -1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(3, -1)" target="(2, -1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(3, -1)" target="(3, -1)">
+      <data key="d0">-1</data>
+      <data key="d1">1</data>
+    </edge>
+    <edge source="(4, -1)" target="(5, -1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(4, -1)" target="(3, -1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(4, -1)" target="(4, -1)">
+      <data key="d0">-1</data>
+      <data key="d1">1</data>
+    </edge>
+    <edge source="(5, -1)" target="(6, -1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(5, -1)" target="(4, -1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(5, -1)" target="(5, -1)">
+      <data key="d0">-1</data>
+      <data key="d1">1</data>
+    </edge>
+    <edge source="(6, -1)" target="(7, -1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(6, -1)" target="(5, -1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(6, -1)" target="(6, -1)">
+      <data key="d0">-1</data>
+      <data key="d1">1</data>
+    </edge>
+    <edge source="(7, -1)" target="(8, -1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(7, -1)" target="(6, -1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(7, -1)" target="(7, -1)">
+      <data key="d0">-1</data>
+      <data key="d1">1</data>
+    </edge>
+    <edge source="(8, -1)" target="(9, -1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(8, -1)" target="(7, -1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(8, -1)" target="(8, -1)">
+      <data key="d0">-1</data>
+      <data key="d1">1</data>
+    </edge>
+    <edge source="(9, -1)" target="(8, -1)">
+      <data key="d2">1.0</data>
+    </edge>
+    <edge source="(9, -1)" target="(9, -1)">
+      <data key="d0">-1</data>
+      <data key="d1">1</data>
+    </edge>
+  </graph>
+</graphml>
