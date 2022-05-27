@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH -p gpu_shared
-#SBATCH --gpus=1
+#SBATCH -p gpu_titanrtx_shared
+#SBATCH --gpus-per-node=titanrtx:1
 #SBATCH --job-name=gnn_ppo
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --time=12:00:00
+#SBATCH --time=48:00:00
 #SBATCH --mem=48000M
 #SBATCH --output=slurm_output_%A.out
 
@@ -27,6 +27,8 @@ conda activate rlcourse
 train_on="NWB_AMS_mixed_obs"
 #train_on="MemTask-U1"
 batch_size=2
+#obs_mask="None"
+#obs_rate=1.0
 obs_mask="mix"
 obs_rate=0.0
 #obs_mask="freq"
@@ -40,19 +42,20 @@ nfm_func="NFM_ev_ec_t_dt_at_um_us"
 #nfm_func="NFM_ev_ec_t_dt_at_ustack"
 qnet="gat2"
 critic="q"
-train="False"
+train="True"
 eval="False"
-test="True"
+test="False"
 test_heur="False"
 num_seeds=1
+#seed0=0
 demoruns="False"
 num_step=25001
-parallel_rollouts=4
 type_obs_wrap="BasicDict"
+parallel_rollouts=4
 lr=5e-4
 lstm_type="EMB"
 eval_deter="True"
-
+#nfm_func="NFM_ev_ec_t_dt_at_ustack"
 for seed0 in {2200,}
 do
     python Phase3_lstm-gnn-ppo_simp.py --train_on $train_on --batch_size $batch_size --obs_mask $obs_mask --obs_rate $obs_rate --emb_dim $emb_dim --lstm_type $lstm_type --lstm_hdim $lstm_hdim --lstm_layers $lstm_layers --emb_iterT $emb_iterT --nfm_func $nfm_func --qnet $qnet --train $train --eval $eval --test $test --num_seeds $num_seeds --seed0 $seed0 --demoruns $demoruns --parallel_rollouts $parallel_rollouts --critic $critic --type_obs_wrap $type_obs_wrap --test_heur $test_heur --eval_deter $eval_deter --num_step $num_step&

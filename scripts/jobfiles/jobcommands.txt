@@ -13,5 +13,6 @@
 sinfo
 scancel [jobid]
 
+salloc -N 1 -p gpu_shared -t 03:00:00 --gpus=1
 slurm_joblogin [jobid][nodeid] (werkt alleen op regular node)
 slurm_jobmonitor [jobid] [nodeid]
