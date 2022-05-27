@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import os
 import matplotlib.ticker as ticker
 
+# Itility functions to extract and plot data from tensorboard log files
+
 def LSTM_info_from_path(path):
     i1=path.find('lstm')
     i2=path.find('NFM')

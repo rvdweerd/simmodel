@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #train_on="MixAll33"
-train_on="NWB_AMS2_mixed_obs"
+train_on="NWB_AMS_mixed_obs"
 #train_on="TEST"
 #train_on="NWB_AMS"
 #train_on="HeurCRE"
@@ -32,7 +32,7 @@ num_step=25001
 type_obs_wrap="BasicDict"
 parallel_rollouts=4
 idn="test"
-id="utr-u15"
+id="rot-u20"
 eval_deter="True"
 eval_rate=-0.5
 #idn="AMSmix-TEST"
