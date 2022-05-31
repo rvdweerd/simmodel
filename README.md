@@ -12,4 +12,4 @@ Thesis work-in-progress for UvA/AI MSc program ([Thesis Proposal](modules/sim/Th
 ![escape_demo](modules/sim/final3.png)
 
 
-
+![escape_demo_lstm](modules/sim/test_movie.mp4)
