@@ -15,7 +15,12 @@ def plot_traindata(episode_returns,losses,logdir='./temp'):
     plt.clf()
 
 def PlotAgentsOnGraph_(sp, escape_pos, u_paths, timestep, fig_show=False, fig_save=True, filename=None, goal_reached=False, done=False, size='small', u_visible=True):
-    if sp.V > 50:
+    if size=='large':
+        nodesize =  900 # 400 1200
+        edgewidth = 1 # 1 5
+        fontsize =  15 # 8 12
+        arrowsize = 15 # 25          
+    elif sp.V > 50:
         nodesize = 10 # 400 1200
         edgewidth = .5 # 5
         fontsize = 1 # 8 12
@@ -177,7 +182,12 @@ def PlotEPathOnGraph_(sp, epath, pursuers_pos, fig_show, fig_save, filename, goa
     return out
 
 def PlotEUPathsOnGraph_(sp, epath, u_paths, fig_show, fig_save, filename, goal_reached, done, size='small', last_step_only=False, u_visible=True, node_risks=None, planned_path=None):
-    if sp.V > 50:
+    if size=='large':
+        nodesize =  900 # 400 1200
+        edgewidth = 1 # 1 5
+        fontsize =  15 # 8 12
+        arrowsize = 15 # 25        
+    elif sp.V > 50:
         nodesize = 10 # 400 1200
         edgewidth = .5 # 5
         fontsize = 1 # 8 12
