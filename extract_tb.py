@@ -68,6 +68,75 @@ def realign(stepsource, valuesource, steptarget):
             newlist.append(interpolated)
     return np.array(newlist)
 
+def CreateLearningCurvePlotsPhase1(path, n_smoothing=20, nseeds=5, numiter=1200, yrange=[-10.,2.]):
+    rawlist=[]
+    maxlen=0
+    for seed in range(nseeds):
+        path_ = path+'/DQN'+str(seed+1)
+        step,rew = tdlog2np(path_,'5. return_per_epi')
+        rawlist.append(rew)
+        maxlen = max(maxlen, len(rew))
+
+    smtlist=[]
+    smoothing_vector=[1/n_smoothing]*n_smoothing
+    best_line_idx=-1
+    globalbest=-1e6
+    for i in range(len(rawlist)):
+        p=maxlen-len(rawlist[i])
+        rawlist[i]=np.pad(rawlist[i],(0,p),'constant',constant_values=np.mean(rawlist[i][-n_smoothing*30:]))#'edge')
+        avg=np.convolve(smoothing_vector, rawlist[i],mode='valid')
+        localbest=avg.max()
+        if localbest > globalbest:
+            globalbest = localbest
+            best_line_idx=i
+        smtlist.append(avg)
+    step=step[2:-2]
+    rawlist=np.array(rawlist)[:,2:-2] # (seeds, max_iterations)
+    smtlist=np.array(smtlist) # (seeds, max_iterations)
+    smt_avgline=np.mean(smtlist,axis=0) # (max_iterations, )
+    smt_stdline=np.std(smtlist,axis=0)
+    smt_minline=np.min(smtlist,axis=0)
+    smt_maxline=np.max(smtlist,axis=0)
+    raw_minline=np.min(rawlist,axis=0)
+    raw_maxline=np.max(rawlist,axis=0)
+    smt_bestline=smtlist[best_line_idx,:]
+    # # PLOT SMOOTHED CURVE FOR EACH SEED
+    plt.plot(np.transpose(smtlist))
+    plt.savefig(path+'/Train_reward_smoothed_per_seed.png')
+    plt.clf()
+
+    # # PLOT UNSMOOTHED CURVE FOR EACH SEED
+    plt.plot(np.transpose(rawlist))
+    plt.savefig(path+'/Train_reward_raw_per_seed.png')
+    plt.clf()
+    
+    # PLOT SMOOTHED MAX,AVG,MINMAX RANGE, STD
+    fig,ax=plt.subplots(figsize=(12,5))
+    #ax.plot(smt_maxline,color="green", label='best seed')
+    
+    #ax.plot(step,smtlist.transpose(),color="orange",alpha=.2)
+    ax.plot(step,smt_avgline,color="orange",alpha=1., label='avg seed')
+    ax.fill_between(step,raw_minline,raw_maxline,facecolor='orange',alpha=0.35, label='minmax')
+    ax.fill_between(step,smt_avgline-smt_stdline,np.minimum((smt_avgline+smt_stdline),smt_maxline),facecolor='gray',alpha=0.3,label='std')
+    #ax.plot(smt_bestline,color="green", label='best seed')
+    #ax.legend()
+    #ax=plt.gca()
+    if numiter==None:
+        #numiter=len(smt_maxline)
+        numiter=max(step+100)
+    ax.set_xlim([0,numiter])
+    ax.set_ylim(yrange)
+    #plt.ylabel('average reward')
+    #ax.axes.get_xaxis().set_visible(False)
+    #ax.axes.get_xaxis().set_ticklabels([])
+    #ax.axes.get_xaxis().axhline(y=0,color='black')
+    #ax.yaxis.set_ticklabels([])
+    ax.axhline(y=0,color='black',linewidth=.5)
+    #lstm_dentifier = "title"
+    #plt.title(lstm_dentifier)
+    plt.savefig(path+'/Train_reward_Learningcurves.png')
+    plt.clf()
+
 def CreateLearningCurvePlots(path, n_smoothing=21, seed0=0, nseeds=5, numiter=1200, yrange=[-10.,2.]):
     assert n_smoothing%2==1
     rawlist=[]
@@ -147,7 +216,9 @@ def CreateLearningCurvePlots(path, n_smoothing=21, seed0=0, nseeds=5, numiter=12
 def CreateLossCurvePlots(path, n_smoothing=21, seed0=0, nseeds=1, numiter=25000, yrange=[-0.5,.2]):
     assert n_smoothing%2==1
     fig,ax=plt.subplots(figsize=(5,5))
-    for curve_name in ['loss1_ratio','loss2_value','loss3_entropy']:#,'loss_total']:
+    colorlist=['orange','royalblue','green']
+    for curve_num,curve_name in enumerate(['loss1_ratio','loss2_value','loss3_entropy']):#,'loss_total']:
+    #for curve_num,curve_name in enumerate(['return_per_epi']): #['ep_rew_mean']:#['4. Reward per epi']
         rawlist=[]
         steplist=[]
         maxlen=0
@@ -184,106 +255,40 @@ def CreateLossCurvePlots(path, n_smoothing=21, seed0=0, nseeds=1, numiter=25000,
         smt_stdline=np.std(smtlist,axis=0)
         smt_minline=np.min(smtlist,axis=0)
         smt_maxline=np.max(smtlist,axis=0)
-        raw_minline=np.min(rawlist,axis=0)
-        raw_maxline=np.max(rawlist,axis=0)
+        raw_minline=np.min(rawlist[:,(n_smoothing//2):-(n_smoothing//2)],axis=0)
+        raw_maxline=np.max(rawlist[:,(n_smoothing//2):-(n_smoothing//2)],axis=0)
         smt_bestline=smtlist[best_line_idx,:]
         
         # PLOT SMOOTHED MAX,AVG,MINMAX RANGE, STD
         steparray=steparray[(n_smoothing//2):-(n_smoothing//2)]
         
-        ax.plot(steparray,smt_avgline,alpha=1., label=curve_name)
-        ax.fill_between(steparray,smt_avgline-smt_stdline,np.minimum((smt_avgline+smt_stdline),smt_maxline),facecolor='orange',alpha=0.4,label='std')
-        ax.fill_between(steparray,smt_minline,smt_maxline,facecolor='gray',alpha=0.15, label='minmax')
+        ax.plot(steparray,smt_avgline,alpha=1., label=curve_name, color=colorlist[curve_num],linewidth=1.5)
+        #ax.fill_between(steparray,smt_avgline-smt_stdline,np.minimum((smt_avgline+smt_stdline),smt_maxline),facecolor=colorlist[curve_num],alpha=0.4,label='std')
+        #ax.fill_between(steparray,smt_minline,smt_maxline,facecolor='gray',alpha=0.15, label='minmax')
     ax.set_xlim([0,numiter])
     ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, pos: '{:,.0f}'.format(x/1000) + 'k'))
     ax.set_ylim(yrange)
     ax.axhline(y=0,color='black',linewidth=.5)
     plt.savefig(path+'/losscurves_'+str(n_smoothing)+'.png')
+    #plt.savefig(path+'/returncurve_'+str(n_smoothing)+'.png')
     plt.clf()
 
 
-def CreateLearningCurvePlotsPhase1(path, n_smoothing=20, nseeds=5, numiter=1200, yrange=[-10.,2.]):
-    rawlist=[]
-    maxlen=0
-    for seed in range(nseeds):
-        path_ = path+'/DQN'+str(seed+1)
-        step,rew = tdlog2np(path_,'5. return_per_epi')
-        rawlist.append(rew)
-        maxlen = max(maxlen, len(rew))
-
-    smtlist=[]
-    smoothing_vector=[1/n_smoothing]*n_smoothing
-    best_line_idx=-1
-    globalbest=-1e6
-    for i in range(len(rawlist)):
-        p=maxlen-len(rawlist[i])
-        rawlist[i]=np.pad(rawlist[i],(0,p),'constant',constant_values=np.mean(rawlist[i][-n_smoothing*30:]))#'edge')
-        avg=np.convolve(smoothing_vector, rawlist[i],mode='valid')
-        localbest=avg.max()
-        if localbest > globalbest:
-            globalbest = localbest
-            best_line_idx=i
-        smtlist.append(avg)
-    step=step[2:-2]
-    rawlist=np.array(rawlist)[:,2:-2] # (seeds, max_iterations)
-    smtlist=np.array(smtlist) # (seeds, max_iterations)
-    smt_avgline=np.mean(smtlist,axis=0) # (max_iterations, )
-    smt_stdline=np.std(smtlist,axis=0)
-    smt_minline=np.min(smtlist,axis=0)
-    smt_maxline=np.max(smtlist,axis=0)
-    raw_minline=np.min(rawlist,axis=0)
-    raw_maxline=np.max(rawlist,axis=0)
-    smt_bestline=smtlist[best_line_idx,:]
-    # # PLOT SMOOTHED CURVE FOR EACH SEED
-    plt.plot(np.transpose(smtlist))
-    plt.savefig(path+'/Train_reward_smoothed_per_seed.png')
-    plt.clf()
-
-    # # PLOT UNSMOOTHED CURVE FOR EACH SEED
-    plt.plot(np.transpose(rawlist))
-    plt.savefig(path+'/Train_reward_raw_per_seed.png')
-    plt.clf()
-    
-    # PLOT SMOOTHED MAX,AVG,MINMAX RANGE, STD
-    fig,ax=plt.subplots(figsize=(12,5))
-    #ax.plot(smt_maxline,color="green", label='best seed')
-    
-    #ax.plot(step,smtlist.transpose(),color="orange",alpha=.2)
-    ax.plot(step,smt_avgline,color="orange",alpha=1., label='avg seed')
-    ax.fill_between(step,raw_minline,raw_maxline,facecolor='orange',alpha=0.35, label='minmax')
-    ax.fill_between(step,smt_avgline-smt_stdline,np.minimum((smt_avgline+smt_stdline),smt_maxline),facecolor='gray',alpha=0.3,label='std')
-    #ax.plot(smt_bestline,color="green", label='best seed')
-    #ax.legend()
-    #ax=plt.gca()
-    if numiter==None:
-        #numiter=len(smt_maxline)
-        numiter=max(step+100)
-    ax.set_xlim([0,numiter])
-    ax.set_ylim(yrange)
-    #plt.ylabel('average reward')
-    #ax.axes.get_xaxis().set_visible(False)
-    #ax.axes.get_xaxis().set_ticklabels([])
-    #ax.axes.get_xaxis().axhline(y=0,color='black')
-    #ax.yaxis.set_ticklabels([])
-    ax.axhline(y=0,color='black',linewidth=.5)
-    #lstm_dentifier = "title"
-    #plt.title(lstm_dentifier)
-    plt.savefig(path+'/Train_reward_Learningcurves.png')
-    plt.clf()
 
 #root="./results/results_Phase3simp/test_lstm_simp"
 #root="./results/results_Phase3simp/ppo/MemTask-U1"
 #root="./results/results_Phase3/ppo/M5x5Fixed"
 #root="./results/results_Phase3/ppo/M5x5Fixed/gat2-q/emb24_itT5/lstm_Dual_24_1/NFM_ev_ec_t_dt_at_um_us"
 #root="./results/results_Phase3/ppo/M5x5Fixed/gat2-v/emb24_itT5/lstm_None/NFM_ev_ec_t_dt_at_um_us"
-root="./results/results_Phase3simp/ppo/NWB_AMS_mixed_obs/gat2-q/emb64_itT5/lstm_EMB_64_1"
+#root="./results/results_Phase3simp/ppo/NWB_AMS_mixed_obs/gat2-q/emb64_itT5/lstm_EMB_64_1"
+root="./results/results_Phase3simp/ppo/NWB_AMS/gat2-q/emb64_itT5/lstm_None"
 
 # USE FOR LSTM
 for path in [x[0] for x in os.walk(root)]:
     if os.path.isfile(path+'/train-parameters.txt'):
         #path="./results/results_Phase3/ppo/MemTask-U1/gat2-q/emb24_itT5/lstm_Dual_24_1/NFM_ev_ec_t_dt_at_um_us/omask_freq0.2/bsize48" #folderpath
         #CreateLearningCurvePlots(path=path, seed0=2200, nseeds=5, n_smoothing=201, numiter=25000, yrange=[-9.,9.])
-        CreateLossCurvePlots(path=path, seed0=2204, nseeds=1, n_smoothing=301, numiter=25000, yrange=[-.5,.2])
+        CreateLossCurvePlots(path=path, seed0=2000, nseeds=5, n_smoothing=101, numiter=10000, yrange=[-.15,.15])
 
 #path="./results/results_Phase1/DQN/Manhattan5x5_VariableEscapeInit/etUt/tensorboard"
 #CreateLearningCurvePlotsPhase1(path=path, n_smoothing=5, nseeds=5, numiter=None, yrange=[-10.,5.])
