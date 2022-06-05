@@ -14,6 +14,8 @@ Thesis work-in-progress for UvA/AI MSc program ([Thesis Proposal](modules/sim/Th
 * Demo: performance of the Collision Risk Avoidance heuristic benchmark</br></br>
 ![cra_demo](modules/sim/cra_heuristic.gif)
 
-* Demo: performance of GNN-LSTM model, trained using PPO under partial observability
+* Demo: performance of GNN-LSTM model, trained using PPO under partial observability</br></br>
 https://user-images.githubusercontent.com/16600166/171231787-9738c356-65db-4240-8231-0519d23fd725.mp4
+</br></br>
+![clip](https://user-images.githubusercontent.com/16600166/171231787-9738c356-65db-4240-8231-0519d23fd725.mp4)
 
