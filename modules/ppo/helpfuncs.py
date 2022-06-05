@@ -37,13 +37,15 @@ def get_super_env(Uselected=[1], Eselected=[4], config=None, var_targets=None, a
             #    env_all_train[i]=PPO_ObsFlatWrapper(env_all_train[i], max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
             if type_obs_wrap == 'Dict':
                 env_all_train[i]=PPO_ObsDictWrapper(env_all_train[i], max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges)
+            elif type_obs_wrap == 'BasicDict':
+                env_all_train[i] = PPO_ObsBasicDictWrapper(env_all_train[i], obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
             else: assert False
             env_all_train[i]=PPO_ActWrapper(env_all_train[i])        
     super_env = SuperEnv(env_all_train, hashint2env, max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges, probs=probs)
     return super_env, env_all_train
 
 def  CreateEnvFS(config, obs_mask, obs_rate, max_nodes, max_edges):
-    Etest=[0,1,2,3,4,5,6,7,8,9,10]
+    Etest=[0,1,2,3,4,5,6,7,8,9]#,10]
     Utest=[1,2,3]
     evalenv, _, _, _  = GetWorldSet('etUte0U0', 'nfm', U=Utest, E=Etest, edge_blocking=config['edge_blocking'], solve_select=config['solve_select'], reject_duplicates=False, nfm_func=modules.gnn.nfm_gen.nfm_funcs[config['nfm_func']], apply_wrappers=False, maxnodes=max_nodes, maxedges=max_edges)
     for i in range(len(evalenv)):
@@ -210,21 +212,30 @@ def evaluate_lstm_ppo(logdir, info=False, config=None, env=None, ppo_policy=None
         if len(env)==0: return 0,0,0,0
         for i,e in enumerate(env):           
             l, returns, c, solves = EvaluatePolicy(e, ppo_policy, e.world_pool * multiplier, print_runs=False, save_plots=False, logdir=evaldir, eval_arg_func=EvalArgs1, silent_mode=True)
-            num_worlds_requested = 10
-            once_every = max(1,len(env)//num_worlds_requested)
-            if i % once_every == 0:
+            
+            edges_removed=12-int((len(e.sp.G.edges())-9))//2
+            num_u=e.sp.U
+            affix='/E'+str(edges_removed)+'_U'+str(num_u)
+
+            #num_worlds_requested = 10
+            #once_every = max(1,len(env)//num_worlds_requested)
+            if True:#i % once_every == 0:
                 plotlist = GetFullCoverageSample(returns, e.world_pool * multiplier, bins=3, n=3)
-                EvaluatePolicy(e, ppo_policy, plotlist, print_runs=True, save_plots=True, logdir=evaldir, eval_arg_func=EvalArgs1, silent_mode=False, plot_each_timestep=False)
+                EvaluatePolicy(e, ppo_policy, plotlist, print_runs=True, save_plots=True, logdir=evaldir+affix, eval_arg_func=EvalArgs1, silent_mode=False, plot_each_timestep=False)
+                OF = open(evaldir+affix+'/Full_result.txt', 'w')                
+                OF.write('n='+str(len(solves))+'\n')
+                OF.write('SR='+str(np.sum(solves)/len(solves)))
+                OF.close()
             R+=returns 
             S+=solves
     else:
         # assume env_all is a superenv
         assert False
     
-    OF = open(evaldir+'/Full_result.txt', 'w')
     def printing(text):
         print(text)
         OF.write(text + "\n")
+    OF = open(evaldir+'/Full_result.txt', 'w')
     num_unique_graphs = -1 #len(env_all)
     num_graph_instances = len(R)
     avg_return = np.mean(R)
