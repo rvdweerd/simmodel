@@ -136,8 +136,9 @@ class MaskablePPOPolicy(nn.Module):
         self.FE = FeatureExtractor(state_dim, hp)
         self.PI = Actor(state_dim, action_dim, continuous_action_space, trainable_std_dev, init_log_std_dev, hp=hp)
         self.V  = Critic(state_dim,hp)
-        #print(self)
-        #self.numTrainableParameters()
+        print(self)
+        total, ps=self.numTrainableParameters()
+        print(ps)
 
     def forward(self, features, terminal=None, selector=None):
         return self.PI(features, terminal, selector), self.V(features, terminal, selector)
@@ -240,10 +241,10 @@ class FeatureExtractor(nn.Module):
         self.gat = GATv2(
             in_channels = self.node_dim,
             hidden_channels = self.emb_dim,
-            heads = 1,#2,#1,#2,
+            heads = 2,#1,#2,
             num_layers = self.T,
             out_channels = self.emb_dim,
-            share_weights = False,#True,
+            share_weights = True,
             **kwargs
         )
 

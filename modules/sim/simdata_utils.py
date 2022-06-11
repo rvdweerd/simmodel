@@ -717,7 +717,7 @@ def SimulateInteractiveMode(env, filesave_with_time_suffix=True, entry=None):
     s=env.state
     done=False
     R=0
-    env.render(mode=None, fname="results/test", t_suffix=filesave_with_time_suffix)
+    env.render(mode=None, fname="results/test", t_suffix=filesave_with_time_suffix, size='large')
     while not done:
         #print('e position:',env.state[0],env.sp.labels2coord[env.state[0]])
         #print('u paths (node labels):',env.u_paths)
@@ -739,14 +739,16 @@ def SimulateInteractiveMode(env, filesave_with_time_suffix=True, entry=None):
         n = env.neighbors[env.state[0]]
         print('Available actions: ',n)
         while True:
-            a=input('Action nr '+str(env.global_t+1)+'/max '+str(env.sp.T)+' (new node)?  > ')
+            a=input('Action nr '+str(env.global_t+1)+'/max '+str(env.sp.T)+' (new node)? [n]=nfm > ')
             if (a.isnumeric() and int(a) in n) or a.lower()=='q': break
+            if a.lower()=='n':
+                print(env.obs['nfm'])
         if a.lower() == 'q': break
         print()
         a=n.index(int(a))
         s,r,done,_=env.step(int(a))
         s=env.state
-        env.render_eupaths(mode=None, fname="results/test", t_suffix=filesave_with_time_suffix, last_step_only=True)
+        env.render_eupaths(mode=None, fname="results/test", t_suffix=filesave_with_time_suffix, last_step_only=True, size='large')
         R+=r
     print('\n******************** done, reward='+str(R),'**********************')
     #input('> Press any key to continue')

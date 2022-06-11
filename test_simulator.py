@@ -36,7 +36,7 @@ import pickle
 # out_file.close()
 
 #world_name='CircGraph'
-world_name='TKGraph'
+#world_name='TKGraph'
 #world_name='BifurGraphTask1'
 #world_name='MemoryTaskU1'
 #world_name='MetroU3_e17tborder_FixedEscapeInit'
@@ -44,7 +44,9 @@ world_name='TKGraph'
 #world_name='MetroU1_e17tborder_VariableEscapeInit'
 #world_name='NWB_test_FixedEscapeInit'
 #world_name='NWB_ROT_FixedEscapeInit'
+world_name='NWB_ROT_FixedEscapeInit2'
 #world_name='NWB_UTR_FixedEscapeInit'
+#world_name='NWB_UTR_FixedEscapeInit2'
 #world_name='Manhattan3x3_WalkAround'
 #world_name='Manhattan5x5_FixedEscapeInit'
 #world_name='SparseManhattan5x5'

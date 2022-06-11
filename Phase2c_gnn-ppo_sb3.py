@@ -162,6 +162,12 @@ def main(args):
 
             if config['demoruns']:
                 saved_model = MaskablePPO.load(config['logdir']+'/SEED'+str(config['seed0'])+"/saved_models/model_best")
+                total = 0
+                for name, p in saved_model.policy.named_parameters():
+                    total += np.prod(p.shape)
+                    print("{:24s} {:12s} requires_grad={}".format(name, str(list(p.shape)), p.requires_grad))
+                print("Total number of parameters: {}".format(total))
+                print('------------------------------------------')
                 if config['qnet']=='s2v':
                     #saved_policy = s2v_ActorCriticPolicy.load(config['logdir']+'/SEED'+str(config['seed0'])+"/saved_models/policy_last")
                     saved_policy_deployable=DeployablePPOPolicy(evalenv[0], saved_model.policy)

@@ -18,7 +18,7 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         hashint=4007
         env_idx=hashint2env[hashint]
         env=evalenv[env_idx]
-        env.redefine_goal_nodes([2,5,8])
+        env.redefine_goal_nodes([5])
         #env.redefine_goal_nodes([5])
         entry=0
         env.world_pool=[entry]
@@ -518,7 +518,7 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
             #'fixed_initial_positions': (1,5,7,28),
             'loadAllStartingPositions': False
         }
-        if world_name == 'NWB_UTR_VariableEscapeInit':
+        if world_name == 'NWB_UTR_VariableEscapeInit2':
             conf['loadAllStartingPositions'] = True
         conf['obj'] = nx.read_gpickle('datasets/G_nwb/4.GEPHI_to_SIM/G_test_UTR_1km_edited_V=1182.bin')
         assert not conf['obj']['G'].is_directed()
