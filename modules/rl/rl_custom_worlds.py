@@ -101,10 +101,10 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         conf=configs['BifurGraphTask1']
         conf['direction_north']=False
         conf['make_reflexive']=make_reflexive
-        conf['U']=1
+        conf['U']=2
         env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
         #env.redefine_goal_nodes([8,17,26])
-        env.world_pool=[6]#[20,4,5,17,25,7,6,19]
+        env.world_pool=[269]#[196,188,269,19,309,256,183,178]#[20,4,5,17,25,7,6,19]
         env.reset()
         return env        
     if world_name == 'MemoryTaskU1Long':
