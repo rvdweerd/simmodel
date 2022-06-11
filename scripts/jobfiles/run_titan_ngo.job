@@ -1,0 +1,54 @@
+#!/bin/bash
+#SBATCH -p gpu_titanrtx_shared
+#SBATCH --gpus-per-node=titanrtx:1
+#SBATCH --job-name=gnn_ppo
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --time=12:00:00
+#SBATCH --mem=48000M
+#SBATCH --output=slurm_output_%A.out
+
+__conda_setup="$('/home/weerdr/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/weerdr/miniconda3/etc/profile.d/conda.sh" ]; then
+        . "/home/weerdr/miniconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/weerdr/miniconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+
+cd $HOME/testing/sim
+conda activate rlcourse
+
+train_on="NWB_AMS+Mix"
+batch_size=48
+obs_mask="None"
+obs_rate=0.0
+emb_dim=64
+lstm_type="None"
+lstm_hdim=64
+lstm_layers=1
+emb_iterT=5
+nfm_func="NFM_ev_ec_t_dt_at_um_us"
+#nfm_func="NFM_ev_ec_t_dt_at_ustack"
+#qnet="gat2"
+qnet="gat2"
+critic="q"
+train="False"
+eval="False"
+test="True"
+test_heur="False"
+num_seeds=5
+#seed0=0
+demoruns="False"
+#num_step=25001
+parallel_rollouts=1
+type_obs_wrap="obs_flat"
+for seed0 in {0,}
+do
+    python Phase3_lstm-gnn-ppo_adv.py --train_on $train_on --batch_size $batch_size --obs_mask $obs_mask --obs_rate $obs_rate --emb_dim $emb_dim --lstm_type $lstm_type --lstm_hdim $lstm_hdim --lstm_layers $lstm_layers --emb_iterT $emb_iterT --nfm_func $nfm_func --qnet $qnet --train $train --eval $eval --test $test --num_seeds $num_seeds --seed0 $seed0 --demoruns $demoruns --parallel_rollouts $parallel_rollouts --critic $critic --type_obs_wrap $type_obs_wrap --test_heur $test_heur&
+done
+wait

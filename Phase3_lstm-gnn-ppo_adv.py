@@ -115,14 +115,14 @@ def main(args):
             #'Manhattan3x3_WalkAround':[9,300],
             #'MetroU3_e1t31_FixedEscapeInit':[33, 300],
             #'full_solvable_3x3subs':[9,33],
-            # 'MemoryTaskU1':[8,16],
-            'Manhattan3x3_PredictionExample':[9,9],
-            # 'Manhattan5x5_FixedEscapeInit':[25,105],
-            # 'Manhattan5x5_VariableEscapeInit':[25,105],
+            'MemoryTaskU1':[8,16],
+            #'Manhattan3x3_PredictionExample':[9,9],
+            #'Manhattan5x5_FixedEscapeInit':[25,105],
+            #'Manhattan5x5_VariableEscapeInit':[25,105],
             # 'MetroU3_e17tborder_FixedEscapeInit':[33,300],
             # 'MetroU3_e17tborder_VariableEscapeInit':[33,300],
-            # 'NWB_ROT_FixedEscapeInit':[2602,7300],
-            # 'NWB_ROT_VariableEscapeInit':[2602,7300],
+            #'NWB_ROT_FixedEscapeInit':[2602,3640],
+            #'NWB_ROT_VariableEscapeInit':[2602,3640],
             # 'NWB_test_FixedEscapeInit':[975,4000],
             # 'NWB_test_VariableEscapeInit':[975,4000],
             # 'NWB_UTR_FixedEscapeInit':[1182,4000],
@@ -199,7 +199,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr', default=5e-4, type=float)
     parser.add_argument('--recurrent_seq_len', default=2, type=int)
     parser.add_argument('--parallel_rollouts', default=1, type=int)
-    parser.add_argument('--rollout_steps', default=100, type=int)
+    parser.add_argument('--rollout_steps', default=150, type=int)
     parser.add_argument('--patience', default=500, type=int)
     parser.add_argument('--obs_mask', default='None', type=str, help='U obervation masking type', choices=['None','freq','prob','prob_per_u'])
     parser.add_argument('--obs_rate', default=1.0, type=float)
@@ -219,7 +219,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed0', default=10, type=int)
     parser.add_argument('--demoruns', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
     parser.add_argument('--num_step', default=-1, type=int)
-    parser.add_argument('--checkpoint_frequency', default=-1, type=int)
+    parser.add_argument('--checkpoint_frequency', default=100, type=int)
     parser.add_argument('--eval_deter', type=lambda s: s.lower() in ['true', 't', 'yes', '1'],default=True)
     parser.add_argument('--type_obs_wrap', default='obs_flat', type=str)
     parser.add_argument('--test_heur', type=lambda s: s.lower() in ['true', 't', 'yes', '1'],default=False)

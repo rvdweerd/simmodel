@@ -33,9 +33,9 @@ def get_super_env(Uselected=[1], Eselected=[4], config=None, var_targets=None, a
     env_all_train, hashint2env, env2hashint, env2hashstr, probs = GetWorldSet(state_repr, state_enc, U=Uselected, E=Eselected, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func, var_targets=var_targets, remove_paths=remove_paths, return_probs=True)
     if apply_wrappers:
         for i in range(len(env_all_train)):
-            #if type_obs_wrap == 'Flat':
-            #    env_all_train[i]=PPO_ObsFlatWrapper(env_all_train[i], max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
-            if type_obs_wrap == 'Dict':
+            if type_obs_wrap == 'obs_flat':
+                env_all_train[i]=PPO_ObsFlatWrapper(env_all_train[i], max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges, obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
+            elif type_obs_wrap == 'Dict':
                 env_all_train[i]=PPO_ObsDictWrapper(env_all_train[i], max_possible_num_nodes = max_nodes, max_possible_num_edges=max_edges)
             elif type_obs_wrap == 'BasicDict':
                 env_all_train[i] = PPO_ObsBasicDictWrapper(env_all_train[i], obs_mask=config['obs_mask'], obs_rate=config['obs_rate'])
@@ -54,7 +54,7 @@ def  CreateEnvFS(config, obs_mask, obs_rate, max_nodes, max_edges):
         assert len(evalenv[i].world_pool) == len(evalenv[i].all_worlds)
     return evalenv
 
-def CreateEnv(world_name, max_nodes=9, max_edges=300, nfm_func_name = 'NFM_ev_ec_t_um_us', var_targets=None, remove_world_pool=False, apply_wrappers=True, type_obs_wrap='Flat', obs_mask='None', obs_rate=1):
+def CreateEnv(world_name, max_nodes=9, max_edges=300, nfm_func_name = 'NFM_ev_ec_t_um_us', var_targets=None, remove_world_pool=False, apply_wrappers=True, type_obs_wrap='obs_flat', obs_mask='None', obs_rate=1):
     state_repr='etUte0U0'
     state_enc='nfm'
     edge_blocking = True
@@ -213,16 +213,16 @@ def evaluate_lstm_ppo(logdir, info=False, config=None, env=None, ppo_policy=None
         for i,e in enumerate(env):           
             l, returns, c, solves = EvaluatePolicy(e, ppo_policy, e.world_pool * multiplier, print_runs=False, save_plots=False, logdir=evaldir, eval_arg_func=EvalArgs1, silent_mode=True)
             
-            edges_removed=12-int((len(e.sp.G.edges())-9))//2
-            num_u=e.sp.U
-            affix='/E'+str(edges_removed)+'_U'+str(num_u)
+            #edges_removed=12-int((len(e.sp.G.edges())-9))//2
+            #num_u=e.sp.U
+            #affix='/E'+str(edges_removed)+'_U'+str(num_u)
 
-            #num_worlds_requested = 10
-            #once_every = max(1,len(env)//num_worlds_requested)
-            if True:#i % once_every == 0:
+            num_worlds_requested = 10
+            once_every = max(1,len(env)//num_worlds_requested)
+            if i % once_every == 0:
                 plotlist = GetFullCoverageSample(returns, e.world_pool * multiplier, bins=3, n=3)
-                EvaluatePolicy(e, ppo_policy, plotlist, print_runs=True, save_plots=True, logdir=evaldir+affix, eval_arg_func=EvalArgs1, silent_mode=False, plot_each_timestep=False)
-                OF = open(evaldir+affix+'/Full_result.txt', 'w')                
+                EvaluatePolicy(e, ppo_policy, plotlist, print_runs=True, save_plots=True, logdir=evaldir, eval_arg_func=EvalArgs1, silent_mode=False, plot_each_timestep=False)
+                OF = open(evaldir+'/Full_result.txt', 'w')                
                 OF.write('n='+str(len(solves))+'\n')
                 OF.write('SR='+str(np.sum(solves)/len(solves)))
                 OF.close()
