@@ -1,0 +1,53 @@
+#!/bin/bash
+#SBATCH -p gpu_shared
+#SBATCH --gpus=1
+#SBATCH --job-name=gnn_dqn
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --time=48:00:00
+#SBATCH --mem=48000M
+#SBATCH --output=slurm_output_%A.out
+
+__conda_setup="$('/home/weerdr/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/weerdr/miniconda3/etc/profile.d/conda.sh" ]; then
+        . "/home/weerdr/miniconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/weerdr/miniconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+
+cd $HOME/testing/sim
+conda activate rlcourse
+
+emb_dim=64
+num_epi=25000
+mem_size=5000
+tau=100
+nstep=2
+optim_target="returns"
+train="True"
+eval="False"
+test="False"
+demoruns="False"
+Etrain=0
+Utrain=1
+qnet="gat2"
+norm_agg="True"
+train_on="NWB_AMS"
+max_nodes=975
+pursuit="Uon"
+num_seeds=1
+#seed0=2000
+solve_select="solvable"
+edge_blocking="True"
+nfm_func="NFM_ev_ec_t_dt_at_um_us"
+emb_itT=5
+for seed0 in {2004,}
+do
+    python Phase2b_gnn-dqn.py --emb_dim $emb_dim --num_epi $num_epi --mem_size $mem_size --tau $tau --nstep $nstep --optim_target $optim_target --train $train --eval $eval --test $test --demoruns $demoruns --Etrain $Etrain --Utrain $Utrain --qnet $qnet --norm_agg $norm_agg --train_on $train_on --max_nodes $max_nodes --pursuit $pursuit --num_seeds $num_seeds --seed0 $seed0 --solve_select $solve_select --edge_blocking $edge_blocking --nfm_func $nfm_func --emb_itT $emb_itT&
+done
+wait

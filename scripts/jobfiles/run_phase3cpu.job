@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=heuristics
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=12
-#SBATCH --time=32:00:00
+#SBATCH --cpus-per-task=6
+#SBATCH --time=24:00:00
 #SBATCH --mem=48000M
 #SBATCH --output=slurm_output_%A.out
 
@@ -53,14 +53,12 @@ rollout_steps=75
 #lr=5e-4
 num_step=70000
 critic="q"
-lstm_type="None"
 eval_deter="True"
 nfm_func="NFM_ev_ec_t_dt_at_um_us"
 #nfm_func="NFM_ev_ec_t_dt_at_ustack"
-for eval_rate in {0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2,0.1,0.0,1.0}
+#for eval_rate in {1.0,0.9,0.8,0.7,0.6,0.5}
+for eval_rate in {0.4,0.3,0.2,0.1,0.0}
 do
     python Phase3_lstm-gnn-ppo_simp.py --eval_rate $eval_rate --train_on $train_on --batch_size $batch_size --obs_mask $obs_mask --obs_rate $obs_rate --emb_dim $emb_dim --lstm_type $lstm_type --lstm_hdim $lstm_hdim --lstm_layers $lstm_layers --emb_iterT $emb_iterT --nfm_func $nfm_func --qnet $qnet --train $train --eval $eval --test $test --num_seeds $num_seeds --seed0 $seed0 --demoruns $demoruns --parallel_rollouts $parallel_rollouts --critic $critic --num_step $num_step --test_heur $test_heur --type_obs_wrap $type_obs_wrap --eval_deter $eval_deter&
 done
 wait
-
-           
