@@ -90,8 +90,8 @@ def main(args):
     if config['test']:
         evalResults={}
         world_dict = SelectTestWorlds()
-        obs_evalmasks = 10*['prob_per_u_test']
-        obs_evalrates = [.9,.8,.7,.6,.5,.4,.3,.2,.1,0.0]    # [1.][0.8]
+        obs_evalmasks = 11*['prob_per_u_test']
+        obs_evalrates = [1.,.9,.8,.7,.6,.5,.4,.3,.2,.1,0.0]    # [1.][0.8]
         for obs_mask, obs_rate in zip(obs_evalmasks, obs_evalrates):
             for world_name in world_dict.keys():
                 evalName=world_name+'_obs'+obs_mask+'_evaldet'+str(tp['eval_deterministic'])[0]
@@ -150,7 +150,7 @@ def SelectTestWorlds():
             #'Manhattan5x5_VariableEscapeInit':[25,105],
             #'MetroU3_e17tborder_FixedEscapeInit':[33,119],
             #'MetroU3_e17tborder_VariableEscapeInit':[33,119],
-            'NWB_test_FixedEscapeInit':[975,1425],
+            #'NWB_test_FixedEscapeInit':[975,1425],
             #'NWB_test_FixedEscapeInit_U=15':[975,1425],
             #'NWB_test_FixedEscapeInit_U=20':[975,1425],
             #'NWB_test_FixedEscapeInit2':[975,1425],
@@ -160,10 +160,10 @@ def SelectTestWorlds():
             #'NWB_UTR_FixedEscapeInit_U=20':[1182,3204],
             #'NWB_UTR_FixedEscapeInit2':[1182,3204],
             #'NWB_UTR_VariableEscapeInit':[1182,3204],
-            #'NWB_ROT_FixedEscapeInit':[2602,7266],
+            'NWB_ROT_FixedEscapeInit':[2602,7266],
             #'NWB_ROT_FixedEscapeInit_U=15':[2602,7266],
             #'NWB_ROT_FixedEscapeInit_U=20':[2602,7266],
-            #'NWB_ROT_FixedEscapeInit2':[2602,7266],
+            'NWB_ROT_FixedEscapeInit2':[2602,7266],
             #'NWB_ROT_VariableEscapeInit':[2602,7266],
             #'SparseManhattan5x5':[25,105],
             }

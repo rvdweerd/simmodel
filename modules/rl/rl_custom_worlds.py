@@ -15,12 +15,13 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         Utrain=[1]
         databank_full, register_full, solvable = LoadData(edge_blocking = True)
         evalenv, hashint2env, env2hashint, env2hashstr = GetWorldSet(state_repr, state_enc, U=Utrain, E=Etrain, edge_blocking=edge_blocking, solve_select=solve_select, reject_duplicates=reject_u_duplicates, nfm_func=nfm_func)
-        hashint=4007
+        #hashint=4007
+        #entry=0
+        hashint=3759 # flipped vertically
+        entry=1
         env_idx=hashint2env[hashint]
         env=evalenv[env_idx]
         env.redefine_goal_nodes([5])
-        #env.redefine_goal_nodes([5])
-        entry=0
         env.world_pool=[entry]
         return env
 
