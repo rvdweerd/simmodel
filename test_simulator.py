@@ -37,7 +37,8 @@ import pickle
 
 #world_name='CircGraph'
 #world_name='TKGraph'
-world_name='BifurGraphTask1'
+#world_name='BifurGraphTask1'
+world_name='M3test1'
 #world_name='MemoryTaskU1'
 #world_name='MetroU3_e17tborder_FixedEscapeInit'
 #world_name='Manhattan11x11_FixedEscapeInit'
@@ -50,8 +51,8 @@ world_name='BifurGraphTask1'
 #world_name='Manhattan3x3_WalkAround'
 #world_name='Manhattan5x5_FixedEscapeInit'
 #world_name='SparseManhattan5x5'
-N=27#975#33#25#3975
-E=52#3000#105#4000
+N=9#27#975#33#25#3975
+E=9#52#3000#105#4000
 obs_mask='None'
 obs_rate=1.0
 state_repr='etUte0U0'

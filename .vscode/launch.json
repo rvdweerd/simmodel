@@ -129,7 +129,7 @@
                     "--seed0","0",
                     "--solve_select","solvable",
                     "--edge_blocking","True",
-                    "--max_nodes","25",
+                    "--max_nodes","9",
                     "--demoruns","True",
                     "--pursuit","Uon",
 

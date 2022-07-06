@@ -15,7 +15,7 @@ import torch.nn.functional as F
 from pathlib import Path
 import os
 import pickle
-from modules.sim.sim_graphs import SparseManhattanGraph, graph, CircGraph, TKGraph, MetroGraph, MemGraph, MemGraphLong, BifurGraph
+from modules.sim.sim_graphs import SparseManhattanGraph, graph, CircGraph, TKGraph, MetroGraph, MemGraph, MemGraphLong, BifurGraph, M3test1
 from modules.rl.rl_plotting import PlotAgentsOnGraph
 from modules.optim.escape_route_generator_MC import mutiple_escape_routes
 from modules.optim.optimization_FIP_gurobipy import unit_ranges, optimization_alt, optimization
@@ -116,6 +116,20 @@ def GetWorldPool(all_worlds, fixed_initial_positions, register):
 
 def GetConfigs():
     configs = {
+        "M3test1": {
+            # Note: ...
+            'graph_type': "M3test1",
+            'make_reflexive': True,
+            'N': 9,    # number of nodes along one side
+            'U': 1,    # number of pursuer units
+            'L': 4,    # Time steps
+            'T': 7,
+            'R': 100,  # Number of escape routes sampled 
+            'direction_north': False,       # Directional preference of escaper
+            'start_escape_route': '.', # Initial position of escaper
+            'fixed_initial_positions': (1,0),
+            'loadAllStartingPositions': False
+        },  
         "MemoryTaskU1": {
             # Note: ...
             'graph_type': "MemGraph",
@@ -417,6 +431,16 @@ def DefineSimParameters(config):
         sp.coord2nodeid = dict( (n, i) for i,n in enumerate(sp.G.nodes()) )
         sp.target_nodes = set([8,17,26])
         sp.start_escape_route = sp.nodeid2coord[0]        
+    elif sp.graph_type == 'M3test1':
+        sp.G, sp.labels, sp.pos = M3test1()#manhattan_graph(N)
+        sp.N = 9                  # Number of nodes (FIXED)
+        sp.V = 9              # Total number of vertices (FIXED)
+        sp.direction_north = False # (NOT VERY INTERESTING IF TRUE)
+        sp.nodeid2coord = dict( (i, n) for i,n in enumerate(sp.G.nodes()) )
+        sp.coord2nodeid = dict( (n, i) for i,n in enumerate(sp.G.nodes()) )
+        sp.target_nodes = set([2])
+        sp.start_escape_route = sp.nodeid2coord[8]        
+
     # Define mappings between node naming conventions
     sp.coord2nodeid = dict( (n, i) for i,n in enumerate(sp.G.nodes()) )
     sp.coord2labels = sp.labels

@@ -236,7 +236,8 @@ def main(args):
             #'Manhattan3x3_WalkAround',
             # 'MetroU3_e1t31_FixedEscapeInit', 
             #'full_solvable_3x3subs',
-            'BifurGraphTask1'
+            #'BifurGraphTask1'
+            'M3test1'
             #'Manhattan3x3_PredictionExample', 
             # 'Manhattan5x5_FixedEscapeInit',
             # 'Manhattan5x5_VariableEscapeInit',

@@ -24,6 +24,23 @@ def GetCustomWorld(world_name, make_reflexive=True, state_repr='et', state_enc='
         env.redefine_goal_nodes([5])
         env.world_pool=[entry]
         return env
+    if world_name == 'M3test1':
+        configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"
+        conf=configs['M3test1']
+        conf['direction_north']=False
+        conf['make_reflexive']=make_reflexive
+        conf['U']=1
+        env = GraphWorld(conf, optimization_method='static', fixed_initial_positions=None, state_representation=state_repr, state_encoding=state_enc)
+        env.register['coords']={((1,0),(1,2)):0}
+        env.register['labels']={(7,1):0}
+        env.databank['coords']=[{'start_escape_route':(1,0), 'start_units':[(1,2)], 'paths':[(1,2),(0,2)]}]
+        env.databank['labels']=[{'start_escape_route':7, 'start_units':[1], 'paths':[[1,0]]}]
+        env.iratios=[1.]
+        env.redefine_goal_nodes([1])
+        env.all_worlds=[0]
+        env.world_pool=[0]
+        env.reset()
+        return env
 
     if world_name == 'Manhattan3x3_PauseFreezeWorld':
         configs = su.GetConfigs() # dict with pre-set configs: "Manhattan5","Manhattan11","CircGraph"

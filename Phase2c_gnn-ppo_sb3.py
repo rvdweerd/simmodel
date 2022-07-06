@@ -130,7 +130,8 @@ def main(args):
         # eval_nums = [1, 1000,200]
         evalResults={}
         world_dict={ # [max_nodes,max_edges]
-            'Manhattan3x3_PredictionExample':[9,27]
+            'M3test1':[9,25]
+            #'Manhattan3x3_PredictionExample':[9,27]
             #'Manhattan5x5_DuplicateSetB':[25,300],
             #'Manhattan3x3_WalkAround':[9,300],
             #'MetroU3_e1t31_FixedEscapeInit':[33, 300],
