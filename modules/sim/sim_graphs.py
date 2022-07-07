@@ -222,7 +222,7 @@ def MemGraph():
 
     return G, labels, pos
 
-def M3test1():
+def M3test(v=0):
     # 0 - 1 - 2
     # | \     |
     # 3   4   5
@@ -240,12 +240,8 @@ def M3test1():
         (1,0),
         (2,0)
     ])
-    G.add_edges_from([
+    edgelist=[
         ((0,2),(1,2), {'N_pref':1.}),
-        # ((0,2),(1,1), {'N_pref':1.}),#
-        # ((0,1),(1,1), {'N_pref':1.}),#
-        # ((1,2),(1,1), {'N_pref':1.}),#
-        # ((0,1),(1,2), {'N_pref':1.}),#
         ((0,2),(0,1), {'N_pref':1.}),
         ((1,2),(2,2), {'N_pref':1.}),
         ((2,2),(2,1), {'N_pref':1.}),                        
@@ -255,10 +251,6 @@ def M3test1():
         ((1,0),(2,0), {'N_pref':1.}),
 
         ((1,2),(0,2), {'N_pref':1.}),
-        # ((1,1),(0,2), {'N_pref':1.}),#
-        # ((1,1),(0,1), {'N_pref':1.}),#
-        # ((1,1),(1,2), {'N_pref':1.}),#
-        # ((1,2),(0,1), {'N_pref':1.}),#
         ((0,1),(0,2), {'N_pref':1.}),
         ((2,2),(1,2), {'N_pref':1.}),
         ((2,1),(2,2), {'N_pref':1.}),                        
@@ -266,7 +258,29 @@ def M3test1():
         ((2,0),(2,1), {'N_pref':1.}),                     
         ((1,0),(0,0), {'N_pref':1.}),
         ((2,0),(1,0), {'N_pref':1.}),
-    ])
+    ]
+    if v==0:
+        edgelist.append(((0,1),(1,1), {'N_pref':1.})) # 3-4
+        edgelist.append(((1,1),(0,1), {'N_pref':1.}))
+    elif v==1:
+        edgelist.append(((0,2),(1,1), {'N_pref':1.})) # 0-4
+        edgelist.append(((1,1),(0,2), {'N_pref':1.}))
+    elif v==2:
+        edgelist.append(((0,0),(1,1), {'N_pref':1.})) # 6-4
+        edgelist.append(((1,1),(0,0), {'N_pref':1.}))
+    elif v==3:
+        edgelist.append(((0,1),(1,1), {'N_pref':1.})) # 3-4
+        edgelist.append(((1,1),(0,1), {'N_pref':1.}))
+        edgelist.append(((0,2),(1,1), {'N_pref':1.})) # 0-4
+        edgelist.append(((1,1),(0,2), {'N_pref':1.}))
+    elif v==4:
+        edgelist.append(((0,1),(1,1), {'N_pref':1.})) # 3-4
+        edgelist.append(((1,1),(0,1), {'N_pref':1.}))
+        edgelist.append(((0,2),(1,1), {'N_pref':1.})) # 0-4
+        edgelist.append(((1,1),(0,2), {'N_pref':1.}))
+        edgelist.append(((0,0),(1,1), {'N_pref':1.})) # 6-4
+        edgelist.append(((1,1),(0,0), {'N_pref':1.}))
+    G.add_edges_from(edgelist)
     
     #H=G.to_undirected()
     pos = dict( (n,n) for n in G.nodes() )
