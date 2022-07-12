@@ -16,7 +16,7 @@ from modules.rl.environments import SuperEnv
 import modules.gnn.nfm_gen
 from modules.gnn.construct_trainsets import ConstructTrainSet, get_train_configs
 from modules.sim.simdata_utils import SimulateInteractiveMode, SimulateInteractiveMode_PPO, SimulateAutomaticMode_PPO
-from Phase2c_eval import ManualEval
+#from source_old.Phase2c_eval import ManualEval
 from sb3_contrib.common.wrappers import ActionMasker
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
@@ -205,8 +205,8 @@ def main(args):
                 printing('  std over seeds: '+str(np.std(values)))
                 printing('  per seed: '+str(np.array(values))+'\n')
 
-    if args.eval:
-        ManualEval(config)
+    #if args.eval:
+    #    ManualEval(config)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)    

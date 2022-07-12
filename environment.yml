@@ -1,0 +1,25 @@
+name: rl
+channels:
+  - conda-forge
+  - anaconda
+  - nvidia
+  - pytorch
+  - plotly
+  - gurobi
+dependencies:
+  - nvidia::cudatoolkit=10.2
+  - python=3.8
+  - pytorch::pytorch=1.11
+  - pytorch::torchvision
+  - setuptools=58.0.4
+  - conda-forge::tensorboard=2.8.0
+  - numpy
+  - networkx=2.8.3
+  - matplotlib
+  - plotly=5.7.0
+  - seaborn=0.11.2
+  - gurobi=9.5.1
+  - dotmap=1.3.30
+  - pip
+  - pip:
+    - class_resolver==0.3.8

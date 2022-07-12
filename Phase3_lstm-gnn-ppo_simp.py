@@ -142,7 +142,7 @@ def SelectTestWorlds():
             #'Manhattan5x5_DuplicateSetB':[25,300],
             #'Manhattan3x3_WalkAround':[9,21],
             #'MetroU3_e1t31_FixedEscapeInit':[33, 119],
-            #'MemoryTaskU1':[8,16],
+            'MemoryTaskU1':[8,16],
             #'BifurGraphTask1':[27,52],
             #'full_solvable_3x3subs':[9,21],
             #'Manhattan5x5_FixedEscapeInit':[25,105],
@@ -160,10 +160,10 @@ def SelectTestWorlds():
             #'NWB_UTR_FixedEscapeInit_U=20':[1182,3204],
             #'NWB_UTR_FixedEscapeInit2':[1182,3204],
             #'NWB_UTR_VariableEscapeInit':[1182,3204],
-            'NWB_ROT_FixedEscapeInit':[2602,7266],
+            #'NWB_ROT_FixedEscapeInit':[2602,7266],
             #'NWB_ROT_FixedEscapeInit_U=15':[2602,7266],
             #'NWB_ROT_FixedEscapeInit_U=20':[2602,7266],
-            'NWB_ROT_FixedEscapeInit2':[2602,7266],
+            #'NWB_ROT_FixedEscapeInit2':[2602,7266],
             #'NWB_ROT_VariableEscapeInit':[2602,7266],
             #'SparseManhattan5x5':[25,105],
             }
@@ -244,34 +244,34 @@ def SaveResults(evalResults, config, tp):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)    
     parser.add_argument('--train_on', default='None', type=str)
-    parser.add_argument('--num_step', default=10000, type=int)
-    parser.add_argument('--batch_size', default=48, type=int)
+    parser.add_argument('--num_step', default=600, type=int)
+    parser.add_argument('--batch_size', default=2, type=int)
     parser.add_argument('--lr', default=5e-4, type=float)
     parser.add_argument('--recurrent_seq_len', default=2, type=int)
-    parser.add_argument('--parallel_rollouts', default=1, type=int)
+    parser.add_argument('--parallel_rollouts', default=4, type=int)
     parser.add_argument('--rollout_steps', default=100, type=int)
     parser.add_argument('--patience', default=500, type=int)
     parser.add_argument('--checkpoint_frequency', default=5000, type=int)
-    parser.add_argument('--obs_mask', default='None', type=str, help='U obervation masking type', choices=['None','freq','prob','prob_per_u','mix'])
+    parser.add_argument('--obs_mask', default='None', type=str, help='U observation masking type', choices=['None','freq','prob','prob_per_u','mix'])
     parser.add_argument('--obs_rate', default=1.0, type=float)
     parser.add_argument('--eval_rate', default=1.0, type=float)
-    parser.add_argument('--emb_dim', default=64, type=int)
+    parser.add_argument('--emb_dim', default=24, type=int)
     parser.add_argument('--lstm_type', default='None', type=str, choices=['None','EMB','FE','Dual','DualCC'])
-    parser.add_argument('--lstm_hdim', default=64, type=int)
+    parser.add_argument('--lstm_hdim', default=24, type=int)
     parser.add_argument('--lstm_layers', default=1, type=int)
     #parser.add_argument('--lstm_dropout', default=0.0, type=float)
-    parser.add_argument('--emb_iterT', default=2, type=int)
-    parser.add_argument('--nfm_func', default='NFM_ev_ec_t', type=str)
+    parser.add_argument('--emb_iterT', default=5, type=int)
+    parser.add_argument('--nfm_func', default='NFM_ev_ec_t_dt_at_um_us', type=str)
     parser.add_argument('--qnet', default='gat2', type=str)
     parser.add_argument('--critic', default='q', type=str, choices=['q','v']) # q=v value route, v=single value route
-    parser.add_argument('--train', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
-    parser.add_argument('--eval', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])   
-    parser.add_argument('--test', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])       
+    parser.add_argument('--train', type=lambda s: s.lower() in ['true', 't', 'yes', '1'],default=False)
+    parser.add_argument('--eval', type=lambda s: s.lower() in ['true', 't', 'yes', '1'],default=False)   
+    parser.add_argument('--test', type=lambda s: s.lower() in ['true', 't', 'yes', '1'],default=False)       
     parser.add_argument('--test_heur', type=lambda s: s.lower() in ['true', 't', 'yes', '1'],default=False)       
-    parser.add_argument('--num_seeds', default=5, type=int)
-    parser.add_argument('--seed0', default=10, type=int)
-    parser.add_argument('--demoruns', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
+    parser.add_argument('--num_seeds', default=1, type=int)
+    parser.add_argument('--seed0', default=0, type=int)
+    parser.add_argument('--demoruns', type=lambda s: s.lower() in ['true', 't', 'yes', '1'],default=False)
     parser.add_argument('--eval_deter', type=lambda s: s.lower() in ['true', 't', 'yes', '1'],default=True)
-    parser.add_argument('--type_obs_wrap', default='', type=str)
+    parser.add_argument('--type_obs_wrap', default='BasicDict', type=str)
     args=parser.parse_args()
     main(args)

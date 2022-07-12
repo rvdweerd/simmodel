@@ -235,9 +235,9 @@ def main(args):
             # 'Manhattan5x5_DuplicateSetB',
             #'Manhattan3x3_WalkAround',
             # 'MetroU3_e1t31_FixedEscapeInit', 
-            #'full_solvable_3x3subs',
+            'full_solvable_3x3subs',
             #'BifurGraphTask1'
-            'M3test1'
+            # 'M3test1'
             #'Manhattan3x3_PredictionExample', 
             # 'Manhattan5x5_FixedEscapeInit',
             # 'Manhattan5x5_VariableEscapeInit',
@@ -321,28 +321,28 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)    
     # Model hyperparameters
-    parser.add_argument('--emb_dim', default=32, type=int)
-    parser.add_argument('--emb_itT', default=2, type=int)
-    parser.add_argument('--num_epi', default=250, type=int)
-    parser.add_argument('--mem_size', default=2000, type=int)
-    parser.add_argument('--nfm_func', default='NFM_ev_ec_t', type=str)
+    parser.add_argument('--emb_dim', default=64, type=int)
+    parser.add_argument('--emb_itT', default=5, type=int)
+    parser.add_argument('--num_epi', default=25000, type=int)
+    parser.add_argument('--mem_size', default=5000, type=int)
+    parser.add_argument('--nfm_func', default='NFM_ev_ec_t_dt_at_um_us', type=str)
     parser.add_argument('--train_on', default='None', type=str)
-    parser.add_argument('--qnet', default='None', type=str)
-    parser.add_argument('--norm_agg', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
-    parser.add_argument('--optim_target', default='None', type=str)
+    parser.add_argument('--qnet', default='s2v', type=str)
+    parser.add_argument('--norm_agg', type=lambda s: s.lower() in ['true', 't', 'yes', '1'],default=True)
+    parser.add_argument('--optim_target', default='returns', type=str)
     parser.add_argument('--tau', default=100, type=int)
     parser.add_argument('--nstep', default=1, type=int)
-    parser.add_argument('--train', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
-    parser.add_argument('--eval', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])   
-    parser.add_argument('--test', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])       
+    parser.add_argument('--train', type=lambda s: s.lower() in ['true', 't', 'yes', '1'],default=False)
+    parser.add_argument('--eval', type=lambda s: s.lower() in ['true', 't', 'yes', '1'],default=False)   
+    parser.add_argument('--test', type=lambda s: s.lower() in ['true', 't', 'yes', '1'],default=False)       
     parser.add_argument('--Etrain', default=[], type=list)
     parser.add_argument('--Utrain', default=[], type=list)
-    parser.add_argument('--num_seeds', default=5, type=int)
-    parser.add_argument('--seed0', default=10, type=int)
+    parser.add_argument('--num_seeds', default=1, type=int)
+    parser.add_argument('--seed0', default=0, type=int)
     parser.add_argument('--solve_select', default='solvable', type=str)
-    parser.add_argument('--edge_blocking', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
-    parser.add_argument('--max_nodes', default=9, type=int)
-    parser.add_argument('--demoruns', type=lambda s: s.lower() in ['true', 't', 'yes', '1'])
+    parser.add_argument('--edge_blocking', type=lambda s: s.lower() in ['true', 't', 'yes', '1'],default=True)
+    parser.add_argument('--max_nodes', default=25, type=int)
+    parser.add_argument('--demoruns', type=lambda s: s.lower() in ['true', 't', 'yes', '1'],default=True)
     parser.add_argument('--pursuit', default='Uon', type=str)
     args=parser.parse_args()
     main(args)

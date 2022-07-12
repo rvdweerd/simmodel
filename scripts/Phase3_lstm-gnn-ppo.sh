@@ -1,9 +1,9 @@
 #!/bin/bash
 
-#train_on="MixAll33"
+train_on="MixAll33"
 #train_on="NWB_AMS_mixed_obs"
 #train_on="TEST"
-train_on="NWB_AMS"
+#train_on="NWB_AMS"
 #train_on="HeurCRE"
 #train_on="M5x5Fixed"
 #train_on="M5x5F_mixed_obs"
@@ -43,7 +43,7 @@ do
     for seed0 in {0,}
     do
         tmux new-session -d -s "${idn}-${id}-${seed0}"
-        tmux send-keys -t "${idn}-${id}-${seed0}" "conda activate rlcourse-sb3c" Enter
+        tmux send-keys -t "${idn}-${id}-${seed0}" "conda activate rl" Enter
         tmux send-keys -t "${idn}-${id}-${seed0}" "cd ~/testing/sim" Enter
         tmux send-keys -t "${idn}-${id}-${seed0}" "python Phase3_lstm-gnn-ppo_simp.py --train_on $train_on --batch_size $batch_size --obs_mask $obs_mask --obs_rate $obs_rate --emb_dim $emb_dim --lstm_type $lstm_type --lstm_hdim $lstm_hdim --lstm_layers $lstm_layers --emb_iterT $emb_iterT --nfm_func $nfm_func --qnet $qnet --train $train --eval $eval --test $test --num_seeds $num_seeds --seed0 $seed0 --demoruns $demoruns --parallel_rollouts $parallel_rollouts --critic $critic --num_step $num_step --test_heur $test_heur --type_obs_wrap $type_obs_wrap --eval_deter $eval_deter --eval_rate $eval_rate" Enter
     done
