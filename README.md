@@ -1,8 +1,8 @@
 
 
 # simmodel
-Simulation environment for Reinforcement Learning experiments in Search & Pursuit on Graphs.
-Thesis work-in-progress for UvA/AI MSc program ([Thesis Proposal](modules/sim/Thesis_proposal.pdf))
+Simulation environment for Reinforcement Learning experiments in Search & Pursuit-Evasion on Graphs.
+Thesis work `Predicting plausible escape routes using reinforcement learning and graph representations' for UvA/AI MSc program ([Thesis Proposal](modules/sim/Thesis_proposal.pdf), [Final Thesis](modules/sim/Final_thesis.pdf))
 
 # Installation
 - Clone this repo
@@ -15,7 +15,7 @@ Thesis work-in-progress for UvA/AI MSc program ([Thesis Proposal](modules/sim/Th
     conda env create -f environment.yml
     conda activate rl
     ```
-- Use pip to install `Pytorch Ceometric`
+- Use pip to install `Pytorch Geometric (check/adjust cudatoolkit version)
     ```
     pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cu102.html
     pip install torch-sparse -f https://data.pyg.org/whl/torch-1.11.0+cu102.html
@@ -27,7 +27,7 @@ Thesis work-in-progress for UvA/AI MSc program ([Thesis Proposal](modules/sim/Th
   git clone https://github.com/Stable-Baselines-Team/stable-baselines3-contrib/
   cd stable-baselines3-contrib
   pip install  -e .
-  cd simmodel
+  cd ../simmodel
   ```
 
 # Training and testing models
@@ -62,7 +62,5 @@ Thesis work-in-progress for UvA/AI MSc program ([Thesis Proposal](modules/sim/Th
 ![cra_demo](modules/sim/cra_heuristic.gif)
 
 * Demo: performance of GNN-LSTM model, trained using PPO under partial observability</br></br>
-https://user-images.githubusercontent.com/16600166/171231787-9738c356-65db-4240-8231-0519d23fd725.mp4
-</br></br>
 ![clip](https://user-images.githubusercontent.com/16600166/171231787-9738c356-65db-4240-8231-0519d23fd725.mp4)
 
