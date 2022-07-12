@@ -873,6 +873,7 @@ def SimulateAutomaticMode_DQN(env, dqn_policy, t_suffix=True, entries=None):
     return a
 
 def SimulateInteractiveMode_PPO(env, model=None, filesave_with_time_suffix=True, entry=None):
+    Path('results').mkdir(parents=True, exist_ok=True)
     if entry is not None:
         obs=env.reset(entry)
     else:
