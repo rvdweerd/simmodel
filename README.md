@@ -27,7 +27,7 @@ Thesis work `Predicting plausible escape routes using reinforcement learning and
   git clone https://github.com/Stable-Baselines-Team/stable-baselines3-contrib/
   cd stable-baselines3-contrib
   pip install  -e .
-  cd simmodel
+  cd ../simmodel
   ```
 
 # Training and testing models
