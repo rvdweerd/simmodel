@@ -1,8 +1,8 @@
 
 
 # simmodel
-Simulation environment for Reinforcement Learning experiments in Search & Pursuit on Graphs.
-Thesis work-in-progress for UvA/AI MSc program ([Thesis Proposal](modules/sim/Thesis_proposal.pdf))
+Simulation environment for Reinforcement Learning experiments in Search & Pursuit-Evasion on Graphs.
+Thesis work `Predicting plausible escape routes using reinforcement learning and graph representations' for UvA/AI MSc program ([Thesis Proposal](modules/sim/Thesis_proposal.pdf)[Final Thesis[(modules/sim/Final_thesis.pdf))
 
 # Installation
 - Clone this repo
