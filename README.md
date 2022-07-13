@@ -64,3 +64,14 @@ Thesis work `Predicting plausible escape routes using reinforcement learning and
 * Demo: performance of GNN-LSTM model, trained using PPO under partial observability</br></br>
 ![clip](https://user-images.githubusercontent.com/16600166/171231787-9738c356-65db-4240-8231-0519d23fd725.mp4)
 
+# Citation
+```
+@mastersthesis{weerd2022spe_rl,
+    author = {R. van der Weerd},
+    institution = {University of Amsterdam, Graduate School of Informatics},
+    pages = 57,
+    school = {University of Amsterdam, Graduate School of Informatics, Master's program in artificial intelligence},
+    title = {Predicting plausible escape routes using reinforcement learning and graph representations},
+    year = 2022
+}
+```
