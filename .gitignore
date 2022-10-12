@@ -1,8 +1,5 @@
 .vscode
 __pycache__
-results
-results_Phase1
-results_Phase2
 slurm
 images
 models

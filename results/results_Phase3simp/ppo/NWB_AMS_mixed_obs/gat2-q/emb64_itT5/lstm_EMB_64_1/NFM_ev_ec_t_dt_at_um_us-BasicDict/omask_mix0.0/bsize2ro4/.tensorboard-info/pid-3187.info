@@ -1,0 +1,10 @@
+{
+    "cache_key": "eyJhcmd1bWVudHMiOlsiLS1sb2dkaXIiLCIuIl0sImNvbmZpZ3VyZV9rd2FyZ3MiOnt9LCJ3b3JraW5nX2RpcmVjdG9yeSI6Ii9ob21lL3dlZXJkci90ZXN0aW5nL3NpbS9yZXN1bHRzL3Jlc3VsdHNfUGhhc2Uzc2ltcC9wcG8vTldCX0FNU19taXhlZF9vYnMvZ2F0Mi1xL2VtYjY0X2l0VDUvbHN0bV9FTUJfNjRfMS9ORk1fZXZfZWNfdF9kdF9hdF91bV91cy1CYXNpY0RpY3Qvb21hc2tfbWl4MC4wL2JzaXplMnJvNCJ9",
+    "db": "",
+    "logdir": ".",
+    "path_prefix": "",
+    "pid": 3187,
+    "port": 6006,
+    "start_time": 1653897413,
+    "version": "2.8.0"
+}
