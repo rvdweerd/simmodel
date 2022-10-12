@@ -83,6 +83,8 @@ class QNet_GAT(nn.Module):
             out_channels = self.emb_dim,
             **kwargs
         ).to(device)
+        self.gat.supports_edge_weight=False
+        self.gat.supports_edge_attr=False
         self.theta5 = nn.Linear(2*self.emb_dim, 1, True, dtype=torch.float32)
         self.theta6 = nn.Linear(self.emb_dim, self.emb_dim, True, dtype=torch.float32)
         self.theta7 = nn.Linear(self.emb_dim, self.emb_dim, True, dtype=torch.float32)     
@@ -171,6 +173,8 @@ class QNet_GATv2(QNet_GAT):
             share_weights=False,
             **kwargs
         ).to(device)
+        self.gat.supports_edge_weight=False
+        self.gat.supports_edge_attr=False
         self.theta5 = nn.Linear(2*self.emb_dim, 1, True, dtype=torch.float32)
         self.theta6 = nn.Linear(self.emb_dim, self.emb_dim, True, dtype=torch.float32)
         self.theta7 = nn.Linear(self.emb_dim, self.emb_dim, True, dtype=torch.float32)     

@@ -247,6 +247,8 @@ class FeatureExtractor(nn.Module):
             share_weights = True,
             **kwargs
         )
+        self.gat.supports_edge_weight=False
+        self.gat.supports_edge_attr=False
 
     def _deserialize(self, obs):
         # Deconstruct from an observation as defined by the PPO flattened observation wrapper
@@ -317,6 +319,8 @@ class FeatureExtractor_LSTM(nn.Module):
             share_weights = True,
             **kwargs
         )
+        self.gat.supports_edge_weight=False
+        self.gat.supports_edge_attr=False        
         self.hidden_cell = None
 
     def reset_init_state(self, batch_size, device):

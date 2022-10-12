@@ -60,7 +60,9 @@ class Gat2Extractor(BaseFeaturesExtractor):
             out_channels = self.emb_dim,
             share_weights = False,
             **kwargs
-        ).to(device)      
+        ).to(device)    
+        self.gat.supports_edge_weight=False
+        self.gat.supports_edge_attr=False  
         self.numTrainableParameters()  
 
     def forward(self, observations):# -> torch.Tensor:

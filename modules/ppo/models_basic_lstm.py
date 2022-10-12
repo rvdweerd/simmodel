@@ -334,7 +334,6 @@ class GATv2(BasicGNN):
             kwargs['heads'] = 1
         if 'concat' not in kwargs or kwargs['concat']:
             out_channels = out_channels // kwargs.get('heads', 1)
-
         return GATv2Conv(in_channels, out_channels, dropout=self.dropout,
                        **kwargs)
 
@@ -422,7 +421,10 @@ class PPO_GNN_Single_LSTM(PPO_GNN_Model):
                 out_channels = self.emb_dim,
                 share_weights = config['gat_share_weights'],
                 **kwargs
-            ).to(device)      
+            ).to(device) 
+            self.gat.supports_edge_weight=False
+            self.gat.supports_edge_attr=False    
+
         elif config['qnet'] == 's2v':
             self.emb_dim    = config['emb_dim']
             self.T          = config['emb_iterT']
@@ -738,7 +740,9 @@ class PPO_GNN_Dual_LSTM(PPO_GNN_Model):
             out_channels = self.emb_dim,
             share_weights = config['gat_share_weights'],
             **kwargs
-        ).to(device)      
+        ).to(device)   
+        self.gat.supports_edge_weight=False
+        self.gat.supports_edge_attr=False   
 
         if config['lstm_type'] == 'Dual':
             self.lstm_pi  = nn.LSTM(self.emb_dim, self.emb_dim, device=device)
